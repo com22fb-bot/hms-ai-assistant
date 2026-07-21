@@ -8,9 +8,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
-from supabase import Client, create_client
 
 from app.core.config import settings
+from app.database.supabase import get_supabase_client
 from app.schemas.gmail import (
     GmailMessagesResponse,
     GoogleConnectionStatus,
@@ -76,6 +76,7 @@ google_account: dict[str, Any] = {}
 # ============================================================
 
 def validate_google_environment() -> None:
+    """Verifica las variables necesarias para Google OAuth."""
     missing_variables: list[str] = []
 
     if not GOOGLE_CLIENT_ID:
@@ -101,37 +102,10 @@ def validate_google_environment() -> None:
         )
 
 
-def get_supabase_client() -> Client:
-    missing_variables: list[str] = []
-
-    if not SUPABASE_URL:
-        missing_variables.append("SUPABASE_URL")
-
-    if not SUPABASE_SECRET_KEY:
-        missing_variables.append("SUPABASE_SECRET_KEY")
-
-    if missing_variables:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "status": "error",
-                "message": (
-                    "Faltan variables de Supabase "
-                    "en el entorno."
-                ),
-                "missing_variables": missing_variables,
-            },
-        )
-
-    return create_client(
-        SUPABASE_URL,
-        SUPABASE_SECRET_KEY,
-    )
-
-
 def create_google_flow(
     state: str | None = None,
 ) -> Flow:
+    """Construye el flujo OAuth de Google."""
     validate_google_environment()
 
     client_config = {
@@ -161,6 +135,7 @@ def create_google_flow(
 
 
 def get_active_google_credentials() -> Credentials:
+    """Obtiene credenciales válidas de la cuenta conectada."""
     validate_google_environment()
 
     return create_credentials(
