@@ -1,8 +1,8 @@
-import os
+from __future__ import annotations
+
 import secrets
 from typing import Any
 
-from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -10,47 +10,27 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from supabase import Client, create_client
 
-from gmail_service import create_credentials, list_messages
+from app.core.config import settings
 from app.schemas.gmail import (
     GmailMessagesResponse,
     GoogleConnectionStatus,
 )
+from gmail_service import create_credentials, list_messages
 
 
 # ============================================================
 # CONFIGURACIÓN
 # ============================================================
 
-load_dotenv()
+SUPABASE_URL = settings.supabase_url
+SUPABASE_SECRET_KEY = settings.supabase_secret_key
 
-SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
-SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY", "").strip()
+GOOGLE_CLIENT_ID = settings.google_client_id
+GOOGLE_CLIENT_SECRET = settings.google_client_secret
+GOOGLE_REDIRECT_URI = settings.google_redirect_uri
 
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
-GOOGLE_CLIENT_SECRET = os.getenv(
-    "GOOGLE_CLIENT_SECRET",
-    "",
-).strip()
-GOOGLE_REDIRECT_URI = os.getenv(
-    "GOOGLE_REDIRECT_URI",
-    "",
-).strip()
-
-FRONTEND_ORIGINS = [
-    origin.strip()
-    for origin in os.getenv(
-        "FRONTEND_ORIGINS",
-        "http://localhost:3000,http://127.0.0.1:3000",
-    ).split(",")
-    if origin.strip()
-]
-
-GOOGLE_SCOPES = [
-    "openid",
-    "https://www.googleapis.com/auth/userinfo.email",
-    "https://www.googleapis.com/auth/userinfo.profile",
-    "https://www.googleapis.com/auth/gmail.readonly",
-]
+FRONTEND_ORIGINS = settings.frontend_origins
+GOOGLE_SCOPES = settings.google_scopes
 
 
 # ============================================================
@@ -58,12 +38,9 @@ GOOGLE_SCOPES = [
 # ============================================================
 
 app = FastAPI(
-    title="HMS AI Assistant API",
-    description=(
-        "Backend para conectar cuentas de Google "
-        "y consultar correos de Gmail."
-    ),
-    version="0.4.0",
+    title=settings.app_name,
+    description=settings.app_description,
+    version=settings.app_version,
 )
 
 app.add_middleware(
@@ -86,10 +63,12 @@ app.add_middleware(
 # En esta versión los datos permanecen en memoria.
 # Cuando FastAPI se reinicia, será necesario reconectar Gmail.
 #
-# La siguiente etapa guardará los tokens cifrados en Supabase.
+# En una etapa posterior los tokens se guardarán cifrados
+# y asociados a una cuenta en Supabase.
 
 oauth_states: dict[str, bool] = {}
 google_credentials: dict[str, Any] = {}
+google_account: dict[str, Any] = {}
 
 
 # ============================================================
@@ -199,8 +178,8 @@ def get_active_google_credentials() -> Credentials:
 def root() -> dict[str, str]:
     return {
         "status": "ok",
-        "application": "HMS AI Assistant API",
-        "version": "0.4.0",
+        "application": settings.app_name,
+        "version": settings.app_version,
         "documentation": "/docs",
         "dashboard": "/dashboard",
         "google_login": "/auth/google/login",
@@ -214,7 +193,7 @@ def health() -> dict[str, str]:
     return {
         "status": "ok",
         "service": "backend",
-        "version": "0.4.0",
+        "version": settings.app_version,
     }
 
 
@@ -252,7 +231,11 @@ def database_health() -> dict[str, Any]:
             detail={
                 "status": "error",
                 "database": "disconnected",
-                "message": str(error),
+                "message": (
+                    "No fue posible establecer conexión "
+                    "con Supabase."
+                ),
+                "technical_detail": str(error),
             },
         ) from error
 
@@ -262,10 +245,15 @@ def database_health() -> dict[str, Any]:
     response_class=HTMLResponse,
 )
 def dashboard() -> str:
-    google_status = (
+    connection_status = (
         "Conectada"
         if google_credentials
         else "No conectada"
+    )
+
+    account_email = google_account.get(
+        "email",
+        "Sin cuenta identificada",
     )
 
     return f"""
@@ -273,19 +261,13 @@ def dashboard() -> str:
     <html lang="es">
     <head>
         <meta charset="UTF-8">
-
         <meta
             name="viewport"
             content="width=device-width, initial-scale=1.0"
         >
-
         <title>HMS AI Assistant</title>
 
         <style>
-            * {{
-                box-sizing: border-box;
-            }}
-
             body {{
                 margin: 0;
                 padding: 40px 20px;
@@ -295,58 +277,44 @@ def dashboard() -> str:
             }}
 
             .container {{
-                max-width: 780px;
+                max-width: 760px;
                 margin: 0 auto;
                 padding: 32px;
                 background: white;
                 border-radius: 16px;
-                box-shadow:
-                    0 8px 30px rgba(0, 0, 0, 0.08);
+                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
             }}
 
             h1 {{
                 margin-top: 0;
-                margin-bottom: 8px;
                 color: #174ea6;
             }}
 
-            .subtitle {{
-                margin-top: 0;
-                color: #6b7280;
-            }}
-
             .status {{
-                padding: 16px;
-                margin: 24px 0;
+                padding: 14px;
+                margin: 20px 0;
                 background: #eef4ff;
-                border: 1px solid #dbe7ff;
                 border-radius: 10px;
             }}
 
-            .buttons {{
-                display: flex;
-                flex-wrap: wrap;
-                gap: 10px;
+            .account {{
+                margin-top: 8px;
+                color: #4b5563;
+                font-size: 14px;
             }}
 
             a.button {{
                 display: inline-block;
                 padding: 12px 18px;
+                margin: 6px 6px 6px 0;
                 color: white;
                 background: #174ea6;
                 border-radius: 8px;
                 text-decoration: none;
-                font-weight: 600;
             }}
 
             a.secondary {{
                 background: #374151;
-            }}
-
-            .version {{
-                margin-top: 28px;
-                color: #9ca3af;
-                font-size: 13px;
             }}
         </style>
     </head>
@@ -355,55 +323,54 @@ def dashboard() -> str:
         <main class="container">
             <h1>HMS AI Assistant</h1>
 
-            <p class="subtitle">
-                Administración inteligente de correo electrónico.
+            <p>
+                Backend de administración y conexión
+                de cuentas de correo.
             </p>
 
             <div class="status">
                 <strong>Google Gmail:</strong>
-                {google_status}
+                {connection_status}
+
+                <div class="account">
+                    {account_email}
+                </div>
             </div>
 
-            <div class="buttons">
-                <a
-                    class="button"
-                    href="/auth/google/login"
-                >
-                    Conectar Gmail
-                </a>
+            <a
+                class="button"
+                href="/auth/google/login"
+            >
+                Conectar cuenta de Google
+            </a>
 
-                <a
-                    class="button secondary"
-                    href="/auth/google/status"
-                >
-                    Estado de conexión
-                </a>
+            <a
+                class="button secondary"
+                href="/auth/google/status"
+            >
+                Consultar estado
+            </a>
 
-                <a
-                    class="button secondary"
-                    href="/gmail/messages"
-                >
-                    Consultar correos
-                </a>
+            <a
+                class="button secondary"
+                href="/gmail/messages"
+            >
+                Consultar correos
+            </a>
 
-                <a
-                    class="button secondary"
-                    href="/database-health"
-                >
-                    Probar Supabase
-                </a>
+            <a
+                class="button secondary"
+                href="/database-health"
+            >
+                Probar Supabase
+            </a>
 
-                <a
-                    class="button secondary"
-                    href="/docs"
-                >
-                    Documentación API
-                </a>
-            </div>
-
-            <p class="version">
-                HMS AI Assistant API v0.4.0
-            </p>
+            <a
+                class="button secondary"
+                href="/docs"
+            >
+                Documentación API
+            </a>
         </main>
     </body>
     </html>
@@ -411,7 +378,7 @@ def dashboard() -> str:
 
 
 # ============================================================
-# GOOGLE OAUTH
+# AUTENTICACIÓN DE GOOGLE
 # ============================================================
 
 @app.get("/auth/google/login")
@@ -453,7 +420,7 @@ def google_login() -> RedirectResponse:
 @app.get("/auth/google/callback")
 def google_callback(
     request: Request,
-) -> dict[str, Any]:
+) -> HTMLResponse:
     oauth_error = request.query_params.get("error")
 
     if oauth_error:
@@ -462,13 +429,31 @@ def google_callback(
             "Google rechazó la autorización.",
         )
 
-        raise HTTPException(
+        return HTMLResponse(
             status_code=400,
-            detail={
-                "status": "error",
-                "oauth_error": oauth_error,
-                "message": error_description,
-            },
+            content=f"""
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta
+                    name="viewport"
+                    content="width=device-width, initial-scale=1.0"
+                >
+                <title>Error de conexión</title>
+            </head>
+
+            <body>
+                <h1>No fue posible conectar Google</h1>
+                <p>{error_description}</p>
+                <p>
+                    <a href="/auth/google/login">
+                        Intentar nuevamente
+                    </a>
+                </p>
+            </body>
+            </html>
+            """,
         )
 
     state = request.query_params.get("state")
@@ -479,7 +464,8 @@ def google_callback(
             detail={
                 "status": "error",
                 "message": (
-                    "El estado OAuth es inválido o expiró."
+                    "El estado OAuth es inválido "
+                    "o expiró."
                 ),
             },
         )
@@ -488,10 +474,12 @@ def google_callback(
 
     try:
         flow.fetch_token(
-            authorization_response=str(request.url),
+            authorization_response=str(request.url)
         )
 
     except Exception as error:
+        oauth_states.pop(state, None)
+
         raise HTTPException(
             status_code=400,
             detail={
@@ -504,8 +492,7 @@ def google_callback(
             },
         ) from error
 
-    finally:
-        oauth_states.pop(state, None)
+    oauth_states.pop(state, None)
 
     credentials: Credentials = flow.credentials
 
@@ -517,9 +504,7 @@ def google_callback(
             "refresh_token": credentials.refresh_token,
             "token_uri": credentials.token_uri,
             "client_id": credentials.client_id,
-            "scopes": list(
-                credentials.scopes or GOOGLE_SCOPES
-            ),
+            "scopes": list(credentials.scopes or []),
             "expiry": (
                 credentials.expiry.isoformat()
                 if credentials.expiry
@@ -529,21 +514,120 @@ def google_callback(
         }
     )
 
-    return {
-        "status": "ok",
-        "message": (
-            "Cuenta de Google conectada correctamente."
-        ),
-        "connected": True,
-        "has_access_token": bool(credentials.token),
-        "has_refresh_token": bool(
-            credentials.refresh_token
-        ),
-        "scopes": list(
-            credentials.scopes or GOOGLE_SCOPES
-        ),
-        "next_step": "/gmail/messages",
-    }
+    google_account.clear()
+
+    try:
+        from googleapiclient.discovery import build
+
+        oauth_service = build(
+            "oauth2",
+            "v2",
+            credentials=credentials,
+            cache_discovery=False,
+        )
+
+        account_information = (
+            oauth_service.userinfo()
+            .get()
+            .execute()
+        )
+
+        google_account.update(
+            {
+                "email": account_information.get(
+                    "email",
+                    "",
+                ),
+                "name": account_information.get(
+                    "name",
+                    "",
+                ),
+                "picture": account_information.get(
+                    "picture",
+                    "",
+                ),
+            }
+        )
+
+    except Exception:
+        # La conexión de Gmail continúa siendo válida aunque
+        # no sea posible recuperar los datos del perfil.
+        google_account.clear()
+
+    connected_email = google_account.get(
+        "email",
+        "Cuenta conectada",
+    )
+
+    return HTMLResponse(
+        status_code=200,
+        content=f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta
+                name="viewport"
+                content="width=device-width, initial-scale=1.0"
+            >
+            <title>Google conectado</title>
+
+            <style>
+                body {{
+                    margin: 0;
+                    padding: 40px 20px;
+                    background: #f4f7fb;
+                    color: #1f2937;
+                    font-family: Arial, sans-serif;
+                }}
+
+                main {{
+                    max-width: 640px;
+                    margin: 0 auto;
+                    padding: 32px;
+                    background: white;
+                    border-radius: 16px;
+                    box-shadow:
+                        0 8px 30px rgba(0, 0, 0, 0.08);
+                }}
+
+                h1 {{
+                    color: #137333;
+                }}
+
+                a {{
+                    display: inline-block;
+                    margin-top: 16px;
+                    padding: 12px 18px;
+                    color: white;
+                    background: #174ea6;
+                    border-radius: 8px;
+                    text-decoration: none;
+                }}
+            </style>
+        </head>
+
+        <body>
+            <main>
+                <h1>Cuenta de Google conectada</h1>
+
+                <p>
+                    La autorización se completó correctamente.
+                </p>
+
+                <p>
+                    <strong>Cuenta:</strong>
+                    {connected_email}
+                </p>
+
+                <a href="/dashboard">
+                    Regresar al panel
+                </a>
+            </main>
+        </body>
+        </html>
+        """,
+    )
 
 
 @app.get(
@@ -562,7 +646,7 @@ def google_status() -> GoogleConnectionStatus:
 
     return GoogleConnectionStatus(
         connected=True,
-        email=google_credentials.get("email"),
+        email=google_account.get("email") or None,
         has_access_token=bool(
             google_credentials.get("token")
         ),
@@ -573,21 +657,24 @@ def google_status() -> GoogleConnectionStatus:
             "scopes",
             [],
         ),
+        message="Cuenta de Google conectada.",
     )
 
 
-@app.post("/auth/google/disconnect")
-def google_disconnect() -> dict[str, Any]:
+@app.post(
+    "/auth/google/disconnect",
+    response_model=GoogleConnectionStatus,
+)
+def google_disconnect() -> GoogleConnectionStatus:
     google_credentials.clear()
+    google_account.clear()
     oauth_states.clear()
 
-    return {
-        "status": "ok",
-        "connected": False,
-        "message": (
-            "La cuenta de Google fue desconectada."
-        ),
-    }
+    return GoogleConnectionStatus(
+        connected=False,
+        message="Cuenta de Google desconectada.",
+        login_url="/auth/google/login",
+    )
 
 
 # ============================================================
@@ -599,19 +686,19 @@ def google_disconnect() -> dict[str, Any]:
     response_model=GmailMessagesResponse,
 )
 def gmail_messages(
-    max_results: int = Query(
+    limit: int = Query(
         default=20,
         ge=1,
         le=100,
         description=(
-            "Cantidad máxima de mensajes a consultar."
+            "Cantidad máxima de correos que se consultarán."
         ),
     ),
     query: str | None = Query(
         default=None,
         description=(
-            "Consulta compatible con Gmail. "
-            "Ejemplos: is:unread, newer_than:7d"
+            "Consulta opcional utilizando la sintaxis "
+            "de búsqueda de Gmail."
         ),
     ),
 ) -> GmailMessagesResponse:
@@ -619,7 +706,7 @@ def gmail_messages(
 
     messages = list_messages(
         credentials=credentials,
-        max_results=max_results,
+        max_results=limit,
         query=query,
     )
 
