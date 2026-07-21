@@ -9,7 +9,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
-from models import GmailMessage
+from app.schemas.gmail import GmailMessage
 
 
 def create_credentials(

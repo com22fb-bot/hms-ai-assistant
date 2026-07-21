@@ -11,7 +11,10 @@ from google_auth_oauthlib.flow import Flow
 from supabase import Client, create_client
 
 from gmail_service import create_credentials, list_messages
-from models import GmailMessagesResponse, GoogleConnectionStatus
+from app.schemas.gmail import (
+    GmailMessagesResponse,
+    GoogleConnectionStatus,
+)
 
 
 # ============================================================
