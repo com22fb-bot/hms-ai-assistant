@@ -9,8 +9,8 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 
+from app.api.system import router as system_router
 from app.core.config import settings
-from app.database.supabase import get_supabase_client
 from app.schemas.gmail import (
     GmailMessagesResponse,
     GoogleConnectionStatus,
@@ -54,6 +54,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 
 # ============================================================
@@ -161,58 +162,6 @@ def root() -> dict[str, str]:
         "google_status": "/auth/google/status",
         "gmail_messages": "/gmail/messages",
     }
-
-
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {
-        "status": "ok",
-        "service": "backend",
-        "version": settings.app_version,
-    }
-
-
-@app.get("/database-health")
-def database_health() -> dict[str, Any]:
-    try:
-        supabase = get_supabase_client()
-
-        response = (
-            supabase.table("mail_accounts")
-            .select("*", count="exact")
-            .limit(1)
-            .execute()
-        )
-
-        record_count = (
-            response.count
-            if response.count is not None
-            else 0
-        )
-
-        return {
-            "status": "ok",
-            "database": "connected",
-            "table": "mail_accounts",
-            "records": record_count,
-        }
-
-    except HTTPException:
-        raise
-
-    except Exception as error:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "status": "error",
-                "database": "disconnected",
-                "message": (
-                    "No fue posible establecer conexión "
-                    "con Supabase."
-                ),
-                "technical_detail": str(error),
-            },
-        ) from error
 
 
 @app.get(
@@ -689,3 +638,10 @@ def gmail_messages(
         total=len(messages),
         messages=messages,
     )
+
+
+# ============================================================
+# REGISTRO DE ROUTERS
+# ============================================================
+
+app.include_router(system_router)
