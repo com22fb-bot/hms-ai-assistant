@@ -15,7 +15,7 @@ from app.schemas.gmail import (
     GmailMessagesResponse,
     GoogleConnectionStatus,
 )
-from gmail_service import create_credentials, list_messages
+from app.services.gmail import create_credentials, list_messages
 
 
 # ============================================================
