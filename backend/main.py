@@ -3,19 +3,19 @@ from __future__ import annotations
 import secrets
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 
+from app.api.gmail import create_gmail_router
 from app.api.system import router as system_router
 from app.core.config import settings
 from app.schemas.gmail import (
-    GmailMessagesResponse,
     GoogleConnectionStatus,
 )
-from app.services.gmail import create_credentials, list_messages
+from app.services.gmail import create_credentials
 
 
 # ============================================================
@@ -605,43 +605,14 @@ def google_disconnect() -> GoogleConnectionStatus:
 # GMAIL
 # ============================================================
 
-@app.get(
-    "/gmail/messages",
-    response_model=GmailMessagesResponse,
-)
-def gmail_messages(
-    limit: int = Query(
-        default=20,
-        ge=1,
-        le=100,
-        description=(
-            "Cantidad máxima de correos que se consultarán."
-        ),
-    ),
-    query: str | None = Query(
-        default=None,
-        description=(
-            "Consulta opcional utilizando la sintaxis "
-            "de búsqueda de Gmail."
-        ),
-    ),
-) -> GmailMessagesResponse:
-    credentials = get_active_google_credentials()
-
-    messages = list_messages(
-        credentials=credentials,
-        max_results=limit,
-        query=query,
-    )
-
-    return GmailMessagesResponse(
-        total=len(messages),
-        messages=messages,
-    )
-
 
 # ============================================================
 # REGISTRO DE ROUTERS
 # ============================================================
 
+gmail_router = create_gmail_router(
+    get_active_google_credentials,
+)
+
 app.include_router(system_router)
+app.include_router(gmail_router)
