@@ -749,3 +749,706 @@ Registrar el progreso de sincronización sin mezclarlo con las entidades de nego
 - Los checkpoints deberán permitir reanudar después de una interrupción.
 - Los cursores no deberán interpretarse fuera del adaptador del proveedor.
 - Cada intento deberá conservar suficiente información para diagnóstico.
+# 4. Messaging Domain
+
+## Objetivo
+
+Administrar el contenido sincronizado de los proveedores de correo.
+
+El dominio Messaging es independiente del proveedor.
+
+No importa si el mensaje proviene de:
+
+- Gmail
+- Yahoo
+- Outlook
+- Microsoft 365
+- IMAP
+
+Todos los mensajes deberán almacenarse con la misma estructura.
+
+---
+
+## 4.1 emails
+
+### Responsabilidad
+
+Representar un correo electrónico sincronizado.
+
+### Relaciones
+
+mail_account
+
+↓
+
+emails
+
+↓
+
+attachments
+
+↓
+
+ai_analysis
+
+↓
+
+tasks
+
+---
+
+### Columnas principales
+
+| Campo | Tipo |
+|--------|------|
+| id | uuid |
+| mail_account_id | uuid |
+| provider_message_id | text |
+| provider_thread_id | text |
+| internet_message_id | text |
+| folder | text |
+| subject | text |
+| sender_name | text |
+| sender_email | citext |
+| recipients | jsonb |
+| cc | jsonb |
+| bcc | jsonb |
+| body_text | text |
+| body_html | text |
+| snippet | text |
+| received_at | timestamptz |
+| sent_at | timestamptz |
+| is_read | boolean |
+| is_starred | boolean |
+| is_archived | boolean |
+| is_deleted | boolean |
+| importance | text |
+| sensitivity | text |
+| created_at | timestamptz |
+| updated_at | timestamptz |
+
+---
+
+### Índices
+
+provider_message_id
+
+provider_thread_id
+
+received_at DESC
+
+mail_account_id + received_at DESC
+
+sender_email
+
+subject
+
+---
+
+### Restricciones
+
+provider_message_id deberá ser único por cuenta.
+
+Los mensajes nunca deberán duplicarse.
+
+El historial deberá conservarse incluso después de desconectar una cuenta.
+
+---
+
+## 4.2 email_attachments
+
+Representa archivos adjuntos.
+
+Columnas:
+
+- id
+- email_id
+- filename
+- mime_type
+- size_bytes
+- provider_attachment_id
+- storage_path
+- sha256
+- created_at
+
+---
+
+## 4.3 email_labels
+
+Representa etiquetas internas y del proveedor.
+
+Ejemplos:
+
+INBOX
+
+IMPORTANT
+
+STARRED
+
+CUSTOM
+
+AI
+# 5. AI Domain
+
+## Objetivo
+
+Transformar mensajes en información estructurada.
+
+La IA nunca modificará el correo original.
+
+Su función será generar conocimiento adicional.
+
+---
+
+## 5.1 ai_analysis
+
+Representa una ejecución del motor de IA.
+
+### Columnas
+
+- id
+- email_id
+- model
+- model_version
+- prompt_version
+- language
+- confidence
+- execution_time_ms
+- token_input
+- token_output
+- estimated_cost
+- status
+- analyzed_at
+- created_at
+
+Estados:
+
+- pending
+- running
+- completed
+- failed
+
+---
+
+## 5.2 ai_findings
+
+Representa información detectada por IA.
+
+Cada registro corresponde a un hallazgo.
+
+Ejemplos:
+
+- payment
+- deadline
+- commitment
+- person
+- company
+- amount
+- project
+- risk
+- location
+- phone
+- invoice
+- contract
+
+### Columnas
+
+- id
+- analysis_id
+- finding_type
+- label
+- normalized_value
+- confidence
+- source_text
+- created_at
+
+---
+
+## Relaciones
+
+Email
+
+1 ---- N AI Analysis
+
+AI Analysis
+
+1 ---- N AI Findings
+# 6. Productivity Domain
+
+## Objetivo
+
+Administrar las tareas, compromisos, recordatorios y alertas generadas por el sistema.
+
+Las tareas pueden originarse de múltiples fuentes y no dependen exclusivamente de un correo electrónico.
+
+---
+
+## 6.1 tasks
+
+### Responsabilidad
+
+Representa una acción que debe realizar un usuario o un equipo.
+
+Una tarea puede ser creada:
+
+- Manualmente
+- Por IA
+- Desde un correo
+- Desde un documento
+- Desde futuras integraciones
+
+---
+
+### Columnas
+
+| Campo | Tipo |
+|--------|------|
+| id | uuid |
+| workspace_id | uuid |
+| mailbox_id | uuid |
+| email_id | uuid nullable |
+| ai_finding_id | uuid nullable |
+| created_by | uuid |
+| assigned_to | uuid nullable |
+| title | text |
+| description | text |
+| task_source | text |
+| priority | text |
+| status | text |
+| due_date | timestamptz |
+| completed_at | timestamptz |
+| metadata | jsonb |
+| created_at | timestamptz |
+| updated_at | timestamptz |
+| deleted_at | timestamptz |
+
+---
+
+### Valores iniciales
+
+#### task_source
+
+- manual
+- email
+- ai
+- document
+- api
+
+#### priority
+
+- low
+- normal
+- high
+- critical
+
+#### status
+
+- pending
+- in_progress
+- waiting
+- completed
+- cancelled
+
+---
+
+### Restricciones
+
+Una tarea siempre pertenece a un Workspace.
+
+Una tarea puede existir sin correo asociado.
+
+Si existe un correo relacionado, deberá mantenerse el vínculo incluso cuando el mensaje sea archivado.
+
+---
+
+### Índices
+
+workspace_id
+
+assigned_to
+
+status
+
+priority
+
+due_date
+
+created_at DESC
+
+---
+
+## 6.2 task_comments
+
+### Responsabilidad
+
+Registrar el historial de conversaciones sobre una tarea.
+
+### Columnas
+
+- id
+- task_id
+- author_id
+- comment
+- created_at
+
+---
+
+## 6.3 reminders
+
+### Responsabilidad
+
+Programar recordatorios para tareas.
+
+### Columnas
+
+- id
+- task_id
+- remind_at
+- notification_channel
+- status
+- sent_at
+- created_at
+
+---
+
+### Canales iniciales
+
+- email
+- push
+- whatsapp
+- sms
+
+---
+
+## Relaciones
+
+Workspace
+
+1 ---- N Tasks
+
+Task
+
+1 ---- N Comments
+
+Task
+
+1 ---- N Reminders
+# 7. Security Domain
+
+## Objetivo
+
+Garantizar la trazabilidad, seguridad, cumplimiento normativo y administración de integraciones de HMS AI Assistant.
+
+Toda acción importante deberá poder ser auditada.
+
+---
+
+## 7.1 audit_events
+
+### Responsabilidad
+
+Registrar cualquier acción relevante realizada por usuarios o por el sistema.
+
+Nunca deberá eliminarse un evento de auditoría.
+
+---
+
+### Columnas
+
+| Campo | Tipo |
+|--------|------|
+| id | uuid |
+| workspace_id | uuid |
+| actor_id | uuid nullable |
+| entity_type | text |
+| entity_id | uuid nullable |
+| action | text |
+| source | text |
+| ip_address | inet |
+| user_agent | text |
+| metadata | jsonb |
+| created_at | timestamptz |
+
+---
+
+### Acciones iniciales
+
+- login
+- logout
+- create
+- update
+- delete
+- restore
+- synchronize
+- analyze
+- export
+- import
+- permission_change
+
+---
+
+### Restricciones
+
+Los registros de auditoría son inmutables.
+
+No deberán modificarse.
+
+---
+
+## 7.2 retention_policies
+
+### Responsabilidad
+
+Definir cuánto tiempo conservar la información.
+
+### Columnas
+
+- id
+- workspace_id
+- entity_type
+- retention_days
+- archive_after_days
+- delete_after_days
+- created_at
+- updated_at
+
+---
+
+## 7.3 legal_holds
+
+### Responsabilidad
+
+Impedir la eliminación de información por motivos legales o administrativos.
+
+### Columnas
+
+- id
+- workspace_id
+- entity_type
+- entity_id
+- reason
+- created_by
+- created_at
+- expires_at
+
+---
+
+## 7.4 api_keys
+
+### Responsabilidad
+
+Administrar claves utilizadas por integraciones externas.
+
+### Columnas
+
+- id
+- workspace_id
+- name
+- key_hash
+- permissions
+- last_used_at
+- expires_at
+- status
+- created_at
+
+---
+
+## 7.5 webhooks
+
+### Responsabilidad
+
+Permitir que sistemas externos reciban eventos generados por HMS AI Assistant.
+
+### Columnas
+
+- id
+- workspace_id
+- name
+- endpoint_url
+- secret
+- subscribed_events
+- status
+- last_delivery_at
+- created_at
+
+---
+
+## Relaciones
+
+Workspace
+
+1 ---- N Audit Events
+
+Workspace
+
+1 ---- N Retention Policies
+
+Workspace
+
+1 ---- N API Keys
+
+Workspace
+
+1 ---- N Webhooks
+# 8. Knowledge Domain
+
+## Objetivo
+
+Representar entidades de negocio detectadas por IA y sus relaciones.
+
+Este dominio permitirá construir una base de conocimiento independiente del proveedor de correo.
+
+---
+
+## 8.1 knowledge_entities
+
+### Responsabilidad
+
+Representar una entidad identificada por la IA.
+
+### Columnas
+
+- id
+- workspace_id
+- entity_type
+- canonical_name
+- normalized_value
+- confidence
+- metadata
+- created_at
+- updated_at
+
+---
+
+### entity_type
+
+- person
+- company
+- project
+- contract
+- invoice
+- payment
+- document
+- location
+- phone
+- email
+- organization
+- vehicle
+- asset
+
+---
+
+## 8.2 knowledge_relationships
+
+### Responsabilidad
+
+Relacionar entidades.
+
+Ejemplos:
+
+Empresa
+
+↓
+
+Tiene
+
+↓
+
+Proyecto
+
+Persona
+
+↓
+
+Pertenece a
+
+↓
+
+Empresa
+
+Factura
+
+↓
+
+Corresponde a
+
+↓
+
+Contrato
+
+---
+
+### Columnas
+
+- id
+- workspace_id
+- source_entity_id
+- target_entity_id
+- relationship_type
+- confidence
+- created_at
+# 9. Event Domain
+
+## Objetivo
+
+Coordinar la comunicación entre los diferentes módulos del sistema mediante eventos internos.
+
+Los eventos representan hechos ocurridos y nunca deberán modificarse.
+
+---
+
+## 9.1 system_events
+
+### Responsabilidad
+
+Registrar eventos importantes generados por la plataforma.
+
+### Columnas
+
+- id
+- workspace_id
+- event_type
+- entity_type
+- entity_id
+- payload
+- processed
+- processed_at
+- created_at
+
+---
+
+### Eventos iniciales
+
+MailConnected
+
+MailDisconnected
+
+EmailReceived
+
+EmailUpdated
+
+EmailDeleted
+
+AIAnalysisStarted
+
+AIAnalysisCompleted
+
+TaskCreated
+
+TaskAssigned
+
+TaskCompleted
+
+ReminderTriggered
+
+NotificationSent
+
+UserInvited
+
+WorkspaceCreated
+
+SyncStarted
+
+SyncCompleted
+
+SyncFailed
