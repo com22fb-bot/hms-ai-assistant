@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import Any
 
 from fastapi import APIRouter, Query
 from google.oauth2.credentials import Credentials
 
 from app.schemas.gmail import GmailMessagesResponse
 from app.services.gmail import list_messages
+from app.services.gmail_sync import sync_gmail_messages
 
 
 CredentialsProvider = Callable[[], Credentials]
@@ -21,6 +23,7 @@ def create_gmail_router(
     La función que obtiene las credenciales se recibe desde main.py
     para evitar dependencias circulares.
     """
+
     router = APIRouter(
         prefix="/gmail",
         tags=["Gmail"],
@@ -58,6 +61,35 @@ def create_gmail_router(
         return GmailMessagesResponse(
             total=len(messages),
             messages=messages,
+        )
+
+    @router.post(
+        "/sync",
+        response_model=None,
+    )
+    def gmail_sync(
+        limit: int = Query(
+            default=100,
+            ge=1,
+            le=500,
+            description=(
+                "Cantidad máxima de mensajes que se sincronizarán."
+            ),
+        ),
+        query: str | None = Query(
+            default=None,
+            description=(
+                "Consulta opcional con sintaxis de Gmail. "
+                "Cuando se omite, se utiliza last_sync_at."
+            ),
+        ),
+    ) -> dict[str, Any]:
+        credentials = get_credentials()
+
+        return sync_gmail_messages(
+            credentials=credentials,
+            limit=limit,
+            query=query,
         )
 
     return router
