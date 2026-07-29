@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import MetricsGrid from "@/components/dashboard/MetricsGrid";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "";
@@ -466,13 +465,45 @@ export default function Home() {
           )}
         </section>
 
-        <MetricsGrid
-  total={messages.length}
-  unread={unreadCount}
-  personal={personalCount}
-  promotions={promotionsCount}
-/>
-<         section className="mail-panel">
+        <section className="metrics-grid" aria-label="Resumen del buzón">
+          <article className="metric-card">
+            <div className="metric-icon metric-icon-blue">✉</div>
+            <div>
+              <p>Total consultado</p>
+              <strong>{messages.length}</strong>
+              <span>Últimos correos obtenidos</span>
+            </div>
+          </article>
+
+          <article className="metric-card">
+            <div className="metric-icon metric-icon-orange">●</div>
+            <div>
+              <p>No leídos</p>
+              <strong>{unreadCount}</strong>
+              <span>Requieren revisión</span>
+            </div>
+          </article>
+
+          <article className="metric-card">
+            <div className="metric-icon metric-icon-green">☺</div>
+            <div>
+              <p>Personales</p>
+              <strong>{personalCount}</strong>
+              <span>Conversaciones directas</span>
+            </div>
+          </article>
+
+          <article className="metric-card">
+            <div className="metric-icon metric-icon-purple">★</div>
+            <div>
+              <p>Promociones</p>
+              <strong>{promotionsCount}</strong>
+              <span>Publicidad y campañas</span>
+            </div>
+          </article>
+        </section>
+
+        <section className="mail-panel">
           <div className="mail-panel-header">
             <div>
               <h2>Correos recientes</h2>
