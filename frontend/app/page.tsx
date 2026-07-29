@@ -2,6 +2,7 @@
 
 import ConnectionCard from "@/components/dashboard/ConnectionCard";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import ExecutiveCharts from "@/components/dashboard/ExecutiveCharts";
 import MailList from "@/components/dashboard/MailList";
 import MailToolbar from "@/components/dashboard/MailToolbar";
 import MetricsGrid from "@/components/dashboard/MetricsGrid";
@@ -101,6 +102,11 @@ export default function HomePage() {
           highPriority={
             mailAnalysis.metrics.highPriority
           }
+        />
+
+
+        <ExecutiveCharts
+          analyses={mailAnalysis.analyses}
         />
 
         <ConnectionCard
