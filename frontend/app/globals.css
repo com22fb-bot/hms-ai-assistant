@@ -1760,3 +1760,70 @@ button:disabled {
     font-size: 8px;
   }
 }
+
+/* =========================================================
+   SPRINT 4.3.2B.2 — RESUMEN INTELIGENTE
+   ========================================================= */
+
+.mail-snippet {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.mail-ai-summary {
+  margin-top: 10px;
+  padding: 9px 11px;
+  border: 1px solid rgba(53, 86, 221, 0.14);
+  border-radius: 10px;
+  background: rgba(53, 86, 221, 0.055);
+}
+
+.mail-ai-summary-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+  color: #3556dd;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.mail-ai-summary-header svg {
+  flex: 0 0 auto;
+}
+
+.mail-ai-summary > p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: #344054;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+@media (max-width: 640px) {
+  .mail-ai-summary {
+    margin-top: 8px;
+    padding: 8px 9px;
+  }
+
+  .mail-ai-summary-header {
+    margin-bottom: 4px;
+    font-size: 8px;
+  }
+
+  .mail-ai-summary > p {
+    font-size: 9px;
+  }
+}

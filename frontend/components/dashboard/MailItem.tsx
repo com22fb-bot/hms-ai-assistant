@@ -1,5 +1,6 @@
 import {
   AlertTriangle,
+  BrainCircuit,
   CalendarClock,
   CheckCircle2,
   Gauge,
@@ -131,6 +132,12 @@ function formatConfidence(confidence: number): string {
   return `${normalizedPercentage}%`;
 }
 
+function hasUsefulSummary(
+  analysis: MailAnalysis | undefined,
+): boolean {
+  return Boolean(analysis?.summary?.trim());
+}
+
 interface MailItemProps {
   message: GmailMessage;
   analysis?: MailAnalysis;
@@ -141,6 +148,7 @@ export default function MailItem({
   analysis,
 }: MailItemProps) {
   const category = getCategory(message);
+  const showSummary = hasUsefulSummary(analysis);
 
   return (
     <article
@@ -179,9 +187,21 @@ export default function MailItem({
 
         <h3>{message.subject || "Sin asunto"}</h3>
 
-        <p>
+        <p className="mail-snippet">
           {message.snippet || "Sin vista previa disponible."}
         </p>
+
+        {analysis && showSummary ? (
+          <div className="mail-ai-summary">
+            <div className="mail-ai-summary-header">
+              <BrainCircuit size={14} aria-hidden="true" />
+
+              <span>Resumen inteligente</span>
+            </div>
+
+            <p>{analysis.summary.trim()}</p>
+          </div>
+        ) : null}
 
         {analysis ? (
           <div
