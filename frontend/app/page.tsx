@@ -1,12 +1,13 @@
 "use client";
 
-import AppShell from "@/components/layout/AppShell";
 import ConnectionCard from "@/components/dashboard/ConnectionCard";
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import MailList from "@/components/dashboard/MailList";
 import MailToolbar from "@/components/dashboard/MailToolbar";
 import MetricsGrid from "@/components/dashboard/MetricsGrid";
+import AppShell from "@/components/layout/AppShell";
 import { useConnection } from "@/hooks/useConnection";
+import { useMailAnalysis } from "@/hooks/useMailAnalysis";
 import { useMailFilters } from "@/hooks/useMailFilters";
 
 function formatLastUpdated(value: Date | null): string {
@@ -46,6 +47,8 @@ export default function HomePage() {
     setSearchTerm,
   } = useMailFilters(messages);
 
+  const mailAnalysis = useMailAnalysis(messages);
+
   const connected = connection?.connected ?? false;
   const loading = loadingStatus || loadingMessages;
 
@@ -56,7 +59,8 @@ export default function HomePage() {
     }
 
     await loadConnectionStatus();
-  }  
+  }
+
   return (
     <AppShell
       activeItem="dashboard"
@@ -104,11 +108,13 @@ export default function HomePage() {
             void disconnectGoogle();
           }}
         />
-                <section className="mail-panel">
+
+        <section className="mail-panel">
           <div className="mail-panel-header">
             <div>
               <p className="eyebrow">BANDEJA DE ENTRADA</p>
               <h2>Correos recientes</h2>
+
               <p className="mail-panel-description">
                 Consulta, filtra y localiza los mensajes recuperados de Gmail.
               </p>
@@ -129,6 +135,9 @@ export default function HomePage() {
 
           <MailList
             messages={filteredMessages}
+            analysisByMessageId={
+              mailAnalysis.analysisByMessageId
+            }
             loading={loadingMessages}
             connected={connected}
             onConnect={connectGoogle}

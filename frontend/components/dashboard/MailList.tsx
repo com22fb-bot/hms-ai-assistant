@@ -5,10 +5,12 @@ import { Mail, SearchX } from "lucide-react";
 import EmptyState from "@/components/dashboard/EmptyState";
 import LoadingState from "@/components/dashboard/LoadingState";
 import MailItem from "@/components/dashboard/MailItem";
+import type { MailAnalysis } from "@/types/analysis";
 import type { GmailMessage } from "@/types/mail";
 
 interface MailListProps {
   messages: GmailMessage[];
+  analysisByMessageId: Map<string, MailAnalysis>;
   loading: boolean;
   connected: boolean;
   onConnect: () => void;
@@ -16,6 +18,7 @@ interface MailListProps {
 
 export default function MailList({
   messages,
+  analysisByMessageId,
   loading,
   connected,
   onConnect,
@@ -57,7 +60,11 @@ export default function MailList({
   return (
     <div className="mail-list">
       {messages.map((message) => (
-        <MailItem key={message.id} message={message} />
+        <MailItem
+          key={message.id}
+          message={message}
+          analysis={analysisByMessageId.get(message.id)}
+        />
       ))}
     </div>
   );

@@ -1,3 +1,4 @@
+import type { MailAnalysis } from "@/types/analysis";
 import type {
   GmailMessage,
   MailCategory,
@@ -75,9 +76,13 @@ function getInitials(name: string): string {
 
 interface MailItemProps {
   message: GmailMessage;
+  analysis?: MailAnalysis;
 }
 
-export default function MailItem({ message }: MailItemProps) {
+export default function MailItem({
+  message,
+  analysis,
+}: MailItemProps) {
   const category = getCategory(message);
 
   return (
@@ -87,6 +92,7 @@ export default function MailItem({ message }: MailItemProps) {
           ? "mail-item mail-item-unread"
           : "mail-item"
       }
+      data-analysis-ready={analysis ? "true" : "false"}
     >
       <div className="sender-avatar">
         {getInitials(message.sender)}
@@ -125,7 +131,13 @@ export default function MailItem({ message }: MailItemProps) {
             {message.sender_email || "Correo no disponible"}
           </span>
 
-          <span className={message.is_unread ? "unread-label" : undefined}>
+          <span
+            className={
+              message.is_unread
+                ? "unread-label"
+                : undefined
+            }
+          >
             {message.is_unread ? "No leído" : "Leído"}
           </span>
         </div>
