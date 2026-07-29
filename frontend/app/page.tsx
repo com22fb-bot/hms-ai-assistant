@@ -40,9 +40,6 @@ export default function HomePage() {
     activeFilter,
     searchTerm,
     filteredMessages,
-    unreadCount,
-    personalCount,
-    promotionsCount,
     setActiveFilter,
     setSearchTerm,
   } = useMailFilters(messages);
@@ -85,16 +82,25 @@ export default function HomePage() {
 
         {error ? (
           <section className="error-banner" role="alert">
-            <strong>No fue posible completar la operación.</strong>
+            <strong>
+              No fue posible completar la operación.
+            </strong>
+
             <span>{error}</span>
           </section>
         ) : null}
 
         <MetricsGrid
-          total={messages.length}
-          unread={unreadCount}
-          personal={personalCount}
-          promotions={promotionsCount}
+          total={mailAnalysis.metrics.total}
+          requiresAction={
+            mailAnalysis.metrics.requiresAction
+          }
+          requiresReply={
+            mailAnalysis.metrics.requiresReply
+          }
+          highPriority={
+            mailAnalysis.metrics.highPriority
+          }
         />
 
         <ConnectionCard
@@ -112,17 +118,24 @@ export default function HomePage() {
         <section className="mail-panel">
           <div className="mail-panel-header">
             <div>
-              <p className="eyebrow">BANDEJA DE ENTRADA</p>
+              <p className="eyebrow">
+                BANDEJA DE ENTRADA
+              </p>
+
               <h2>Correos recientes</h2>
 
               <p className="mail-panel-description">
-                Consulta, filtra y localiza los mensajes recuperados de Gmail.
+                Consulta, filtra y localiza los mensajes
+                recuperados de Gmail.
               </p>
             </div>
 
             <div className="mail-update-status">
               <span>Última actualización</span>
-              <strong>{formatLastUpdated(lastUpdated)}</strong>
+
+              <strong>
+                {formatLastUpdated(lastUpdated)}
+              </strong>
             </div>
           </div>
 

@@ -174,3 +174,16 @@ Los correos analizados pueden mostrar ahora palabras clave inteligentes mediante
 
 **Siguiente sprint:**
 Sprint 4.3.2C — Dashboard Ejecutivo.
+
+## Sprint 4.3.2C.1 — Tarjetas KPI inteligentes
+
+Se reemplazaron las métricas generales anteriores del buzón por indicadores ejecutivos basados en el análisis inteligente:
+
+- Total de correos analizados.
+- Solicitudes y tareas que requieren acción.
+- Correos pendientes de respuesta.
+- Mensajes clasificados con prioridad alta.
+
+Las métricas se obtienen desde `mailAnalysis.metrics`, generado por el hook `useMailAnalysis`.
+
+No se modificaron el backend, la API ni el analizador de correos.

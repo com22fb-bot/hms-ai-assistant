@@ -158,3 +158,28 @@ La compilación de Next.js se ejecutó correctamente mediante `npm run build`.
 ## Siguiente objetivo
 
 Sprint 4.3.2C — Dashboard Ejecutivo.
+
+## Sprint 4.3.2C.1 — Tarjetas KPI inteligentes
+
+Estado: Implementado y validado.
+
+Se actualizaron las tarjetas principales del dashboard para mostrar métricas derivadas del análisis inteligente de correos:
+
+- Correos analizados.
+- Correos que requieren acción.
+- Correos que requieren respuesta.
+- Correos de alta prioridad.
+
+La implementación reutiliza las métricas calculadas por `useMailAnalysis`, sin cambios en el backend ni en la API.
+
+Archivos modificados:
+
+- `frontend/app/page.tsx`
+- `frontend/components/dashboard/MetricsGrid.tsx`
+
+Validaciones realizadas:
+
+- `git diff --check` sin errores.
+- `npm run build` exitoso.
+- Aplicación disponible con respuesta HTTP 200.
+- Verificación visual correcta de las cuatro tarjetas KPI.
