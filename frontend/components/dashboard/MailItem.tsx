@@ -4,6 +4,7 @@ import {
   CalendarClock,
   CheckCircle2,
   Gauge,
+  Hash,
   Reply,
   Tag,
 } from "lucide-react";
@@ -138,6 +139,34 @@ function hasUsefulSummary(
   return Boolean(analysis?.summary?.trim());
 }
 
+function getUsefulKeywords(
+  analysis: MailAnalysis | undefined,
+): string[] {
+  if (!analysis?.keywords?.length) {
+    return [];
+  }
+
+  const uniqueKeywords = new Map<string, string>();
+
+  for (const keyword of analysis.keywords) {
+    const normalizedKeyword = keyword.trim();
+
+    if (!normalizedKeyword) {
+      continue;
+    }
+
+    const comparisonKey = normalizedKeyword.toLocaleLowerCase(
+      "es-MX",
+    );
+
+    if (!uniqueKeywords.has(comparisonKey)) {
+      uniqueKeywords.set(comparisonKey, normalizedKeyword);
+    }
+  }
+
+  return Array.from(uniqueKeywords.values()).slice(0, 5);
+}
+
 interface MailItemProps {
   message: GmailMessage;
   analysis?: MailAnalysis;
@@ -149,6 +178,7 @@ export default function MailItem({
 }: MailItemProps) {
   const category = getCategory(message);
   const showSummary = hasUsefulSummary(analysis);
+  const keywords = getUsefulKeywords(analysis);
 
   return (
     <article
@@ -200,6 +230,30 @@ export default function MailItem({
             </div>
 
             <p>{analysis.summary.trim()}</p>
+          </div>
+        ) : null}
+
+        {keywords.length > 0 ? (
+          <div
+            className="mail-keywords"
+            aria-label="Palabras clave detectadas"
+          >
+            <div className="mail-keywords-label">
+              <Hash size={12} aria-hidden="true" />
+              <span>Palabras clave</span>
+            </div>
+
+            <div className="mail-keywords-list">
+              {keywords.map((keyword) => (
+                <span
+                  className="mail-keyword-chip"
+                  key={keyword.toLocaleLowerCase("es-MX")}
+                  title={`Palabra clave: ${keyword}`}
+                >
+                  {keyword}
+                </span>
+              ))}
+            </div>
           </div>
         ) : null}
 

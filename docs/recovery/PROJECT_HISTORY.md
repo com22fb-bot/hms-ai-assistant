@@ -136,3 +136,41 @@ Ejemplos:
 Última actualización
 
 2026-07-25
+
+---
+
+## 2026-07-29 — Sprint 4.3.2B.3
+
+**Tipo:** Frontend / IA / Documentación
+
+**Descripción:**
+Se implementó la visualización de palabras clave inteligentes en cada correo del dashboard.
+
+**Cambios realizados:**
+
+- Integración del campo `analysis.keywords`.
+- Incorporación del icono `Hash` de `lucide-react`.
+- Creación de la función `getUsefulKeywords`.
+- Eliminación de palabras clave vacías.
+- Eliminación de duplicados sin distinguir mayúsculas y minúsculas.
+- Límite de cinco palabras clave por correo.
+- Ocultamiento automático cuando no existen palabras clave válidas.
+- Estilos responsivos para escritorio y dispositivos móviles.
+
+**Archivos modificados:**
+
+- `frontend/components/dashboard/MailItem.tsx`
+- `frontend/app/globals.css`
+- `docs/recovery/PROJECT_STATE.md`
+- `docs/recovery/PROJECT_HISTORY.md`
+
+**Validación:**
+Se ejecutó `npm run build` y la compilación finalizó correctamente.
+
+**Resultado:**
+Los correos analizados pueden mostrar ahora palabras clave inteligentes mediante etiquetas compactas y responsivas.
+
+**Estado:** Completado
+
+**Siguiente sprint:**
+Sprint 4.3.2C — Dashboard Ejecutivo.

@@ -14,9 +14,9 @@
 
 **Repositorio:** hms-ai-assistant
 
-**Rama principal de desarrollo:** architecture-v1
+**Rama principal de desarrollo:** sprint-4.1-ui
 
-**Fecha del checkpoint:** 25 de julio de 2026
+**Fecha del checkpoint:** 29 de julio de 2026
 
 ---
 
@@ -129,3 +129,32 @@ Entre las principales funcionalidades pendientes se encuentran:
 # Próximo Objetivo
 
 Finalizar la arquitectura del sistema antes de agregar nuevas funcionalidades, asegurando una base sólida, escalable y mantenible.
+
+---
+
+# Checkpoint — Sprint 4.3.2B.3
+
+**Fecha:** 29 de julio de 2026
+
+## Estado funcional actual
+
+El dashboard dispone de análisis inteligente de correos con:
+
+- Prioridad detectada.
+- Categoría del correo.
+- Indicador de respuesta requerida.
+- Indicador de acción requerida.
+- Detección de fechas límite.
+- Nivel de confianza.
+- Resumen inteligente.
+- Palabras clave inteligentes.
+
+Las palabras clave se obtienen de `analysis.keywords`, se normalizan, se eliminan valores vacíos y duplicados, y se muestran como etiquetas visuales. La interfaz presenta un máximo de cinco palabras clave por correo.
+
+## Validación
+
+La compilación de Next.js se ejecutó correctamente mediante `npm run build`.
+
+## Siguiente objetivo
+
+Sprint 4.3.2C — Dashboard Ejecutivo.

@@ -1827,3 +1827,72 @@ button:disabled {
     font-size: 9px;
   }
 }
+
+
+/* =========================================================
+   SPRINT 4.3.2B.3 — KEYWORDS INTELIGENTES
+   ========================================================= */
+
+.mail-keywords {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-top: 10px;
+}
+
+.mail-keywords-label {
+  flex: 0 0 auto;
+  min-height: 23px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #667085;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.mail-keywords-label svg {
+  flex: 0 0 auto;
+}
+
+.mail-keywords-list {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.mail-keyword-chip {
+  min-height: 23px;
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border: 1px solid rgba(79, 124, 255, 0.2);
+  border-radius: 999px;
+  background: rgba(79, 124, 255, 0.08);
+  color: #9db7ff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 640px) {
+  .mail-keywords {
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 9px;
+  }
+
+  .mail-keywords-label,
+  .mail-keyword-chip {
+    min-height: 22px;
+    font-size: 8px;
+  }
+
+  .mail-keyword-chip {
+    padding: 3px 7px;
+  }
+}
