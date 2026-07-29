@@ -1669,3 +1669,94 @@ button:disabled {
     font-size: 11px;
   }
 }
+
+/* =========================================================
+   SPRINT 4.3.2B.1 — INDICADORES DE ANÁLISIS INTELIGENTE
+   ========================================================= */
+
+.mail-analysis-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.analysis-chip {
+  min-height: 23px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.analysis-chip svg {
+  flex: 0 0 auto;
+}
+
+.analysis-priority-high {
+  border-color: rgba(217, 45, 32, 0.2);
+  background: rgba(217, 45, 32, 0.1);
+  color: #b42318;
+}
+
+.analysis-priority-medium {
+  border-color: rgba(220, 104, 3, 0.2);
+  background: rgba(220, 104, 3, 0.1);
+  color: #b54708;
+}
+
+.analysis-priority-low {
+  border-color: rgba(3, 152, 85, 0.2);
+  background: rgba(3, 152, 85, 0.1);
+  color: #027a48;
+}
+
+.analysis-category {
+  border-color: rgba(71, 84, 103, 0.16);
+  background: #f2f4f7;
+  color: #475467;
+}
+
+.analysis-reply {
+  border-color: rgba(53, 86, 221, 0.18);
+  background: rgba(53, 86, 221, 0.09);
+  color: #2949b6;
+}
+
+.analysis-action {
+  border-color: rgba(3, 152, 85, 0.18);
+  background: rgba(3, 152, 85, 0.09);
+  color: #027a48;
+}
+
+.analysis-deadline {
+  border-color: rgba(121, 71, 198, 0.18);
+  background: rgba(121, 71, 198, 0.09);
+  color: #6941c6;
+}
+
+.analysis-confidence {
+  border-color: rgba(102, 112, 133, 0.16);
+  background: rgba(102, 112, 133, 0.08);
+  color: #667085;
+}
+
+@media (max-width: 640px) {
+  .mail-analysis-row {
+    gap: 5px;
+    margin-top: 9px;
+  }
+
+  .analysis-chip {
+    min-height: 22px;
+    padding: 3px 7px;
+    font-size: 8px;
+  }
+}
