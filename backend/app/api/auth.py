@@ -200,7 +200,7 @@ def google_login() -> RedirectResponse:
     authorization_url, returned_state = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
-        prompt="consent",
+        prompt="select_account consent",
         state=state,
     )
 
@@ -359,26 +359,23 @@ def google_callback(request: Request) -> HTMLResponse:
             },
         ) from error
 
-    connected_email = account_email or "Cuenta conectada"
+    forwarded_host = request.headers.get("x-forwarded-host", "")
+    forwarded_proto = request.headers.get("x-forwarded-proto", "https")
 
-    return HTMLResponse(
-        status_code=200,
-        content=f"""
-        <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Google conectado</title>
-        <style>
-        body{{margin:0;padding:40px 20px;background:#f4f7fb;color:#1f2937;font-family:Arial,sans-serif}}
-        main{{max-width:640px;margin:0 auto;padding:32px;background:white;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.08)}}
-        h1{{color:#137333}}a{{display:inline-block;margin-top:16px;padding:12px 18px;color:white;background:#174ea6;border-radius:8px;text-decoration:none}}
-        </style></head><body><main>
-        <h1>Cuenta de Google conectada</h1>
-        <p>La autorización se completó correctamente y quedó guardada en Supabase.</p>
-        <p><strong>Cuenta:</strong> {escape(connected_email)}</p>
-        <a href="/dashboard">Regresar al panel</a>
-        </main></body></html>
-        """,
-    )
+    if forwarded_host:
+        frontend_host = forwarded_host.replace("-8000.", "-3000.")
+        frontend_url = f"{forwarded_proto}://{frontend_host}/"
+    else:
+        frontend_url = next(
+            (
+                origin.rstrip("/") + "/"
+                for origin in settings.frontend_origins
+                if "localhost" not in origin and "127.0.0.1" not in origin
+            ),
+            "http://localhost:3000/",
+        )
+
+    return RedirectResponse(url=frontend_url, status_code=302)
 
 
 @router.get("/status", response_model=GoogleConnectionStatus)

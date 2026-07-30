@@ -38,7 +38,7 @@ export function useConnection() {
 
     try {
       const response = await fetch(
-        `${API_BASE_URL}/gmail/messages?max_results=50`,
+        `${API_BASE_URL}/gmail/messages?limit=100`,
         {
           method: "GET",
           cache: "no-store",

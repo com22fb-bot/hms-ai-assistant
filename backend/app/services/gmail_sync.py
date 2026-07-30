@@ -587,10 +587,22 @@ def sync_gmail_messages(
                     _extract_bodies(payload)
                 )
 
-                if not body_text:
-                    body_text = str(
-                        raw_message.get("snippet", "")
+                snippet = str(
+                    raw_message.get("snippet") or ""
+                ).strip()
+
+                labels = [
+                    str(label)
+                    for label in (
+                        raw_message.get("labelIds") or []
                     )
+                    if label
+                ]
+
+                is_unread = "UNREAD" in labels
+
+                if not body_text:
+                    body_text = snippet
 
                 recipients = _parse_addresses(to_raw)
                 cc = _parse_addresses(cc_raw)
@@ -643,6 +655,9 @@ def sync_gmail_messages(
                     "body_html": body_html,
                     "received_at": received_at_iso,
                     "has_attachments": has_attachments,
+                    "labels": labels,
+                    "is_unread": is_unread,
+                    "snippet": snippet,
                     "ai_processed": False,
                 }
 

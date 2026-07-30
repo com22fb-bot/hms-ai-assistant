@@ -1,0 +1,8 @@
+STAMP='20260730-222732'
+CURRENT_BRANCH='sprint-4.1-ui'
+BACKUP_BRANCH='backup/hms-communications-vision-20260730-222732'
+BACKUP_TAG='restorepoint-hms-communications-20260730-222732'
+DOC_DIR='docs/restorepoints/20260730-222732'
+BACKUP_DIR='/workspaces/backups'
+BUNDLE_FILE='/workspaces/backups/hms-ai-assistant-20260730-222732.bundle'
+CHECKSUM_FILE='/workspaces/backups/hms-ai-assistant-20260730-222732.bundle.sha256'
