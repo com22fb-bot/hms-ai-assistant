@@ -1,22 +1,12 @@
-# Toolkit de checkpoints
+# Checkpoint Toolkit v3
 
-## Instalación
+## Uso
 
 ```bash
 cd /workspaces/hms-ai-assistant
-unzip -o /ruta/hms-ai-assistant-checkpoint-toolkit.zip -d /tmp/hms-toolkit
-bash /tmp/hms-toolkit/hms-ai-assistant-checkpoint-toolkit/INSTALL.sh
-./tools/checkpoint/checkpoint.sh
+./tools/checkpoint/checkpoint.sh "4.3"
 ```
 
-## Uso futuro
+Genera ID único, fecha, hora, sprint, commits, tag, rama de respaldo, bundle, SHA-256 y logs.
 
-```bash
-./tools/checkpoint/checkpoint.sh
-```
-
-## Detener Codespaces
-
-```bash
-gh codespace stop
-```
+El toolkit v3 ya no ejecuta `create_docs.sh` automáticamente.
