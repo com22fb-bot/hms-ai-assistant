@@ -11,3 +11,6 @@ backups/
 node_modules/
 docs-hms-ai-assistant.tar.gz
 supabase/.branches/
+
+# Paquetes locales de instalación
+hms-ai-assistant-checkpoint-toolkit.zip

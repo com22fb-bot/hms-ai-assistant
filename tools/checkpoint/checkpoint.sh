@@ -19,6 +19,6 @@ EOF
 git add -A
 SENSITIVE="$(sensitive_staged_files)"; if [[ -n "$SENSITIVE" ]]; then git reset; fail "Se detectaron archivos sensibles:\n$SENSITIVE"; fi
 if git diff --cached --quiet; then log "No hay cambios nuevos para commit"; else git commit -m "docs: checkpoint estratégico 2.0 y toolkit de respaldos"; fi
-log "Creando respaldo completo"; "$SCRIPT_DIR/backup.sh" "$STAMP" | tee "$RESTORE_DIR/BACKUP.log"
+log "Creando respaldo completo"; "$SCRIPT_DIR/backup.sh" "$STAMP" | tee "/workspaces/backups/hms-ai-assistant-$STAMP.log"
 log "Checkpoint completado"; git log -1 --oneline; git status --short
 printf '\nPara detener Codespaces cuando termines:\ngh codespace stop\n'
