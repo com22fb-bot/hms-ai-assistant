@@ -13,7 +13,7 @@
 
 ## Trazabilidad Git
 
-- **Commit de snapshot:** PENDING_SNAPSHOT_COMMIT
+- **Commit de snapshot:** bdde8faf621a2800a8f87bb1e36065e42045cc3d
 - **Commit de registro:** es el commit apuntado por el tag `restorepoint-HMS-CP-20260731-183434`
 - **Tag:** `restorepoint-HMS-CP-20260731-183434`
 - **Rama de respaldo:** `backup/HMS-CP-20260731-183434`
