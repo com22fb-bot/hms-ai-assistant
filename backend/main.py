@@ -11,14 +11,12 @@ from app.api.auth import (
     get_google_connection_status,
     router as auth_router,
 )
+from app.api.cases import router as cases_router
 from app.api.gmail import create_gmail_router
+from app.api.messages import router as messages_router
 from app.api.system import router as system_router
 from app.core.config import settings
 
-
-# ============================================================
-# APLICACIÓN FASTAPI
-# ============================================================
 
 app = FastAPI(
     title=settings.app_name,
@@ -39,10 +37,6 @@ app.add_middleware(
 )
 
 
-# ============================================================
-# RUTAS GENERALES
-# ============================================================
-
 @app.get("/")
 def root() -> dict[str, str]:
     return {
@@ -50,10 +44,13 @@ def root() -> dict[str, str]:
         "application": settings.app_name,
         "version": settings.app_version,
         "documentation": "/docs",
-        "dashboard": "/dashboard",
+        "dashboard": "/cases/dashboard",
         "google_login": "/auth/google/login",
         "google_status": "/auth/google/status",
         "gmail_messages": "/gmail/messages",
+        "stored_messages": "/messages/stored",
+        "cases": "/cases",
+        "case_processing": "/cases/process",
     }
 
 
@@ -61,15 +58,13 @@ def root() -> dict[str, str]:
     "/dashboard",
     response_class=HTMLResponse,
 )
-def dashboard() -> str:
+def dashboard_html() -> str:
     connection = get_google_connection_status()
-
     connection_status = (
         "Conectada"
         if connection.connected
         else "No conectada"
     )
-
     account_email = get_connected_google_email()
 
     return f"""
@@ -82,120 +77,62 @@ def dashboard() -> str:
             content="width=device-width, initial-scale=1.0"
         >
         <title>HMS AI Assistant</title>
-
         <style>
             body {{
                 margin: 0;
                 padding: 40px 20px;
-                background: #f4f7fb;
-                color: #1f2937;
+                background: #0b1020;
+                color: #eef2ff;
                 font-family: Arial, sans-serif;
             }}
-
             .container {{
-                max-width: 760px;
+                max-width: 820px;
                 margin: 0 auto;
                 padding: 32px;
-                background: white;
-                border-radius: 16px;
-                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+                background: #11182c;
+                border: 1px solid #26314f;
+                border-radius: 18px;
             }}
-
-            h1 {{
-                margin-top: 0;
-                color: #174ea6;
-            }}
-
+            h1 {{ margin-top: 0; }}
             .status {{
                 padding: 14px;
                 margin: 20px 0;
-                background: #eef4ff;
+                background: #18213a;
                 border-radius: 10px;
             }}
-
-            .account {{
-                margin-top: 8px;
-                color: #4b5563;
-                font-size: 14px;
-            }}
-
-            a.button {{
+            a {{
                 display: inline-block;
                 padding: 12px 18px;
                 margin: 6px 6px 6px 0;
                 color: white;
-                background: #174ea6;
+                background: #345cff;
                 border-radius: 8px;
                 text-decoration: none;
             }}
-
-            a.secondary {{
-                background: #374151;
-            }}
         </style>
     </head>
-
     <body>
         <main class="container">
             <h1>HMS AI Assistant</h1>
-
             <p>
-                Backend de administración y conexión
-                de cuentas de correo.
+                Plataforma de Inteligencia Operacional basada
+                en Casos Inteligentes.
             </p>
-
             <div class="status">
                 <strong>Google Gmail:</strong>
                 {connection_status}
-
-                <div class="account">
-                    {account_email}
-                </div>
+                <div>{account_email}</div>
             </div>
-
-            <a
-                class="button"
-                href="/auth/google/login"
-            >
-                Conectar cuenta de Google
-            </a>
-
-            <a
-                class="button secondary"
-                href="/auth/google/status"
-            >
-                Consultar estado
-            </a>
-
-            <a
-                class="button secondary"
-                href="/gmail/messages"
-            >
-                Consultar correos
-            </a>
-
-            <a
-                class="button secondary"
-                href="/database-health"
-            >
-                Probar Supabase
-            </a>
-
-            <a
-                class="button secondary"
-                href="/docs"
-            >
-                Documentación API
-            </a>
+            <a href="/auth/google/login">Conectar Google</a>
+            <a href="/cases/dashboard">Dashboard de Casos</a>
+            <a href="/cases">Casos</a>
+            <a href="/messages/stored">Mensajes almacenados</a>
+            <a href="/docs">API</a>
         </main>
     </body>
     </html>
     """
 
-
-# ============================================================
-# REGISTRO DE ROUTERS
-# ============================================================
 
 gmail_router = create_gmail_router(
     get_active_google_credentials,
@@ -205,3 +142,5 @@ app.include_router(system_router)
 app.include_router(ai_router)
 app.include_router(auth_router)
 app.include_router(gmail_router)
+app.include_router(messages_router)
+app.include_router(cases_router)

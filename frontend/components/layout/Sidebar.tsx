@@ -3,9 +3,9 @@
 import {
   Activity,
   BrainCircuit,
+  BriefcaseBusiness,
   ChevronLeft,
   ChevronRight,
-  Inbox,
   LayoutDashboard,
   ListTodo,
   Settings,
@@ -17,7 +17,7 @@ import clsx from "clsx";
 
 export type NavigationItem =
   | "dashboard"
-  | "inbox"
+  | "cases"
   | "ai"
   | "tasks"
   | "activity"
@@ -39,9 +39,9 @@ const navigation = [
     icon: LayoutDashboard,
   },
   {
-    id: "inbox" as const,
-    label: "Smart Inbox",
-    icon: Inbox,
+    id: "cases" as const,
+    label: "Casos Inteligentes",
+    icon: BriefcaseBusiness,
     badge: "AI",
   },
   {
@@ -101,7 +101,7 @@ export default function Sidebar({
 
             <div className="quantum-brand-copy">
               <strong>HMS AI</strong>
-              <span>Communication Intelligence</span>
+              <span>Operational Intelligence</span>
             </div>
           </div>
 
@@ -118,13 +118,15 @@ export default function Sidebar({
         <div className="quantum-sidebar-status">
           <span className="quantum-status-orb" />
           <div>
-            <strong>Sistema operativo</strong>
-            <span>IA y Gmail conectados</span>
+            <strong>Case Engine activo</strong>
+            <span>Eventos, riesgos y evidencias</span>
           </div>
         </div>
 
         <nav className="quantum-navigation" aria-label="Navegación principal">
-          <span className="quantum-navigation-label">CENTRO DE CONTROL</span>
+          <span className="quantum-navigation-label">
+            CENTRO DE CONTROL
+          </span>
 
           {navigation.map((item) => {
             const Icon = item.icon;
@@ -146,11 +148,15 @@ export default function Sidebar({
                   <Icon size={19} strokeWidth={active ? 2.4 : 1.9} />
                 </span>
 
-                <span className="quantum-nav-label">{item.label}</span>
+                <span className="quantum-nav-label">
+                  {item.label}
+                </span>
 
-                {item.badge && (
-                  <span className="quantum-nav-badge">{item.badge}</span>
-                )}
+                {item.badge ? (
+                  <span className="quantum-nav-badge">
+                    {item.badge}
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -162,7 +168,7 @@ export default function Sidebar({
           <ShieldCheck size={19} />
           <div>
             <strong>Protección activa</strong>
-            <span>Conexión cifrada</span>
+            <span>Acciones auditables</span>
           </div>
         </div>
 
@@ -170,7 +176,8 @@ export default function Sidebar({
           type="button"
           className={clsx(
             "quantum-nav-item",
-            activeItem === "settings" && "quantum-nav-item-active",
+            activeItem === "settings" &&
+              "quantum-nav-item-active",
           )}
           title={collapsed ? "Configuración" : undefined}
           onClick={() => handleNavigation("settings")}
@@ -178,20 +185,28 @@ export default function Sidebar({
           <span className="quantum-nav-icon">
             <Settings size={19} />
           </span>
-          <span className="quantum-nav-label">Configuración</span>
+          <span className="quantum-nav-label">
+            Configuración
+          </span>
         </button>
 
         <div className="quantum-sidebar-footer">
           <div className="quantum-version">
-            <span>HMS Quantum</span>
-            <strong>v0.4.0</strong>
+            <span>HMS Cases</span>
+            <strong>v0.4.3</strong>
           </div>
 
           <button
             type="button"
             className="quantum-collapse-button"
-            aria-label={collapsed ? "Expandir menú" : "Contraer menú"}
-            onClick={() => onCollapsedChange(!collapsed)}
+            aria-label={
+              collapsed
+                ? "Expandir menú"
+                : "Contraer menú"
+            }
+            onClick={() =>
+              onCollapsedChange(!collapsed)
+            }
           >
             {collapsed ? (
               <ChevronRight size={18} />

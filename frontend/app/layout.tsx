@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+
 import "./globals.css";
+import "./cases.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HMS AI Assistant",
+  title: "HMS AI Assistant — Intelligent Cases",
   description:
-    "Asistente ejecutivo de correo para supervisar mensajes, pendientes y tareas.",
+    "Plataforma de Inteligencia Operacional basada en Casos Inteligentes.",
 };
 
 export default function RootLayout({

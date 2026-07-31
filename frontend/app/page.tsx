@@ -1,167 +1,136 @@
 "use client";
 
-import ConnectionCard from "@/components/dashboard/ConnectionCard";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
-import ExecutiveCharts from "@/components/dashboard/ExecutiveCharts";
-import MailList from "@/components/dashboard/MailList";
-import MailToolbar from "@/components/dashboard/MailToolbar";
-import MetricsGrid from "@/components/dashboard/MetricsGrid";
+import { RefreshCw, Sparkles } from "lucide-react";
+
+import CaseList from "@/components/cases/CaseList";
+import CaseMetrics from "@/components/cases/CaseMetrics";
+import RecentCaseEvents from "@/components/cases/RecentCaseEvents";
 import AppShell from "@/components/layout/AppShell";
-import { useConnection } from "@/hooks/useConnection";
-import { useMailAnalysis } from "@/hooks/useMailAnalysis";
-import { useMailFilters } from "@/hooks/useMailFilters";
-
-function formatLastUpdated(value: Date | null): string {
-  if (!value) {
-    return "Aún no se ha realizado una actualización.";
-  }
-
-  return new Intl.DateTimeFormat("es-MX", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(value);
-}
+import { useCases } from "@/hooks/useCases";
 
 export default function HomePage() {
   const {
-    connection,
-    messages,
-    loadingStatus,
-    loadingMessages,
-    disconnecting,
+    dashboard,
+    cases,
+    search,
+    loading,
+    processing,
     error,
-    lastUpdated,
-    connectGoogle,
-    disconnectGoogle,
-    loadConnectionStatus,
-    loadMessages,
-  } = useConnection();
-
-  const {
-    activeFilter,
-    searchTerm,
-    filteredMessages,
-    setActiveFilter,
-    setSearchTerm,
-  } = useMailFilters(messages);
-
-  const mailAnalysis = useMailAnalysis(messages);
-
-  const connected = connection?.connected ?? false;
-  const loading = loadingStatus || loadingMessages;
-
-  async function handleRefresh(): Promise<void> {
-    if (connected) {
-      await loadMessages();
-      return;
-    }
-
-    await loadConnectionStatus();
-  }
+    lastProcess,
+    setSearch,
+    loadDashboard,
+    processCases,
+  } = useCases();
 
   return (
     <AppShell
-      activeItem="dashboard"
-      title="Panel principal"
-      subtitle="Supervisa correos, pendientes y tareas desde un solo lugar."
-      accountEmail={connection?.email}
-      connected={connected}
-      loading={loading}
-      searchValue={searchTerm}
-      onSearchChange={setSearchTerm}
+      activeItem="cases"
+      title="Centro Inteligente de Atención"
+      subtitle="Casos, riesgos, responsables y trabajo esperando respuesta."
+      loading={loading || processing}
+      searchValue={search}
+      onSearchChange={setSearch}
       onRefresh={() => {
-        void handleRefresh();
+        void loadDashboard();
       }}
     >
-      <div className="dashboard-page">
-        <DashboardHeader
-          loading={loading}
-          onRefresh={() => {
-            void handleRefresh();
-          }}
-        />
+      <div className="case-dashboard-page">
+        <section className="case-hero">
+          <div>
+            <span className="case-eyebrow">
+              INTELLIGENT CASE ENGINE
+            </span>
+
+            <h1>Lo que requiere tu atención</h1>
+
+            <p>
+              HMS AI Assistant correlaciona mensajes y los convierte
+              en Casos Inteligentes. Un correo enviado no equivale
+              automáticamente a un caso resuelto.
+            </p>
+          </div>
+
+          <div className="case-hero-actions">
+            <button
+              type="button"
+              className="case-secondary-button"
+              disabled={loading || processing}
+              onClick={() => {
+                void loadDashboard();
+              }}
+            >
+              <RefreshCw
+                size={17}
+                className={loading ? "case-spin" : undefined}
+              />
+              Actualizar panel
+            </button>
+
+            <button
+              type="button"
+              className="case-primary-button"
+              disabled={processing}
+              onClick={() => {
+                void processCases();
+              }}
+            >
+              <Sparkles
+                size={17}
+                className={processing ? "case-spin" : undefined}
+              />
+              {processing
+                ? "Procesando…"
+                : "Procesar mensajes"}
+            </button>
+          </div>
+        </section>
 
         {error ? (
-          <section className="error-banner" role="alert">
-            <strong>
-              No fue posible completar la operación.
-            </strong>
-
+          <section className="case-error" role="alert">
+            <strong>No fue posible completar la operación.</strong>
             <span>{error}</span>
           </section>
         ) : null}
 
-        <MetricsGrid
-          total={mailAnalysis.metrics.total}
-          requiresAction={
-            mailAnalysis.metrics.requiresAction
-          }
-          requiresReply={
-            mailAnalysis.metrics.requiresReply
-          }
-          highPriority={
-            mailAnalysis.metrics.highPriority
-          }
-        />
+        {lastProcess ? (
+          <section className="case-process-result">
+            <strong>Última ejecución del motor:</strong>
+            <span>{lastProcess.processed} mensajes procesados</span>
+            <span>{lastProcess.created_cases} casos creados</span>
+            <span>
+              {lastProcess.linked_to_existing} evidencias correlacionadas
+            </span>
+            <span>{lastProcess.errors} errores</span>
+          </section>
+        ) : null}
 
+        <CaseMetrics metrics={dashboard.metrics} />
 
-        <ExecutiveCharts
-          analyses={mailAnalysis.analyses}
-        />
+        <div className="case-dashboard-grid">
+          <section className="case-attention-panel">
+            <div className="case-section-heading">
+              <div>
+                <span className="case-eyebrow">
+                  PRIORIDAD OPERATIVA
+                </span>
+                <h2>Casos que requieren atención</h2>
+              </div>
 
-        <ConnectionCard
-          connected={connected}
-          loading={loadingStatus}
-          disconnecting={disconnecting}
-          email={connection?.email}
-          message={connection?.message}
-          onConnect={connectGoogle}
-          onDisconnect={() => {
-            void disconnectGoogle();
-          }}
-        />
-
-        <section className="mail-panel">
-          <div className="mail-panel-header">
-            <div>
-              <p className="eyebrow">
-                BANDEJA DE ENTRADA
-              </p>
-
-              <h2>Correos recientes</h2>
-
-              <p className="mail-panel-description">
-                Consulta, filtra y localiza los mensajes
-                recuperados de Gmail.
-              </p>
+              <span className="case-count">
+                {cases.length}
+              </span>
             </div>
 
-            <div className="mail-update-status">
-              <span>Última actualización</span>
+            <CaseList
+              cases={cases}
+              loading={loading}
+            />
+          </section>
 
-              <strong>
-                {formatLastUpdated(lastUpdated)}
-              </strong>
-            </div>
-          </div>
-
-          <MailToolbar
-            activeFilter={activeFilter}
-            searchTerm={searchTerm}
-            onFilterChange={setActiveFilter}
-            onSearchChange={setSearchTerm}
+          <RecentCaseEvents
+            events={dashboard.recent_events}
           />
-
-          <MailList
-            messages={filteredMessages}
-            analysisByMessageId={
-              mailAnalysis.analysisByMessageId
-            }
-            loading={loadingMessages}
-            connected={connected}
-            onConnect={connectGoogle}
-          />
-        </section>
+        </div>
       </div>
     </AppShell>
   );

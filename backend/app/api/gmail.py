@@ -7,6 +7,7 @@ from fastapi import APIRouter, Query
 from google.oauth2.credentials import Credentials
 
 from app.schemas.gmail import GmailMessagesResponse
+from app.services.case_engine import process_pending_messages
 from app.services.gmail import list_messages
 from app.services.gmail_sync import sync_gmail_messages
 
@@ -17,13 +18,6 @@ CredentialsProvider = Callable[[], Credentials]
 def create_gmail_router(
     get_credentials: CredentialsProvider,
 ) -> APIRouter:
-    """
-    Crea el router de Gmail.
-
-    La función que obtiene las credenciales se recibe desde main.py
-    para evitar dependencias circulares.
-    """
-
     router = APIRouter(
         prefix="/gmail",
         tags=["Gmail"],
@@ -39,14 +33,14 @@ def create_gmail_router(
             ge=1,
             le=100,
             description=(
-                "Cantidad máxima de correos que se consultarán."
+                "Cantidad máxima de correos consultados "
+                "directamente en Gmail."
             ),
         ),
         query: str | None = Query(
             default=None,
             description=(
-                "Consulta opcional utilizando la sintaxis "
-                "de búsqueda de Gmail."
+                "Consulta opcional con sintaxis de Gmail."
             ),
         ),
     ) -> GmailMessagesResponse:
@@ -73,23 +67,42 @@ def create_gmail_router(
             ge=1,
             le=500,
             description=(
-                "Cantidad máxima de mensajes que se sincronizarán."
+                "Cantidad máxima de mensajes sincronizados."
             ),
         ),
         query: str | None = Query(
             default=None,
             description=(
                 "Consulta opcional con sintaxis de Gmail. "
-                "Cuando se omite, se utiliza last_sync_at."
+                "Cuando se omite se utiliza last_sync_at."
+            ),
+        ),
+        process_cases: bool = Query(
+            default=True,
+            description=(
+                "Procesa automáticamente los mensajes "
+                "sincronizados dentro del Case Engine."
             ),
         ),
     ) -> dict[str, Any]:
         credentials = get_credentials()
 
-        return sync_gmail_messages(
+        sync_result = sync_gmail_messages(
             credentials=credentials,
             limit=limit,
             query=query,
         )
+
+        result: dict[str, Any] = {
+            "status": sync_result.get("status", "ok"),
+            "sync": sync_result,
+        }
+
+        if process_cases:
+            result["case_engine"] = process_pending_messages(
+                limit=limit,
+            )
+
+        return result
 
     return router
