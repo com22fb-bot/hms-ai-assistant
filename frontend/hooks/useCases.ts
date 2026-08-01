@@ -5,10 +5,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type {
   CaseDashboardResponse,
   CaseProcessResponse,
+  FullSyncPageResponse,
+  FullSyncProgress,
 } from "@/types/cases";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "";
+  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
+  "/api/hms";
+
+const SYNC_BATCH_SIZE = 50;
+const CASE_BATCH_SIZE = 50;
 
 const EMPTY_DASHBOARD: CaseDashboardResponse = {
   status: "ok",
@@ -25,10 +31,48 @@ const EMPTY_DASHBOARD: CaseDashboardResponse = {
   recent_events: [],
 };
 
+const EMPTY_PROGRESS: FullSyncProgress = {
+  running: false,
+  currentBatch: 0,
+  pagesCompleted: 0,
+  found: 0,
+  inserted: 0,
+  duplicates: 0,
+  processed: 0,
+  createdCases: 0,
+  linkedCases: 0,
+  errors: 0,
+  completed: false,
+};
+
 function errorMessage(error: unknown): string {
   return error instanceof Error
     ? error.message
-    : "No fue posible consultar los Casos Inteligentes.";
+    : "No fue posible completar la operación.";
+}
+
+async function parseResponse<T>(
+  response: Response,
+): Promise<T> {
+  const payload = (await response.json()) as
+    | T
+    | { detail?: unknown; message?: string };
+
+  if (!response.ok) {
+    if (
+      typeof payload === "object" &&
+      payload !== null &&
+      "detail" in payload
+    ) {
+      throw new Error(JSON.stringify(payload.detail));
+    }
+
+    throw new Error(
+      `El backend respondió ${response.status}.`,
+    );
+  }
+
+  return payload as T;
 }
 
 export function useCases() {
@@ -36,22 +80,12 @@ export function useCases() {
     useState<CaseDashboardResponse>(EMPTY_DASHBOARD);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [processing, setProcessing] = useState(false);
+  const [syncProgress, setSyncProgress] =
+    useState<FullSyncProgress>(EMPTY_PROGRESS);
   const [error, setError] = useState<string | null>(null);
-  const [lastProcess, setLastProcess] =
-    useState<CaseProcessResponse | null>(null);
 
   const loadDashboard = useCallback(async () => {
-    if (!API_BASE_URL) {
-      setError(
-        "No se configuró NEXT_PUBLIC_API_BASE_URL en frontend/.env.local.",
-      );
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
-    setError(null);
 
     try {
       const response = await fetch(
@@ -61,19 +95,11 @@ export function useCases() {
         },
       );
 
-      const payload = (await response.json()) as
-        | CaseDashboardResponse
-        | { detail?: unknown };
-
-      if (!response.ok) {
-        throw new Error(
-          "detail" in payload
-            ? JSON.stringify(payload.detail)
-            : `El backend respondió ${response.status}.`,
-        );
-      }
-
-      setDashboard(payload as CaseDashboardResponse);
+      setDashboard(
+        await parseResponse<CaseDashboardResponse>(
+          response,
+        ),
+      );
     } catch (requestError) {
       setError(errorMessage(requestError));
     } finally {
@@ -81,44 +107,122 @@ export function useCases() {
     }
   }, []);
 
-  const processCases = useCallback(async () => {
-    if (!API_BASE_URL) {
-      setError(
-        "No se configuró NEXT_PUBLIC_API_BASE_URL en frontend/.env.local.",
-      );
-      return;
-    }
-
-    setProcessing(true);
+  const syncAllMessages = useCallback(async () => {
     setError(null);
 
+    let pageToken: string | null = null;
+    let totals: FullSyncProgress = {
+      ...EMPTY_PROGRESS,
+      running: true,
+      currentBatch: 1,
+    };
+
+    setSyncProgress(totals);
+
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/cases/process?limit=500`,
-        {
-          method: "POST",
-          cache: "no-store",
-        },
-      );
+      do {
+        setSyncProgress((current) => ({
+          ...current,
+          running: true,
+          currentBatch:
+            current.pagesCompleted + 1,
+        }));
 
-      const payload = (await response.json()) as
-        | CaseProcessResponse
-        | { detail?: unknown };
+        const syncParameters = new URLSearchParams({
+          batch_size: String(SYNC_BATCH_SIZE),
+          process_cases: "false",
+        });
 
-      if (!response.ok) {
-        throw new Error(
-          "detail" in payload
-            ? JSON.stringify(payload.detail)
-            : `El backend respondió ${response.status}.`,
+        if (pageToken) {
+          syncParameters.set(
+            "page_token",
+            pageToken,
+          );
+        }
+
+        const syncResponse = await fetch(
+          `${API_BASE_URL}/gmail/sync-all?${syncParameters}`,
+          {
+            method: "POST",
+            cache: "no-store",
+          },
         );
-      }
 
-      setLastProcess(payload as CaseProcessResponse);
+        const syncPage =
+          await parseResponse<FullSyncPageResponse>(
+            syncResponse,
+          );
+
+        totals = {
+          ...totals,
+          running: true,
+          currentBatch: totals.pagesCompleted + 1,
+          pagesCompleted:
+            totals.pagesCompleted + 1,
+          found:
+            totals.found + syncPage.sync.page_found,
+          inserted:
+            totals.inserted + syncPage.sync.inserted,
+          duplicates:
+            totals.duplicates +
+            syncPage.sync.duplicates,
+          errors:
+            totals.errors + syncPage.sync.errors,
+        };
+
+        setSyncProgress(totals);
+
+        if (syncPage.sync.inserted > 0) {
+          const processResponse = await fetch(
+            `${API_BASE_URL}/cases/process?limit=${CASE_BATCH_SIZE}`,
+            {
+              method: "POST",
+              cache: "no-store",
+            },
+          );
+
+          const processResult =
+            await parseResponse<CaseProcessResponse>(
+              processResponse,
+            );
+
+          totals = {
+            ...totals,
+            processed:
+              totals.processed +
+              processResult.processed,
+            createdCases:
+              totals.createdCases +
+              processResult.created_cases,
+            linkedCases:
+              totals.linkedCases +
+              processResult.linked_to_existing,
+            errors:
+              totals.errors +
+              processResult.errors,
+          };
+
+          setSyncProgress(totals);
+        }
+
+        pageToken = syncPage.sync.next_page_token;
+      } while (pageToken);
+
+      totals = {
+        ...totals,
+        running: false,
+        completed: true,
+        currentBatch: totals.pagesCompleted,
+      };
+
+      setSyncProgress(totals);
       await loadDashboard();
     } catch (requestError) {
       setError(errorMessage(requestError));
-    } finally {
-      setProcessing(false);
+      setSyncProgress((current) => ({
+        ...current,
+        running: false,
+      }));
     }
   }, [loadDashboard]);
 
@@ -158,11 +262,11 @@ export function useCases() {
     cases: filteredCases,
     search,
     loading,
-    processing,
+    syncing: syncProgress.running,
+    syncProgress,
     error,
-    lastProcess,
     setSearch,
     loadDashboard,
-    processCases,
+    syncAllMessages,
   };
 }

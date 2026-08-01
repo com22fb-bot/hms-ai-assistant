@@ -9,6 +9,7 @@ from google.oauth2.credentials import Credentials
 from app.schemas.gmail import GmailMessagesResponse
 from app.services.case_engine import process_pending_messages
 from app.services.gmail import list_messages
+from app.services.gmail_full_sync import sync_gmail_page
 from app.services.gmail_sync import sync_gmail_messages
 
 
@@ -28,21 +29,8 @@ def create_gmail_router(
         response_model=GmailMessagesResponse,
     )
     def gmail_messages(
-        limit: int = Query(
-            default=20,
-            ge=1,
-            le=100,
-            description=(
-                "Cantidad máxima de correos consultados "
-                "directamente en Gmail."
-            ),
-        ),
-        query: str | None = Query(
-            default=None,
-            description=(
-                "Consulta opcional con sintaxis de Gmail."
-            ),
-        ),
+        limit: int = Query(default=20, ge=1, le=100),
+        query: str | None = Query(default=None),
     ) -> GmailMessagesResponse:
         credentials = get_credentials()
 
@@ -57,33 +45,11 @@ def create_gmail_router(
             messages=messages,
         )
 
-    @router.post(
-        "/sync",
-        response_model=None,
-    )
+    @router.post("/sync")
     def gmail_sync(
-        limit: int = Query(
-            default=100,
-            ge=1,
-            le=500,
-            description=(
-                "Cantidad máxima de mensajes sincronizados."
-            ),
-        ),
-        query: str | None = Query(
-            default=None,
-            description=(
-                "Consulta opcional con sintaxis de Gmail. "
-                "Cuando se omite se utiliza last_sync_at."
-            ),
-        ),
-        process_cases: bool = Query(
-            default=True,
-            description=(
-                "Procesa automáticamente los mensajes "
-                "sincronizados dentro del Case Engine."
-            ),
-        ),
+        limit: int = Query(default=100, ge=1, le=500),
+        query: str | None = Query(default=None),
+        process_cases: bool = Query(default=True),
     ) -> dict[str, Any]:
         credentials = get_credentials()
 
@@ -101,6 +67,38 @@ def create_gmail_router(
         if process_cases:
             result["case_engine"] = process_pending_messages(
                 limit=limit,
+            )
+
+        return result
+
+    @router.post("/sync-all")
+    def gmail_sync_all(
+        batch_size: int = Query(
+            default=500,
+            ge=1,
+            le=500,
+        ),
+        page_token: str | None = Query(default=None),
+        query: str | None = Query(default=None),
+        process_cases: bool = Query(default=True),
+    ) -> dict[str, Any]:
+        credentials = get_credentials()
+
+        sync_result = sync_gmail_page(
+            credentials=credentials,
+            batch_size=batch_size,
+            page_token=page_token,
+            query=query,
+        )
+
+        result: dict[str, Any] = {
+            "status": sync_result.get("status", "ok"),
+            "sync": sync_result,
+        }
+
+        if process_cases:
+            result["case_engine"] = process_pending_messages(
+                limit=batch_size,
             )
 
         return result

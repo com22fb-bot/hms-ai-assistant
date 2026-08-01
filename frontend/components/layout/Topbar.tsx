@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 
+import ThemeSelector from "@/components/theme/ThemeSelector";
+
 type TopbarProps = {
   title?: string;
   subtitle?: string;
@@ -27,22 +29,19 @@ function getInitials(email?: string | null): string {
     return "HS";
   }
 
-  const name = email.split("@")[0];
-  const parts = name.split(/[._-]/).filter(Boolean);
-
-  if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-
-  return parts
+  return email
+    .split("@")[0]
+    .split(/[._-]/)
+    .filter(Boolean)
     .slice(0, 2)
     .map((part) => part.charAt(0).toUpperCase())
-    .join("");
+    .join("")
+    .slice(0, 2);
 }
 
 export default function Topbar({
-  title = "Mission Control",
-  subtitle = "Supervisión inteligente de comunicaciones y tareas",
+  title = "Centro Inteligente",
+  subtitle = "Casos y prioridades",
   accountEmail,
   connected = false,
   loading = false,
@@ -52,8 +51,8 @@ export default function Topbar({
   onMenuOpen,
 }: TopbarProps) {
   return (
-    <header className="quantum-topbar">
-      <div className="quantum-topbar-heading">
+    <header className="premium-header">
+      <div className="premium-header-main">
         <button
           type="button"
           className="quantum-menu-button"
@@ -63,78 +62,76 @@ export default function Topbar({
           <Menu size={21} />
         </button>
 
-        <div>
-          <div className="quantum-page-context">
-            <span className="quantum-context-dot" />
-            HMS AI COMMAND CENTER
-          </div>
+        <div className="premium-header-title">
+          <span>HMS AI · COMMAND CENTER</span>
           <h1>{title}</h1>
           <p>{subtitle}</p>
         </div>
-      </div>
 
-      <div className="quantum-topbar-tools">
-        <label className="quantum-search">
-          <Search size={17} aria-hidden="true" />
+        <label className="premium-header-search">
+          <Search size={17} />
           <input
             type="search"
             value={searchValue}
-            placeholder="Buscar correos, remitentes o tareas…"
+            placeholder="Buscar casos, personas o tareas"
             aria-label="Buscar"
-            onChange={(event) => onSearchChange?.(event.target.value)}
+            onChange={(event) =>
+              onSearchChange?.(event.target.value)
+            }
           />
-          <kbd>⌘ K</kbd>
         </label>
+      </div>
 
+      <div className="premium-header-actions">
         <div
           className={clsx(
-            "quantum-connection-pill",
-            connected
-              ? "quantum-connection-pill-online"
-              : "quantum-connection-pill-offline",
+            "premium-status-pill",
+            connected ? "online" : "offline",
           )}
         >
           <Wifi size={15} />
-          <span>{connected ? "Conectado" : "Sin conexión"}</span>
+          {connected ? "Conectado" : "Sin conexión"}
         </div>
 
-        <div className="quantum-ai-pill">
+        <div className="premium-ai-pill">
           <Bot size={16} />
-          <span>IA activa</span>
+          IA activa
         </div>
+
+        <ThemeSelector />
 
         <button
           type="button"
-          className="quantum-icon-button"
-          aria-label="Sincronizar"
-          title="Sincronizar"
+          className="premium-icon-button"
+          aria-label="Actualizar"
           disabled={loading}
           onClick={onRefresh}
         >
           <RefreshCw
             size={18}
-            className={loading ? "quantum-spin" : undefined}
+            className={
+              loading ? "quantum-spin" : undefined
+            }
           />
         </button>
 
         <button
           type="button"
-          className="quantum-icon-button quantum-notification-button"
+          className="premium-icon-button"
           aria-label="Notificaciones"
         >
           <Bell size={18} />
-          <span className="quantum-notification-dot" />
         </button>
 
-        <button type="button" className="quantum-profile">
-          <span className="quantum-profile-avatar">
-            {getInitials(accountEmail)}
-          </span>
-          <span className="quantum-profile-copy">
+        <div className="premium-user">
+          <span>{getInitials(accountEmail)}</span>
+          <div>
             <strong>Héctor Salcido</strong>
-            <small>{accountEmail ?? "Administrador"}</small>
-          </span>
-        </button>
+            <small>
+              {accountEmail ?? "Administrador"}
+            </small>
+          </div>
+        </div>
       </div>
     </header>
   );

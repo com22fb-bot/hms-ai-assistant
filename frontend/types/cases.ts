@@ -68,17 +68,39 @@ export type CaseDashboardResponse = {
   recent_events: CaseEvent[];
 };
 
+export type FullSyncPageResponse = {
+  status: string;
+  sync: {
+    status: string;
+    email: string | null;
+    page_found: number;
+    inserted: number;
+    duplicates: number;
+    errors: number;
+    next_page_token: string | null;
+    has_more: boolean;
+  };
+};
+
 export type CaseProcessResponse = {
   status: string;
-  account_id: string;
-  requested_limit: number;
   found: number;
   processed: number;
   created_cases: number;
   linked_to_existing: number;
   errors: number;
-  error_details: Array<{
-    message_id: string;
-    error: string;
-  }>;
+};
+
+export type FullSyncProgress = {
+  running: boolean;
+  currentBatch: number;
+  pagesCompleted: number;
+  found: number;
+  inserted: number;
+  duplicates: number;
+  processed: number;
+  createdCases: number;
+  linkedCases: number;
+  errors: number;
+  completed: boolean;
 };

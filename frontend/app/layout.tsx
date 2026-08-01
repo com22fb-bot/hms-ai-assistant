@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import "./globals.css";
-import "./cases.css";
+import "./approved-ui.css";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,9 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "HMS AI Assistant — Intelligent Cases",
+  title: "HMS AI Assistant — Centro Inteligente",
   description:
-    "Plataforma de Inteligencia Operacional basada en Casos Inteligentes.",
+    "Centro Inteligente de Operaciones basado en Casos Inteligentes.",
 };
 
 export default function RootLayout({
@@ -28,6 +28,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable}`}
     >
       <body>{children}</body>
