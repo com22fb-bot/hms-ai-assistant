@@ -29,6 +29,29 @@ def get_list_environment_variable(
     ]
 
 
+def get_boolean_environment_variable(
+    name: str,
+    default: bool = False,
+) -> bool:
+    """Obtiene una bandera booleana con validación estricta."""
+    raw_value = os.getenv(name)
+
+    if raw_value is None or not raw_value.strip():
+        return default
+
+    normalized = raw_value.strip().lower()
+
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+
+    raise ValueError(
+        f"{name} debe ser true/false, 1/0, yes/no u on/off."
+    )
+
+
 @dataclass(frozen=True)
 class Settings:
     app_name: str = "HMS AI Assistant API"
@@ -69,6 +92,13 @@ class Settings:
         default_factory=lambda: get_list_environment_variable(
             "FRONTEND_ORIGINS",
             "http://localhost:3000,http://127.0.0.1:3000",
+        )
+    )
+
+    data_mutations_enabled: bool = field(
+        default_factory=lambda: get_boolean_environment_variable(
+            "HMS_DATA_MUTATIONS_ENABLED",
+            False,
         )
     )
 

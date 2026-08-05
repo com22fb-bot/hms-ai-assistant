@@ -2,15 +2,19 @@ from __future__ import annotations
 
 from html import escape
 from typing import Any
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
+from pydantic import BaseModel
 
 from app.core.config import settings
 from app.schemas.gmail import GoogleConnectionStatus
+from app.security.identity import require_google_account, require_request_context
+from app.security.mutation_guard import require_data_mutations_enabled
 from app.services.gmail import create_credentials
 from app.services.oauth_storage import (
     OAuthCredentialError,
@@ -25,8 +29,11 @@ GOOGLE_PROVIDER = "google"
 DEFAULT_TOKEN_URI = "https://oauth2.googleapis.com/token"
 
 
+class GoogleStartRequest(BaseModel):
+    return_to: str | None = None
+
+
 def validate_google_environment() -> None:
-    """Verifica las variables necesarias para Google OAuth."""
     missing_variables: list[str] = []
 
     if not settings.google_client_id:
@@ -48,7 +55,6 @@ def validate_google_environment() -> None:
 
 
 def create_google_flow(state: str | None = None) -> Flow:
-    """Construye el flujo OAuth de Google."""
     validate_google_environment()
 
     client_config = {
@@ -71,25 +77,99 @@ def create_google_flow(state: str | None = None) -> Flow:
     return flow
 
 
-def _load_active_google_connection() -> dict[str, Any] | None:
-    """Recupera la cuenta Google activa y sus credenciales."""
+def _is_allowed_return_url(value: str | None) -> bool:
+    if not value:
+        return False
+
     try:
-        return oauth_storage.get_active_credentials(provider=GOOGLE_PROVIDER)
-    except OAuthStorageError as error:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "status": "error",
-                "message": "No fue posible consultar la conexión de Google en Supabase.",
-                "technical_detail": str(error),
-            },
-        ) from error
+        parsed = urlparse(value)
+    except ValueError:
+        return False
+
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return False
+
+    origin = f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
+
+    if origin in {item.rstrip("/") for item in settings.frontend_origins}:
+        return True
+
+    host = (parsed.hostname or "").lower()
+    return host.endswith(
+        (
+            ".app.github.dev",
+            ".githubpreview.dev",
+            ".vercel.app",
+        )
+    )
+
+
+def _origin_from_url(value: str | None) -> str | None:
+    if not value:
+        return None
+
+    try:
+        parsed = urlparse(value)
+    except ValueError:
+        return None
+
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return None
+
+    candidate = f"{parsed.scheme}://{parsed.netloc}/"
+    return candidate if _is_allowed_return_url(candidate) else None
+
+
+def _default_frontend_url(request: Request) -> str:
+    # 1) El origen real del navegador es la fuente más confiable.
+    for header_name in ("origin", "referer"):
+        candidate = _origin_from_url(
+            request.headers.get(header_name, "").strip(),
+        )
+        if candidate:
+            return candidate
+
+    # 2) Si un proxy conserva el host público del frontend, úsalo tal cual.
+    forwarded_host = request.headers.get("x-forwarded-host", "").strip()
+    forwarded_proto = request.headers.get("x-forwarded-proto", "https").strip()
+
+    if forwarded_host:
+        candidate = _origin_from_url(
+            f"{forwarded_proto}://{forwarded_host}/",
+        )
+        if candidate and "-8000." not in forwarded_host:
+            return candidate
+
+        # 3) Si el host corresponde al backend de Codespaces, busca un
+        # frontend permitido del mismo Codespace en la configuración.
+        if "-8000." in forwarded_host:
+            codespace_prefix = forwarded_host.split("-8000.", 1)[0]
+            configured_candidates = [
+                item.rstrip("/") + "/"
+                for item in settings.frontend_origins
+                if item.startswith(("http://", "https://"))
+            ]
+
+            for configured in configured_candidates:
+                parsed = urlparse(configured)
+                configured_host = (parsed.hostname or "").lower()
+                if configured_host.startswith(codespace_prefix + "-"):
+                    return configured
+
+    # 4) Último recurso: primer frontend permitido configurado.
+    return next(
+        (
+            item.rstrip("/") + "/"
+            for item in settings.frontend_origins
+            if item.startswith(("http://", "https://"))
+        ),
+        "http://localhost:3000/",
+    )
 
 
 def _to_gmail_stored_credentials(
     stored_credentials: dict[str, Any],
 ) -> dict[str, Any]:
-    """Adapta las credenciales persistentes al servicio Gmail."""
     expires_at = stored_credentials.get("expires_at")
 
     return {
@@ -105,31 +185,55 @@ def _to_gmail_stored_credentials(
     }
 
 
-def get_active_google_credentials() -> Credentials:
-    """Obtiene credenciales válidas y persiste cualquier renovación."""
+def get_google_credentials_for_account(
+    account_id: str,
+    *,
+    expected_workspace_id: str | None = None,
+) -> Credentials:
     validate_google_environment()
-    connection = _load_active_google_connection()
+    account = oauth_storage.get_account(account_id)
 
-    if not connection:
+    if not account:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "status": "error",
+                "message": "La cuenta Google conectada ya no existe.",
+            },
+        )
+
+    if (
+        expected_workspace_id is not None
+        and str(account.get("workspace_id")) != expected_workspace_id
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "forbidden",
+                "message": "La cuenta Google pertenece a otro workspace.",
+            },
+        )
+
+    persistent_credentials = oauth_storage.get_credentials(account_id)
+
+    if not persistent_credentials:
         raise HTTPException(
             status_code=401,
             detail={
                 "status": "error",
                 "connected": False,
-                "message": "No hay una cuenta de Google conectada.",
-                "login_url": "/auth/google/login",
+                "message": "La conexión Google no contiene credenciales válidas.",
+                "start_url": "/auth/google/start",
             },
         )
 
-    account = connection["account"]
-    persistent_credentials = connection["credentials"]
     gmail_credentials = _to_gmail_stored_credentials(persistent_credentials)
 
     def persist_refreshed_credentials(
         refreshed_credentials: Credentials,
     ) -> None:
         oauth_storage.save_credentials(
-            account_id=account["id"],
+            account_id=account_id,
             access_token=refreshed_credentials.token,
             refresh_token=refreshed_credentials.refresh_token,
             expires_at=refreshed_credentials.expiry,
@@ -146,45 +250,81 @@ def get_active_google_credentials() -> Credentials:
     )
 
 
-def get_google_connection_status() -> GoogleConnectionStatus:
-    """Devuelve el estado persistente de la conexión Google."""
-    connection = _load_active_google_connection()
+def get_active_google_credentials() -> Credentials:
+    context, account = require_google_account()
+    return get_google_credentials_for_account(
+        str(account["id"]),
+        expected_workspace_id=context.workspace_id,
+    )
 
-    if not connection:
+
+def get_google_connection_status() -> GoogleConnectionStatus:
+    context = require_request_context()
+    account = context.google_account
+
+    if not account:
         return GoogleConnectionStatus(
             connected=False,
-            message="No hay una cuenta de Google conectada.",
-            login_url="/auth/google/login",
+            message="Este workspace no tiene una cuenta Google conectada.",
+            login_url="/auth/google/start",
         )
 
-    account = connection["account"]
-    credentials = connection["credentials"]
+    credentials = oauth_storage.get_credentials(str(account["id"]))
 
     return GoogleConnectionStatus(
-        connected=True,
+        connected=bool(credentials),
         email=account.get("email") or None,
-        has_access_token=bool(credentials.get("access_token")),
-        has_refresh_token=bool(credentials.get("refresh_token")),
-        scopes=credentials.get("scopes", []),
-        message="Cuenta de Google conectada.",
+        has_access_token=bool(
+            credentials and credentials.get("access_token")
+        ),
+        has_refresh_token=bool(
+            credentials and credentials.get("refresh_token")
+        ),
+        scopes=(credentials or {}).get("scopes", []),
+        message="Cuenta de Google conectada a este workspace.",
     )
 
 
 def get_connected_google_email() -> str:
-    """Devuelve el correo Google conectado."""
-    connection = _load_active_google_connection()
-    if not connection:
+    context = require_request_context()
+    if not context.google_account:
         return "Sin cuenta identificada"
-    return connection["account"].get("email") or "Sin cuenta identificada"
+    return context.google_account.get("email") or "Sin cuenta identificada"
 
 
 @router.get("/login")
-def google_login() -> RedirectResponse:
-    """Inicia el flujo de autorización de Google."""
+def legacy_google_login() -> None:
+    raise HTTPException(
+        status_code=409,
+        detail={
+            "status": "secure_start_required",
+            "message": (
+                "La conexión de Google debe iniciarse desde una sesión HMS "
+                "validada mediante POST /auth/google/start."
+            ),
+        },
+    )
+
+
+@router.post("/start")
+def google_start(
+    request: Request,
+    payload: GoogleStartRequest,
+) -> dict[str, str]:
+    context = require_request_context()
+    return_to = (
+        payload.return_to.rstrip("/") + "/"
+        if _is_allowed_return_url(payload.return_to)
+        else _default_frontend_url(request)
+    )
+
     try:
         state = oauth_storage.create_oauth_state(
             provider=GOOGLE_PROVIDER,
             ttl_minutes=10,
+            profile_id=context.user.id,
+            workspace_id=context.workspace_id,
+            return_to=return_to,
         )
     except OAuthStorageError as error:
         raise HTTPException(
@@ -217,12 +357,14 @@ def google_login() -> RedirectResponse:
             },
         )
 
-    return RedirectResponse(url=authorization_url, status_code=302)
+    return {
+        "status": "ok",
+        "authorization_url": authorization_url,
+    }
 
 
-@router.get("/callback")
-def google_callback(request: Request) -> HTMLResponse:
-    """Procesa la autorización y persiste la cuenta en Supabase."""
+@router.get("/callback", response_model=None)
+def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
     oauth_error = request.query_params.get("error")
 
     if oauth_error:
@@ -238,7 +380,7 @@ def google_callback(request: Request) -> HTMLResponse:
             <title>Error de conexión</title></head><body>
             <h1>No fue posible conectar Google</h1>
             <p>{escape(error_description)}</p>
-            <p><a href="/auth/google/login">Intentar nuevamente</a></p>
+            <p>Regresa a HMS e inténtalo nuevamente.</p>
             </body></html>
             """,
         )
@@ -251,7 +393,10 @@ def google_callback(request: Request) -> HTMLResponse:
         )
 
     try:
-        oauth_storage.consume_oauth_state(state, GOOGLE_PROVIDER)
+        state_context = oauth_storage.consume_oauth_state(
+            state,
+            GOOGLE_PROVIDER,
+        )
     except OAuthStateError as error:
         raise HTTPException(
             status_code=400,
@@ -270,6 +415,21 @@ def google_callback(request: Request) -> HTMLResponse:
                 "technical_detail": str(error),
             },
         ) from error
+
+    profile_id = str(state_context.get("profile_id") or "").strip()
+    workspace_id = str(state_context.get("workspace_id") or "").strip()
+
+    if not profile_id or not workspace_id:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "unbound_oauth_state",
+                "message": (
+                    "La autorización no está vinculada a una cuenta HMS y "
+                    "un workspace. Inicia la conexión nuevamente desde HMS."
+                ),
+            },
+        )
 
     flow = create_google_flow(state=state)
 
@@ -300,7 +460,10 @@ def google_callback(request: Request) -> HTMLResponse:
             status_code=502,
             detail={
                 "status": "error",
-                "message": "Google autorizó la cuenta, pero no fue posible consultar su identidad.",
+                "message": (
+                    "Google autorizó la cuenta, pero no fue posible "
+                    "consultar su identidad."
+                ),
                 "technical_detail": str(error),
             },
         ) from error
@@ -310,21 +473,12 @@ def google_callback(request: Request) -> HTMLResponse:
         account_information.get("id") or account_email
     ).strip()
 
-    if not provider_account_id:
+    if not provider_account_id or not credentials.token:
         raise HTTPException(
             status_code=502,
             detail={
                 "status": "error",
-                "message": "Google no devolvió un identificador válido para la cuenta.",
-            },
-        )
-
-    if not credentials.token:
-        raise HTTPException(
-            status_code=502,
-            detail={
-                "status": "error",
-                "message": "Google no devolvió un access token válido.",
+                "message": "Google no devolvió una cuenta y token válidos.",
             },
         )
 
@@ -335,6 +489,8 @@ def google_callback(request: Request) -> HTMLResponse:
             email=account_email or None,
             display_name=account_information.get("name") or None,
             avatar_url=account_information.get("picture") or None,
+            workspace_id=workspace_id,
+            connected_by_profile_id=profile_id,
             status="active",
         )
         oauth_storage.save_credentials(
@@ -347,6 +503,8 @@ def google_callback(request: Request) -> HTMLResponse:
             metadata={
                 "provider_account_id": provider_account_id,
                 "email_verified": bool(account_information.get("verified_email")),
+                "connected_by_profile_id": profile_id,
+                "workspace_id": workspace_id,
             },
         )
     except (OAuthCredentialError, OAuthStorageError) as error:
@@ -354,45 +512,39 @@ def google_callback(request: Request) -> HTMLResponse:
             status_code=500,
             detail={
                 "status": "error",
-                "message": "Google autorizó la cuenta, pero no fue posible guardar la conexión en Supabase.",
+                "message": (
+                    "Google autorizó la cuenta, pero no fue posible guardar "
+                    "la conexión en Supabase."
+                ),
                 "technical_detail": str(error),
             },
         ) from error
 
-    forwarded_host = request.headers.get("x-forwarded-host", "")
-    forwarded_proto = request.headers.get("x-forwarded-proto", "https")
-
-    if forwarded_host:
-        frontend_host = forwarded_host.replace("-8000.", "-3000.")
-        frontend_url = f"{forwarded_proto}://{frontend_host}/"
-    else:
-        frontend_url = next(
-            (
-                origin.rstrip("/") + "/"
-                for origin in settings.frontend_origins
-                if "localhost" not in origin and "127.0.0.1" not in origin
-            ),
-            "http://localhost:3000/",
-        )
+    return_to = str(state_context.get("return_to") or "").strip()
+    frontend_url = (
+        return_to.rstrip("/") + "/"
+        if _is_allowed_return_url(return_to)
+        else _default_frontend_url(request)
+    )
 
     return RedirectResponse(url=frontend_url, status_code=302)
 
 
 @router.get("/status", response_model=GoogleConnectionStatus)
 def google_status() -> GoogleConnectionStatus:
-    """Consulta el estado persistente de Google."""
     return get_google_connection_status()
 
 
 @router.post("/disconnect", response_model=GoogleConnectionStatus)
 def google_disconnect() -> GoogleConnectionStatus:
-    """Desconecta la cuenta Google activa y elimina sus tokens."""
-    connection = _load_active_google_connection()
+    require_data_mutations_enabled("google_disconnect")
+    context = require_request_context()
+    account = context.google_account
 
-    if connection:
+    if account:
         try:
             oauth_storage.disconnect_account(
-                account_id=connection["account"]["id"],
+                account_id=account["id"],
                 delete_credentials=True,
             )
         except OAuthStorageError as error:
@@ -400,13 +552,13 @@ def google_disconnect() -> GoogleConnectionStatus:
                 status_code=500,
                 detail={
                     "status": "error",
-                    "message": "No fue posible desconectar la cuenta de Google en Supabase.",
+                    "message": "No fue posible desconectar la cuenta de Google.",
                     "technical_detail": str(error),
                 },
             ) from error
 
     return GoogleConnectionStatus(
         connected=False,
-        message="Cuenta de Google desconectada.",
-        login_url="/auth/google/login",
+        message="Cuenta de Google desconectada de este workspace.",
+        login_url="/auth/google/start",
     )

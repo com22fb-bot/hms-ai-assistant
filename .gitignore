@@ -20,3 +20,17 @@ hms-ai-assistant-checkpoint-*.zip
 hms-ai-assistant-toolkit-*.zip
 hms-ai-assistant-sprint-*.zip
 hms-ai-assistant-*.zip
+# HMS: artefactos locales y respaldos
+/.hms-backups/
+/.hms-runtime/
+/.runtime/
+/.vscode/*.backup-*.json
+/HMS_*.tar.gz
+/HMS_*/
+/hms-ai-assistant-*.zip
+/hms-ai-assistant-*.zip.sha256
+/hms-ai-assistant-*/
+/hms-contexto-*.zip
+/hms-diagnostico-estabilizacion.zip
+/hms-diagnostico-estabilizacion/
+/MANIFEST.sha256

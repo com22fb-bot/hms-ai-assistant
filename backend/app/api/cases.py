@@ -4,6 +4,7 @@ from typing import Any
 
 from fastapi import APIRouter, Query
 
+from app.security.mutation_guard import require_data_mutations_enabled
 from app.schemas.cases import (
     CaseDashboardResponse,
     CaseDetail,
@@ -35,6 +36,7 @@ router = APIRouter(
 def process_cases(
     limit: int = Query(default=200, ge=1, le=500),
 ) -> dict[str, Any]:
+    require_data_mutations_enabled("case_processing")
     return process_pending_messages(limit=limit)
 
 
@@ -96,6 +98,7 @@ def patch_case(
     case_id: str,
     request: CaseUpdateRequest,
 ) -> dict[str, Any]:
+    require_data_mutations_enabled("case_update")
     update_case(
         case_id=case_id,
         changes=request.model_dump(exclude_unset=True),

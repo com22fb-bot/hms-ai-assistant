@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from fastapi import HTTPException
 
 from app.services.event_engine import create_case_event
+from app.security.identity import require_google_account
 from app.services.oauth_storage import OAuthStorage
 
 
@@ -41,41 +42,31 @@ def _first_row(response: Any) -> dict[str, Any] | None:
 
 
 def _context() -> tuple[OAuthStorage, dict[str, Any]]:
-    storage = OAuthStorage()
-    active = storage.get_active_credentials(provider="google")
-
-    if not active:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "status": "error",
-                "message": "No existe una cuenta Google activa.",
-            },
-        )
-
-    return storage, active["account"]
+    _, account = require_google_account()
+    return OAuthStorage(), account
 
 
-def list_cases(
+def _response_count(response: Any) -> int:
+    value = getattr(response, "count", None)
+
+    if value is None:
+        return len(_rows(response))
+
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return len(_rows(response))
+
+
+def _apply_case_filters(
+    query: Any,
     *,
-    limit: int = 50,
-    offset: int = 0,
+    account_id: str,
     status: str | None = None,
     priority: str | None = None,
     search: str | None = None,
-) -> dict[str, Any]:
-    storage, account = _context()
-    safe_limit = min(max(limit, 1), 200)
-    safe_offset = max(offset, 0)
-
-    query = (
-        storage.client.table("intelligent_cases")
-        .select("*")
-        .eq("account_id", str(account["id"]))
-        .order("risk_score", desc=True)
-        .order("last_activity_at", desc=True)
-        .range(safe_offset, safe_offset + safe_limit - 1)
-    )
+) -> Any:
+    query = query.eq("account_id", account_id)
 
     if status:
         query = query.eq("status", status)
@@ -89,11 +80,52 @@ def list_cases(
             f"%{search.strip()}%",
         )
 
-    cases = _rows(query.execute())
+    return query
+
+
+def list_cases(
+    *,
+    limit: int = 50,
+    offset: int = 0,
+    status: str | None = None,
+    priority: str | None = None,
+    search: str | None = None,
+) -> dict[str, Any]:
+    storage, account = _context()
+    account_id = str(account["id"])
+    safe_limit = min(max(limit, 1), 200)
+    safe_offset = max(offset, 0)
+
+    count_query = _apply_case_filters(
+        storage.client.table("intelligent_cases").select(
+            "id",
+            count="exact",
+        ),
+        account_id=account_id,
+        status=status,
+        priority=priority,
+        search=search,
+    )
+    total = _response_count(count_query.limit(1).execute())
+
+    data_query = _apply_case_filters(
+        storage.client.table("intelligent_cases").select("*"),
+        account_id=account_id,
+        status=status,
+        priority=priority,
+        search=search,
+    )
+    cases = _rows(
+        data_query
+        .order("risk_score", desc=True)
+        .order("last_activity_at", desc=True)
+        .range(safe_offset, safe_offset + safe_limit - 1)
+        .execute()
+    )
 
     return {
         "status": "ok",
-        "total": len(cases),
+        "total": total,
         "limit": safe_limit,
         "offset": safe_offset,
         "cases": cases,
@@ -273,104 +305,113 @@ def update_case(
     }
 
 
+def _count_cases(
+    *,
+    client: Any,
+    account_id: str,
+    statuses: list[str] | None = None,
+    priority: str | None = None,
+    waiting_on: str | None = None,
+    due_before: str | None = None,
+    resolved_from: str | None = None,
+    resolved_before: str | None = None,
+) -> int:
+    query = (
+        client.table("intelligent_cases")
+        .select("id", count="exact")
+        .eq("account_id", account_id)
+    )
+
+    if statuses:
+        query = query.in_("status", statuses)
+    if priority:
+        query = query.eq("priority", priority)
+    if waiting_on:
+        query = query.eq("waiting_on", waiting_on)
+    if due_before:
+        query = query.lt("due_at", due_before)
+    if resolved_from:
+        query = query.gte("resolved_at", resolved_from)
+    if resolved_before:
+        query = query.lt("resolved_at", resolved_before)
+
+    return _response_count(query.limit(1).execute())
+
+
 def dashboard() -> dict[str, Any]:
     storage, account = _context()
     client = storage.client
     account_id = str(account["id"])
     workspace_id = str(account["workspace_id"])
-    today = datetime.now(timezone.utc).date().isoformat()
-
-    cases = _rows(
-        (
-            client.table("intelligent_cases")
-            .select("*")
-            .eq("account_id", account_id)
-            .order("risk_score", desc=True)
-            .order("last_activity_at", desc=True)
-            .limit(200)
-            .execute()
-        )
-    )
-
     now = datetime.now(timezone.utc)
-
-    def is_overdue(case: dict[str, Any]) -> bool:
-        value = case.get("due_at")
-
-        if not value:
-            return False
-
-        try:
-            due = datetime.fromisoformat(
-                str(value).replace("Z", "+00:00")
-            )
-
-            if due.tzinfo is None:
-                due = due.replace(tzinfo=timezone.utc)
-
-            return (
-                due < now
-                and case.get("status")
-                not in ("resolved", "closed", "archived")
-            )
-        except ValueError:
-            return False
-
-    open_cases = [
-        case
-        for case in cases
-        if case.get("status") in _OPEN_STATUSES
-    ]
+    today_start = datetime(
+        year=now.year,
+        month=now.month,
+        day=now.day,
+        tzinfo=timezone.utc,
+    )
+    tomorrow_start = today_start + timedelta(days=1)
 
     metrics = {
-        "total_open": len(open_cases),
-        "critical": sum(
-            1
-            for case in open_cases
-            if case.get("priority") == "critical"
+        "total_open": _count_cases(
+            client=client,
+            account_id=account_id,
+            statuses=_OPEN_STATUSES,
         ),
-        "waiting_internal": sum(
-            1
-            for case in open_cases
-            if case.get("waiting_on") == "internal"
+        "critical": _count_cases(
+            client=client,
+            account_id=account_id,
+            statuses=_OPEN_STATUSES,
+            priority="critical",
         ),
-        "waiting_external": sum(
-            1
-            for case in open_cases
-            if case.get("waiting_on") == "external"
+        "waiting_internal": _count_cases(
+            client=client,
+            account_id=account_id,
+            statuses=_OPEN_STATUSES,
+            waiting_on="internal",
         ),
-        "overdue": sum(
-            1
-            for case in open_cases
-            if is_overdue(case)
+        "waiting_external": _count_cases(
+            client=client,
+            account_id=account_id,
+            statuses=_OPEN_STATUSES,
+            waiting_on="external",
         ),
-        "resolved_today": sum(
-            1
-            for case in cases
-            if str(case.get("resolved_at") or "").startswith(today)
+        "overdue": _count_cases(
+            client=client,
+            account_id=account_id,
+            statuses=_OPEN_STATUSES,
+            due_before=now.isoformat(),
         ),
-        "unread_notifications": len(
-            _rows(
-                (
-                    client.table("case_notifications")
-                    .select("id")
-                    .eq("workspace_id", workspace_id)
-                    .is_("read_at", "null")
-                    .limit(500)
-                    .execute()
-                )
+        "resolved_today": _count_cases(
+            client=client,
+            account_id=account_id,
+            resolved_from=today_start.isoformat(),
+            resolved_before=tomorrow_start.isoformat(),
+        ),
+        "unread_notifications": _response_count(
+            (
+                client.table("case_notifications")
+                .select("id", count="exact")
+                .eq("workspace_id", workspace_id)
+                .is_("read_at", "null")
+                .limit(1)
+                .execute()
             )
         ),
     }
 
-    attention = sorted(
-        open_cases,
-        key=lambda case: (
-            int(case.get("risk_score") or 0),
-            str(case.get("last_activity_at") or ""),
-        ),
-        reverse=True,
-    )[:20]
+    attention = _rows(
+        (
+            client.table("intelligent_cases")
+            .select("*")
+            .eq("account_id", account_id)
+            .in_("status", _OPEN_STATUSES)
+            .order("risk_score", desc=True)
+            .order("last_activity_at", desc=True)
+            .limit(20)
+            .execute()
+        )
+    )
 
     events = _rows(
         (

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { hmsFetch } from "@/lib/hmsApi";
+
 import type {
   GmailMessage,
   GmailMessagesResponse,
@@ -9,7 +11,8 @@ import type {
 } from "@/types/mail";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "";
+  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
+  "/api/hms";
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -26,18 +29,11 @@ export function useConnection() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const loadMessages = useCallback(async () => {
-    if (!API_BASE_URL) {
-      setError(
-        "No se configuró NEXT_PUBLIC_API_BASE_URL en frontend/.env.local.",
-      );
-      return;
-    }
-
     setLoadingMessages(true);
     setError(null);
 
     try {
-      const response = await fetch(
+      const response = await hmsFetch(
         `${API_BASE_URL}/gmail/messages?limit=100`,
         {
           method: "GET",
@@ -79,19 +75,11 @@ export function useConnection() {
   }, []);
 
   const loadConnectionStatus = useCallback(async () => {
-    if (!API_BASE_URL) {
-      setLoadingStatus(false);
-      setError(
-        "No se configuró NEXT_PUBLIC_API_BASE_URL en frontend/.env.local.",
-      );
-      return;
-    }
-
     setLoadingStatus(true);
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/google/status`, {
+      const response = await hmsFetch(`${API_BASE_URL}/auth/google/status`, {
         method: "GET",
         cache: "no-store",
       });
@@ -132,30 +120,43 @@ export function useConnection() {
     return () => window.clearTimeout(timer);
   }, [loadConnectionStatus]);
 
-  const connectGoogle = useCallback(() => {
-    if (!API_BASE_URL) {
-      setError(
-        "No se configuró NEXT_PUBLIC_API_BASE_URL en frontend/.env.local.",
+  const connectGoogle = useCallback(async () => {
+    setError(null);
+
+    const response = await hmsFetch(
+      `${API_BASE_URL}/auth/google/start`,
+      {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          return_to: window.location.origin,
+        }),
+      },
+    );
+    const payload = (await response.json()) as {
+      authorization_url?: string;
+      detail?: { message?: string };
+    };
+
+    if (!response.ok || !payload.authorization_url) {
+      throw new Error(
+        payload.detail?.message ??
+          "No fue posible iniciar la conexión segura con Google.",
       );
-      return;
     }
 
-    window.location.href = `${API_BASE_URL}/auth/google/login`;
+    window.location.assign(payload.authorization_url);
   }, []);
 
   const disconnectGoogle = useCallback(async () => {
-    if (!API_BASE_URL) {
-      setError(
-        "No se configuró NEXT_PUBLIC_API_BASE_URL en frontend/.env.local.",
-      );
-      return;
-    }
-
     setDisconnecting(true);
     setError(null);
 
     try {
-      const response = await fetch(
+      const response = await hmsFetch(
         `${API_BASE_URL}/auth/google/disconnect`,
         {
           method: "POST",

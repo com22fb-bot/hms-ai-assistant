@@ -7,6 +7,7 @@ import {
   Bell,
   BriefcaseBusiness,
   CheckCircle2,
+  ChevronDown,
   ChevronRight,
   Clock3,
   Eye,
@@ -29,6 +30,8 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { GuidedImportWizard } from "@/components/GuidedImportWizard";
+import "@/components/guided-import.css";
 import { useCases } from "@/hooks/useCases";
 import { useGoogleStatus } from "@/hooks/useGoogleStatus";
 import { useAppAuth } from "@/hooks/useAppAuth";
@@ -50,25 +53,200 @@ type AppSession = {
   name: string;
 };
 
+
+type ControlState =
+  | "active"
+  | "testing"
+  | "evaluation"
+  | "blocked";
+
+type ControlDefinition = {
+  key: string;
+  title: string;
+  state: ControlState;
+  summary: string;
+  expectedResult: string;
+  dependencies: string;
+  activationOrder: string;
+};
+
+const CONTROL_STATE_LABELS: Record<ControlState, string> = {
+  active: "Activo",
+  testing: "En prueba",
+  evaluation: "En evaluación",
+  blocked: "Bloqueado",
+};
+
+const CONTROL_CATALOG: Record<string, ControlDefinition> = {
+  cases: {
+    key: "cases",
+    title: "Módulo Casos",
+    state: "evaluation",
+    summary: "Vista completa para consultar, filtrar y administrar los casos accionables.",
+    expectedResult: "Lista paginada, filtros reales, selección y acceso al detalle de cada caso.",
+    dependencies: "Clasificador depurado, búsqueda global y aislamiento por usuario.",
+    activationOrder: "1 · Primer módulo funcional después de la depuración.",
+  },
+  tasks: {
+    key: "tasks",
+    title: "Módulo Tareas",
+    state: "evaluation",
+    summary: "Concentrará solicitudes, compromisos, fechas límite y responsables.",
+    expectedResult: "Crear, asignar, completar y auditar tareas derivadas de comunicaciones.",
+    dependencies: "Modelo de tareas y relación segura con casos y usuarios.",
+    activationOrder: "5 · Después de detalle, búsqueda y notificaciones.",
+  },
+  activity: {
+    key: "activity",
+    title: "Actividad",
+    state: "evaluation",
+    summary: "Historial operativo de cambios, sincronizaciones y acciones relevantes.",
+    expectedResult: "Cronología filtrable con eventos reales y trazabilidad.",
+    dependencies: "Catálogo definitivo de eventos y permisos por workspace.",
+    activationOrder: "6 · Después de Tareas.",
+  },
+  reports: {
+    key: "reports",
+    title: "Reportes",
+    state: "evaluation",
+    summary: "Generación de reportes operativos y ejecutivos.",
+    expectedResult: "Vista previa y exportación basada en datos validados.",
+    dependencies: "Métricas confiables, filtros y permisos de exportación.",
+    activationOrder: "7 · Después de Actividad.",
+  },
+  metrics: {
+    key: "metrics",
+    title: "Métricas",
+    state: "evaluation",
+    summary: "Análisis de pendientes, tiempos de respuesta y carga operativa.",
+    expectedResult: "Indicadores exactos, series de tiempo y criterios transparentes.",
+    dependencies: "Clasificación confiable e historial suficiente.",
+    activationOrder: "8 · Después de Reportes.",
+  },
+  settings: {
+    key: "settings",
+    title: "Ajustes",
+    state: "blocked",
+    summary: "Preferencias, cuentas conectadas, seguridad y configuración del workspace.",
+    expectedResult: "Administrar perfil, conexiones, alertas y permisos.",
+    dependencies: "Autenticación backend y aislamiento multiusuario.",
+    activationOrder: "9 · Se activa al completar la seguridad multiusuario.",
+  },
+  notifications: {
+    key: "notifications",
+    title: "Notificaciones",
+    state: "evaluation",
+    summary: "Bandeja de alertas que realmente requieren atención.",
+    expectedResult: "Ver, marcar como leídas y abrir el asunto relacionado.",
+    dependencies: "Depuración de notificaciones históricas y reglas de relevancia.",
+    activationOrder: "4 · Después de la búsqueda global.",
+  },
+  personalize: {
+    key: "personalize",
+    title: "Personalizar vista",
+    state: "evaluation",
+    summary: "Permitirá ordenar, mostrar u ocultar bloques del tablero.",
+    expectedResult: "Preferencias persistentes de distribución, densidad y accesibilidad.",
+    dependencies: "Esquema de preferencias por usuario.",
+    activationOrder: "10 · Después de los módulos operativos.",
+  },
+  search: {
+    key: "search",
+    title: "Búsqueda",
+    state: "testing",
+    summary: "Actualmente filtra únicamente los casos prioritarios visibles.",
+    expectedResult: "Búsqueda global por asunto, persona, remitente, caso y tarea.",
+    dependencies: "Endpoint paginado y autenticado de búsqueda.",
+    activationOrder: "3 · Después del detalle del caso.",
+  },
+  "cases-all": {
+    key: "cases-all",
+    title: "Ver todos los casos",
+    state: "evaluation",
+    summary: "Acceso a la lista completa de casos.",
+    expectedResult: "Abrir el módulo Casos conservando filtros y paginación.",
+    dependencies: "Módulo Casos.",
+    activationOrder: "1 · Se activa junto con el módulo Casos.",
+  },
+  "activity-all": {
+    key: "activity-all",
+    title: "Ver toda la actividad",
+    state: "evaluation",
+    summary: "Acceso a la cronología completa del sistema.",
+    expectedResult: "Abrir la actividad con filtros por fecha, evento y actor.",
+    dependencies: "Módulo Actividad.",
+    activationOrder: "6 · Se activa junto con Actividad.",
+  },
+  "case-detail": {
+    key: "case-detail",
+    title: "Detalle del caso",
+    state: "evaluation",
+    summary: "Pantalla para comprender y gestionar un caso específico.",
+    expectedResult: "Mensajes relacionados, evidencias, estado, prioridad, responsable y eventos.",
+    dependencies: "Lectura autenticada por caso y clasificación depurada.",
+    activationOrder: "2 · Inmediatamente después del módulo Casos.",
+  },
+  "event-detail": {
+    key: "event-detail",
+    title: "Detalle del evento",
+    state: "evaluation",
+    summary: "Explicará el origen y los cambios asociados con cada evento.",
+    expectedResult: "Mostrar datos auditables sin exponer información sensible.",
+    dependencies: "Módulo Actividad y sanitización de metadatos.",
+    activationOrder: "6 · Se activa junto con Actividad.",
+  },
+  "new-case": {
+    key: "new-case",
+    title: "Nuevo caso",
+    state: "evaluation",
+    summary: "Creación manual de un asunto operativo.",
+    expectedResult: "Formulario validado con responsable, prioridad, vencimiento y evidencia inicial.",
+    dependencies: "Permisos, modelo de participantes y auditoría.",
+    activationOrder: "2 · Después de aprobar el detalle del caso.",
+  },
+  "generate-report": {
+    key: "generate-report",
+    title: "Generar reporte",
+    state: "evaluation",
+    summary: "Exportación de información seleccionada.",
+    expectedResult: "Elegir periodo, contenido y formato antes de generar el archivo.",
+    dependencies: "Módulo Reportes y datos depurados.",
+    activationOrder: "7 · Se activa con Reportes.",
+  },
+  "mobile-more": {
+    key: "mobile-more",
+    title: "Menú móvil Más",
+    state: "evaluation",
+    summary: "Acceso móvil a los módulos secundarios.",
+    expectedResult: "Menú accesible con navegación y estados de implementación.",
+    dependencies: "Definición final de navegación móvil.",
+    activationOrder: "Después de validar la navegación de escritorio.",
+  },
+};
+
 const THEMES: Array<{
   id: ThemeId;
   label: string;
 }> = [
   { id: "midnight", label: "Midnight Social" },
   { id: "aurora", label: "Aurora Collaboration" },
-  { id: "accessible", label: "Focus Accessible" },
+  { id: "accessible", label: "4D Focus Turquesa" },
   { id: "graphite", label: "Soft Graphite" },
 ];
 
-const NAV_ITEMS = [
-  { id: "home", label: "Inicio", icon: Home },
-  { id: "cases", label: "Casos", icon: BriefcaseBusiness },
-  { id: "tasks", label: "Tareas", icon: CheckCircle2 },
-  { id: "people", label: "Responsables", icon: Users },
-  { id: "activity", label: "Actividad", icon: Activity },
-  { id: "reports", label: "Reportes", icon: FileBarChart },
-  { id: "metrics", label: "Métricas", icon: BarChart3 },
-  { id: "settings", label: "Ajustes", icon: Settings },
+const NAV_ITEMS: Array<{
+  id: string;
+  label: string;
+  icon: typeof Home;
+  state: ControlState;
+}> = [
+  { id: "home", label: "Inicio", icon: Home, state: "active" },
+  { id: "cases", label: "Casos", icon: BriefcaseBusiness, state: "evaluation" },
+  { id: "tasks", label: "Tareas", icon: CheckCircle2, state: "evaluation" },
+  { id: "activity", label: "Actividad", icon: Activity, state: "evaluation" },
+  { id: "reports", label: "Reportes", icon: FileBarChart, state: "evaluation" },
+  { id: "metrics", label: "Métricas", icon: BarChart3, state: "evaluation" },
+  { id: "settings", label: "Ajustes", icon: Settings, state: "blocked" },
 ];
 
 function priorityLabel(priority: CasePriority): string {
@@ -137,27 +315,108 @@ function initials(value?: string | null): string {
     .slice(0, 2);
 }
 
+function ControlStateBadge({
+  state,
+  compact = false,
+}: {
+  state: ControlState;
+  compact?: boolean;
+}) {
+  return (
+    <span
+      className={`app-control-state app-control-state-${state}${compact ? " is-compact" : ""}`}
+    >
+      {CONTROL_STATE_LABELS[state]}
+    </span>
+  );
+}
+
+function ControlEvaluationDialog({
+  control,
+  onClose,
+}: {
+  control: ControlDefinition;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
+  return (
+    <div className="app-evaluation-overlay" role="presentation" onMouseDown={onClose}>
+      <section
+        className="app-evaluation-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="evaluation-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <div className="app-evaluation-heading">
+          <div>
+            <span>LABORATORIO DE CONTROLES</span>
+            <h2 id="evaluation-title">{control.title}</h2>
+          </div>
+          <button type="button" aria-label="Cerrar ficha" onClick={onClose}>
+            <X size={23} />
+          </button>
+        </div>
+
+        <ControlStateBadge state={control.state} />
+        <p className="app-evaluation-summary">{control.summary}</p>
+
+        <dl className="app-evaluation-grid">
+          <div>
+            <dt>Resultado esperado</dt>
+            <dd>{control.expectedResult}</dd>
+          </div>
+          <div>
+            <dt>Dependencias</dt>
+            <dd>{control.dependencies}</dd>
+          </div>
+          <div>
+            <dt>Orden propuesto</dt>
+            <dd>{control.activationOrder}</dd>
+          </div>
+        </dl>
+
+        <div className="app-evaluation-footer">
+          <p>
+            Este control permanece visible para evaluar nombre, ubicación y utilidad.
+            Su estado no implica que la operación esté implementada.
+          </p>
+          <button type="button" onClick={onClose}>Entendido</button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function LoginScreen({
   theme,
   setTheme,
   onSignIn,
-  onSignUp,
+  onMagicLink,
   onResetPassword,
 }: {
   theme: ThemeId;
   setTheme: (theme: ThemeId) => void;
   onSignIn: (email: string, password: string) => Promise<void>;
-  onSignUp: (
-    email: string,
-    password: string,
-    fullName: string,
-  ) => Promise<{ requiresConfirmation: boolean }>;
+  onMagicLink: (email: string) => Promise<void>;
   onResetPassword: (email: string) => Promise<void>;
 }) {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -180,31 +439,17 @@ function LoginScreen({
       return;
     }
 
-    if (mode === "signup" && fullName.trim().length < 2) {
-      setError("Escribe tu nombre completo.");
+    if (mode === "signup") {
+      setError(
+        "El registro está temporalmente bloqueado hasta completar la separación segura por usuario.",
+      );
       return;
     }
 
     setBusy(true);
 
     try {
-      if (mode === "signin") {
-        await onSignIn(cleanEmail, password);
-      } else {
-        const result = await onSignUp(
-          cleanEmail,
-          password,
-          fullName.trim(),
-        );
-
-        if (result.requiresConfirmation) {
-          setMessage(
-            "Cuenta creada. Revisa tu correo para confirmar el acceso.",
-          );
-          setMode("signin");
-          setPassword("");
-        }
-      }
+      await onSignIn(cleanEmail, password);
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -244,6 +489,34 @@ function LoginScreen({
     }
   }
 
+  async function sendMagicLink() {
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!cleanEmail || !cleanEmail.includes("@")) {
+      setError("Escribe primero el correo de tu cuenta HMS.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      await onMagicLink(cleanEmail);
+      setMessage(
+        "Te enviamos a tu correo un enlace para entrar a HMS sin contraseña.",
+      );
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "No fue posible enviar el enlace de acceso.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="auth-screen" data-theme={theme}>
       <div className="auth-backdrop" />
@@ -260,22 +533,22 @@ function LoginScreen({
         </div>
 
         <div className="auth-presentation-copy">
-          <span>ACCESO PARA CUALQUIER CORREO</span>
+          <span>ACCESO CON CUENTA HMS REGISTRADA</span>
           <h1>
             Tu cuenta HMS,
             <strong> separada de tu buzón.</strong>
           </h1>
           <p>
-            Regístrate con Gmail, Outlook, Hotmail, Yahoo o cualquier
-            correo empresarial. Después podrás conectar los buzones que
-            quieras supervisar.
+            Tu cuenta HMS sirve para entrar a la aplicación. Después,
+            en una pantalla independiente, autorizas el buzón que HMS
+            analizará directamente en Google, Microsoft o Yahoo.
           </p>
         </div>
 
         <div className="auth-benefits">
           <article><ShieldCheck size={20} /><div><strong>Autenticación real</strong><span>Sesión segura administrada por Supabase Auth.</span></div></article>
-          <article><Mail size={20} /><div><strong>Cualquier proveedor</strong><span>El correo de acceso no tiene que ser Gmail.</span></div></article>
-          <article><Users size={20} /><div><strong>Cuenta personal</strong><span>Perfil propio y separación futura por workspace.</span></div></article>
+          <article><Mail size={20} /><div><strong>Cuenta HMS independiente</strong><span>La contraseña HMS nunca es la contraseña de tu correo.</span></div></article>
+          <article><Users size={20} /><div><strong>Workspace por usuario</strong><span>Cada cuenta se vincula con su propio espacio y buzones autorizados.</span></div></article>
         </div>
       </section>
 
@@ -298,7 +571,7 @@ function LoginScreen({
           <div className="auth-card-heading">
             <span>{mode === "signin" ? "INICIAR SESIÓN" : "CREAR CUENTA"}</span>
             <h2>{mode === "signin" ? "Bienvenido de nuevo 👋" : "Comienza con HMS AI"}</h2>
-            <p>{mode === "signin" ? "Accede con tu correo y contraseña." : "Aceptamos correos de cualquier proveedor."}</p>
+            <p>{mode === "signin" ? "Ingresa con el correo y la contraseña que creaste para HMS." : "Este es el diseño funcional del alta. La activación permanece bloqueada hasta terminar las pruebas de aislamiento."}</p>
           </div>
 
           <div className="auth-mode-tabs" role="tablist">
@@ -306,39 +579,194 @@ function LoginScreen({
             <button type="button" className={mode === "signup" ? "is-active" : ""} onClick={() => { setMode("signup"); setError(null); setMessage(null); }}>Crear cuenta</button>
           </div>
 
-          <form onSubmit={submit}>
-            {mode === "signup" ? (
+          {mode === "signup" ? (
+            <form
+              className="auth-signup-preview"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setError(
+                  "El registro todavía está bloqueado mientras verificamos el aislamiento entre usuarios.",
+                );
+              }}
+            >
+              <div className="auth-registration-status" aria-live="polite">
+                <ShieldCheck size={22} />
+                <div>
+                  <strong>Diseño listo · alta todavía bloqueada</strong>
+                  <span>
+                    Puedes revisar la información que solicitaremos. No se
+                    creará ninguna cuenta desde esta pantalla todavía.
+                  </span>
+                </div>
+              </div>
+
               <label className="auth-field">
                 <span>Nombre completo</span>
-                <div><Users size={18} /><input type="text" value={fullName} autoComplete="name" placeholder="Nombre y apellidos" onChange={(event) => setFullName(event.target.value)} /></div>
+                <div><Users size={18} /><input
+                  type="text"
+                  value={fullName}
+                  autoComplete="name"
+                  placeholder="Nombre que se mostrará en HMS"
+                  onChange={(event) => setFullName(event.target.value)}
+                /></div>
               </label>
-            ) : null}
 
-            <label className="auth-field">
-              <span>Correo electrónico</span>
-              <div><Mail size={18} /><input type="email" value={email} autoComplete="email" placeholder="usuario@empresa.com" onChange={(event) => setEmail(event.target.value)} /></div>
-            </label>
+              <label className="auth-field">
+                <span>Correo para tu cuenta HMS</span>
+                <div><Mail size={18} /><input
+                  type="email"
+                  value={email}
+                  inputMode="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="tu-cuenta@empresa.com"
+                  onChange={(event) => setEmail(event.target.value)}
+                /></div>
+                <small>
+                  Este correo identificará tu cuenta HMS y recibirá enlaces
+                  de verificación y recuperación.
+                </small>
+              </label>
 
-            <label className="auth-field">
-              <span>Contraseña</span>
-              <div><KeyRound size={18} /><input type={showPassword ? "text" : "password"} value={password} autoComplete={mode === "signin" ? "current-password" : "new-password"} placeholder="Mínimo 8 caracteres" onChange={(event) => setPassword(event.target.value)} /><button type="button" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} onClick={() => setShowPassword((current) => !current)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>
-            </label>
+              <label className="auth-field">
+                <span>Crear contraseña HMS</span>
+                <div><KeyRound size={18} /><input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  autoComplete="new-password"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="Mínimo 8 caracteres"
+                  onChange={(event) => setPassword(event.target.value)}
+                /><button type="button" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} onClick={() => setShowPassword((current) => !current)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>
+                <small>
+                  Esta contraseña será únicamente para entrar a HMS. No uses
+                  aquí la contraseña de Gmail, Yahoo, Outlook ni Hotmail.
+                </small>
+              </label>
 
-            {mode === "signin" ? (
-              <div className="auth-options"><span /><button type="button" onClick={() => { void resetPassword(); }}>¿Olvidaste tu contraseña?</button></div>
-            ) : null}
+              <label className="auth-field">
+                <span>Confirmar contraseña HMS</span>
+                <div><ShieldCheck size={18} /><input
+                  type={showPassword ? "text" : "password"}
+                  value={confirmation}
+                  autoComplete="new-password"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="Escríbela nuevamente"
+                  onChange={(event) => setConfirmation(event.target.value)}
+                /></div>
+              </label>
 
-            {error ? <div className="auth-error"><AlertTriangle size={17} />{error}</div> : null}
-            {message ? <div className="auth-success"><CheckCircle2 size={17} />{message}</div> : null}
+              <label className="auth-consent">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(event) => setAcceptedTerms(event.target.checked)}
+                />
+                <span>
+                  Acepto el aviso de privacidad y entiendo que HMS nunca
+                  solicitará la contraseña de mi correo dentro de este formulario.
+                </span>
+              </label>
 
-            <button type="submit" className="auth-submit" disabled={busy}>
-              {busy ? "Procesando..." : mode === "signin" ? "Iniciar sesión" : "Crear cuenta"}
-            </button>
-          </form>
+              <div className="auth-onboarding-next">
+                <Mail size={20} />
+                <div>
+                  <strong>Después de crear la cuenta HMS</strong>
+                  <span>
+                    Verificarás este correo y luego HMS te enviará al sitio
+                    oficial de tu proveedor para autorizar el buzón que deseas analizar.
+                  </span>
+                </div>
+              </div>
+
+              {error ? <div className="auth-error"><AlertTriangle size={17} />{error}</div> : null}
+
+              <button type="submit" className="auth-submit auth-submit-blocked">
+                Crear mi cuenta HMS · Bloqueado
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={submit}>
+              <label className="auth-field">
+                <span>Correo de tu cuenta HMS</span>
+                <div><Mail size={18} /><input
+                  type="email"
+                  value={email}
+                  inputMode="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="correo-usado-para-registrarte@empresa.com"
+                  onChange={(event) => setEmail(event.target.value)}
+                /></div>
+              </label>
+
+              <label className="auth-field">
+                <span>Contraseña HMS</span>
+                <div><KeyRound size={18} /><input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  autoComplete="current-password"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="Contraseña de tu cuenta HMS"
+                  onChange={(event) => setPassword(event.target.value)}
+                /><button type="button" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} onClick={() => setShowPassword((current) => !current)}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button></div>
+              </label>
+
+              <div className="auth-mode-help">
+                <ShieldCheck size={18} />
+                <span>
+                  Escribe la contraseña que creaste para HMS. No escribas
+                  aquí la contraseña de Yahoo, Gmail, Outlook ni Hotmail.
+                </span>
+              </div>
+
+              <div className="auth-access-alternatives">
+                <button
+                  type="button"
+                  className="auth-secondary-action"
+                  disabled={busy}
+                  onClick={() => {
+                    void sendMagicLink();
+                  }}
+                >
+                  <Mail size={18} />
+                  Enviarme un enlace de acceso
+                </button>
+
+                <button
+                  type="button"
+                  className="auth-text-action"
+                  disabled={busy}
+                  onClick={() => {
+                    void resetPassword();
+                  }}
+                >
+                  ¿Olvidaste tu contraseña HMS?
+                </button>
+              </div>
+
+              {error ? <div className="auth-error"><AlertTriangle size={17} />{error}</div> : null}
+              {message ? <div className="auth-success"><CheckCircle2 size={17} />{message}</div> : null}
+
+              <button type="submit" className="auth-submit" disabled={busy}>
+                {busy ? "Procesando..." : "Ingresar a HMS"}
+              </button>
+            </form>
+          )}
 
           <div className="auth-security">
             <ShieldCheck size={18} />
-            <div><strong>Autenticación real con Supabase</strong><span>El correo de acceso y la conexión de Gmail son procesos distintos.</span></div>
+            <div><strong>Dos accesos completamente separados</strong><span>Primero entras a HMS; después autorizas tu correo en el sitio oficial del proveedor.</span></div>
           </div>
         </div>
       </section>
@@ -346,10 +774,193 @@ function LoginScreen({
   );
 }
 
+
+function PasswordRecoveryScreen({
+  theme,
+  setTheme,
+  onUpdatePassword,
+  onCancel,
+}: {
+  theme: ThemeId;
+  setTheme: (theme: ThemeId) => void;
+  onUpdatePassword: (password: string) => Promise<void>;
+  onCancel: () => Promise<void>;
+}) {
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+
+    if (password.length < 8) {
+      setError("La nueva contraseña HMS debe tener al menos 8 caracteres.");
+      return;
+    }
+
+    if (password !== confirmation) {
+      setError("Las dos contraseñas no coinciden.");
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      await onUpdatePassword(password);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "No fue posible actualizar la contraseña HMS.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <main className="auth-screen" data-theme={theme}>
+      <div className="auth-backdrop" />
+
+      <section className="auth-recovery-shell">
+        <div className="auth-panel-top">
+          <div className="auth-panel-brand">
+            <span className="auth-logo">
+              <Sparkles size={25} />
+            </span>
+            <div>
+              <strong>HMS AI Assistant</strong>
+              <small>Recuperación segura</small>
+            </div>
+          </div>
+
+          <label className="auth-theme">
+            <span>Tema</span>
+            <select
+              value={theme}
+              onChange={(event) =>
+                setTheme(event.target.value as ThemeId)
+              }
+            >
+              {THEMES.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <section className="auth-card auth-recovery-card">
+          <div className="auth-card-heading">
+            <span>NUEVA CONTRASEÑA HMS</span>
+            <h2>Protege tu cuenta</h2>
+            <p>
+              Esta contraseña pertenece a HMS. No modifica la contraseña
+              de Yahoo, Gmail, Outlook ni de tu proveedor de correo.
+            </p>
+          </div>
+
+          <form onSubmit={submit}>
+            <label className="auth-field">
+              <span>Nueva contraseña HMS</span>
+              <div>
+                <KeyRound size={18} />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  autoComplete="new-password"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="Mínimo 8 caracteres"
+                  onChange={(event) =>
+                    setPassword(event.target.value)
+                  }
+                />
+                <button
+                  type="button"
+                  aria-label={
+                    showPassword
+                      ? "Ocultar contraseña"
+                      : "Mostrar contraseña"
+                  }
+                  onClick={() =>
+                    setShowPassword((current) => !current)
+                  }
+                >
+                  {showPassword ? (
+                    <EyeOff size={18} />
+                  ) : (
+                    <Eye size={18} />
+                  )}
+                </button>
+              </div>
+            </label>
+
+            <label className="auth-field">
+              <span>Confirmar nueva contraseña</span>
+              <div>
+                <ShieldCheck size={18} />
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={confirmation}
+                  autoComplete="new-password"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="Escríbela nuevamente"
+                  onChange={(event) =>
+                    setConfirmation(event.target.value)
+                  }
+                />
+              </div>
+            </label>
+
+            {error ? (
+              <div className="auth-error">
+                <AlertTriangle size={17} />
+                {error}
+              </div>
+            ) : null}
+
+            <button
+              type="submit"
+              className="auth-submit"
+              disabled={busy}
+            >
+              {busy
+                ? "Actualizando..."
+                : "Guardar contraseña HMS"}
+            </button>
+
+            <button
+              type="button"
+              className="auth-cancel-recovery"
+              disabled={busy}
+              onClick={() => {
+                void onCancel();
+              }}
+            >
+              Cancelar y volver al acceso
+            </button>
+          </form>
+        </section>
+      </section>
+    </main>
+  );
+}
+
+
 function CaseRow({
   item,
+  onEvaluate,
 }: {
   item: IntelligentCase;
+  onEvaluate: (key: string) => void;
 }) {
   return (
     <article className="app-case-row">
@@ -395,7 +1006,9 @@ function CaseRow({
       <button
         type="button"
         className="app-row-arrow"
-        aria-label={`Abrir ${item.title}`}
+        aria-label={`Evaluar apertura de ${item.title}`}
+        onClick={() => onEvaluate("case-detail")}
+        data-control-state="evaluation"
       >
         <ChevronRight size={20} />
       </button>
@@ -405,8 +1018,10 @@ function CaseRow({
 
 function EventRow({
   item,
+  onEvaluate,
 }: {
   item: CaseEvent;
+  onEvaluate: (key: string) => void;
 }) {
   return (
     <article className="app-event-row">
@@ -425,7 +1040,15 @@ function EventRow({
         <time>{formatDate(item.created_at)}</time>
       </div>
 
-      <ChevronRight size={18} />
+      <button
+        type="button"
+        className="app-event-arrow"
+        aria-label={`Evaluar detalle de ${item.title}`}
+        onClick={() => onEvaluate("event-detail")}
+        data-control-state="evaluation"
+      >
+        <ChevronRight size={19} />
+      </button>
     </article>
   );
 }
@@ -442,6 +1065,14 @@ function Dashboard({
   onLogout: () => void;
 }) {
   const {
+    connection,
+    loadingConnection,
+    connectionError,
+    loadGoogleStatus,
+    startGoogleConnection,
+  } = useGoogleStatus();
+
+  const {
     dashboard,
     cases,
     search,
@@ -451,17 +1082,39 @@ function Dashboard({
     error,
     setSearch,
     loadDashboard,
-    syncAllMessages,
-  } = useCases();
-
-  const {
-    connection,
-    loadingConnection,
-    connectionError,
-    loadGoogleStatus,
-  } = useGoogleStatus();
+  } = useCases(Boolean(connection?.connected));
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeView, setActiveView] = useState("home");
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [evaluationKey, setEvaluationKey] = useState<string | null>(null);
+  const [guidedImportOpen, setGuidedImportOpen] = useState(false);
+
+  const evaluatedControl = evaluationKey
+    ? CONTROL_CATALOG[evaluationKey]
+    : null;
+
+  function evaluateControl(key: string) {
+    setEvaluationKey(key);
+    setMobileOpen(false);
+    setProfileOpen(false);
+  }
+
+  function selectView(view: string, label: string) {
+    setMobileOpen(false);
+    setProfileOpen(false);
+
+    if (view === "home") {
+      setActiveView("home");
+      setNotice(null);
+      return;
+    }
+
+    setActiveView("home");
+    setNotice(`${label} permanece visible para evaluar su orden y alcance.`);
+    evaluateControl(view);
+  }
 
   const busy =
     loading || syncing || loadingConnection;
@@ -469,19 +1122,19 @@ function Dashboard({
   const metrics = useMemo(
     () => [
       {
-        label: "Casos abiertos",
+        label: "Casos por revisar",
         value: dashboard.metrics.total_open,
         icon: Inbox,
         tone: "blue",
       },
       {
-        label: "Críticos",
+        label: "Marcados críticos",
         value: dashboard.metrics.critical,
         icon: AlertTriangle,
         tone: "red",
       },
       {
-        label: "Esperando respuesta",
+        label: "Marcados en espera",
         value:
           dashboard.metrics.waiting_internal +
           dashboard.metrics.waiting_external,
@@ -556,16 +1209,24 @@ function Dashboard({
                 key={item.id}
                 type="button"
                 className={
-                  item.id === "home"
+                  activeView === item.id
                     ? "app-nav-item is-active"
                     : "app-nav-item"
                 }
+                aria-current={activeView === item.id ? "page" : undefined}
+                onClick={() => selectView(item.id, item.label)}
+                data-control-state={item.state}
               >
-                <Icon size={19} />
+                <Icon size={21} />
                 <span>{item.label}</span>
-                {item.id === "cases" ? (
-                  <b>{dashboard.metrics.total_open}</b>
-                ) : null}
+                <span className="app-nav-item-state">
+                  {item.id === "cases" ? (
+                    <b>{dashboard.metrics.total_open}</b>
+                  ) : null}
+                  {item.id !== "home" ? (
+                    <ControlStateBadge state={item.state} compact />
+                  ) : null}
+                </span>
               </button>
             );
           })}
@@ -581,12 +1242,16 @@ function Dashboard({
               <strong>
                 {syncing
                   ? `Lote ${syncProgress.currentBatch}`
-                  : "Sincronizado"}
+                  : connection?.connected
+                    ? "Sincronizado"
+                    : "Gmail desconectado"}
               </strong>
               <small>
                 {syncProgress.completed
                   ? `${syncProgress.found} revisados`
-                  : "Sistema disponible"}
+                  : connection?.connected
+                    ? "Sistema disponible"
+                    : "Conecta tu cuenta Google"}
               </small>
             </div>
             <span />
@@ -595,21 +1260,47 @@ function Dashboard({
           <button
             type="button"
             className="app-sidebar-primary"
+            aria-label={
+              connection?.connected
+                ? "Revisar Gmail"
+                : "Conectar Gmail"
+            }
             disabled={
-              syncing ||
-              !connection?.connected
+              loadingConnection ||
+              Boolean(connection?.connected && syncing)
             }
             onClick={() => {
-              void syncAllMessages();
+              if (connection?.connected) {
+                setGuidedImportOpen(true);
+                return;
+              }
+
+              setNotice("Abriendo la autorización segura de Google...");
+
+              void startGoogleConnection().catch((requestError) => {
+                setNotice(
+                  requestError instanceof Error
+                    ? requestError.message
+                    : "No fue posible iniciar la conexión con Google.",
+                );
+              });
             }}
           >
-            <RefreshCw
-              size={19}
-              className={syncing ? "app-spin" : undefined}
-            />
-            {syncing
-              ? `Procesando lote ${syncProgress.currentBatch}`
-              : "Sincronizar y analizar"}
+            {connection?.connected ? (
+              <RefreshCw
+                size={19}
+                className={syncing ? "app-spin" : undefined}
+              />
+            ) : (
+              <Mail size={19} />
+            )}
+            {loadingConnection
+              ? "Verificando Gmail..."
+              : syncing
+                ? `Procesando lote ${syncProgress.currentBatch}`
+                : connection?.connected
+                  ? "Revisar Gmail"
+                  : "Conectar Gmail"}
           </button>
 
           <button
@@ -655,12 +1346,20 @@ function Dashboard({
               <input
                 type="search"
                 value={search}
-                placeholder="Buscar casos, personas, asuntos o remitentes..."
+                placeholder="Filtrar casos prioritarios visibles..."
                 onChange={(event) =>
                   setSearch(event.target.value)
                 }
               />
               <kbd>⌘ K</kbd>
+              <button
+                type="button"
+                className="app-search-state"
+                onClick={() => evaluateControl("search")}
+                aria-label="Ver estado de la búsqueda"
+              >
+                En prueba
+              </button>
             </label>
 
             <div className="app-top-actions">
@@ -677,9 +1376,9 @@ function Dashboard({
                   : "Sin conexión"}
               </div>
 
-              <div className="app-ai-pill">
-                <Sparkles size={16} />
-                IA activa
+              <div className="app-ai-pill is-review">
+                <Sparkles size={17} />
+                Clasificador en revisión
               </div>
 
               <label className="app-theme-select">
@@ -706,17 +1405,33 @@ function Dashboard({
               <button
                 type="button"
                 className="app-icon-button"
-                aria-label="Notificaciones"
+                aria-label="Evaluar notificaciones"
+                onClick={() => evaluateControl("notifications")}
+                data-control-state="evaluation"
               >
                 <Bell size={19} />
               </button>
 
-              <div className="app-user">
-                <span>{initials(session.name)}</span>
-                <div>
-                  <strong>{session.name}</strong>
-                  <small>Administrador</small>
-                </div>
+              <div className="app-user-menu">
+                <button type="button" className="app-user" aria-haspopup="menu" aria-expanded={profileOpen} onClick={() => setProfileOpen((current) => !current)}>
+                  <span>{initials(session.name)}</span>
+                  <div>
+                    <strong>{session.name}</strong>
+                    <small>{session.email}</small>
+                  </div>
+                  <ChevronDown size={16} />
+                </button>
+
+                {profileOpen ? (
+                  <div className="app-profile-dropdown" role="menu">
+                    <div className="app-profile-summary">
+                      <span>{initials(session.name)}</span>
+                      <div><strong>{session.name}</strong><small>{session.email}</small></div>
+                    </div>
+                    <button type="button" role="menuitem" onClick={() => evaluateControl("settings")}><Settings size={19} />Ajustes de la cuenta <ControlStateBadge state="blocked" compact /></button>
+                    <button type="button" role="menuitem" className="is-danger" onClick={onLogout}><LogOut size={17} />Cerrar sesión</button>
+                  </div>
+                ) : null}
               </div>
             </div>
           </div>
@@ -735,27 +1450,68 @@ function Dashboard({
                 : "Sin conexión"}
             </div>
 
-            <div className="app-ai-pill">
-              <Sparkles size={16} />
-              IA activa
+            <div className="app-ai-pill is-review">
+              <Sparkles size={17} />
+              Clasificador en revisión
             </div>
           </div>
         </header>
 
         <div className="app-content">
+          <section className="app-alert app-historical-alert" role="status">
+            <AlertTriangle size={23} />
+            <div>
+              <strong>Datos históricos en revisión</strong>
+              <span>
+                Los conteos ya son exactos, pero los casos existentes fueron
+                generados por el clasificador anterior. La sincronización de Gmail
+                no creará casos nuevos hasta terminar la depuración.
+              </span>
+            </div>
+          </section>
+
+          <section className="app-control-legend" aria-label="Estado de implementación de controles">
+            <div>
+              <strong>Laboratorio de controles</strong>
+              <span>
+                Todos los controles permanecen visibles. Pulsa los pendientes para
+                revisar su propósito, dependencias y orden de activación.
+              </span>
+            </div>
+            <div className="app-control-legend-states">
+              <ControlStateBadge state="active" />
+              <ControlStateBadge state="testing" />
+              <ControlStateBadge state="evaluation" />
+              <ControlStateBadge state="blocked" />
+            </div>
+          </section>
+
+          {notice ? (
+            <section className="app-navigation-notice" role="status">
+              <CheckCircle2 size={18} />
+              <span>{notice}</span>
+              <button type="button" aria-label="Cerrar aviso" onClick={() => setNotice(null)}><X size={17} /></button>
+            </section>
+          ) : null}
+
           <section className="app-welcome">
             <div>
               <h1>
                 Buenos días, {session.name.split(" ")[0]} 👋
               </h1>
               <p>
-                Centro Inteligente de Operaciones de Comunicación
+                4D Focus · Centro Inteligente de Operaciones
               </p>
             </div>
 
-            <button type="button">
-              <Settings size={17} />
-              Personalizar vista
+            <button
+              type="button"
+              onClick={() => evaluateControl("personalize")}
+              data-control-state="evaluation"
+            >
+              <Settings size={20} />
+              <span>Personalizar vista</span>
+              <ControlStateBadge state="evaluation" compact />
             </button>
           </section>
 
@@ -812,7 +1568,7 @@ function Dashboard({
                   <div>
                     <span>{metric.label}</span>
                     <strong>{metric.value}</strong>
-                    <small>↑ Información actualizada</small>
+                    <small>Conteo exacto · clasificación pendiente</small>
                   </div>
 
                   <Icon size={29} />
@@ -821,48 +1577,24 @@ function Dashboard({
             })}
           </section>
 
-          <section className="app-team">
-            <div className="app-section-heading">
-              <div>
-                <span>EQUIPO Y RESPONSABLES</span>
-                <h2>Personas conectadas</h2>
-              </div>
 
-              <button type="button">Administrar</button>
-            </div>
-
-            <div className="app-team-list">
-              {[
-                ["Tú", session.name, "Administrador"],
-                ["CR", "Carlos Ruiz", "Coordinador"],
-                ["AT", "Ana Torres", "Analista"],
-                ["ML", "Miguel López", "Agente"],
-                ["LF", "Lucía Fernández", "Agente"],
-                ["HS", "Héctor Salcido", "Especialista"],
-              ].map(([avatar, name, role], index) => (
-                <article key={`${name}-${index}`}>
-                  <span>{avatar}</span>
-                  <strong>{name}</strong>
-                  <small>{role}</small>
-                </article>
-              ))}
-
-              <button type="button" className="app-add-person">
-                <Plus size={24} />
-                <span>Agregar</span>
-              </button>
-            </div>
-          </section>
 
           <section className="app-dashboard-grid">
             <div className="app-panel">
               <div className="app-panel-heading">
                 <div>
                   <span>PRIORIDAD OPERATIVA</span>
-                  <h2>Casos importantes</h2>
+                  <h2>Casos generados por revisar</h2>
                 </div>
 
-                <button type="button">Ver todos</button>
+                <button
+                  type="button"
+                  onClick={() => evaluateControl("cases-all")}
+                  data-control-state="evaluation"
+                >
+                  Ver todos
+                  <ControlStateBadge state="evaluation" compact />
+                </button>
               </div>
 
               <div className="app-case-list">
@@ -884,6 +1616,7 @@ function Dashboard({
                     <CaseRow
                       key={item.id}
                       item={item}
+                      onEvaluate={evaluateControl}
                     />
                   ))
                 )}
@@ -897,7 +1630,14 @@ function Dashboard({
                   <h2>Últimos eventos</h2>
                 </div>
 
-                <button type="button">Ver toda</button>
+                <button
+                  type="button"
+                  onClick={() => evaluateControl("activity-all")}
+                  data-control-state="evaluation"
+                >
+                  Ver toda
+                  <ControlStateBadge state="evaluation" compact />
+                </button>
               </div>
 
               <div className="app-event-list">
@@ -911,6 +1651,7 @@ function Dashboard({
                     <EventRow
                       key={item.id}
                       item={item}
+                      onEvaluate={evaluateControl}
                     />
                   ))
                 )}
@@ -922,20 +1663,43 @@ function Dashboard({
             <button
               type="button"
               disabled={
-                syncing ||
-                !connection?.connected
+                loadingConnection ||
+                Boolean(connection?.connected && syncing)
               }
               onClick={() => {
-                void syncAllMessages();
+                if (connection?.connected) {
+                  setGuidedImportOpen(true);
+                  return;
+                }
+
+                void startGoogleConnection().catch((requestError) => {
+                  setNotice(
+                    requestError instanceof Error
+                      ? requestError.message
+                      : "No fue posible iniciar la conexión con Google.",
+                  );
+                });
               }}
             >
-              <RefreshCw
-                size={22}
-                className={syncing ? "app-spin" : undefined}
-              />
+              {connection?.connected ? (
+                <RefreshCw
+                  size={22}
+                  className={syncing ? "app-spin" : undefined}
+                />
+              ) : (
+                <Mail size={22} />
+              )}
               <div>
-                <strong>Sincronizar</strong>
-                <span>Actualizar Gmail</span>
+                <strong>
+                  {connection?.connected
+                    ? "Revisar inventario de Gmail"
+                    : "Conectar correo Google"}
+                </strong>
+                <span>
+                  {connection?.connected
+                    ? "Cuenta y selecciona sin importar"
+                    : "Autorización en el sitio oficial de Google"}
+                </span>
               </div>
             </button>
 
@@ -952,83 +1716,96 @@ function Dashboard({
               </div>
             </button>
 
-            <button type="button">
-              <Plus size={25} />
+            <button
+              type="button"
+              onClick={() => evaluateControl("new-case")}
+              data-control-state="evaluation"
+            >
+              <Plus size={27} />
               <div>
                 <strong>Nuevo caso</strong>
-                <span>Crear solicitud</span>
+                <span>En evaluación · crear solicitud</span>
               </div>
             </button>
 
-            <button type="button">
-              <Users size={22} />
-              <div>
-                <strong>Asignar</strong>
-                <span>Delegar tarea</span>
-              </div>
-            </button>
 
-            <button type="button">
-              <FileBarChart size={22} />
+
+            <button
+              type="button"
+              onClick={() => evaluateControl("generate-report")}
+              data-control-state="evaluation"
+            >
+              <FileBarChart size={25} />
               <div>
                 <strong>Generar reporte</strong>
-                <span>Exportar datos</span>
+                <span>En evaluación · exportar datos</span>
               </div>
             </button>
           </section>
         </div>
 
-        <nav className="app-mobile-nav">
-          <button type="button" className="is-active">
-            <Home size={21} />
+        <nav className="app-mobile-nav" aria-label="Navegación móvil">
+          <button type="button" className="is-active" data-control-state="active">
+            <Home size={23} />
             <span>Inicio</span>
           </button>
 
-          <button type="button">
-            <BriefcaseBusiness size={21} />
+          <button type="button" onClick={() => evaluateControl("cases")} data-control-state="evaluation">
+            <BriefcaseBusiness size={23} />
             <span>Casos</span>
           </button>
 
-          <button type="button" className="app-mobile-plus">
-            <Plus size={27} />
+          <button
+            type="button"
+            className="app-mobile-plus"
+            aria-label="Evaluar creación de caso"
+            onClick={() => evaluateControl("new-case")}
+            data-control-state="evaluation"
+          >
+            <Plus size={29} />
           </button>
 
-          <button type="button">
-            <Activity size={21} />
+          <button type="button" onClick={() => evaluateControl("activity")} data-control-state="evaluation">
+            <Activity size={23} />
             <span>Actividad</span>
           </button>
 
-          <button type="button">
-            <Menu size={21} />
+          <button type="button" onClick={() => evaluateControl("mobile-more")} data-control-state="evaluation">
+            <Menu size={23} />
             <span>Más</span>
           </button>
         </nav>
+
+        {guidedImportOpen ? (
+          <GuidedImportWizard
+            onClose={() => setGuidedImportOpen(false)}
+          />
+        ) : null}
+
+        {evaluatedControl ? (
+          <ControlEvaluationDialog
+            control={evaluatedControl}
+            onClose={() => setEvaluationKey(null)}
+          />
+        ) : null}
       </main>
     </div>
   );
 }
 
 export default function HomePage() {
-  const [theme, setTheme] = useState<ThemeId>("midnight");
-  const { session, loading, signIn, signUp, signOut, resetPassword } =
-    useAppAuth();
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const savedTheme = window.localStorage.getItem(
-        "hms-approved-theme",
-      ) as ThemeId | null;
-
-      if (
-        savedTheme &&
-        THEMES.some((item) => item.id === savedTheme)
-      ) {
-        setTheme(savedTheme);
-      }
-    }, 0);
-
-    return () => window.clearTimeout(timer);
-  }, []);
+  const [theme, setTheme] = useState<ThemeId>("accessible");
+  const {
+    session,
+    loading,
+    passwordRecovery,
+    signIn,
+    signInWithMagicLink,
+    signOut,
+    resetPassword,
+    updatePassword,
+    cancelPasswordRecovery,
+  } = useAppAuth();
 
   useEffect(() => {
     window.localStorage.setItem("hms-approved-theme", theme);
@@ -1043,13 +1820,24 @@ export default function HomePage() {
     );
   }
 
+  if (passwordRecovery) {
+    return (
+      <PasswordRecoveryScreen
+        theme={theme}
+        setTheme={setTheme}
+        onUpdatePassword={updatePassword}
+        onCancel={cancelPasswordRecovery}
+      />
+    );
+  }
+
   if (!session) {
     return (
       <LoginScreen
         theme={theme}
         setTheme={setTheme}
         onSignIn={signIn}
-        onSignUp={signUp}
+        onMagicLink={signInWithMagicLink}
         onResetPassword={resetPassword}
       />
     );

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from datetime import datetime, timezone
 from email.utils import getaddresses
@@ -9,6 +10,7 @@ from fastapi import HTTPException
 
 from app.services.event_engine import create_case_event
 from app.services.learning_engine import register_pattern
+from app.security.identity import require_google_account
 from app.services.oauth_storage import OAuthStorage
 
 
@@ -279,20 +281,8 @@ def _risk_and_priority(
 
 
 def _active_context() -> tuple[OAuthStorage, dict[str, Any]]:
-    storage = OAuthStorage()
-    active = storage.get_active_credentials(provider="google")
-
-    if not active:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "status": "error",
-                "message": "No existe una cuenta Google activa.",
-                "login_url": "/auth/google/login",
-            },
-        )
-
-    return storage, active["account"]
+    _, account = require_google_account()
+    return OAuthStorage(), account
 
 
 def _find_case_for_message(
@@ -709,11 +699,53 @@ def process_message(
 def process_pending_messages(
     *,
     limit: int = 200,
+    account_id: str | None = None,
+    workspace_id: str | None = None,
 ) -> dict[str, Any]:
-    storage, account = _active_context()
+    enabled = os.getenv(
+        "HMS_CASE_ENGINE_ENABLED",
+        "false",
+    ).strip().lower() in {"1", "true", "yes", "on"}
+
+    if not enabled:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "maintenance",
+                "message": (
+                    "El clasificador de casos está temporalmente "
+                    "detenido para evitar nuevos falsos positivos."
+                ),
+            },
+        )
+
+    if account_id is None:
+        storage, account = _active_context()
+        account_id = str(account["id"])
+        workspace_id = str(account["workspace_id"])
+    else:
+        storage = OAuthStorage()
+        account = storage.get_account(account_id)
+        if not account:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "status": "error",
+                    "message": "La cuenta de procesamiento no existe.",
+                },
+            )
+        account_workspace = str(account.get("workspace_id") or "")
+        if workspace_id is not None and account_workspace != workspace_id:
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "status": "forbidden",
+                    "message": "La cuenta no pertenece al workspace indicado.",
+                },
+            )
+        workspace_id = account_workspace
+
     client = storage.client
-    account_id = str(account["id"])
-    workspace_id = str(account["workspace_id"])
     safe_limit = min(max(limit, 1), 500)
 
     response = (

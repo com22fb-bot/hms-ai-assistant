@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "dev": "next dev",
-    "start": "next start",
+    "dev": "next dev --webpack --hostname 0.0.0.0 --port 3000",
+    "dev:webpack": "next dev --webpack --hostname 0.0.0.0 --port 3000",
+    "dev:turbopack": "next dev --hostname 0.0.0.0 --port 3000",
+    "start": "next start --hostname 0.0.0.0 --port 3000",
     "lint": "eslint",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",

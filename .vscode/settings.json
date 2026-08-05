@@ -1,0 +1,19 @@
+{
+  "remote.autoForwardPorts": true,
+  "remote.restoreForwardedPorts": true,
+  "remote.portsAttributes": {
+    "3000": {
+      "label": "HMS Frontend",
+      "onAutoForward": "notify",
+      "protocol": "http"
+    },
+    "8000": {
+      "label": "HMS Backend",
+      "onAutoForward": "silent",
+      "protocol": "http"
+    }
+  },
+  "remote.otherPortsAttributes": {
+    "onAutoForward": "ignore"
+  }
+}

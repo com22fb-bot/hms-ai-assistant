@@ -7,6 +7,8 @@ from fastapi import APIRouter, Query
 from google.oauth2.credentials import Credentials
 
 from app.schemas.gmail import GmailMessagesResponse
+from app.security.identity import require_google_account
+from app.security.mutation_guard import require_data_mutations_enabled
 from app.services.case_engine import process_pending_messages
 from app.services.gmail import list_messages
 from app.services.gmail_full_sync import sync_gmail_page
@@ -51,12 +53,15 @@ def create_gmail_router(
         query: str | None = Query(default=None),
         process_cases: bool = Query(default=True),
     ) -> dict[str, Any]:
+        require_data_mutations_enabled("gmail_sync")
         credentials = get_credentials()
+        _, account = require_google_account()
 
         sync_result = sync_gmail_messages(
             credentials=credentials,
             limit=limit,
             query=query,
+            account_id=str(account["id"]),
         )
 
         result: dict[str, Any] = {
@@ -67,6 +72,8 @@ def create_gmail_router(
         if process_cases:
             result["case_engine"] = process_pending_messages(
                 limit=limit,
+                account_id=str(account["id"]),
+                workspace_id=str(account["workspace_id"]),
             )
 
         return result
@@ -82,13 +89,16 @@ def create_gmail_router(
         query: str | None = Query(default=None),
         process_cases: bool = Query(default=True),
     ) -> dict[str, Any]:
+        require_data_mutations_enabled("gmail_sync_all")
         credentials = get_credentials()
+        _, account = require_google_account()
 
         sync_result = sync_gmail_page(
             credentials=credentials,
             batch_size=batch_size,
             page_token=page_token,
             query=query,
+            account_id=str(account["id"]),
         )
 
         result: dict[str, Any] = {
@@ -99,6 +109,8 @@ def create_gmail_router(
         if process_cases:
             result["case_engine"] = process_pending_messages(
                 limit=batch_size,
+                account_id=str(account["id"]),
+                workspace_id=str(account["workspace_id"]),
             )
 
         return result

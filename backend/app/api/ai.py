@@ -11,6 +11,7 @@ from typing import Any
 
 from fastapi import APIRouter, Query
 
+from app.security.mutation_guard import require_data_mutations_enabled
 from app.services.ai_analyzer import analyze_pending_messages
 
 
@@ -35,6 +36,7 @@ def analyze_pending(
         ),
     ),
 ) -> dict[str, Any]:
+    require_data_mutations_enabled("ai_analysis")
     return analyze_pending_messages(
         limit=limit,
     )

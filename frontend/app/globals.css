@@ -2186,3 +2186,5 @@ button:disabled {
     justify-content: center;
   }
 }
+
+.app-quick-actions{position:relative!important;z-index:99999!important;pointer-events:auto!important}.app-quick-actions button{pointer-events:auto!important;cursor:pointer!important}

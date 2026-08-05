@@ -42,7 +42,10 @@ function translateAuthError(message: string): string {
   const normalized = message.toLowerCase();
 
   if (normalized.includes("invalid login credentials")) {
-    return "El correo o la contraseña no son correctos.";
+    return (
+      "La contraseña de tu cuenta HMS no coincide. " +
+      "No tiene que ser la misma contraseña de Yahoo, Gmail u otro buzón."
+    );
   }
 
   if (normalized.includes("email not confirmed")) {
@@ -50,11 +53,34 @@ function translateAuthError(message: string): string {
   }
 
   if (normalized.includes("user already registered")) {
-    return "Ya existe una cuenta con ese correo.";
+    return "Ya existe una cuenta HMS con ese correo.";
   }
 
-  if (normalized.includes("password")) {
-    return "La contraseña no cumple los requisitos de seguridad.";
+  if (
+    normalized.includes("rate limit") ||
+    normalized.includes("security purposes")
+  ) {
+    return (
+      "Se hicieron demasiadas solicitudes seguidas. " +
+      "Espera un momento antes de volver a intentarlo."
+    );
+  }
+
+  if (
+    normalized.includes("same password") ||
+    normalized.includes("different from the old password")
+  ) {
+    return "La nueva contraseña debe ser diferente de la anterior.";
+  }
+
+  if (
+    normalized.includes("password") ||
+    normalized.includes("weak")
+  ) {
+    return (
+      "La contraseña HMS debe tener al menos 8 caracteres " +
+      "y cumplir los requisitos de seguridad."
+    );
   }
 
   return message;
@@ -64,6 +90,8 @@ export function useAppAuth() {
   const [rawSession, setRawSession] =
     useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [passwordRecovery, setPasswordRecovery] =
+    useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -83,8 +111,17 @@ export function useAppAuth() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
       setRawSession(nextSession);
+
+      if (event === "PASSWORD_RECOVERY") {
+        setPasswordRecovery(true);
+      }
+
+      if (event === "SIGNED_OUT") {
+        setPasswordRecovery(false);
+      }
+
       setLoading(false);
     });
 
@@ -108,32 +145,19 @@ export function useAppAuth() {
     [],
   );
 
-  const signUp = useCallback(
-    async (
-      email: string,
-      password: string,
-      fullName: string,
-    ) => {
-      const { data, error } = await supabase.auth.signUp({
+  const signInWithMagicLink = useCallback(
+    async (email: string) => {
+      const { error } = await supabase.auth.signInWithOtp({
         email,
-        password,
         options: {
-          data: {
-            full_name: fullName,
-            locale: "es-MX",
-            timezone: "America/Chihuahua",
-          },
-          emailRedirectTo: window.location.origin,
+          shouldCreateUser: false,
+          emailRedirectTo: `${window.location.origin}/`,
         },
       });
 
       if (error) {
         throw new Error(translateAuthError(error.message));
       }
-
-      return {
-        requiresConfirmation: !data.session,
-      };
     },
     [],
   );
@@ -145,6 +169,31 @@ export function useAppAuth() {
         redirectTo: `${window.location.origin}/`,
       },
     );
+
+    if (error) {
+      throw new Error(translateAuthError(error.message));
+    }
+  }, []);
+
+  const updatePassword = useCallback(
+    async (newPassword: string) => {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (error) {
+        throw new Error(translateAuthError(error.message));
+      }
+
+      setPasswordRecovery(false);
+    },
+    [],
+  );
+
+  const cancelPasswordRecovery = useCallback(async () => {
+    setPasswordRecovery(false);
+
+    const { error } = await supabase.auth.signOut();
 
     if (error) {
       throw new Error(translateAuthError(error.message));
@@ -167,9 +216,12 @@ export function useAppAuth() {
   return {
     session,
     loading,
+    passwordRecovery,
     signIn,
-    signUp,
+    signInWithMagicLink,
     signOut,
     resetPassword,
+    updatePassword,
+    cancelPasswordRecovery,
   };
 }

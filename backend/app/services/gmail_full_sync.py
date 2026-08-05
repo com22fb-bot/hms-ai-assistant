@@ -18,6 +18,7 @@ from app.services.gmail_sync import (
     _to_iso,
     _utc_now,
 )
+from app.security.identity import require_google_account
 from app.services.oauth_storage import OAuthStorage
 
 
@@ -87,6 +88,7 @@ def sync_gmail_page(
     batch_size: int = 50,
     page_token: str | None = None,
     query: str | None = None,
+    account_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Sincroniza una página de Gmail.
@@ -98,22 +100,19 @@ def sync_gmail_page(
     safe_batch_size = min(max(batch_size, 1), 100)
     storage = OAuthStorage()
 
-    active_connection = storage.get_active_credentials(
-        provider="google"
-    )
+    if account_id is None:
+        _, account = require_google_account()
+    else:
+        account = storage.get_account(account_id)
+        if not account:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "status": "error",
+                    "message": "La cuenta Google de sincronización no existe.",
+                },
+            )
 
-    if not active_connection:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "status": "error",
-                "connected": False,
-                "message": "No existe una cuenta Google activa.",
-                "login_url": "/auth/google/login",
-            },
-        )
-
-    account = active_connection["account"]
     account_id = str(account["id"])
     client = storage.client
     started_at = _utc_now()

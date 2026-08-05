@@ -4,6 +4,7 @@ from typing import Any
 
 from fastapi import HTTPException
 
+from app.security.identity import require_google_account
 from app.services.oauth_storage import OAuthStorage
 
 
@@ -24,20 +25,8 @@ def _rows(response: Any) -> list[dict[str, Any]]:
 
 
 def _active_context() -> tuple[OAuthStorage, dict[str, Any]]:
-    storage = OAuthStorage()
-    active = storage.get_active_credentials(provider="google")
-
-    if not active:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "status": "error",
-                "message": "No existe una cuenta Google activa.",
-                "login_url": "/auth/google/login",
-            },
-        )
-
-    return storage, active["account"]
+    _, account = require_google_account()
+    return OAuthStorage(), account
 
 
 def list_stored_messages(

@@ -315,6 +315,9 @@ class OAuthStorage:
         self,
         provider: str,
         ttl_minutes: int = 10,
+        profile_id: str | UUID | None = None,
+        workspace_id: str | UUID | None = None,
+        return_to: str | None = None,
     ) -> str:
         """
         Crea y persiste un estado OAuth.
@@ -336,15 +339,24 @@ class OAuthStorage:
         hashed_state = _state_hash(raw_state)
         expires_at = _utc_now() + timedelta(minutes=ttl_minutes)
 
+        payload: dict[str, Any] = {
+            "state": hashed_state,
+            "provider": normalized_provider,
+            "expires_at": _to_iso(expires_at),
+        }
+
+        if profile_id is not None:
+            payload["profile_id"] = str(profile_id)
+
+        if workspace_id is not None:
+            payload["workspace_id"] = str(workspace_id)
+
+        if return_to:
+            payload["return_to"] = return_to.strip()[:2000]
+
         response = (
             self.client.table("oauth_states")
-            .insert(
-                {
-                    "state": hashed_state,
-                    "provider": normalized_provider,
-                    "expires_at": _to_iso(expires_at),
-                }
-            )
+            .insert(payload)
             .execute()
         )
 
@@ -359,7 +371,7 @@ class OAuthStorage:
         self,
         raw_state: str,
         provider: str,
-    ) -> bool:
+    ) -> dict[str, Any]:
         """
         Valida y elimina un estado OAuth.
 
@@ -402,7 +414,7 @@ class OAuthStorage:
         if expires_at is None or expires_at <= _utc_now():
             raise OAuthStateError("El estado OAuth expiró.")
 
-        return True
+        return row
 
     def delete_expired_oauth_states(self) -> int:
         now_iso = _to_iso(_utc_now())
@@ -430,6 +442,7 @@ class OAuthStorage:
         display_name: str | None = None,
         avatar_url: str | None = None,
         workspace_id: str | UUID | None = None,
+        connected_by_profile_id: str | UUID | None = None,
         status: str = "active",
     ) -> dict[str, Any]:
         normalized_provider = _normalize_provider(provider)
@@ -442,8 +455,9 @@ class OAuthStorage:
             )
 
         if workspace_id is None:
-            workspace = self.get_or_create_default_workspace()
-            workspace_id = workspace["id"]
+            raise OAuthStorageError(
+                "workspace_id es obligatorio para guardar una cuenta OAuth."
+            )
 
         existing_response = (
             self.client.table("communication_accounts")
@@ -466,6 +480,11 @@ class OAuthStorage:
             "display_name": display_name,
             "avatar_url": avatar_url,
             "status": status,
+            "connected_by_profile_id": (
+                str(connected_by_profile_id)
+                if connected_by_profile_id is not None
+                else None
+            ),
         }
 
         if existing:
@@ -519,8 +538,14 @@ class OAuthStorage:
         provider: str,
         email: str | None = None,
         phone: str | None = None,
+        workspace_id: str | UUID | None = None,
     ) -> dict[str, Any] | None:
         normalized_provider = _normalize_provider(provider)
+
+        if workspace_id is None:
+            raise OAuthStorageError(
+                "workspace_id es obligatorio para buscar una cuenta activa."
+            )
 
         query = (
             self.client.table("communication_accounts")
@@ -528,6 +553,9 @@ class OAuthStorage:
             .eq("provider", normalized_provider)
             .eq("status", "active")
         )
+
+        if workspace_id is not None:
+            query = query.eq("workspace_id", str(workspace_id))
 
         if email:
             query = query.eq("email", email)
@@ -547,6 +575,7 @@ class OAuthStorage:
         self,
         provider: str | None = None,
         include_disconnected: bool = False,
+        workspace_id: str | UUID | None = None,
     ) -> list[dict[str, Any]]:
         query = self.client.table("communication_accounts").select("*")
 
@@ -555,6 +584,9 @@ class OAuthStorage:
                 "provider",
                 _normalize_provider(provider),
             )
+
+        if workspace_id is not None:
+            query = query.eq("workspace_id", str(workspace_id))
 
         if not include_disconnected:
             query = query.eq("status", "active")
@@ -707,11 +739,13 @@ class OAuthStorage:
         provider: str,
         email: str | None = None,
         phone: str | None = None,
+        workspace_id: str | UUID | None = None,
     ) -> dict[str, Any] | None:
         account = self.get_active_account(
             provider=provider,
             email=email,
             phone=phone,
+            workspace_id=workspace_id,
         )
 
         if not account:

@@ -27,6 +27,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from app.security.identity import require_google_account
 from app.services.oauth_storage import OAuthStorage
 
 
@@ -433,6 +434,7 @@ def sync_gmail_messages(
     credentials: Credentials,
     limit: int = 100,
     query: str | None = None,
+    account_id: str | None = None,
 ) -> dict[str, Any]:
     """
     Sincroniza mensajes desde Gmail hacia Supabase.
@@ -449,24 +451,19 @@ def sync_gmail_messages(
 
     storage = OAuthStorage()
 
-    active_connection = storage.get_active_credentials(
-        provider="google"
-    )
+    if account_id is None:
+        _, account = require_google_account()
+    else:
+        account = storage.get_account(account_id)
+        if not account:
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "status": "error",
+                    "message": "La cuenta Google de sincronización no existe.",
+                },
+            )
 
-    if not active_connection:
-        raise HTTPException(
-            status_code=401,
-            detail={
-                "status": "error",
-                "connected": False,
-                "message": (
-                    "No existe una cuenta Google activa."
-                ),
-                "login_url": "/auth/google/login",
-            },
-        )
-
-    account = active_connection["account"]
     account_id = str(account["id"])
     client = storage.client
 

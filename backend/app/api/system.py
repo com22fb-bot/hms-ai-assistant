@@ -14,12 +14,18 @@ router = APIRouter(
 
 
 @router.get("/health")
-def health() -> dict[str, str]:
-    """Confirma que el backend está funcionando."""
+def health() -> dict[str, Any]:
+    """Confirma disponibilidad y estado de contención."""
     return {
         "status": "ok",
         "service": "backend",
         "version": settings.app_version,
+        "data_mutations_enabled": settings.data_mutations_enabled,
+        "data_mode": (
+            "read_write"
+            if settings.data_mutations_enabled
+            else "inventory_read_only"
+        ),
     }
 
 

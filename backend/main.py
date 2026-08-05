@@ -13,9 +13,15 @@ from app.api.auth import (
 )
 from app.api.cases import router as cases_router
 from app.api.gmail import create_gmail_router
+from app.api.guided_import import router as guided_import_router
+from app.api.identity import router as identity_router
 from app.api.messages import router as messages_router
 from app.api.system import router as system_router
+from app.api.sync_jobs import router as sync_jobs_router
 from app.core.config import settings
+from app.middleware.authentication_context import AuthenticationContextMiddleware
+from app.middleware.incident_logging import IncidentLoggingMiddleware
+from app.services.gmail_sync_job_service import resume_incomplete_jobs
 
 
 app = FastAPI(
@@ -35,6 +41,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+app.add_middleware(AuthenticationContextMiddleware)
+app.add_middleware(IncidentLoggingMiddleware)
+
+
+@app.on_event("startup")
+def resume_durable_gmail_sync_jobs() -> None:
+    """Recupera trabajos solo cuando las mutaciones están habilitadas."""
+    if settings.data_mutations_enabled:
+        resume_incomplete_jobs()
 
 
 @app.get("/")
@@ -139,8 +156,11 @@ gmail_router = create_gmail_router(
 )
 
 app.include_router(system_router)
+app.include_router(identity_router)
 app.include_router(ai_router)
 app.include_router(auth_router)
 app.include_router(gmail_router)
+app.include_router(guided_import_router)
+app.include_router(sync_jobs_router)
 app.include_router(messages_router)
 app.include_router(cases_router)
