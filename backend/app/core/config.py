@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from dataclasses import dataclass, field
 
 from dotenv import load_dotenv
 
 
 load_dotenv()
+HMS_PUSH_ENV_PATH = Path(__file__).resolve().parents[3] / '.hms-secrets' / 'push.env'
+if HMS_PUSH_ENV_PATH.exists():
+    load_dotenv(HMS_PUSH_ENV_PATH, override=False)
 
 
 def get_environment_variable(

@@ -363,6 +363,25 @@ export function useCases(enabled = true) {
     };
   }, [activeJobId, enabled, loadDashboard]);
 
+  useEffect(() => {
+    if (!enabled) return;
+    const refresh = () => {
+      void loadDashboard();
+    };
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") {
+        void loadDashboard();
+      }
+    }, 30000);
+    window.addEventListener("hms:data-changed", refresh);
+    window.addEventListener("hms:classification-complete", refresh);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener("hms:data-changed", refresh);
+      window.removeEventListener("hms:classification-complete", refresh);
+    };
+  }, [enabled, loadDashboard]);
+
   const filteredCases = useMemo(() => {
     const normalized = search.trim().toLowerCase();
 

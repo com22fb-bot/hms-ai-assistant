@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import {
-  Check,
-  GitCompareArrows,
-  Info,
+  AlertTriangle,
+  CheckCircle2,
+  Clock3,
+  Inbox,
   LoaderCircle,
   Mail,
   RefreshCw,
@@ -12,221 +13,228 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { hmsJson } from "@/lib/hmsApi";
 
 
-type Category = {
+type Breakdown = {
   key: string;
-  label: string;
   count: number;
-  count_source: "profile" | "label" | "query_estimate";
-  sensitive: boolean;
 };
 
 type Inventory = {
   email: string;
-  messages_total: number;
-  threads_total: number;
-  categories: Category[];
+  provider_label: string;
+  eligible_messages: number;
+  period_start_local: string;
+  period_end_local: string;
+  timezone: string;
+  breakdown: Breakdown[];
+  excluded: {
+    drafts: number;
+    spam: number;
+    trash: number;
+  };
   notice: string;
 };
 
-type Preview = {
-  selected: string[];
-  query: string;
-  unique_estimate: number;
-  notice: string;
+type ImportProgress = {
+  expected: number;
+  found: number;
+  downloaded: number;
+  duplicates: number;
+  classified: number;
+  created_cases: number;
+  linked_cases: number;
+  without_case: number;
+  errors: number;
+  download_percent: number;
+  classification_percent: number;
+  categories: Record<string, number>;
 };
 
-type Comparison = {
+type ImportStatus = {
   status: string;
-  mode: "read_only_comparison";
-  snapshot_at: string;
+  guided_import_enabled: boolean;
+  provider: string;
   email: string;
-  history_id: string;
-  account_id: string;
-  gmail: {
-    profile_total: number;
-    listed_rows: number;
-    unique_ids: number;
-    profile_matches_list: boolean;
-    duplicate_ids: string[];
-  };
-  hms: {
-    stored_rows: number;
-    unique_ids: number;
-    duplicate_ids: string[];
-  };
-  comparison: {
-    present_in_both: number;
-    missing_in_hms: number;
-    only_in_hms: number;
-  };
-  ids: {
-    missing_in_hms: string[];
-    only_in_hms: string[];
-    duplicate_in_gmail: string[];
-    duplicate_in_hms: string[];
-  };
-  notice: string;
+  needs_initial_import: boolean;
+  initial_import_complete: boolean;
+  phase:
+    | "initial_review"
+    | "downloading"
+    | "classifying"
+    | "ready"
+    | "failed";
+  active: Record<string, unknown> | null;
+  latest: Record<string, unknown> | null;
+  progress: ImportProgress;
+  message: string;
 };
 
 const API = "/api/hms/gmail/import";
 
-function readableError(reason: unknown, fallback: string) {
+const LABELS: Record<string, string> = {
+  received: "Recibidos",
+  sent: "Enviados",
+  unread: "No leídos",
+  important: "Importantes",
+  updates: "Actualizaciones",
+  promotions: "Promociones",
+  social: "Social",
+  forums: "Foros",
+  action_required: "Requieren atención",
+  critical_action: "Críticos",
+  case_followup: "Seguimientos de casos",
+  informational: "Informativos",
+  automated: "Automatizados",
+  promotional: "Promocionales",
+};
+
+function readableError(reason: unknown, fallback: string): string {
   return reason instanceof Error ? reason.message : fallback;
+}
+
+function formatLocalDate(value: string): string {
+  return new Intl.DateTimeFormat("es-MX", {
+    dateStyle: "medium",
+  }).format(new Date(value));
 }
 
 export function GuidedImportWizard({
   onClose,
+  onComplete,
 }: {
   onClose: () => void;
+  onComplete: () => void;
 }) {
+  const [status, setStatus] = useState<ImportStatus | null>(null);
   const [inventory, setInventory] = useState<Inventory | null>(null);
-  const [selected, setSelected] = useState<string[]>([]);
-  const [preview, setPreview] = useState<Preview | null>(null);
-  const [comparison, setComparison] = useState<Comparison | null>(null);
-  const [loadingInventory, setLoadingInventory] = useState(false);
-  const [calculating, setCalculating] = useState(false);
-  const [comparing, setComparing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const processingSeen = useRef(false);
+  const completionSent = useRef(false);
+
+  async function loadStatus(): Promise<ImportStatus> {
+    const data = await hmsJson<ImportStatus>(
+      `${API}/status`,
+      { cache: "no-store" },
+    );
+    setStatus(data);
+    return data;
+  }
 
   async function loadInventory() {
-    setLoadingInventory(true);
-    setError(null);
-
-    try {
-      const data = await hmsJson<Inventory>(
-        `${API}/inventory`,
-        { cache: "no-store" },
-      );
-      setInventory(data);
-      setSelected([]);
-      setPreview(null);
-      setComparison(null);
-    } catch (reason) {
-      setError(
-        readableError(
-          reason,
-          "No fue posible contar el buzón de Gmail.",
-        ),
-      );
-    } finally {
-      setLoadingInventory(false);
-    }
-  }
-
-  function toggle(key: string) {
-    setPreview(null);
-
-    if (key === "all") {
-      setSelected((current) =>
-        current.includes("all") ? [] : ["all"],
-      );
-      return;
-    }
-
-    setSelected((current) =>
-      current.includes(key)
-        ? current.filter((item) => item !== key)
-        : [
-            ...current.filter((item) => item !== "all"),
-            key,
-          ],
+    const data = await hmsJson<Inventory>(
+      `${API}/inventory`,
+      { cache: "no-store" },
     );
+    setInventory(data);
   }
 
-  async function calculatePreview() {
-    setCalculating(true);
-    setError(null);
+  useEffect(() => {
+    let cancelled = false;
 
-    try {
-      if (selected.includes("all")) {
-        if (!inventory) {
-          throw new Error(
-            "El inventario todavía no está disponible.",
+    async function initialize() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const current = await loadStatus();
+        if (
+          !cancelled
+          && current.needs_initial_import
+          && !current.active
+        ) {
+          await loadInventory();
+        }
+      } catch (reason) {
+        if (!cancelled) {
+          setError(
+            readableError(
+              reason,
+              "No fue posible preparar la importación inicial.",
+            ),
           );
         }
-
-        setPreview({
-          selected: ["all"],
-          query: "in:anywhere",
-          unique_estimate: inventory.messages_total,
-          notice:
-            "Conteo total exacto reportado por Gmail.",
-        });
-        return;
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
-
-      const data = await hmsJson<Preview>(
-        `${API}/preview`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ categories: selected }),
-        },
-      );
-      setPreview(data);
-    } catch (reason) {
-      setError(
-        readableError(
-          reason,
-          "No fue posible calcular la selección única.",
-        ),
-      );
-    } finally {
-      setCalculating(false);
     }
-  }
 
-  async function compareWithHms() {
-    setComparing(true);
-    setError(null);
+    void initialize();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-    try {
-      const data = await hmsJson<Comparison>(
-        `${API}/compare`,
-        { cache: "no-store" },
-      );
-      setComparison(data);
-    } catch (reason) {
-      setError(
-        readableError(
-          reason,
-          "No fue posible comparar Gmail con HMS.",
-        ),
-      );
-    } finally {
-      setComparing(false);
-    }
-  }
-
-  function saveComparisonReport() {
-    if (!comparison) {
+  useEffect(() => {
+    if (!status?.active) {
       return;
     }
 
-    const blob = new Blob(
-      [JSON.stringify(comparison, null, 2)],
-      { type: "application/json" },
-    );
-    const href = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    const stamp = comparison.snapshot_at
-      .replace(/[:.]/g, "-")
-      .replace(/\+00:00$/, "Z");
+    processingSeen.current = true;
+    const timer = window.setInterval(() => {
+      void loadStatus().catch((reason) => {
+        setError(
+          readableError(
+            reason,
+            "No fue posible actualizar el progreso.",
+          ),
+        );
+      });
+    }, 1500);
 
-    anchor.href = href;
-    anchor.download = `hms-comparador-gmail-${stamp}.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(href);
+    return () => window.clearInterval(timer);
+  }, [status?.active]);
+
+  useEffect(() => {
+    if (
+      !status
+      || status.phase !== "ready"
+      || !processingSeen.current
+      || completionSent.current
+    ) {
+      return;
+    }
+
+    completionSent.current = true;
+    const timer = window.setTimeout(onComplete, 2200);
+    return () => window.clearTimeout(timer);
+  }, [status, onComplete]);
+
+  async function start(mode: "initial" | "incremental") {
+    setStarting(true);
+    setError(null);
+    completionSent.current = false;
+    processingSeen.current = true;
+
+    try {
+      await hmsJson(`${API}/start`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ mode }),
+      });
+      await loadStatus();
+    } catch (reason) {
+      setError(
+        readableError(
+          reason,
+          "No fue posible iniciar la descarga.",
+        ),
+      );
+    } finally {
+      setStarting(false);
+    }
   }
+
+  const progress = status?.progress;
 
   return (
     <div
@@ -240,255 +248,263 @@ export function GuidedImportWizard({
           className="hms-import-close"
           type="button"
           onClick={onClose}
-          aria-label="Cerrar inventario"
+          aria-label="Cerrar"
         >
           <X size={22} />
         </button>
 
-        <div className="hms-import-hero">
-          <Image
-            src="/hms-import-robot.png"
-            alt="Robot HMS organizando documentos en una laptop"
-            width={1536}
-            height={1024}
-            priority
-            sizes="(max-width: 720px) 100vw, 420px"
-          />
-
-          <div>
-            <span>INVENTARIO PREVIO A LA IMPORTACIÓN</span>
-            <h2 id="hms-import-title">
-              Primero revisamos. Después tú decides.
-            </h2>
+        {loading ? (
+          <div className="hms-logistics-loading">
+            <LoaderCircle className="app-spin" size={38} />
+            <h2>Preparando tu correo</h2>
             <p>
-              HMS contará el buzón y calculará una selección sin
-              importar, borrar, archivar ni modificar correos.
+              HMS está verificando el estado de la cuenta y contando
+              el historial disponible.
             </p>
-          </div>
-        </div>
-
-        {!inventory ? (
-          <div className="hms-import-empty">
-            <ShieldCheck size={34} />
-            <h3>Revisión segura del buzón</h3>
-            <p>
-              La consulta utiliza la conexión autorizada con Google.
-              HMS nunca solicitará la contraseña de Gmail.
-            </p>
-            <button
-              type="button"
-              disabled={loadingInventory}
-              onClick={() => void loadInventory()}
-            >
-              {loadingInventory ? (
-                <LoaderCircle className="app-spin" size={20} />
-              ) : (
-                <RefreshCw size={20} />
-              )}
-              {loadingInventory
-                ? "Contando registros…"
-                : "Contar mi buzón"}
-            </button>
           </div>
         ) : null}
 
         {error ? (
           <div className="hms-import-error" role="alert">
-            {error}
+            <AlertTriangle size={20} />
+            <span>{error}</span>
           </div>
         ) : null}
 
-        {inventory ? (
+        {!loading
+        && status?.needs_initial_import
+        && !status.active
+        && inventory ? (
           <>
-            <div className="hms-import-account">
-              <Mail size={18} />
+            <div className="hms-import-hero">
+              <Image
+                src="/hms-import-robot.png"
+                alt="Robot HMS trasladando correo de un maletero a una laptop"
+                width={1536}
+                height={1024}
+                priority
+                sizes="(max-width: 760px) 100vw, 430px"
+              />
+
               <div>
-                <strong>{inventory.email}</strong>
-                <span>
-                  {inventory.messages_total.toLocaleString()} mensajes
-                  {" · "}
-                  {inventory.threads_total.toLocaleString()} conversaciones
-                </span>
+                <span>LOGÍSTICA 1 · PRIMERA DESCARGA</span>
+                <h2 id="hms-import-title">
+                  Tu historial de seis meses está listo.
+                </h2>
+                <p>
+                  HMS descargará todos los mensajes elegibles y después
+                  los clasificará automáticamente.
+                </p>
               </div>
             </div>
 
-            <div className="hms-import-comparator-actions">
-              <button
-                type="button"
-                disabled={comparing}
-                onClick={() => void compareWithHms()}
-              >
-                {comparing ? (
-                  <LoaderCircle className="app-spin" size={19} />
-                ) : (
-                  <GitCompareArrows size={19} />
-                )}
-                {comparing
-                  ? "Comparando identificadores…"
-                  : comparison
-                    ? "Repetir comparación"
-                    : "Comparar Gmail con HMS"}
-              </button>
+            <section className="hms-import-summary">
+              <div>
+                <Mail size={22} />
+                <span>Cuenta conectada</span>
+                <strong>{inventory.email}</strong>
+              </div>
+              <div>
+                <Clock3 size={22} />
+                <span>Periodo</span>
+                <strong>
+                  {formatLocalDate(inventory.period_start_local)}
+                  {" – "}
+                  {formatLocalDate(inventory.period_end_local)}
+                </strong>
+              </div>
+              <div className="is-primary">
+                <Inbox size={22} />
+                <span>Mensajes que se descargarán</span>
+                <strong>
+                  {inventory.eligible_messages.toLocaleString()}
+                </strong>
+              </div>
+            </section>
 
-              {comparison ? (
-                <button
-                  type="button"
-                  className="secondary"
-                  onClick={saveComparisonReport}
-                >
-                  Guardar reporte JSON
-                </button>
-              ) : null}
-            </div>
-
-            {comparison ? (
-              <section className="hms-import-comparison" aria-live="polite">
-                <header>
-                  <div>
-                    <span>COMPARACIÓN POR IDENTIFICADORES ÚNICOS</span>
-                    <h3>Gmail frente a HMS</h3>
-                  </div>
-                  <small>
-                    {new Date(comparison.snapshot_at).toLocaleString()}
-                  </small>
-                </header>
-
-                <div className="hms-import-comparison-grid">
-                  <article>
-                    <span>Gmail reportado</span>
-                    <strong>
-                      {comparison.gmail.profile_total.toLocaleString()}
-                    </strong>
-                    <small>
-                      {comparison.gmail.profile_matches_list
-                        ? "Coincide con la lista completa"
-                        : `La lista devolvió ${comparison.gmail.unique_ids.toLocaleString()} IDs`}
-                    </small>
-                  </article>
-
-                  <article>
-                    <span>Almacenados en HMS</span>
-                    <strong>
-                      {comparison.hms.unique_ids.toLocaleString()}
-                    </strong>
-                    <small>IDs únicos existentes</small>
-                  </article>
-
-                  <article>
-                    <span>Presentes en ambos</span>
-                    <strong>
-                      {comparison.comparison.present_in_both.toLocaleString()}
-                    </strong>
-                    <small>Coincidencias exactas</small>
-                  </article>
-
-                  <article className="is-warning">
-                    <span>Faltan en HMS</span>
-                    <strong>
-                      {comparison.comparison.missing_in_hms.toLocaleString()}
-                    </strong>
-                    <small>Serían candidatos para importar</small>
-                  </article>
-
-                  <article className="is-neutral">
-                    <span>Solo existen en HMS</span>
-                    <strong>
-                      {comparison.comparison.only_in_hms.toLocaleString()}
-                    </strong>
-                    <small>No se borrarán automáticamente</small>
-                  </article>
-
-                  <article>
-                    <span>Duplicados HMS</span>
-                    <strong>
-                      {comparison.ids.duplicate_in_hms.length.toLocaleString()}
-                    </strong>
-                    <small>Por ID externo de Gmail</small>
-                  </article>
-                </div>
-
-                <p>{comparison.notice}</p>
-              </section>
-            ) : null}
-
-            <div className="hms-import-grid">
-              {inventory.categories.map((category) => (
-                <label
-                  key={category.key}
-                  className={[
-                    selected.includes(category.key)
-                      ? "is-selected"
-                      : "",
-                    category.sensitive
-                      ? "is-sensitive"
-                      : "",
-                  ].filter(Boolean).join(" ")}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(category.key)}
-                    onChange={() => toggle(category.key)}
-                  />
-
-                  <span className="hms-import-check">
-                    {selected.includes(category.key) ? (
-                      <Check size={16} />
-                    ) : null}
-                  </span>
-
-                  <span>
-                    <strong>{category.label}</strong>
-                    <small>
-                      {category.sensitive
-                        ? "Contenido sensible · "
-                        : ""}
-                      {category.count_source === "query_estimate"
-                        ? "Estimación de Gmail"
-                        : "Conteo reportado por Gmail"}
-                    </small>
-                  </span>
-
-                  <b>{category.count.toLocaleString()}</b>
-                </label>
+            <div className="hms-import-breakdown">
+              {inventory.breakdown.map((item) => (
+                <article key={item.key}>
+                  <span>{LABELS[item.key] ?? item.key}</span>
+                  <strong>{item.count.toLocaleString()}</strong>
+                </article>
               ))}
             </div>
 
-            <div className="hms-import-notice">
-              <Sparkles size={20} />
-              <p>
-                La primera importación traerá únicamente lo aprobado.
-                Después HMS sincronizará mensajes nuevos y evitará
-                duplicados. Esa importación todavía está bloqueada.
-              </p>
-            </div>
-
-            {preview ? (
-              <div className="hms-import-preview">
+            <section className="hms-import-exclusions">
+              <ShieldCheck size={22} />
+              <div>
+                <strong>Exclusiones automáticas</strong>
                 <span>
-                  {preview.selected.includes("all")
-                    ? "Total exacto seleccionado"
-                    : "Total único estimado"}
+                  Borradores {inventory.excluded.drafts.toLocaleString()}
+                  {" · "}Spam {inventory.excluded.spam.toLocaleString()}
+                  {" · "}Papelera {inventory.excluded.trash.toLocaleString()}
                 </span>
-                <strong>
-                  {preview.unique_estimate.toLocaleString()}
-                </strong>
                 <small>
-                  {preview.selected.includes("all")
-                    ? "Este total corresponde al conteo completo reportado por Gmail."
-                    : "Los mensajes presentes en varias categorías se cuentan una sola vez. Esta cifra es la estimación reportada por Gmail."}
+                  HMS no borrará, archivará, marcará ni modificará
+                  mensajes en el proveedor.
                 </small>
               </div>
-            ) : null}
+            </section>
 
-            <div className="hms-import-review-lock">
-              <Info size={20} />
-              <div>
-                <strong>Importación bloqueada por seguridad</strong>
+            <div className="hms-import-actions">
+              <button
+                type="button"
+                className="secondary"
+                onClick={onClose}
+              >
+                Cancelar por ahora
+              </button>
+              <button
+                type="button"
+                disabled={starting}
+                onClick={() => void start("initial")}
+              >
+                {starting ? (
+                  <LoaderCircle className="app-spin" size={20} />
+                ) : (
+                  <Sparkles size={20} />
+                )}
+                {starting
+                  ? "Iniciando…"
+                  : `Descargar y clasificar ${inventory.eligible_messages.toLocaleString()} mensajes`}
+              </button>
+            </div>
+          </>
+        ) : null}
+
+        {!loading && status?.active && progress ? (
+          <section className="hms-processing">
+            <header>
+              <span>LOGÍSTICA 1 EN PROCESO</span>
+              <h2 id="hms-import-title">
+                {status.phase === "classifying"
+                  ? "Organizando tus pendientes"
+                  : "Descargando tu correo"}
+              </h2>
+              <p>
+                El proceso continúa aunque cierres esta pantalla.
+                No vuelvas a iniciar otra descarga.
+              </p>
+            </header>
+
+            <div className="hms-processing-robot" aria-hidden="true">
+              <Image
+                src="/hms-import-robot.png"
+                alt=""
+                width={1536}
+                height={1024}
+                priority
+                sizes="(max-width: 760px) 94vw, 760px"
+              />
+            </div>
+
+            <div className="hms-progress-block">
+              <div className="hms-progress-heading">
+                <span>Descarga</span>
+                <strong>
+                  {progress.downloaded.toLocaleString()}
+                  {" de "}
+                  {progress.expected
+                    ? progress.expected.toLocaleString()
+                    : "…"}
+                </strong>
+              </div>
+              <div className="hms-progress-track">
+                <span
+                  style={{
+                    width: `${progress.download_percent}%`,
+                  }}
+                />
+              </div>
+              <small>{progress.download_percent}% completado</small>
+            </div>
+
+            <div className="hms-progress-block">
+              <div className="hms-progress-heading">
+                <span>Clasificación</span>
+                <strong>
+                  {progress.classified.toLocaleString()}
+                  {" analizados"}
+                </strong>
+              </div>
+              <div className="hms-progress-track is-classification">
+                <span
+                  style={{
+                    width: `${progress.classification_percent}%`,
+                  }}
+                />
+              </div>
+              <small>
+                {progress.created_cases.toLocaleString()} casos nuevos
+                {" · "}
+                {progress.without_case.toLocaleString()} sin caso
+              </small>
+            </div>
+
+            <div className="hms-live-categories">
+              {Object.entries(progress.categories).map(
+                ([key, value]) => (
+                  <article key={key}>
+                    <span>{LABELS[key] ?? key}</span>
+                    <strong>{value.toLocaleString()}</strong>
+                  </article>
+                ),
+              )}
+            </div>
+
+            {progress.errors > 0 ? (
+              <div className="hms-import-error">
+                <AlertTriangle size={20} />
                 <span>
-                  Revisaremos estos conteos antes de limpiar datos
-                  históricos o iniciar cualquier importación.
+                  Se registraron {progress.errors} incidencias.
+                  HMS continuará con los mensajes restantes.
                 </span>
               </div>
+            ) : null}
+          </section>
+        ) : null}
+
+        {!loading
+        && status?.initial_import_complete
+        && !status.active
+        && status.phase === "ready" ? (
+          <section className="hms-import-ready">
+            <CheckCircle2 size={48} />
+            <span>CORREO PREPARADO</span>
+            <h2 id="hms-import-title">
+              Tu primera descarga ya está completa.
+            </h2>
+            <p>
+              A partir de ahora HMS descargará únicamente mensajes
+              nuevos y volverá al dashboard al terminar.
+            </p>
+
+            <div className="hms-ready-stats">
+              <article>
+                <span>Descargados</span>
+                <strong>
+                  {status.progress.downloaded.toLocaleString()}
+                </strong>
+              </article>
+              <article>
+                <span>Clasificados</span>
+                <strong>
+                  {status.progress.classified.toLocaleString()}
+                </strong>
+              </article>
+              <article>
+                <span>Casos nuevos</span>
+                <strong>
+                  {status.progress.created_cases.toLocaleString()}
+                </strong>
+              </article>
+              <article>
+                <span>Sin caso</span>
+                <strong>
+                  {status.progress.without_case.toLocaleString()}
+                </strong>
+              </article>
             </div>
 
             <div className="hms-import-actions">
@@ -497,25 +513,44 @@ export function GuidedImportWizard({
                 className="secondary"
                 onClick={onClose}
               >
-                Cerrar
+                Volver al dashboard
               </button>
-
               <button
                 type="button"
-                disabled={!selected.length || calculating}
-                onClick={() => void calculatePreview()}
+                disabled={starting}
+                onClick={() => void start("incremental")}
               >
-                {calculating ? (
-                  <LoaderCircle className="app-spin" size={19} />
-                ) : null}
-                {calculating
-                  ? "Calculando…"
-                  : preview
-                    ? "Recalcular selección"
-                    : "Calcular selección única"}
+                {starting ? (
+                  <LoaderCircle className="app-spin" size={20} />
+                ) : (
+                  <RefreshCw size={20} />
+                )}
+                {starting
+                  ? "Buscando correo nuevo…"
+                  : "Descargar correos nuevos"}
               </button>
             </div>
-          </>
+          </section>
+        ) : null}
+
+        {!loading && status?.phase === "failed" ? (
+          <section className="hms-import-ready is-failed">
+            <AlertTriangle size={48} />
+            <span>REVISIÓN NECESARIA</span>
+            <h2 id="hms-import-title">
+              La descarga no pudo concluir.
+            </h2>
+            <p>
+              El avance quedó guardado. Reabre esta pantalla para
+              continuar desde el último lote.
+            </p>
+            <button
+              type="button"
+              onClick={() => void loadStatus()}
+            >
+              Reintentar
+            </button>
+          </section>
         ) : null}
       </section>
     </div>

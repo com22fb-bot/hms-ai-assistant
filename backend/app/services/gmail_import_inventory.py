@@ -1,74 +1,19 @@
 from __future__ import annotations
 
 from collections import Counter
-from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 
 from app.database.supabase import get_supabase_client
 
 
-CATEGORY_QUERIES: dict[str, str] = {
-    "all": "in:anywhere",
-    "inbox": "in:inbox",
-    "sent": "in:sent",
-    "important": "is:important",
-    "starred": "is:starred",
-    "unread": "is:unread",
-    "personal": "category:personal",
-    "updates": "category:updates",
-    "promotions": "category:promotions",
-    "social": "category:social",
-    "forums": "category:forums",
-    "drafts": "in:drafts",
-    "spam": "in:spam",
-    "trash": "in:trash",
-}
-
-CATEGORY_LABELS: dict[str, str] = {
-    "all": "Todos los correos",
-    "inbox": "Recibidos",
-    "sent": "Enviados",
-    "important": "Importantes",
-    "starred": "Destacados",
-    "unread": "No leídos",
-    "personal": "Personal",
-    "updates": "Actualizaciones",
-    "promotions": "Promociones",
-    "social": "Social",
-    "forums": "Foros",
-    "drafts": "Borradores",
-    "spam": "Spam",
-    "trash": "Papelera",
-}
-
-CATEGORY_SYSTEM_LABELS: dict[str, str] = {
-    "inbox": "INBOX",
-    "sent": "SENT",
-    "important": "IMPORTANT",
-    "starred": "STARRED",
-    "unread": "UNREAD",
-    "personal": "CATEGORY_PERSONAL",
-    "updates": "CATEGORY_UPDATES",
-    "promotions": "CATEGORY_PROMOTIONS",
-    "social": "CATEGORY_SOCIAL",
-    "forums": "CATEGORY_FORUMS",
-    "drafts": "DRAFT",
-    "spam": "SPAM",
-    "trash": "TRASH",
-}
-
-SENSITIVE_CATEGORIES = {"spam", "trash", "drafts"}
-
-
-@dataclass(frozen=True)
-class ImportSelection:
-    keys: list[str]
-    query: str
+LOCAL_TIMEZONE = ZoneInfo("America/Chihuahua")
+INITIAL_HISTORY_DAYS = 183
+EXCLUDED_QUERY = "-in:spam -in:trash -in:drafts"
 
 
 def _service(credentials: Credentials) -> Any:
@@ -78,144 +23,6 @@ def _service(credentials: Credentials) -> Any:
         credentials=credentials,
         cache_discovery=False,
     )
-
-
-def _query_estimate(service: Any, query: str) -> int:
-    response = (
-        service.users()
-        .messages()
-        .list(
-            userId="me",
-            q=query,
-            maxResults=1,
-            includeSpamTrash=True,
-        )
-        .execute(num_retries=2)
-    )
-    return int(response.get("resultSizeEstimate") or 0)
-
-
-def _label_count(service: Any, label_id: str) -> int | None:
-    try:
-        response = (
-            service.users()
-            .labels()
-            .get(userId="me", id=label_id)
-            .execute(num_retries=2)
-        )
-    except HttpError as exc:
-        status = getattr(exc.resp, "status", None)
-        if status in {400, 404}:
-            return None
-        raise
-
-    value = response.get("messagesTotal")
-    return int(value) if value is not None else None
-
-
-def build_selection(keys: list[str]) -> ImportSelection:
-    normalized: list[str] = []
-
-    for key in keys:
-        clean = str(key).strip().lower()
-        if clean in CATEGORY_QUERIES and clean not in normalized:
-            normalized.append(clean)
-
-    if not normalized:
-        raise ValueError("Selecciona al menos una categoría.")
-
-    if "all" in normalized:
-        return ImportSelection(
-            keys=["all"],
-            query=CATEGORY_QUERIES["all"],
-        )
-
-    query = " OR ".join(
-        f"({CATEGORY_QUERIES[key]})" for key in normalized
-    )
-    return ImportSelection(keys=normalized, query=query)
-
-
-def inventory(credentials: Credentials) -> dict[str, Any]:
-    service = _service(credentials)
-    profile = (
-        service.users()
-        .getProfile(userId="me")
-        .execute(num_retries=2)
-    )
-
-    total_messages = int(profile.get("messagesTotal") or 0)
-    categories: list[dict[str, Any]] = []
-
-    for key, query in CATEGORY_QUERIES.items():
-        count: int
-        count_source: str
-
-        if key == "all":
-            count = total_messages
-            count_source = "profile"
-        else:
-            label_id = CATEGORY_SYSTEM_LABELS.get(key)
-            label_count = (
-                _label_count(service, label_id)
-                if label_id
-                else None
-            )
-
-            if label_count is None:
-                count = _query_estimate(service, query)
-                count_source = "query_estimate"
-            else:
-                count = label_count
-                count_source = "label"
-
-        categories.append(
-            {
-                "key": key,
-                "label": CATEGORY_LABELS[key],
-                "query": query,
-                "count": count,
-                "count_source": count_source,
-                "sensitive": key in SENSITIVE_CATEGORIES,
-            }
-        )
-
-    return {
-        "status": "ok",
-        "mode": "inventory_only",
-        "email": profile.get("emailAddress"),
-        "history_id": profile.get("historyId"),
-        "messages_total": total_messages,
-        "threads_total": int(profile.get("threadsTotal") or 0),
-        "categories": categories,
-        "notice": (
-            "Este inventario no importa, elimina, archiva ni modifica "
-            "mensajes de Gmail."
-        ),
-    }
-
-
-def preview(
-    credentials: Credentials,
-    keys: list[str],
-) -> dict[str, Any]:
-    selection = build_selection(keys)
-    service = _service(credentials)
-
-    return {
-        "status": "ok",
-        "mode": "inventory_only",
-        "selected": selection.keys,
-        "query": selection.query,
-        "unique_estimate": _query_estimate(
-            service,
-            selection.query,
-        ),
-        "notice": (
-            "La cifra única es la estimación reportada por Gmail. "
-            "La importación continúa bloqueada hasta revisar el inventario."
-        ),
-    }
 
 
 def _rows(response: Any) -> list[dict[str, Any]]:
@@ -230,7 +37,12 @@ def _rows(response: Any) -> list[dict[str, Any]]:
     return []
 
 
-def _list_all_gmail_message_ids(service: Any) -> list[str]:
+def _list_message_ids(
+    service: Any,
+    *,
+    query: str,
+    include_spam_trash: bool = False,
+) -> list[str]:
     message_ids: list[str] = []
     page_token: str | None = None
 
@@ -240,10 +52,10 @@ def _list_all_gmail_message_ids(service: Any) -> list[str]:
             .messages()
             .list(
                 userId="me",
-                q="in:anywhere",
+                q=query,
                 maxResults=500,
                 pageToken=page_token,
-                includeSpamTrash=True,
+                includeSpamTrash=include_spam_trash,
             )
             .execute(num_retries=2)
         )
@@ -253,11 +65,142 @@ def _list_all_gmail_message_ids(service: Any) -> list[str]:
             if message_id:
                 message_ids.append(message_id)
 
-        page_token = str(response.get("nextPageToken") or "").strip() or None
+        page_token = (
+            str(response.get("nextPageToken") or "").strip() or None
+        )
         if page_token is None:
             break
 
     return message_ids
+
+
+def _count_query(
+    service: Any,
+    query: str,
+    *,
+    include_spam_trash: bool = False,
+) -> int:
+    return len(
+        set(
+            _list_message_ids(
+                service,
+                query=query,
+                include_spam_trash=include_spam_trash,
+            )
+        )
+    )
+
+
+def initial_import_snapshot(
+    credentials: Credentials,
+    *,
+    cutoff_at: datetime | None = None,
+) -> dict[str, Any]:
+    current = cutoff_at or datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+
+    current = current.astimezone(timezone.utc)
+    start = current - timedelta(days=INITIAL_HISTORY_DAYS)
+
+    query = (
+        f"after:{int(start.timestamp())} "
+        f"before:{int(current.timestamp())} "
+        f"{EXCLUDED_QUERY}"
+    ).strip()
+
+    service = _service(credentials)
+    ids = _list_message_ids(
+        service,
+        query=query,
+        include_spam_trash=False,
+    )
+    unique_ids = sorted(set(ids))
+
+    return {
+        "query": query,
+        "eligible_messages": len(unique_ids),
+        "snapshot_at_utc": current.isoformat(),
+        "period_start_utc": start.isoformat(),
+        "period_end_utc": current.isoformat(),
+        "period_start_local": start.astimezone(
+            LOCAL_TIMEZONE
+        ).isoformat(),
+        "period_end_local": current.astimezone(
+            LOCAL_TIMEZONE
+        ).isoformat(),
+        "timezone": "America/Chihuahua",
+        "history_days": INITIAL_HISTORY_DAYS,
+    }
+
+
+def inventory(credentials: Credentials) -> dict[str, Any]:
+    service = _service(credentials)
+    profile = (
+        service.users()
+        .getProfile(userId="me")
+        .execute(num_retries=2)
+    )
+    snapshot = initial_import_snapshot(credentials)
+
+    base_query = snapshot["query"]
+    breakdown_queries = {
+        "received": f"({base_query}) in:inbox",
+        "sent": f"({base_query}) in:sent",
+        "unread": f"({base_query}) is:unread",
+        "important": f"({base_query}) is:important",
+        "updates": f"({base_query}) category:updates",
+        "promotions": f"({base_query}) category:promotions",
+        "social": f"({base_query}) category:social",
+        "forums": f"({base_query}) category:forums",
+    }
+
+    breakdown = [
+        {
+            "key": key,
+            "count": _count_query(service, query),
+        }
+        for key, query in breakdown_queries.items()
+    ]
+
+    excluded = {
+        "drafts": _count_query(
+            service,
+            "in:drafts newer_than:6m",
+        ),
+        "spam": _count_query(
+            service,
+            "in:spam newer_than:6m",
+            include_spam_trash=True,
+        ),
+        "trash": _count_query(
+            service,
+            "in:trash newer_than:6m",
+            include_spam_trash=True,
+        ),
+    }
+
+    return {
+        "status": "ok",
+        "mode": "initial_six_month_inventory",
+        "email": profile.get("emailAddress"),
+        "provider": "google",
+        "provider_label": "Google",
+        "profile_messages_total": int(
+            profile.get("messagesTotal") or 0
+        ),
+        "profile_threads_total": int(
+            profile.get("threadsTotal") or 0
+        ),
+        **snapshot,
+        "breakdown": breakdown,
+        "excluded": excluded,
+        "notice": (
+            "HMS importará los mensajes elegibles de los últimos seis "
+            "meses. Spam, Papelera y Borradores quedan excluidos. "
+            "El buzón original no se modifica."
+        ),
+    }
 
 
 def _list_stored_message_ids(account_id: str) -> list[str]:
@@ -278,7 +221,9 @@ def _list_stored_message_ids(account_id: str) -> list[str]:
         rows = _rows(response)
 
         for row in rows:
-            message_id = str(row.get("external_message_id") or "").strip()
+            message_id = str(
+                row.get("external_message_id") or ""
+            ).strip()
             if message_id:
                 message_ids.append(message_id)
 
@@ -294,72 +239,57 @@ def compare_inventory(
     credentials: Credentials,
     account_id: str,
 ) -> dict[str, Any]:
-    """Compare Gmail message IDs with HMS storage without changing either side."""
-
     service = _service(credentials)
     profile = (
         service.users()
         .getProfile(userId="me")
         .execute(num_retries=2)
     )
-
-    gmail_ids = _list_all_gmail_message_ids(service)
+    snapshot = initial_import_snapshot(credentials)
+    gmail_ids = _list_message_ids(
+        service,
+        query=snapshot["query"],
+        include_spam_trash=False,
+    )
     stored_ids = _list_stored_message_ids(account_id)
 
     gmail_counter = Counter(gmail_ids)
     stored_counter = Counter(stored_ids)
-
     gmail_unique = set(gmail_counter)
     stored_unique = set(stored_counter)
 
-    common = sorted(gmail_unique & stored_unique)
-    missing_in_hms = sorted(gmail_unique - stored_unique)
-    only_in_hms = sorted(stored_unique - gmail_unique)
-    duplicate_gmail_ids = sorted(
-        message_id
-        for message_id, count in gmail_counter.items()
-        if count > 1
-    )
-    duplicate_stored_ids = sorted(
-        message_id
-        for message_id, count in stored_counter.items()
-        if count > 1
-    )
-
-    profile_total = int(profile.get("messagesTotal") or 0)
-
     return {
         "status": "ok",
-        "mode": "read_only_comparison",
-        "snapshot_at": datetime.now(timezone.utc).isoformat(),
+        "mode": "read_only_six_month_comparison",
+        "snapshot_at_utc": snapshot["snapshot_at_utc"],
+        "snapshot_at_local": datetime.fromisoformat(
+            snapshot["snapshot_at_utc"]
+        ).astimezone(LOCAL_TIMEZONE).isoformat(),
+        "timezone": "America/Chihuahua",
         "email": profile.get("emailAddress"),
-        "history_id": profile.get("historyId"),
-        "account_id": account_id,
         "gmail": {
-            "profile_total": profile_total,
-            "listed_rows": len(gmail_ids),
-            "unique_ids": len(gmail_unique),
-            "profile_matches_list": profile_total == len(gmail_unique),
-            "duplicate_ids": duplicate_gmail_ids,
+            "eligible_unique_ids": len(gmail_unique),
+            "duplicate_ids": sorted(
+                message_id
+                for message_id, count in gmail_counter.items()
+                if count > 1
+            ),
         },
         "hms": {
-            "stored_rows": len(stored_ids),
-            "unique_ids": len(stored_unique),
-            "duplicate_ids": duplicate_stored_ids,
+            "stored_unique_ids": len(stored_unique),
+            "duplicate_ids": sorted(
+                message_id
+                for message_id, count in stored_counter.items()
+                if count > 1
+            ),
         },
         "comparison": {
-            "present_in_both": len(common),
-            "missing_in_hms": len(missing_in_hms),
-            "only_in_hms": len(only_in_hms),
-        },
-        "ids": {
-            "missing_in_hms": missing_in_hms,
-            "only_in_hms": only_in_hms,
-            "duplicate_in_gmail": duplicate_gmail_ids,
-            "duplicate_in_hms": duplicate_stored_ids,
+            "present_in_both": len(gmail_unique & stored_unique),
+            "missing_in_hms": len(gmail_unique - stored_unique),
+            "only_in_hms": len(stored_unique - gmail_unique),
         },
         "notice": (
-            "Comparación de solo lectura. No importa, elimina, archiva, "
-            "etiqueta ni modifica mensajes en Gmail o HMS."
+            "Comparación de solo lectura limitada al historial inicial "
+            "de seis meses. No modifica Gmail ni HMS."
         ),
     }

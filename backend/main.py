@@ -16,12 +16,14 @@ from app.api.gmail import create_gmail_router
 from app.api.guided_import import router as guided_import_router
 from app.api.identity import router as identity_router
 from app.api.messages import router as messages_router
+from app.api.push_notifications import router as push_router
 from app.api.system import router as system_router
 from app.api.sync_jobs import router as sync_jobs_router
 from app.core.config import settings
 from app.middleware.authentication_context import AuthenticationContextMiddleware
 from app.middleware.incident_logging import IncidentLoggingMiddleware
 from app.services.gmail_sync_job_service import resume_incomplete_jobs
+from app.services.automatic_mail_scheduler import start_automatic_mail_scheduler
 
 
 app = FastAPI(
@@ -52,6 +54,13 @@ def resume_durable_gmail_sync_jobs() -> None:
     """Recupera trabajos solo cuando las mutaciones están habilitadas."""
     if settings.data_mutations_enabled:
         resume_incomplete_jobs()
+
+
+
+
+@app.on_event("startup")
+def start_hms_automatic_mail_sync() -> None:
+    start_automatic_mail_scheduler()
 
 
 @app.get("/")
@@ -163,4 +172,5 @@ app.include_router(gmail_router)
 app.include_router(guided_import_router)
 app.include_router(sync_jobs_router)
 app.include_router(messages_router)
+app.include_router(push_router)
 app.include_router(cases_router)

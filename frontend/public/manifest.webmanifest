@@ -1,0 +1,17 @@
+{
+  "name": "HMS AI Assistant",
+  "short_name": "HMS",
+  "description": "Centro Inteligente de Atención y Gestión de Correos",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#031218",
+  "theme_color": "#031218",
+  "icons": [
+    {
+      "src": "/hms-import-robot.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

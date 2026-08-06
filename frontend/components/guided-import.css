@@ -1,3 +1,641 @@
-.hms-import-backdrop{position:fixed;inset:0;z-index:9999;background:rgba(0,8,15,.88);backdrop-filter:blur(12px);display:grid;place-items:center;padding:20px}.hms-import-modal{position:relative;width:min(1080px,100%);max-height:94vh;overflow:auto;border:1px solid rgba(39,224,224,.45);border-radius:28px;background:linear-gradient(145deg,#07141d,#0b202a);box-shadow:0 28px 90px rgba(0,0,0,.55);padding:28px;color:#edfefe}.hms-import-close{position:absolute;right:18px;top:18px;width:44px;height:44px;border-radius:14px;border:1px solid #27505a;background:#0a1c24;color:#fff;display:grid;place-items:center;z-index:2;cursor:pointer}.hms-import-close:hover{border-color:#39e7e9}.hms-import-hero{display:grid;grid-template-columns:minmax(210px,330px) 1fr;gap:28px;align-items:center}.hms-import-hero img{width:100%;max-height:220px;object-fit:cover;border-radius:22px;border:1px solid rgba(45,229,232,.25)}.hms-import-hero span{font-size:.78rem;letter-spacing:.16em;color:#32e1e5;font-weight:800}.hms-import-hero h2{font-size:clamp(1.65rem,3vw,2.7rem);margin:.35rem 0 .65rem}.hms-import-hero p{color:#b9dce2;line-height:1.55;margin:0}.hms-import-empty{display:grid;justify-items:center;text-align:center;gap:10px;margin:24px 0 4px;padding:30px;border:1px solid #244752;border-radius:20px;background:#091c24}.hms-import-empty svg{color:#38e8eb}.hms-import-empty h3{margin:0;font-size:1.35rem}.hms-import-empty p{max-width:620px;margin:0;color:#b9dce2;line-height:1.55}.hms-import-empty button,.hms-import-actions button{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:14px 20px;border:0;border-radius:14px;background:#2ce4e7;color:#031317;font-weight:800;cursor:pointer}.hms-import-empty button:disabled,.hms-import-actions button:disabled{opacity:.45;cursor:not-allowed}.hms-import-account{display:flex;align-items:center;gap:12px;margin:20px 0;padding:14px 16px;background:#0d2a35;border-radius:15px;color:#9ff8fa}.hms-import-account div{display:grid;gap:3px}.hms-import-account span{color:#b9dce2}.hms-import-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.hms-import-grid label{display:grid;grid-template-columns:26px 1fr auto;gap:11px;align-items:center;padding:14px;border:1px solid #244752;border-radius:15px;background:#0a1d25;cursor:pointer;min-height:70px}.hms-import-grid label:hover{border-color:#3b707a}.hms-import-grid label.is-selected{border-color:#2ce4e7;background:#0b323a}.hms-import-grid input{position:absolute;opacity:0;pointer-events:none}.hms-import-check{width:24px;height:24px;border:1px solid #4d7680;border-radius:7px;display:grid;place-items:center}.hms-import-grid label.is-selected .hms-import-check{background:#2ce4e7;color:#001216}.hms-import-grid strong{display:block}.hms-import-grid small{display:block;color:#9fc8cf;margin-top:4px;line-height:1.25}.hms-import-grid label.is-sensitive small{color:#ffbdc7}.hms-import-grid b{font-size:1.12rem;color:#a8fbfd}.hms-import-notice,.hms-import-review-lock{display:flex;gap:12px;margin:18px 0;padding:16px;border-radius:16px}.hms-import-notice{background:#282214;border:1px solid #806d2d;color:#ffe5a0}.hms-import-review-lock{background:#102533;border:1px solid #315c70;color:#ccecf5}.hms-import-notice p{margin:0;line-height:1.5}.hms-import-review-lock div{display:grid;gap:4px}.hms-import-review-lock span{color:#acd2dc;line-height:1.45}.hms-import-preview{text-align:center;padding:18px;background:#092831;border:1px solid #24707b;border-radius:18px}.hms-import-preview span,.hms-import-preview small{display:block;color:#a8d6dc}.hms-import-preview strong{display:block;font-size:2.8rem;color:#39edf0}.hms-import-actions{display:flex;justify-content:flex-end;gap:12px;margin-top:18px}.hms-import-actions button.secondary{background:#142a33;color:#d8f2f5;border:1px solid #31515b}.hms-import-error{margin:14px 0;padding:14px;border-radius:14px;background:#3b1720;border:1px solid #a33d52;color:#ffbecb}@media(max-width:760px){.hms-import-backdrop{padding:0}.hms-import-modal{max-height:100vh;height:100vh;border-radius:0;padding:18px}.hms-import-hero{grid-template-columns:1fr;padding-top:36px}.hms-import-hero img{max-height:175px}.hms-import-grid{grid-template-columns:1fr}.hms-import-actions{position:sticky;bottom:-18px;background:#0a1d25;padding:14px 0;flex-direction:column-reverse}.hms-import-actions button{width:100%}}
-.hms-import-comparator-actions{display:flex;gap:12px;align-items:center;margin:0 0 18px}.hms-import-comparator-actions button{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:13px 18px;border:0;border-radius:14px;background:#2ce4e7;color:#031317;font-weight:800;cursor:pointer}.hms-import-comparator-actions button.secondary{background:#142a33;color:#d8f2f5;border:1px solid #31515b}.hms-import-comparator-actions button:disabled{opacity:.5;cursor:not-allowed}.hms-import-comparison{margin:0 0 18px;padding:18px;border:1px solid #2b6972;border-radius:18px;background:#081f28}.hms-import-comparison header{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:14px}.hms-import-comparison header span{font-size:.72rem;letter-spacing:.13em;color:#32e1e5;font-weight:800}.hms-import-comparison h3{margin:.25rem 0 0;font-size:1.25rem}.hms-import-comparison header small{color:#9fc8cf;text-align:right}.hms-import-comparison-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.hms-import-comparison-grid article{padding:14px;border:1px solid #284c56;border-radius:14px;background:#0a1a22}.hms-import-comparison-grid article.is-warning{border-color:#8a6c26;background:#292113}.hms-import-comparison-grid article.is-neutral{border-color:#4a5660;background:#151d23}.hms-import-comparison-grid span,.hms-import-comparison-grid small{display:block;color:#a9d0d6}.hms-import-comparison-grid strong{display:block;margin:5px 0;font-size:1.8rem;color:#42eef0}.hms-import-comparison-grid article.is-warning strong{color:#ffe09a}.hms-import-comparison>p{margin:14px 0 0;color:#a9d0d6;line-height:1.45}.hms-import-comparison-grid small{line-height:1.3}
-@media(max-width:760px){.hms-import-comparator-actions{flex-direction:column;align-items:stretch}.hms-import-comparator-actions button{width:100%}.hms-import-comparison header{display:grid}.hms-import-comparison header small{text-align:left}.hms-import-comparison-grid{grid-template-columns:1fr}}
+.hms-import-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  overflow: auto;
+  background: rgba(0, 10, 15, 0.88);
+  backdrop-filter: blur(14px);
+}
+
+.hms-import-modal {
+  position: relative;
+  width: min(1120px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: clamp(22px, 3vw, 38px);
+  border: 1px solid rgba(47, 220, 220, 0.42);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 88% 2%, rgba(33, 213, 210, 0.12), transparent 34%),
+    #061a22;
+  color: #e9fbff;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+}
+
+.hms-import-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  z-index: 4;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(146, 226, 235, 0.26);
+  border-radius: 15px;
+  background: rgba(7, 29, 38, 0.95);
+  color: #e9fbff;
+  cursor: pointer;
+}
+
+.hms-import-hero {
+  display: grid;
+  grid-template-columns: minmax(280px, 370px) 1fr;
+  gap: 28px;
+  align-items: center;
+}
+
+.hms-import-hero img {
+  width: 100%;
+  height: 230px;
+  object-fit: cover;
+  object-position: center;
+  border: 1px solid rgba(47, 220, 220, 0.3);
+  border-radius: 24px;
+  background: #082832;
+}
+
+.hms-import-hero span,
+.hms-processing header > span,
+.hms-import-ready > span {
+  color: #2fe3df;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+}
+
+.hms-import-hero h2,
+.hms-processing h2,
+.hms-import-ready h2,
+.hms-logistics-loading h2 {
+  margin: 12px 0;
+  font-size: clamp(2rem, 4vw, 3.2rem);
+  line-height: 1.08;
+}
+
+.hms-import-hero p,
+.hms-processing p,
+.hms-import-ready p,
+.hms-logistics-loading p {
+  margin: 0;
+  color: #b8d5dd;
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+.hms-import-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-top: 26px;
+}
+
+.hms-import-summary > div {
+  min-height: 118px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-content: center;
+  column-gap: 12px;
+  padding: 18px;
+  border: 1px solid rgba(119, 203, 214, 0.2);
+  border-radius: 20px;
+  background: rgba(9, 38, 49, 0.88);
+}
+
+.hms-import-summary svg {
+  grid-row: 1 / span 2;
+  color: #35dedc;
+}
+
+.hms-import-summary span {
+  color: #a8c5cd;
+  font-size: 0.85rem;
+}
+
+.hms-import-summary strong {
+  margin-top: 4px;
+  font-size: 1.15rem;
+}
+
+.hms-import-summary .is-primary {
+  border-color: rgba(47, 227, 223, 0.48);
+  background: rgba(17, 94, 101, 0.36);
+}
+
+.hms-import-summary .is-primary strong {
+  font-size: 2rem;
+}
+
+.hms-import-breakdown,
+.hms-live-categories {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.hms-import-breakdown article,
+.hms-live-categories article {
+  padding: 14px 16px;
+  border: 1px solid rgba(119, 203, 214, 0.16);
+  border-radius: 16px;
+  background: rgba(7, 29, 38, 0.72);
+}
+
+.hms-import-breakdown span,
+.hms-live-categories span {
+  display: block;
+  color: #9ebcc5;
+  font-size: 0.84rem;
+}
+
+.hms-import-breakdown strong,
+.hms-live-categories strong {
+  display: block;
+  margin-top: 5px;
+  color: #dffcff;
+  font-size: 1.35rem;
+}
+
+.hms-import-exclusions {
+  display: flex;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid rgba(64, 218, 162, 0.25);
+  border-radius: 18px;
+  background: rgba(20, 101, 77, 0.14);
+}
+
+.hms-import-exclusions svg {
+  flex: 0 0 auto;
+  color: #46e0a8;
+}
+
+.hms-import-exclusions strong,
+.hms-import-exclusions span,
+.hms-import-exclusions small {
+  display: block;
+}
+
+.hms-import-exclusions span {
+  margin-top: 4px;
+  color: #cae8e0;
+}
+
+.hms-import-exclusions small {
+  margin-top: 6px;
+  color: #8fb6ad;
+}
+
+.hms-import-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.hms-import-actions button,
+.hms-import-ready > button {
+  min-height: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #25ddd9, #2bc9cd);
+  color: #001216;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.hms-import-actions button.secondary {
+  border: 1px solid rgba(151, 222, 230, 0.22);
+  background: rgba(7, 29, 38, 0.72);
+  color: #dff9fc;
+}
+
+.hms-import-actions button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.hms-processing {
+  text-align: center;
+}
+
+.hms-processing header {
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.hms-logistics-scene {
+  position: relative;
+  width: min(760px, 100%);
+  height: 260px;
+  margin: 26px auto;
+  overflow: hidden;
+  border: 1px solid rgba(47, 220, 220, 0.18);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 50% 100%, rgba(42, 228, 218, 0.15), transparent 48%),
+    rgba(4, 24, 31, 0.82);
+}
+
+.hms-old-trunk {
+  position: absolute;
+  left: 8%;
+  bottom: 42px;
+  width: 190px;
+  height: 116px;
+}
+
+.hms-trunk-lid,
+.hms-trunk-body {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  border: 4px solid #8d5c2c;
+  background: linear-gradient(#bf8448, #70401d);
+  box-shadow: inset 0 0 0 5px rgba(255, 214, 142, 0.12);
+}
+
+.hms-trunk-lid {
+  top: 0;
+  height: 50px;
+  border-radius: 60px 60px 10px 10px;
+  transform: rotate(-9deg);
+  transform-origin: 15% 100%;
+}
+
+.hms-trunk-body {
+  bottom: 0;
+  height: 78px;
+  border-radius: 10px 10px 22px 22px;
+}
+
+.hms-paper-stack {
+  position: absolute;
+  left: 45px;
+  top: -8px;
+  width: 105px;
+  height: 74px;
+}
+
+.hms-paper {
+  --paper-index: 0;
+  position: absolute;
+  left: calc(var(--paper-index) * 2px);
+  bottom: calc(var(--paper-index) * 3px);
+  width: 92px;
+  height: 58px;
+  border: 1px solid #c5d7d4;
+  border-radius: 4px;
+  background:
+    linear-gradient(#d6e2df 2px, transparent 2px) 9px 12px / 55px 8px no-repeat,
+    #f7f1df;
+  opacity: 0;
+  transform: translateY(26px) rotate(calc((var(--paper-index) - 6) * 1deg));
+  transition: opacity 0.4s ease, transform 0.5s ease;
+}
+
+.hms-paper.is-visible {
+  opacity: 1;
+  transform: translateY(0) rotate(calc((var(--paper-index) - 6) * 1deg));
+}
+
+.hms-laptop {
+  position: absolute;
+  right: 9%;
+  bottom: 43px;
+  width: 210px;
+  height: 132px;
+}
+
+.hms-laptop-screen {
+  width: 180px;
+  height: 108px;
+  display: grid;
+  place-items: center;
+  margin: auto;
+  border: 7px solid #1f5866;
+  border-radius: 12px 12px 5px 5px;
+  background:
+    linear-gradient(135deg, rgba(46, 230, 220, 0.35), transparent),
+    #07333e;
+  color: #35e5df;
+}
+
+.hms-laptop-base {
+  display: block;
+  width: 210px;
+  height: 14px;
+  border-radius: 2px 2px 12px 12px;
+  background: #5c8992;
+}
+
+.hms-flying-mail {
+  position: absolute;
+  left: 31%;
+  top: 42%;
+  color: #e9fff9;
+  animation: hms-mail-flight 2s ease-in-out infinite;
+}
+
+@keyframes hms-mail-flight {
+  0% { transform: translate(-20px, 30px) rotate(-12deg); opacity: 0; }
+  25% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translate(230px, -20px) rotate(8deg); opacity: 0; }
+}
+
+.hms-progress-block {
+  width: min(820px, 100%);
+  margin: 16px auto 0;
+  padding: 18px;
+  text-align: left;
+  border: 1px solid rgba(119, 203, 214, 0.18);
+  border-radius: 18px;
+  background: rgba(7, 29, 38, 0.75);
+}
+
+.hms-progress-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.hms-progress-heading span {
+  color: #a9c7cf;
+}
+
+.hms-progress-track {
+  height: 13px;
+  margin-top: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #102f38;
+}
+
+.hms-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #28dbd7, #4ce7b0);
+  transition: width 0.45s ease;
+}
+
+.hms-progress-track.is-classification span {
+  background: linear-gradient(90deg, #68a8ff, #ad78ff);
+}
+
+.hms-progress-block small {
+  display: block;
+  margin-top: 8px;
+  color: #8fb0ba;
+}
+
+.hms-import-ready,
+.hms-logistics-loading {
+  min-height: 440px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  text-align: center;
+}
+
+.hms-import-ready > svg {
+  color: #46e0a8;
+}
+
+.hms-import-ready.is-failed > svg {
+  color: #ff9a76;
+}
+
+.hms-ready-stats {
+  width: min(720px, 100%);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.hms-ready-stats article {
+  padding: 16px;
+  border: 1px solid rgba(119, 203, 214, 0.18);
+  border-radius: 17px;
+  background: rgba(7, 29, 38, 0.72);
+}
+
+.hms-ready-stats span,
+.hms-ready-stats strong {
+  display: block;
+}
+
+.hms-ready-stats span {
+  color: #9bbac3;
+  font-size: 0.82rem;
+}
+
+.hms-ready-stats strong {
+  margin-top: 5px;
+  font-size: 1.65rem;
+}
+
+.hms-import-error {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 16px 0;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 124, 105, 0.38);
+  border-radius: 15px;
+  background: rgba(135, 37, 30, 0.18);
+  color: #ffd5ce;
+}
+
+@media (max-width: 820px) {
+  .hms-import-hero,
+  .hms-import-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .hms-import-hero img {
+    height: 210px;
+  }
+
+  .hms-import-breakdown,
+  .hms-live-categories,
+  .hms-ready-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .hms-logistics-scene {
+    height: 230px;
+  }
+
+  .hms-old-trunk {
+    left: 3%;
+    transform: scale(0.78);
+    transform-origin: left bottom;
+  }
+
+  .hms-laptop {
+    right: 1%;
+    transform: scale(0.78);
+    transform-origin: right bottom;
+  }
+}
+
+@media (max-width: 560px) {
+  .hms-import-backdrop {
+    padding: 0;
+  }
+
+  .hms-import-modal {
+    min-height: 100vh;
+    max-height: none;
+    border-radius: 0;
+    padding: 72px 18px 28px;
+  }
+
+  .hms-import-breakdown,
+  .hms-live-categories,
+  .hms-ready-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hms-import-actions {
+    flex-direction: column-reverse;
+  }
+
+  .hms-import-actions button {
+    width: 100%;
+  }
+
+  .hms-logistics-scene {
+    height: 210px;
+  }
+
+  .hms-old-trunk {
+    left: -18px;
+    transform: scale(0.64);
+  }
+
+  .hms-laptop {
+    right: -22px;
+    transform: scale(0.64);
+  }
+
+  .hms-flying-mail {
+    left: 30%;
+  }
+}
+
+/* Logística 1 · ajuste por dispositivo y robot institucional */
+.hms-import-backdrop {
+  padding: clamp(8px, 1.5dvh, 18px);
+  overflow: hidden;
+}
+
+.hms-import-modal {
+  max-height: calc(100dvh - clamp(16px, 3dvh, 36px));
+  overscroll-behavior: contain;
+}
+
+.hms-import-ready::before,
+.hms-logistics-loading::before {
+  content: "";
+  width: min(360px, 78vw);
+  height: clamp(110px, 19dvh, 180px);
+  display: block;
+  margin: 0 auto 12px;
+  border: 1px solid rgba(47, 220, 220, 0.22);
+  border-radius: 20px;
+  background: #082832 url('/hms-import-robot.png') center / contain no-repeat;
+}
+
+@media (max-height: 800px) and (min-width: 701px) {
+  .hms-import-modal {
+    padding: 18px 24px;
+  }
+  .hms-import-hero {
+    grid-template-columns: minmax(220px, 300px) 1fr;
+    gap: 18px;
+  }
+  .hms-import-hero img {
+    height: 170px;
+  }
+  .hms-import-hero h2,
+  .hms-processing h2,
+  .hms-import-ready h2,
+  .hms-logistics-loading h2 {
+    margin: 6px 0;
+    font-size: clamp(1.55rem, 3vw, 2.25rem);
+  }
+  .hms-import-summary {
+    margin-top: 14px;
+  }
+  .hms-import-summary > div {
+    min-height: 86px;
+    padding: 12px;
+  }
+  .hms-logistics-scene {
+    height: 190px;
+    margin: 12px auto;
+  }
+  .hms-import-ready::before,
+  .hms-logistics-loading::before {
+    height: 110px;
+  }
+}
+
+@media (max-width: 700px) {
+  .hms-import-backdrop {
+    display: block;
+    overflow-y: auto;
+    padding: 0;
+  }
+  .hms-import-modal {
+    min-height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+}
+
+
+/* HOTFIX ROBOT ÚNICO · Logística 1 */
+.hms-processing-robot {
+  width: min(760px, 100%);
+  height: clamp(220px, 34dvh, 360px);
+  display: grid;
+  place-items: center;
+  margin: 22px auto;
+  overflow: hidden;
+  border: 1px solid rgba(47, 220, 220, 0.24);
+  border-radius: 26px;
+  background: radial-gradient(circle at 50% 100%, rgba(42, 228, 218, 0.14), transparent 52%), rgba(4, 24, 31, 0.84);
+}
+.hms-processing-robot img {
+  width: 96%;
+  height: 96%;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.32));
+  animation: hms-robot-delivering 2.8s ease-in-out infinite;
+}
+@keyframes hms-robot-delivering {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(0, -8px, 0) scale(1.015); }
+}
+@media (max-height: 800px) and (min-width: 701px) {
+  .hms-processing-robot { height: clamp(170px, 28dvh, 230px); margin: 12px auto; }
+}
+@media (max-width: 700px) {
+  .hms-processing-robot { height: 240px; border-radius: 20px; }
+}

@@ -41,12 +41,12 @@ def _rows(response: Any) -> list[dict[str, Any]]:
 def _message_direction(labels: list[str]) -> str:
     normalized = {str(label).upper() for label in labels}
 
-    if "SENT" in normalized:
-        return "outbound"
-
     if "DRAFT" in normalized:
         return "draft"
-
+    if "SENT" in normalized and "INBOX" not in normalized:
+        return "outbound"
+    if "INBOX" in normalized:
+        return "inbound"
     return "inbound"
 
 
@@ -121,6 +121,7 @@ def sync_gmail_page(
     duplicates = 0
     errors = 0
     error_details: list[dict[str, str]] = []
+    inserted_message_ids: list[str] = []
 
     try:
         gmail_service = build(
@@ -316,13 +317,15 @@ def sync_gmail_page(
                     .execute()
                 )
 
-                if not _first_row(insert_response):
+                created_message = _first_row(insert_response)
+                if not created_message:
                     raise RuntimeError(
                         "Supabase no confirmó la creación "
                         "del mensaje."
                     )
 
                 inserted += 1
+                inserted_message_ids.append(str(created_message["id"]))
 
             except Exception as error:
                 error_text = str(error).lower()
@@ -369,6 +372,7 @@ def sync_gmail_page(
             "batch_size": safe_batch_size,
             "page_found": len(references),
             "inserted": inserted,
+            "inserted_message_ids": inserted_message_ids,
             "duplicates": duplicates,
             "errors": errors,
             "error_details": error_details,

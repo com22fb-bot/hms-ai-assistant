@@ -34,3 +34,5 @@ hms-ai-assistant-*.zip
 /hms-diagnostico-estabilizacion.zip
 /hms-diagnostico-estabilizacion/
 /MANIFEST.sha256
+
+.hms-secrets/

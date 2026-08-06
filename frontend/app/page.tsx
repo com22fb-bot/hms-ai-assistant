@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
   Activity,
   AlertTriangle,
@@ -32,9 +33,17 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { GuidedImportWizard } from "@/components/GuidedImportWizard";
 import "@/components/guided-import.css";
+import { MailCategoriesPanel } from "@/components/MailCategoriesPanel";
+import "@/components/mail-categories.css";
+import { MailInbox } from "@/components/MailInbox";
+import { PushNotificationsPanel } from "@/components/PushNotificationsPanel";
+import "@/components/mail-inbox.css";
+import "@/components/push-notifications.css";
+import "@/components/logistica-responsive.css";
 import { useCases } from "@/hooks/useCases";
 import { useGoogleStatus } from "@/hooks/useGoogleStatus";
 import { useAppAuth } from "@/hooks/useAppAuth";
+import { hmsJson } from "@/lib/hmsApi";
 import type {
   CaseEvent,
   CasePriority,
@@ -51,6 +60,13 @@ type AppSession = {
   id: string;
   email: string;
   name: string;
+};
+
+type ImportFlowStatus = {
+  needs_initial_import: boolean;
+  initial_import_complete: boolean;
+  phase: "initial_review" | "downloading" | "classifying" | "ready" | "failed";
+  active: Record<string, unknown> | null;
 };
 
 
@@ -241,6 +257,8 @@ const NAV_ITEMS: Array<{
   state: ControlState;
 }> = [
   { id: "home", label: "Inicio", icon: Home, state: "active" },
+  { id: "mail", label: "Correos", icon: Mail, state: "active" },
+  { id: "push", label: "Avisos", icon: Bell, state: "active" },
   { id: "cases", label: "Casos", icon: BriefcaseBusiness, state: "evaluation" },
   { id: "tasks", label: "Tareas", icon: CheckCircle2, state: "evaluation" },
   { id: "activity", label: "Actividad", icon: Activity, state: "evaluation" },
@@ -529,6 +547,21 @@ function LoginScreen({
           <div>
             <strong>HMS AI Assistant</strong>
             <small>Centro de Control Inteligente</small>
+          </div>
+        </div>
+
+        <div className="auth-robot-showcase">
+          <Image
+            src="/hms-import-robot.png"
+            alt="Robot HMS organizando correo entre un maletero y una laptop"
+            width={1536}
+            height={1024}
+            priority
+            sizes="(max-width: 900px) 92vw, 520px"
+          />
+          <div>
+            <Sparkles size={19} />
+            <span>Tu copiloto organiza el correo antes de mostrarte los pendientes.</span>
           </div>
         </div>
 
@@ -1090,6 +1123,64 @@ function Dashboard({
   const [notice, setNotice] = useState<string | null>(null);
   const [evaluationKey, setEvaluationKey] = useState<string | null>(null);
   const [guidedImportOpen, setGuidedImportOpen] = useState(false);
+  const [mailOpen, setMailOpen] = useState(false);
+  const [mailInitialMessageId, setMailInitialMessageId] = useState<string | null>(null);
+  const [pushOpen, setPushOpen] = useState(false);
+  const [mailCategory, setMailCategory] = useState<string | null>(null);
+  const [importFlowStatus, setImportFlowStatus] =
+    useState<ImportFlowStatus | null>(null);
+  const [initialFlowOpened, setInitialFlowOpened] = useState(false);
+
+  useEffect(() => {
+    if (
+      loadingConnection
+      || !connection?.connected
+      || initialFlowOpened
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    void hmsJson<ImportFlowStatus>(
+      "/api/hms/gmail/import/status",
+      { cache: "no-store" },
+    )
+      .then((current) => {
+        if (cancelled) {
+          return;
+        }
+
+        setImportFlowStatus(current);
+
+        if (
+          current.needs_initial_import
+          || Boolean(current.active)
+        ) {
+          setGuidedImportOpen(true);
+        }
+
+        setInitialFlowOpened(true);
+      })
+      .catch((requestError) => {
+        if (!cancelled) {
+          setNotice(
+            requestError instanceof Error
+              ? requestError.message
+              : "No fue posible preparar la descarga inicial.",
+          );
+          setInitialFlowOpened(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    connection?.connected,
+    initialFlowOpened,
+    loadingConnection,
+  ]);
 
   const evaluatedControl = evaluationKey
     ? CONTROL_CATALOG[evaluationKey]
@@ -1104,6 +1195,18 @@ function Dashboard({
   function selectView(view: string, label: string) {
     setMobileOpen(false);
     setProfileOpen(false);
+
+    if (view === "push") {
+      setPushOpen(true);
+      return;
+    }
+
+    if (view === "mail") {
+      setMailCategory(null);
+      setMailInitialMessageId(null);
+      setMailOpen(true);
+      return;
+    }
 
     if (view === "home") {
       setActiveView("home");
@@ -1157,7 +1260,22 @@ function Dashboard({
     [dashboard.metrics],
   );
 
-  const visibleCases = cases.slice(0, 7);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      const messageId = params.get("mail");
+      if (!messageId) return;
+      setMailCategory(null);
+      setMailInitialMessageId(messageId);
+      setMailOpen(true);
+      params.delete("mail");
+      const next = params.toString();
+      window.history.replaceState({}, "", next ? `/?${next}` : "/");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  const visibleCases = cases;
   const visibleEvents =
     dashboard.recent_events.slice(0, 6);
 
@@ -1243,15 +1361,15 @@ function Dashboard({
                 {syncing
                   ? `Lote ${syncProgress.currentBatch}`
                   : connection?.connected
-                    ? "Sincronizado"
-                    : "Gmail desconectado"}
+                    ? "Correo conectado"
+                    : "Correo desconectado"}
               </strong>
               <small>
                 {syncProgress.completed
                   ? `${syncProgress.found} revisados`
                   : connection?.connected
                     ? "Sistema disponible"
-                    : "Conecta tu cuenta Google"}
+                    : "Conecta tu cuenta de correo"}
               </small>
             </div>
             <span />
@@ -1262,8 +1380,8 @@ function Dashboard({
             className="app-sidebar-primary"
             aria-label={
               connection?.connected
-                ? "Revisar Gmail"
-                : "Conectar Gmail"
+                ? "Descargar correos nuevos"
+                : "Conectar correo"
             }
             disabled={
               loadingConnection ||
@@ -1295,12 +1413,12 @@ function Dashboard({
               <Mail size={19} />
             )}
             {loadingConnection
-              ? "Verificando Gmail..."
+              ? "Verificando correo..."
               : syncing
                 ? `Procesando lote ${syncProgress.currentBatch}`
                 : connection?.connected
-                  ? "Revisar Gmail"
-                  : "Conectar Gmail"}
+                  ? "Descargar correos nuevos"
+                  : "Conectar correo"}
           </button>
 
           <button
@@ -1351,6 +1469,16 @@ function Dashboard({
                   setSearch(event.target.value)
                 }
               />
+              {search ? (
+                <button
+                  type="button"
+                  className="app-search-clear"
+                  aria-label="Limpiar búsqueda"
+                  onClick={() => setSearch("")}
+                >
+                  <X size={16} />
+                </button>
+              ) : null}
               <kbd>⌘ K</kbd>
               <button
                 type="button"
@@ -1372,14 +1500,11 @@ function Dashboard({
               >
                 <span />
                 {connection?.connected
-                  ? "Gmail conectado"
+                  ? "Correo conectado"
                   : "Sin conexión"}
               </div>
 
-              <div className="app-ai-pill is-review">
-                <Sparkles size={17} />
-                Clasificador en revisión
-              </div>
+              <div className="app-ai-pill is-active"><Sparkles size={17} />Clasificación automática</div>
 
               <label className="app-theme-select">
                 <span>Tema</span>
@@ -1446,43 +1571,30 @@ function Dashboard({
             >
               <span />
               {connection?.connected
-                ? "Gmail conectado"
+                ? "Correo conectado"
                 : "Sin conexión"}
             </div>
 
-            <div className="app-ai-pill is-review">
-              <Sparkles size={17} />
-              Clasificador en revisión
-            </div>
+            <div className="app-ai-pill is-active"><Sparkles size={17} />Clasificación automática</div>
           </div>
         </header>
 
         <div className="app-content">
           <section className="app-alert app-historical-alert" role="status">
-            <AlertTriangle size={23} />
+            <Sparkles size={23} />
             <div>
-              <strong>Datos históricos en revisión</strong>
+              <strong>
+                {importFlowStatus?.initial_import_complete
+                  ? "Correo preparado"
+                  : importFlowStatus?.active
+                    ? "Descarga y clasificación en proceso"
+                    : "Primera descarga pendiente"}
+              </strong>
               <span>
-                Los conteos ya son exactos, pero los casos existentes fueron
-                generados por el clasificador anterior. La sincronización de Gmail
-                no creará casos nuevos hasta terminar la depuración.
+                {importFlowStatus?.initial_import_complete
+                  ? "HMS descargará únicamente correo nuevo y mantendrá separados los casos de los mensajes informativos."
+                  : "HMS preparará automáticamente los últimos seis meses, excluirá Spam, Papelera y Borradores, y clasificará cada mensaje antes de mostrar el dashboard final."}
               </span>
-            </div>
-          </section>
-
-          <section className="app-control-legend" aria-label="Estado de implementación de controles">
-            <div>
-              <strong>Laboratorio de controles</strong>
-              <span>
-                Todos los controles permanecen visibles. Pulsa los pendientes para
-                revisar su propósito, dependencias y orden de activación.
-              </span>
-            </div>
-            <div className="app-control-legend-states">
-              <ControlStateBadge state="active" />
-              <ControlStateBadge state="testing" />
-              <ControlStateBadge state="evaluation" />
-              <ControlStateBadge state="blocked" />
             </div>
           </section>
 
@@ -1579,6 +1691,14 @@ function Dashboard({
 
 
 
+          <MailCategoriesPanel
+            onOpenCategory={(category) => {
+              setMailCategory(category);
+              setMailInitialMessageId(null);
+              setMailOpen(true);
+            }}
+          />
+
           <section className="app-dashboard-grid">
             <div className="app-panel">
               <div className="app-panel-heading">
@@ -1608,8 +1728,20 @@ function Dashboard({
                   </div>
                 ) : visibleCases.length === 0 ? (
                   <div className="app-empty">
-                    <CheckCircle2 size={26} />
-                    No hay casos pendientes.
+                    {search ? (
+                      <div className="app-empty-search">
+                        <Search size={24} />
+                        <span>
+                          No hay coincidencias para “{search}”. Los casos no se eliminaron.
+                        </span>
+                        <button type="button" onClick={() => setSearch("")}>Limpiar búsqueda</button>
+                      </div>
+                    ) : (
+                      <>
+                        <CheckCircle2 size={26} />
+                        No hay casos pendientes.
+                      </>
+                    )}
                   </div>
                 ) : (
                   visibleCases.map((item) => (
@@ -1692,13 +1824,13 @@ function Dashboard({
               <div>
                 <strong>
                   {connection?.connected
-                    ? "Revisar inventario de Gmail"
-                    : "Conectar correo Google"}
+                    ? "Descargar correos nuevos"
+                    : "Conectar cuenta de correo"}
                 </strong>
                 <span>
                   {connection?.connected
-                    ? "Cuenta y selecciona sin importar"
-                    : "Autorización en el sitio oficial de Google"}
+                    ? "Revisa únicamente los mensajes nuevos"
+                    : "Autorización en el sitio oficial del proveedor"}
                 </span>
               </div>
             </button>
@@ -1765,9 +1897,16 @@ function Dashboard({
             <Plus size={29} />
           </button>
 
-          <button type="button" onClick={() => evaluateControl("activity")} data-control-state="evaluation">
-            <Activity size={23} />
-            <span>Actividad</span>
+          <button
+            type="button"
+            onClick={() => {
+              setMailCategory(null);
+              setMailOpen(true);
+            }}
+            data-control-state="active"
+          >
+            <Mail size={23} />
+            <span>Correos</span>
           </button>
 
           <button type="button" onClick={() => evaluateControl("mobile-more")} data-control-state="evaluation">
@@ -1776,9 +1915,39 @@ function Dashboard({
           </button>
         </nav>
 
+        {pushOpen ? (
+          <PushNotificationsPanel onClose={() => setPushOpen(false)} />
+        ) : null}
+
+        {mailOpen ? (
+          <MailInbox
+            initialCategory={mailCategory}
+            initialMessageId={mailInitialMessageId}
+            onClose={() => {
+              setMailOpen(false);
+              setMailInitialMessageId(null);
+              void loadDashboard();
+              window.dispatchEvent(new Event("hms:data-changed"));
+            }}
+          />
+        ) : null}
+
         {guidedImportOpen ? (
           <GuidedImportWizard
             onClose={() => setGuidedImportOpen(false)}
+            onComplete={() => {
+              setGuidedImportOpen(false);
+              setImportFlowStatus({
+                needs_initial_import: false,
+                initial_import_complete: true,
+                phase: "ready",
+                active: null,
+              });
+              void Promise.all([
+                loadDashboard(),
+                loadGoogleStatus(),
+              ]);
+            }}
           />
         ) : null}
 

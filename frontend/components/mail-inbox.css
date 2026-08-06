@@ -1,0 +1,491 @@
+.hms-mailbox-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  overflow: hidden;
+  background: #031218;
+  color: #eaffff;
+}
+
+.hms-mailbox-shell {
+  width: min(1440px, 100%);
+  height: 100dvh;
+  min-height: 0;
+  margin: 0 auto;
+  padding: clamp(14px, 2dvh, 26px) clamp(14px, 2.7vw, 40px);
+  display: grid;
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.hms-mailbox-header,
+.hms-mailbox-toolbar,
+.hms-mailbox-count,
+.hms-mailbox-pagination,
+.hms-mail-detail > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.hms-mailbox-header {
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(97, 200, 211, 0.18);
+}
+
+.hms-mailbox-header span {
+  color: #2fe3df;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.hms-mailbox-header h2 {
+  margin: 2px 0;
+  font-size: clamp(1.8rem, 3.2vw, 2.7rem);
+  line-height: 1;
+}
+
+.hms-mailbox-header p {
+  margin: 0;
+  color: #9db9c2;
+  font-size: 0.92rem;
+}
+
+.hms-mailbox-header > button,
+.hms-mail-detail > header button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 13px;
+  border: 1px solid rgba(109, 204, 214, 0.22);
+  border-radius: 13px;
+  background: rgba(6, 35, 44, 0.9);
+  color: #eaffff;
+  cursor: pointer;
+}
+
+.hms-mailbox-toolbar form {
+  flex: 1;
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 9px;
+  padding-left: 14px;
+  border: 1px solid rgba(92, 193, 204, 0.2);
+  border-radius: 15px;
+  background: rgba(7, 34, 43, 0.92);
+}
+
+.hms-mailbox-toolbar input {
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #eaffff;
+  font: inherit;
+}
+
+.hms-mailbox-toolbar form button,
+.hms-mailbox-refresh {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 13px;
+  background: #2bd9d7;
+  color: #00171b;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.hms-mailbox-toolbar form button.clear {
+  border: 1px solid rgba(108, 202, 211, 0.2);
+  background: transparent;
+  color: #b8d0d6;
+}
+
+.hms-mailbox-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  min-width: 0;
+}
+
+.hms-mailbox-filters button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 11px;
+  border: 1px solid rgba(98, 189, 200, 0.18);
+  border-radius: 999px;
+  background: rgba(7, 34, 43, 0.82);
+  color: #b8d0d6;
+  cursor: pointer;
+  font-size: 0.84rem;
+}
+
+.hms-mailbox-filters button.is-active {
+  border-color: #2fe3df;
+  background: rgba(47, 227, 223, 0.14);
+  color: #eaffff;
+}
+
+.hms-mailbox-count {
+  justify-content: flex-start;
+  color: #95b0b8;
+  font-size: 0.88rem;
+}
+
+.hms-mailbox-count strong { color: #eaffff; }
+
+.hms-mailbox-list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid rgba(91, 187, 198, 0.17);
+  border-radius: 18px;
+  background: rgba(5, 27, 35, 0.75);
+}
+
+.hms-mail-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 54px;
+  border-bottom: 1px solid rgba(91, 187, 198, 0.12);
+}
+.hms-mail-row:last-child { border-bottom: 0; }
+.hms-mail-row.is-unread { background: rgba(24, 92, 101, 0.13); }
+
+.hms-mail-row-main {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  padding: 13px 16px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.hms-mail-direction {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(47, 227, 223, 0.11);
+  color: #2fe3df;
+}
+
+.hms-mail-row-copy,
+.hms-mail-row-top,
+.hms-mail-row-meta { min-width: 0; }
+
+.hms-mail-row-top,
+.hms-mail-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hms-mail-row-top { justify-content: space-between; }
+.hms-mail-row-top strong,
+.hms-mail-row-copy b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hms-mail-row-top time {
+  flex: 0 0 auto;
+  color: #849fa8;
+  font-size: 0.76rem;
+}
+.hms-mail-row-copy b { display: block; margin: 3px 0; font-size: 0.96rem; }
+.hms-mail-row-copy small {
+  color: #9db6be;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hms-mail-row-meta {
+  flex-wrap: wrap;
+  margin-top: 6px;
+  color: #8baab2;
+  font-size: 0.72rem;
+}
+.hms-mail-row-meta em,
+.hms-mail-row-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(62, 164, 174, 0.12);
+  font-style: normal;
+}
+
+.hms-mail-favorite {
+  border: 0;
+  border-left: 1px solid rgba(91, 187, 198, 0.12);
+  background: transparent;
+  color: #7f9ba3;
+  cursor: pointer;
+}
+.hms-mail-favorite.is-active { color: #ff6f91; }
+
+.hms-mailbox-empty,
+.hms-mail-detail-loading {
+  min-height: 220px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  color: #9db6be;
+}
+
+.hms-mailbox-pagination { font-size: 0.86rem; }
+.hms-mailbox-pagination button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  border: 1px solid rgba(90, 188, 198, 0.2);
+  border-radius: 12px;
+  background: rgba(7, 34, 43, 0.9);
+  color: #dffcff;
+  cursor: pointer;
+}
+.hms-mailbox-pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.hms-mailbox-error {
+  padding: 11px 14px;
+  border: 1px solid rgba(255, 118, 97, 0.35);
+  border-radius: 13px;
+  background: rgba(127, 35, 29, 0.18);
+  color: #ffd8d1;
+}
+
+.hms-mail-detail {
+  position: fixed;
+  inset: 0;
+  z-index: 170;
+  overflow-y: auto;
+  padding: 14px clamp(14px, 3.5vw, 52px) 32px;
+  background: #06161c;
+}
+.hms-mail-detail > header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  min-height: 58px;
+  padding: 6px 0 10px;
+  background: #06161c;
+}
+.hms-mail-detail > header > div {
+  min-width: 0;
+  display: grid;
+  text-align: center;
+}
+.hms-mail-detail > header strong {
+  max-width: 60vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hms-mail-detail > header span { color: #8baab2; font-size: 0.76rem; }
+
+.hms-mail-ai-summary,
+.hms-conversation-timeline {
+  width: min(1060px, 100%);
+  margin-inline: auto;
+}
+.hms-mail-ai-summary,
+.hms-message-summary,
+.hms-mail-related-case {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(73, 207, 208, 0.2);
+  border-radius: 16px;
+  background: rgba(12, 50, 60, 0.72);
+}
+.hms-mail-ai-summary p,
+.hms-message-summary p { margin: 4px 0; color: #bdd0d6; }
+.hms-mail-ai-summary small,
+.hms-message-summary small { color: #8faab2; }
+
+.hms-conversation-timeline details {
+  margin-bottom: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(91, 187, 198, 0.17);
+  border-radius: 18px;
+  background: rgba(5, 27, 35, 0.75);
+}
+.hms-conversation-timeline summary {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+.hms-conversation-timeline summary span { min-width: 0; display: grid; }
+.hms-conversation-timeline summary strong,
+.hms-conversation-timeline summary small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hms-conversation-timeline summary small { color: #94afb7; }
+.hms-conversation-timeline summary time { flex: 0 0 auto; color: #849fa8; font-size: 0.78rem; }
+.hms-message-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 16px 12px;
+  color: #9fb6bd;
+  font-size: 0.78rem;
+}
+.hms-message-metadata em { margin-left: auto; font-style: normal; color: #2fe3df; }
+.hms-message-summary,
+.hms-mail-related-case { margin-inline: 14px; }
+.hms-mail-related-case { flex-direction: column; }
+
+.hms-mail-content {
+  min-height: 360px;
+  margin: 0 14px 14px;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #fff;
+}
+.hms-mail-content iframe { width: 100%; min-height: 560px; border: 0; background: #fff; }
+.hms-mail-content pre {
+  min-height: 360px;
+  margin: 0;
+  padding: 22px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #172126;
+  font: 0.94rem/1.55 Arial, sans-serif;
+}
+.hms-mail-detail-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 180;
+  background: rgba(2, 17, 22, 0.86);
+}
+
+.hms-favorite-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 190;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(0, 10, 14, 0.84);
+}
+.hms-favorite-dialog,
+.hms-rule-dialog {
+  width: min(520px, 100%);
+  max-height: calc(100dvh - 36px);
+  overflow-y: auto;
+  padding: 24px;
+  border: 1px solid rgba(255, 111, 145, 0.28);
+  border-radius: 21px;
+  background: #09212a;
+}
+.hms-favorite-dialog { text-align: center; }
+.hms-favorite-dialog > svg { color: #ff6f91; }
+.hms-favorite-dialog h3,
+.hms-rule-dialog h3 { margin: 8px 0 6px; font-size: 1.4rem; }
+.hms-favorite-dialog p,
+.hms-rule-dialog p { color: #aac2c9; line-height: 1.45; }
+.hms-favorite-dialog button,
+.hms-rule-dialog > button {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: #2bd9d7;
+  color: #00171b;
+  font-weight: 900;
+  cursor: pointer;
+}
+.hms-favorite-dialog button.secondary,
+.hms-rule-dialog > button.secondary {
+  border: 1px solid rgba(108, 202, 211, 0.2);
+  background: rgba(5, 31, 39, 0.8);
+  color: #dffcff;
+}
+.hms-favorite-dialog button.danger { background: #ff6f91; }
+.hms-rule-dialog label { display: grid; gap: 6px; margin-top: 12px; color: #dffcff; }
+.hms-rule-dialog input,
+.hms-rule-dialog select {
+  min-height: 43px;
+  padding: 0 11px;
+  border: 1px solid rgba(108, 202, 211, 0.22);
+  border-radius: 11px;
+  background: #06191f;
+  color: #eaffff;
+}
+.hms-rule-dialog label.check { grid-template-columns: auto 1fr; align-items: center; }
+.hms-rule-dialog label.check input { min-height: auto; }
+
+@media (max-height: 760px) and (min-width: 761px) {
+  .hms-mailbox-shell { padding-block: 10px; gap: 7px; }
+  .hms-mailbox-header h2 { font-size: 1.8rem; }
+  .hms-mailbox-header p { font-size: 0.82rem; }
+  .hms-mailbox-filters button { min-height: 30px; font-size: 0.76rem; }
+  .hms-mail-row-main { padding-block: 10px; }
+}
+
+@media (max-width: 760px) {
+  .hms-mailbox-overlay { overflow-y: auto; }
+  .hms-mailbox-shell {
+    height: auto;
+    min-height: 100dvh;
+    display: block;
+    overflow: visible;
+    padding: 12px;
+  }
+  .hms-mailbox-header { align-items: flex-start; }
+  .hms-mailbox-header p { font-size: 0.82rem; }
+  .hms-mailbox-toolbar { align-items: stretch; flex-direction: column; margin: 12px 0; }
+  .hms-mailbox-toolbar form { grid-template-columns: auto minmax(0,1fr) auto; }
+  .hms-mailbox-toolbar form button.clear { display: none; }
+  .hms-mailbox-refresh { width: 100%; }
+  .hms-mailbox-filters { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 8px; }
+  .hms-mailbox-list { max-height: none; overflow: visible; }
+  .hms-mail-row { grid-template-columns: minmax(0, 1fr) 46px; }
+  .hms-mail-row-main { grid-template-columns: 34px minmax(0, 1fr); padding: 12px 9px; }
+  .hms-mail-direction { width: 34px; height: 34px; }
+  .hms-mail-row-top { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .hms-mailbox-pagination { margin-top: 12px; }
+  .hms-mail-detail { padding-inline: 10px; }
+  .hms-mail-detail > header { align-items: flex-start; }
+  .hms-mail-detail > header > div { display: none; }
+  .hms-mail-detail > header button { padding-inline: 10px; }
+  .hms-conversation-timeline summary { align-items: flex-start; flex-direction: column; }
+  .hms-message-metadata em { margin-left: 0; }
+  .hms-mail-content iframe { min-height: 480px; }
+}

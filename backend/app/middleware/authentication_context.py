@@ -18,6 +18,7 @@ _PROTECTED_PREFIXES = (
     "/identity",
     "/cases",
     "/messages",
+    "/push",
     "/gmail",
     "/ai",
     "/dashboard",

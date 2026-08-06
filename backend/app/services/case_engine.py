@@ -129,17 +129,14 @@ def normalize_subject(subject: str | None) -> str:
 
 
 def _message_direction(message: dict[str, Any]) -> str:
-    labels = {
-        str(item).upper()
-        for item in (message.get("labels") or [])
-    }
-
-    if "SENT" in labels:
-        return "outbound"
+    labels = {str(item).upper() for item in (message.get("labels") or [])}
 
     if "DRAFT" in labels:
         return "draft"
-
+    if "SENT" in labels and "INBOX" not in labels:
+        return "outbound"
+    if "INBOX" in labels:
+        return "inbound"
     return str(message.get("direction") or "inbound")
 
 

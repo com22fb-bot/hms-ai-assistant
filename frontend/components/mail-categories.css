@@ -1,0 +1,172 @@
+.hms-mail-categories {
+  margin-bottom: 28px;
+  padding: 24px;
+  border: 1px solid rgba(67, 213, 216, 0.22);
+  border-radius: 24px;
+  background: rgba(5, 28, 36, 0.82);
+}
+
+.hms-mail-categories-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+.hms-mail-categories-heading > div:first-child > span {
+  color: #2fe3df;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.hms-mail-categories-heading h2 {
+  margin: 7px 0 5px;
+  font-size: 1.55rem;
+}
+
+.hms-mail-categories-heading p {
+  margin: 0;
+  color: #a8c2ca;
+  line-height: 1.5;
+}
+
+.hms-mail-category-actions {
+  display: flex;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+.hms-mail-category-actions button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 13px;
+  background: #2bd9d7;
+  color: #00171b;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.hms-mail-category-actions button.secondary {
+  border: 1px solid rgba(107, 210, 219, 0.22);
+  background: rgba(8, 42, 52, 0.85);
+  color: #dffcff;
+}
+
+.hms-mail-category-total {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding: 15px 17px;
+  border: 1px solid rgba(47, 227, 223, 0.28);
+  border-radius: 16px;
+  background: rgba(17, 91, 98, 0.22);
+}
+
+.hms-mail-category-total svg {
+  color: #2fe3df;
+}
+
+.hms-mail-category-total strong {
+  font-size: 1.45rem;
+}
+
+.hms-mail-category-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.hms-mail-category-card {
+  min-height: 122px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 13px;
+  padding: 17px;
+  border: 1px solid rgba(104, 191, 202, 0.18);
+  border-radius: 18px;
+  background: rgba(7, 34, 43, 0.9);
+  color: #eaffff;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+
+.hms-mail-category-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(47, 227, 223, 0.5);
+}
+
+.hms-mail-category-icon {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: rgba(47, 227, 223, 0.13);
+  color: #2fe3df;
+}
+
+.hms-mail-category-copy strong,
+.hms-mail-category-copy small {
+  display: block;
+}
+
+.hms-mail-category-copy strong {
+  margin-bottom: 5px;
+  font-size: 0.98rem;
+}
+
+.hms-mail-category-copy small {
+  color: #91adb6;
+  line-height: 1.4;
+}
+
+.hms-mail-category-card b {
+  font-size: 1.35rem;
+}
+
+.hms-mail-categories-error {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+  padding: 13px 15px;
+  border: 1px solid rgba(255, 125, 105, 0.35);
+  border-radius: 14px;
+  background: rgba(122, 35, 30, 0.18);
+  color: #ffd8d0;
+}
+
+@media (max-width: 1050px) {
+  .hms-mail-category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .hms-mail-categories-heading {
+    flex-direction: column;
+  }
+
+  .hms-mail-category-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .hms-mail-category-actions button {
+    flex: 1 1 180px;
+  }
+
+  .hms-mail-category-grid {
+    grid-template-columns: 1fr;
+  }
+}

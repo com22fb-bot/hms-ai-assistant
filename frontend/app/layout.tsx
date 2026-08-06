@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
 import "./globals.css";
@@ -15,10 +15,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  manifest: "/manifest.webmanifest",
   title: "HMS AI Assistant — Centro Inteligente",
   description:
     "Centro Inteligente de Operaciones basado en Casos Inteligentes.",
 };
+
+export const viewport: Viewport = { themeColor: "#031218" };
 
 export default function RootLayout({
   children,

@@ -1,32 +1,30 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from app.api.auth import get_google_credentials_for_account
 from app.security.identity import require_google_account
 from app.services.gmail_import_inventory import (
     compare_inventory,
     inventory,
-    preview,
+)
+from app.services.guided_import_job_service import (
+    get_guided_import_status,
+    start_guided_import,
 )
 
 
 router = APIRouter(
     prefix="/gmail/import",
-    tags=["Gmail guided inventory"],
+    tags=["Guided mail import"],
 )
 
 
-class ImportSelectionRequest(BaseModel):
-    categories: list[str] = Field(min_length=1)
-
-
-class ImportStartRequest(ImportSelectionRequest):
-    confirmation: str | None = None
-    batch_size: int = Field(default=100, ge=25, le=100)
+class ImportStartRequest(BaseModel):
+    mode: Literal["initial", "incremental"] = "initial"
 
 
 def _credentials() -> tuple[Any, dict[str, Any]]:
@@ -44,19 +42,35 @@ def import_inventory() -> dict[str, Any]:
     return inventory(credentials)
 
 
-@router.post("/preview")
-def import_preview(
-    payload: ImportSelectionRequest,
-) -> dict[str, Any]:
-    credentials, _ = _credentials()
+@router.get("/status")
+def import_status() -> dict[str, Any]:
+    _, account = _credentials()
+    return get_guided_import_status(account)
+
+
+@router.post("/start")
+def import_start(payload: ImportStartRequest) -> dict[str, Any]:
+    credentials, account = _credentials()
 
     try:
-        return preview(credentials, payload.categories)
+        job = start_guided_import(
+            credentials=credentials,
+            account=account,
+            mode=payload.mode,
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=422,
-            detail=str(exc),
+            detail={
+                "status": "invalid_guided_import",
+                "message": str(exc),
+            },
         ) from exc
+
+    return {
+        "status": "ok",
+        "job": job,
+    }
 
 
 @router.get("/compare")
@@ -66,36 +80,3 @@ def import_compare() -> dict[str, Any]:
         credentials,
         str(account["id"]),
     )
-
-
-@router.post("/start")
-def import_start_blocked(
-    payload: ImportStartRequest,
-) -> dict[str, Any]:
-    del payload
-    _credentials()
-
-    raise HTTPException(
-        status_code=423,
-        detail={
-            "status": "inventory_review_required",
-            "message": (
-                "La importación histórica permanece bloqueada hasta "
-                "revisar el inventario y aprobar la limpieza controlada."
-            ),
-        },
-    )
-
-
-@router.get("/status")
-def import_status() -> dict[str, Any]:
-    _credentials()
-    return {
-        "status": "inventory_only",
-        "active": None,
-        "latest": None,
-        "import_enabled": False,
-        "message": (
-            "Inventario disponible. Importación y limpieza bloqueadas."
-        ),
-    }
