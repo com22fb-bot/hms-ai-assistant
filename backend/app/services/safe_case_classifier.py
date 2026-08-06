@@ -193,6 +193,7 @@ def classify_message(
     body = str(message.get("body_text") or message.get("snippet") or "")
     short_text = f"{subject}\n{body[:1600]}".lower()
     self_delivered = "SENT" in labels and "INBOX" in labels
+    direction = _message_direction(message)
 
     if "DRAFT" in labels:
         return ("informational", 0, "Borrador excluido del flujo operativo.", False)

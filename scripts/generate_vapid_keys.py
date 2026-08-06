@@ -8,7 +8,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
 
-repo = Path(__file__).resolve().parents[2]
+repo = Path(__file__).resolve().parents[1]
 secret_dir = repo / ".hms-secrets"
 secret_dir.mkdir(parents=True, exist_ok=True)
 private_path = secret_dir / "vapid_private.pem"
