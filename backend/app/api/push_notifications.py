@@ -34,6 +34,10 @@ class DeactivateRequest(BaseModel):
     endpoint: str
 
 
+class TestPushRequest(BaseModel):
+    endpoint: str | None = Field(default=None, max_length=2000)
+
+
 @router.get("/vapid-public-key")
 def vapid_public_key() -> dict[str, Any]:
     return {"status": "ok", **push_configuration()}
@@ -68,8 +72,9 @@ def unsubscribe_device(payload: DeactivateRequest) -> dict[str, Any]:
 
 
 @router.post("/test")
-def test_push() -> dict[str, Any]:
-    return {"status": "ok", **send_test_notification()}
+def test_push(payload: TestPushRequest | None = None) -> dict[str, Any]:
+    endpoint = payload.endpoint if payload is not None else None
+    return {"status": "ok", **send_test_notification(endpoint=endpoint)}
 
 
 @router.get("/notifications")

@@ -21,7 +21,13 @@ export const metadata: Metadata = {
     "Centro Inteligente de Operaciones basado en Casos Inteligentes.",
 };
 
-export const viewport: Viewport = { themeColor: "#031218" };
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover",
+  themeColor: "#031218",
+};
 
 export default function RootLayout({
   children,

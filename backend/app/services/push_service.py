@@ -147,6 +147,7 @@ def _deliver_to_profile(
     profile_id: str,
     notification_id: str,
     payload: dict[str, Any],
+    target_endpoint: str | None = None,
 ) -> dict[str, int]:
     client = OAuthStorage().client
     subscriptions = _rows(
@@ -156,6 +157,13 @@ def _deliver_to_profile(
         .eq("is_active", True)
         .execute()
     )
+    if target_endpoint:
+        clean_target = target_endpoint.strip()
+        subscriptions = [
+            row
+            for row in subscriptions
+            if str(row.get("endpoint") or "").strip() == clean_target
+        ]
     result = {"devices": len(subscriptions), "sent": 0, "failed": 0, "expired": 0}
     if not subscriptions:
         return result
@@ -238,6 +246,7 @@ def create_notification(
     case_id: str | None = None,
     url: str = "/",
     send_push: bool = True,
+    target_endpoint: str | None = None,
 ) -> dict[str, Any]:
     client = OAuthStorage().client
     existing = _first(
@@ -284,6 +293,7 @@ def create_notification(
                 "notificationId": str(notification["id"]),
                 "type": notification_type,
             },
+            target_endpoint=target_endpoint,
         )
         if int(delivery.get("sent") or 0) > 0:
             client.table("hms_notifications").update(
@@ -334,7 +344,7 @@ def mark_notification_read(notification_id: str) -> dict[str, Any] | None:
     )
 
 
-def send_test_notification() -> dict[str, Any]:
+def send_test_notification(endpoint: str | None = None) -> dict[str, Any]:
     context, account = require_google_account()
     if not _public_key() or not _private_key_path():
         raise HTTPException(
@@ -344,16 +354,26 @@ def send_test_notification() -> dict[str, Any]:
                 "message": "Las llaves VAPID todavía no están configuradas.",
             },
         )
+    target = (endpoint or "").strip() or None
+    device_scope = (
+        "este dispositivo"
+        if target
+        else "todos los dispositivos activos"
+    )
     return create_notification(
         workspace_id=context.workspace_id,
         account_id=str(account["id"]),
         profile_id=context.user.id,
         notification_type="push_test",
         title="HMS está listo",
-        body="Este dispositivo recibirá avisos de correos favoritos y asuntos accionables.",
+        body=(
+            f"Prueba de notificaciones hacia {device_scope}. "
+            "Aqui veras avisos de favoritos y asuntos accionables."
+        ),
         dedupe_key=f"push-test:{context.user.id}:{os.urandom(8).hex()}",
         url="/",
         send_push=True,
+        target_endpoint=target,
     )
 
 
