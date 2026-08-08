@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 
 from fastapi import APIRouter, HTTPException
@@ -11,6 +12,10 @@ from app.database.supabase import get_supabase_client
 router = APIRouter(
     tags=["System"],
 )
+
+
+def _env_is_set(name: str) -> bool:
+    return bool(os.getenv(name, "").strip())
 
 
 @router.get("/health")
@@ -26,6 +31,27 @@ def health() -> dict[str, Any]:
             if settings.data_mutations_enabled
             else "inventory_read_only"
         ),
+    }
+
+
+@router.get("/env-status")
+def env_status() -> dict[str, Any]:
+    """Indica si hay variables requeridas (solo true/false; nunca valores)."""
+    return {
+        "status": "ok",
+        "version": settings.app_version,
+        "app_version_code": "0.4.0",
+        "variables_present": {
+            "GOOGLE_CLIENT_ID": _env_is_set("GOOGLE_CLIENT_ID"),
+            "GOOGLE_CLIENT_SECRET": _env_is_set("GOOGLE_CLIENT_SECRET"),
+            "GOOGLE_REDIRECT_URI": _env_is_set("GOOGLE_REDIRECT_URI"),
+            "SUPABASE_URL": _env_is_set("SUPABASE_URL"),
+            "SUPABASE_SECRET_KEY": _env_is_set("SUPABASE_SECRET_KEY"),
+            "FRONTEND_ORIGINS": _env_is_set("FRONTEND_ORIGINS"),
+            "HMS_DATA_MUTATIONS_ENABLED": _env_is_set(
+                "HMS_DATA_MUTATIONS_ENABLED"
+            ),
+        },
     }
 
 

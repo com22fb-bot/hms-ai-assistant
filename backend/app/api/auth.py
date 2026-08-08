@@ -34,13 +34,16 @@ class GoogleStartRequest(BaseModel):
 
 
 def validate_google_environment() -> None:
+    """Valida OAuth leyendo el entorno en cada llamada (no solo al import)."""
+    import os
+
     missing_variables: list[str] = []
 
-    if not settings.google_client_id:
+    if not os.getenv("GOOGLE_CLIENT_ID", "").strip():
         missing_variables.append("GOOGLE_CLIENT_ID")
-    if not settings.google_client_secret:
+    if not os.getenv("GOOGLE_CLIENT_SECRET", "").strip():
         missing_variables.append("GOOGLE_CLIENT_SECRET")
-    if not settings.google_redirect_uri:
+    if not os.getenv("GOOGLE_REDIRECT_URI", "").strip():
         missing_variables.append("GOOGLE_REDIRECT_URI")
 
     if missing_variables:
@@ -48,22 +51,33 @@ def validate_google_environment() -> None:
             status_code=500,
             detail={
                 "status": "error",
-                "message": "Faltan variables de Google OAuth en el entorno.",
+                "message": "Faltan variables de Google OAuth en el entorno del servidor (Railway Variables).",
                 "missing_variables": missing_variables,
+                "hint": (
+                    "Deben existir en el servicio hms-ai-assistant "
+                    "(no en un Shared vacío). Tras guardar: Redeploy. "
+                    "Comprueba /env-status (solo true/false, sin secretos)."
+                ),
             },
         )
 
 
 def create_google_flow(state: str | None = None) -> Flow:
+    import os
+
     validate_google_environment()
+
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
+    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "").strip()
 
     client_config = {
         "web": {
-            "client_id": settings.google_client_id,
-            "client_secret": settings.google_client_secret,
+            "client_id": client_id,
+            "client_secret": client_secret,
             "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": DEFAULT_TOKEN_URI,
-            "redirect_uris": [settings.google_redirect_uri],
+            "redirect_uris": [redirect_uri],
         }
     }
 
@@ -73,7 +87,7 @@ def create_google_flow(state: str | None = None) -> Flow:
         state=state,
         autogenerate_code_verifier=False,
     )
-    flow.redirect_uri = settings.google_redirect_uri
+    flow.redirect_uri = redirect_uri
     return flow
 
 
