@@ -1,12 +1,16 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"main": ".open-next/worker.js",
-	"name": "frontend",
+	"name": "donexto-app",
 	"compatibility_date": "2026-07-29",
 	"compatibility_flags": [
 		"nodejs_compat",
 		"global_fetch_strictly_public"
 	],
+	"vars": {
+		// Server-side proxy target for /api/hms/* → Railway FastAPI
+		"HMS_INTERNAL_API_BASE_URL": "https://hms-ai-assistant-production.up.railway.app"
+	},
 	"assets": {
 		"directory": ".open-next/assets",
 		"binding": "ASSETS"
@@ -16,7 +20,7 @@
 			// Self-reference service binding, the service name must match the worker name
 			// see https://opennext.js.org/cloudflare/caching
 			"binding": "WORKER_SELF_REFERENCE",
-			"service": "frontend"
+			"service": "donexto-app"
 		}
 	],
 	"images": {
