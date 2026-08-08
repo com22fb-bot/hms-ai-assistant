@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="Donexto — What needs attention in your email. Priorities, money, and replies before the inbox chaos."
+    />
+    <meta name="theme-color" content="#0a0e10" />
+    <title>Donexto — What needs attention in your email</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Outfit:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <div class="atmosphere" aria-hidden="true"></div>
+    <div class="grid" aria-hidden="true"></div>
+
+    <header class="top">
+      <a class="brand" href="#top" id="top">
+        <span class="mark" aria-hidden="true">D</span>
+        <span class="brand-text">
+          <strong>Donexto</strong>
+          <small>donexto.com</small>
+        </span>
+      </a>
+      <nav class="top-nav">
+        <button type="button" class="lang" id="langToggle" aria-label="Cambiar idioma">
+          ES
+        </button>
+        <a class="nav-link" href="#waitlist" data-i18n="nav_cta">Join waitlist</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="kicker" data-i18n="kicker">Email intelligence · US &amp; Mexico</p>
+        <h1 data-i18n="hero_title">
+          What needs attention<br />in your email.
+        </h1>
+        <p class="lede" data-i18n="hero_lede">
+          Not another inbox. A dashboard for replies waiting on you, money
+          moves, deadlines—and quiet silence for social and promotions.
+        </p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#waitlist" data-i18n="cta_primary"
+            >Join the waitlist</a
+          >
+          <a class="btn ghost" href="mailto:hello@donexto.com" data-i18n="cta_mail"
+            >hello@donexto.com</a
+          >
+        </div>
+        <ul class="trust" aria-label="Highlights">
+          <li data-i18n="trust_1">Web + phone + tablet · PWA-ready</li>
+          <li data-i18n="trust_2">Start with Gmail · more providers next</li>
+          <li data-i18n="trust_3">Built for real people, not mail clutter</li>
+        </ul>
+      </section>
+
+      <section class="panel" id="how">
+        <h2 data-i18n="how_title">One job</h2>
+        <div class="cards">
+          <article>
+            <span class="n">01</span>
+            <h3 data-i18n="how_1_t">See priorities</h3>
+            <p data-i18n="how_1_p">
+              Who is waiting, what is due, what can wait until next week.
+            </p>
+          </article>
+          <article>
+            <span class="n">02</span>
+            <h3 data-i18n="how_2_t">Track money signals</h3>
+            <p data-i18n="how_2_p">
+              Banks, charges, failed payments, invoices that need a decision.
+            </p>
+          </article>
+          <article>
+            <span class="n">03</span>
+            <h3 data-i18n="how_3_t">Mute the noise</h3>
+            <p data-i18n="how_3_p">
+              Social and promotions stay classified—never the front page.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="waitlist" id="waitlist">
+        <div class="waitlist-box">
+          <h2 data-i18n="wait_title">Get early access</h2>
+          <p data-i18n="wait_lede">
+            Stage one: limited seats while we stabilize for the first
+            subscribers. Leave your email—we write from hello@donexto.com.
+          </p>
+
+          <form class="form" id="waitForm" novalidate>
+            <label class="field">
+              <span data-i18n="label_name">Name</span>
+              <input
+                type="text"
+                name="name"
+                autocomplete="name"
+                maxlength="80"
+                data-i18n-placeholder="ph_name"
+                placeholder="Alex"
+              />
+            </label>
+            <label class="field">
+              <span data-i18n="label_email">Email</span>
+              <input
+                type="email"
+                name="email"
+                autocomplete="email"
+                inputmode="email"
+                required
+                maxlength="120"
+                data-i18n-placeholder="ph_email"
+                placeholder="you@company.com"
+              />
+            </label>
+            <label class="field">
+              <span data-i18n="label_country">Country</span>
+              <select name="country" required>
+                <option value="US" data-i18n="opt_us">United States</option>
+                <option value="MX" data-i18n="opt_mx">Mexico</option>
+                <option value="OTHER" data-i18n="opt_other">Other</option>
+              </select>
+            </label>
+            <button type="submit" class="btn primary full" data-i18n="btn_join">
+              Request access
+            </button>
+            <p class="form-note" data-i18n="form_note">
+              Opens your email app to message hello@donexto.com. No spam list
+              sold. Ever.
+            </p>
+            <p class="form-status" id="formStatus" role="status" hidden></p>
+          </form>
+        </div>
+      </section>
+
+      <section class="social">
+        <h2 data-i18n="social_title">Follow the build</h2>
+        <div class="social-links">
+          <a
+            href="https://www.instagram.com/donexto.app/"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Instagram</a
+          >
+          <a
+            href="https://www.tiktok.com/@donexto.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            >TikTok</a
+          >
+          <a
+            href="https://www.facebook.com/donexto.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Facebook</a
+          >
+          <a
+            href="https://www.youtube.com/@donexto.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            >YouTube</a
+          >
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <div>
+        <strong>Donexto</strong>
+        <span data-i18n="foot_tag">Priorities from your email.</span>
+      </div>
+      <div class="foot-mail">
+        <a href="mailto:hello@donexto.com">hello@donexto.com</a>
+        <a href="mailto:hola@donexto.com">hola@donexto.com</a>
+      </div>
+      <p class="copy">© <span id="year"></span> Donexto · donexto.com</p>
+    </footer>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
