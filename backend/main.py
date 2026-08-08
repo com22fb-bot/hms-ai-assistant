@@ -65,10 +65,16 @@ def start_hms_automatic_mail_sync() -> None:
 
 @app.get("/")
 def root() -> dict[str, str]:
+    import os
+
     return {
         "status": "ok",
         "application": settings.app_name,
         "version": settings.app_version,
+        "deploy_marker": os.getenv(
+            "HMS_DEPLOY_MARKER",
+            "local-or-unset",
+        ),
         "documentation": "/docs",
         "dashboard": "/cases/dashboard",
         "google_login": "/auth/google/login",

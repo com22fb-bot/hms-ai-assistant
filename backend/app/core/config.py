@@ -63,7 +63,7 @@ class Settings:
         "Backend para conectar cuentas de Google "
         "y consultar correos de Gmail."
     )
-    app_version: str = "0.4.0"
+    app_version: str = "0.4.1"
 
     supabase_url: str = field(
         default_factory=lambda: get_environment_variable(

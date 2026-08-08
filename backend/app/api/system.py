@@ -40,7 +40,7 @@ def env_status() -> dict[str, Any]:
     return {
         "status": "ok",
         "version": settings.app_version,
-        "app_version_code": "0.4.0",
+        "app_version_code": "0.4.1",
         "variables_present": {
             "GOOGLE_CLIENT_ID": _env_is_set("GOOGLE_CLIENT_ID"),
             "GOOGLE_CLIENT_SECRET": _env_is_set("GOOGLE_CLIENT_SECRET"),

@@ -1,12 +1,12 @@
-# Railway config at repo root — monorepo backend deploy.
-# Leave "Root Directory" EMPTY in the dashboard (or ".") so this file is used.
+# Root Directory in Railway must be EMPTY (blank) — not /backend.
+# Branch: main
 
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+# CMD lives in Dockerfile; do not override startCommand (avoids path issues).
 healthcheckPath = "/"
-healthcheckTimeout = 120
+healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
