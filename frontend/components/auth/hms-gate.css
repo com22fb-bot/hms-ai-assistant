@@ -1,0 +1,456 @@
+/* HMS Gate — acceso mobile-first (independiente de approved-ui auth grid) */
+
+.hms-gate {
+  --gate-ink: #f4f1ea;
+  --gate-muted: #b7b0a4;
+  --gate-line: rgba(244, 241, 234, 0.14);
+  --gate-panel: rgba(12, 18, 22, 0.72);
+  --gate-accent: #e8a54b;
+  --gate-accent-ink: #1a1208;
+  --gate-ok: #7dce9a;
+  --gate-err: #ffb4a8;
+  --gate-font: var(--font-hms-sans), "Segoe UI", sans-serif;
+  --gate-display: var(--font-hms-display), Georgia, serif;
+
+  position: relative;
+  min-height: 100dvh;
+  min-height: 100svh;
+  overflow-x: clip;
+  color: var(--gate-ink);
+  font-family: var(--gate-font);
+  background: #0a0e10;
+}
+
+.hms-gate__atmosphere {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 90% 60% at 20% -10%, rgba(232, 165, 75, 0.22), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 100%, rgba(47, 140, 140, 0.18), transparent 50%),
+    linear-gradient(165deg, #0a0e10 0%, #121a1f 48%, #0c1216 100%);
+  pointer-events: none;
+}
+
+.hms-gate__grid {
+  position: fixed;
+  inset: 0;
+  opacity: 0.22;
+  background-image:
+    linear-gradient(rgba(244, 241, 234, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(244, 241, 234, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(circle at 50% 30%, #000 20%, transparent 75%);
+  pointer-events: none;
+}
+
+.hms-gate__frame {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  width: min(100%, 28rem);
+  margin: 0 auto;
+  padding:
+    max(1.25rem, env(safe-area-inset-top))
+    1.15rem
+    max(1.5rem, env(safe-area-inset-bottom));
+  min-height: 100dvh;
+  min-height: 100svh;
+  justify-content: center;
+}
+
+.hms-gate__brand {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  animation: hms-gate-rise 0.55s ease-out both;
+}
+
+.hms-gate__mark {
+  width: 3rem;
+  height: 3rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.85rem;
+  background: linear-gradient(145deg, #f0c27a, #c4782a 55%, #8f5318);
+  color: #1a1208;
+  font-family: var(--gate-display);
+  font-size: 1.45rem;
+  font-weight: 700;
+  box-shadow: 0 12px 32px rgba(200, 130, 40, 0.28);
+}
+
+.hms-gate__product {
+  margin: 0;
+  font-family: var(--gate-display);
+  font-size: 1.65rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.hms-gate__tagline {
+  margin: 0.2rem 0 0;
+  color: var(--gate-muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.hms-gate__hero {
+  animation: hms-gate-rise 0.65s ease-out 0.06s both;
+}
+
+.hms-gate__hero h1 {
+  margin: 0;
+  font-family: var(--gate-display);
+  font-size: clamp(1.65rem, 6.5vw, 2.05rem);
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.hms-gate__hero p {
+  margin: 0.65rem 0 0;
+  color: var(--gate-muted);
+  font-size: 0.98rem;
+  line-height: 1.45;
+  max-width: 28ch;
+}
+
+.hms-gate__panel {
+  border: 1px solid var(--gate-line);
+  border-radius: 1.25rem;
+  padding: 1.15rem 1.1rem 1.25rem;
+  background: var(--gate-panel);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  animation: hms-gate-rise 0.7s ease-out 0.12s both;
+}
+
+.hms-gate__panel-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 650;
+}
+
+.hms-gate__panel-head p {
+  margin: 0.35rem 0 0;
+  color: var(--gate-muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.hms-gate__form,
+.hms-gate__help {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 1.15rem;
+}
+
+.hms-gate__field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.hms-gate__field > span {
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--gate-muted);
+}
+
+.hms-gate__control {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 3.15rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--gate-line);
+  border-radius: 0.85rem;
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--gate-muted);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.hms-gate__control:focus-within {
+  border-color: rgba(232, 165, 75, 0.65);
+  box-shadow: 0 0 0 3px rgba(232, 165, 75, 0.18);
+  color: var(--gate-accent);
+}
+
+.hms-gate__control input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--gate-ink);
+  font-size: 16px; /* evita zoom iOS */
+  line-height: 1.3;
+}
+
+.hms-gate__control input::placeholder {
+  color: rgba(183, 176, 164, 0.55);
+}
+
+.hms-gate__icon-btn {
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 0.55rem;
+  background: transparent;
+  color: inherit;
+}
+
+.hms-gate__submit,
+.hms-gate__secondary {
+  min-height: 3.15rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: 0;
+  border-radius: 0.9rem;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.hms-gate__submit {
+  margin-top: 0.25rem;
+  background: linear-gradient(180deg, #f0bc6a, #d48a2e);
+  color: var(--gate-accent-ink);
+  box-shadow: 0 12px 28px rgba(212, 138, 46, 0.28);
+}
+
+.hms-gate__submit:disabled {
+  opacity: 0.7;
+}
+
+.hms-gate__secondary {
+  border: 1px solid var(--gate-line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--gate-ink);
+}
+
+.hms-gate__secondary.is-ghost {
+  background: transparent;
+}
+
+.hms-gate__links {
+  display: flex;
+  justify-content: center;
+}
+
+.hms-gate__links button,
+.hms-gate__back {
+  border: 0;
+  background: transparent;
+  color: var(--gate-accent);
+  font-size: 0.92rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  padding: 0.35rem;
+}
+
+.hms-gate__back {
+  justify-self: start;
+  text-decoration: none;
+  margin-bottom: 0.25rem;
+}
+
+.hms-gate__help-lead {
+  margin: 0;
+  color: var(--gate-muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.hms-gate__alert {
+  display: flex;
+  gap: 0.55rem;
+  align-items: flex-start;
+  padding: 0.75rem 0.85rem;
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.hms-gate__alert.is-error {
+  background: rgba(140, 40, 28, 0.28);
+  color: var(--gate-err);
+}
+
+.hms-gate__alert.is-ok {
+  background: rgba(30, 90, 55, 0.28);
+  color: var(--gate-ok);
+}
+
+.hms-gate__foot {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  margin-top: 1rem;
+  padding-top: 0.95rem;
+  border-top: 1px solid var(--gate-line);
+  color: var(--gate-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.hms-gate__foot svg {
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+  color: var(--gate-accent);
+}
+
+.hms-gate__aside {
+  display: none;
+}
+
+.hms-gate__theme {
+  position: fixed;
+  z-index: 2;
+  top: max(0.65rem, env(safe-area-inset-top));
+  right: max(0.65rem, env(safe-area-inset-right));
+}
+
+.hms-gate__theme select {
+  min-height: 2.25rem;
+  padding: 0 0.65rem;
+  border: 1px solid var(--gate-line);
+  border-radius: 999px;
+  background: rgba(10, 14, 16, 0.75);
+  color: var(--gate-muted);
+  font-size: 0.75rem;
+  backdrop-filter: blur(10px);
+}
+
+.hms-gate__spin {
+  animation: hms-gate-spin 0.8s linear infinite;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes hms-gate-rise {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes hms-gate-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Escritorio: marca + panel en una composición limpia */
+@media (min-width: 900px) {
+  .hms-gate__frame {
+    width: min(100%, 64rem);
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    grid-template-areas:
+      "brand brand"
+      "hero panel"
+      "aside panel";
+    align-content: center;
+    gap: 1.25rem 3rem;
+    padding: 3rem 2.5rem;
+  }
+
+  .hms-gate__brand {
+    grid-area: brand;
+  }
+
+  .hms-gate__hero {
+    grid-area: hero;
+    align-self: end;
+  }
+
+  .hms-gate__hero h1 {
+    font-size: 2.75rem;
+    max-width: 12ch;
+  }
+
+  .hms-gate__hero p {
+    max-width: 34ch;
+    font-size: 1.05rem;
+  }
+
+  .hms-gate__panel {
+    grid-area: panel;
+    align-self: center;
+    padding: 1.5rem 1.4rem 1.55rem;
+  }
+
+  .hms-gate__aside {
+    grid-area: aside;
+    display: block;
+    align-self: start;
+    animation: hms-gate-rise 0.75s ease-out 0.18s both;
+  }
+
+  .hms-gate__aside-kicker {
+    margin: 0;
+    color: var(--gate-accent);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .hms-gate__aside-title {
+    margin: 0.55rem 0 1rem;
+    font-family: var(--gate-display);
+    font-size: 1.35rem;
+    line-height: 1.3;
+    max-width: 22ch;
+  }
+
+  .hms-gate__aside ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.55rem;
+    color: var(--gate-muted);
+    font-size: 0.95rem;
+  }
+
+  .hms-gate__aside li {
+    padding-left: 1rem;
+    border-left: 2px solid rgba(232, 165, 75, 0.45);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hms-gate__brand,
+  .hms-gate__hero,
+  .hms-gate__panel,
+  .hms-gate__aside {
+    animation: none;
+  }
+}

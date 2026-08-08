@@ -1,0 +1,254 @@
+.hms-classification-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 160;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  overflow: auto;
+  background: rgba(0, 10, 14, 0.86);
+  backdrop-filter: blur(12px);
+}
+
+.hms-classification-panel {
+  position: relative;
+  width: min(900px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: clamp(24px, 4vw, 38px);
+  border: 1px solid rgba(255, 184, 72, 0.34);
+  border-radius: 26px;
+  background: #071d25;
+  color: #eaffff;
+}
+
+.hms-classification-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(114, 205, 214, 0.22);
+  border-radius: 13px;
+  background: rgba(4, 29, 37, 0.92);
+  color: #eaffff;
+  cursor: pointer;
+}
+
+.hms-classification-panel header > span {
+  color: #ffbd58;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+}
+
+.hms-classification-panel header h2 {
+  margin: 8px 0 7px;
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.hms-classification-panel header p {
+  max-width: 720px;
+  margin: 0;
+  color: #a8c1c8;
+  line-height: 1.55;
+}
+
+.hms-classification-safety,
+.hms-classification-result,
+.hms-classification-error,
+.hms-classification-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 16px;
+  border-radius: 16px;
+}
+
+.hms-classification-safety {
+  border: 1px solid rgba(65, 221, 166, 0.24);
+  background: rgba(18, 91, 69, 0.17);
+}
+
+.hms-classification-safety svg {
+  color: #45dfa8;
+}
+
+.hms-classification-safety span,
+.hms-classification-result span,
+.hms-classification-note span {
+  display: block;
+  margin-top: 4px;
+  color: #a9c4ca;
+  line-height: 1.45;
+}
+
+.hms-classification-loading {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  color: #9db8bf;
+}
+
+.hms-classification-error {
+  border: 1px solid rgba(255, 115, 92, 0.35);
+  background: rgba(130, 35, 28, 0.18);
+  color: #ffd7d0;
+}
+
+.hms-classification-progress {
+  margin-top: 20px;
+  padding: 18px;
+  border: 1px solid rgba(255, 188, 88, 0.24);
+  border-radius: 18px;
+  background: rgba(85, 58, 15, 0.16);
+}
+
+.hms-classification-progress-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.hms-classification-progress-heading span,
+.hms-classification-progress small {
+  display: block;
+  color: #a9c1c7;
+}
+
+.hms-classification-progress-heading strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.2rem;
+}
+
+.hms-classification-progress-heading b {
+  font-size: 1.8rem;
+  color: #ffbd58;
+}
+
+.hms-classification-track {
+  height: 13px;
+  margin: 13px 0 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #17333a;
+}
+
+.hms-classification-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #ffb84b, #2fe3df);
+  transition: width 0.4s ease;
+}
+
+.hms-classification-result.is-completed {
+  border: 1px solid rgba(66, 222, 165, 0.25);
+  background: rgba(18, 91, 69, 0.16);
+}
+
+.hms-classification-result.is-completed svg {
+  color: #45dfa8;
+}
+
+.hms-classification-result.is-failed,
+.hms-classification-result.is-cancelled {
+  border: 1px solid rgba(255, 115, 92, 0.3);
+  background: rgba(130, 35, 28, 0.16);
+}
+
+.hms-classification-stats,
+.hms-classification-categories {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 11px;
+  margin-top: 16px;
+}
+
+.hms-classification-stats article,
+.hms-classification-categories article {
+  padding: 14px;
+  border: 1px solid rgba(96, 190, 199, 0.17);
+  border-radius: 15px;
+  background: rgba(6, 34, 43, 0.78);
+}
+
+.hms-classification-stats span,
+.hms-classification-categories span,
+.hms-classification-stats strong,
+.hms-classification-categories strong {
+  display: block;
+}
+
+.hms-classification-stats span,
+.hms-classification-categories span {
+  color: #91adb5;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+
+.hms-classification-stats strong,
+.hms-classification-categories strong {
+  margin-top: 5px;
+  font-size: 1.45rem;
+}
+
+.hms-classification-panel footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 11px;
+  margin-top: 22px;
+}
+
+.hms-classification-panel footer button {
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 14px;
+  background: #ffbd58;
+  color: #171004;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.hms-classification-panel footer button.secondary {
+  border: 1px solid rgba(107, 204, 213, 0.2);
+  background: rgba(6, 33, 42, 0.82);
+  color: #eaffff;
+}
+
+.hms-classification-panel footer button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.hms-classification-note {
+  justify-content: center;
+  padding-bottom: 0;
+  color: #8ea9b0;
+}
+
+@media (max-width: 700px) {
+  .hms-classification-stats,
+  .hms-classification-categories {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hms-classification-panel footer {
+    flex-direction: column-reverse;
+  }
+
+  .hms-classification-panel footer button {
+    width: 100%;
+  }
+}

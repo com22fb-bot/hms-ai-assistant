@@ -1,186 +1,97 @@
-import os
-import secrets
-from typing import Any
+from __future__ import annotations
 
-from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import Flow
-from supabase import Client, create_client
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 
+from app.api.ai import router as ai_router
+from app.api.auth import (
+    get_active_google_credentials,
+    get_connected_google_email,
+    get_google_connection_status,
+    router as auth_router,
+)
+from app.api.cases import router as cases_router
+from app.api.gmail import create_gmail_router
+from app.api.guided_import import router as guided_import_router
+from app.api.identity import router as identity_router
+from app.api.messages import router as messages_router
+from app.api.push_notifications import router as push_router
+from app.api.system import router as system_router
+from app.api.sync_jobs import router as sync_jobs_router
+from app.core.config import settings
+from app.middleware.authentication_context import AuthenticationContextMiddleware
+from app.middleware.incident_logging import IncidentLoggingMiddleware
+from app.services.gmail_sync_job_service import resume_incomplete_jobs
+from app.services.automatic_mail_scheduler import start_automatic_mail_scheduler
 
-# ============================================================
-# CONFIGURACIÓN
-# ============================================================
-
-load_dotenv()
-
-SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
-SUPABASE_SECRET_KEY = os.getenv("SUPABASE_SECRET_KEY", "").strip()
-
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
-GOOGLE_REDIRECT_URI = os.getenv("GOOGLE_REDIRECT_URI", "").strip()
-
-GOOGLE_SCOPES = [
-    "openid",
-    "https://www.googleapis.com/auth/userinfo.email",
-    "https://www.googleapis.com/auth/userinfo.profile",
-    "https://www.googleapis.com/auth/gmail.readonly",
-]
 
 app = FastAPI(
-    title="HMS AI Assistant API",
-    description="Backend de HMS AI Assistant",
-    version="0.2.0",
+    title=settings.app_name,
+    description=settings.app_description,
+    version=settings.app_version,
 )
 
-# Almacenamiento temporal para esta etapa de desarrollo.
-# Más adelante los tokens se guardarán cifrados en Supabase.
-oauth_states: dict[str, bool] = {}
-google_credentials: dict[str, Any] = {}
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.frontend_origins,
+    allow_origin_regex=(
+        r"https://.*\."
+        r"(app\.github\.dev|githubpreview\.dev|vercel\.app)"
+    ),
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
-# ============================================================
-# FUNCIONES AUXILIARES
-# ============================================================
-
-def validate_google_environment() -> None:
-    missing_variables = []
-
-    if not GOOGLE_CLIENT_ID:
-        missing_variables.append("GOOGLE_CLIENT_ID")
-
-    if not GOOGLE_CLIENT_SECRET:
-        missing_variables.append("GOOGLE_CLIENT_SECRET")
-
-    if not GOOGLE_REDIRECT_URI:
-        missing_variables.append("GOOGLE_REDIRECT_URI")
-
-    if missing_variables:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "status": "error",
-                "message": "Faltan variables de Google OAuth en el archivo .env.",
-                "missing_variables": missing_variables,
-            },
-        )
+app.add_middleware(AuthenticationContextMiddleware)
+app.add_middleware(IncidentLoggingMiddleware)
 
 
-def get_supabase_client() -> Client:
-    missing_variables = []
-
-    if not SUPABASE_URL:
-        missing_variables.append("SUPABASE_URL")
-
-    if not SUPABASE_SECRET_KEY:
-        missing_variables.append("SUPABASE_SECRET_KEY")
-
-    if missing_variables:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "status": "error",
-                "message": "Faltan variables de Supabase en el archivo .env.",
-                "missing_variables": missing_variables,
-            },
-        )
-
-    return create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
+@app.on_event("startup")
+def resume_durable_gmail_sync_jobs() -> None:
+    """Recupera trabajos solo cuando las mutaciones están habilitadas."""
+    if settings.data_mutations_enabled:
+        resume_incomplete_jobs()
 
 
-def create_google_flow(state: str | None = None) -> Flow:
-    validate_google_environment()
-
-    client_config = {
-        "web": {
-            "client_id": GOOGLE_CLIENT_ID,
-            "client_secret": GOOGLE_CLIENT_SECRET,
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [GOOGLE_REDIRECT_URI],
-        }
-    }
-
-    flow = Flow.from_client_config(
-        client_config=client_config,
-        scopes=GOOGLE_SCOPES,
-        state=state,
-        autogenerate_code_verifier=False,
-    )
-
-    flow.redirect_uri = GOOGLE_REDIRECT_URI
-    return flow
 
 
-# ============================================================
-# RUTAS GENERALES
-# ============================================================
+@app.on_event("startup")
+def start_hms_automatic_mail_sync() -> None:
+    start_automatic_mail_scheduler()
+
 
 @app.get("/")
 def root() -> dict[str, str]:
     return {
         "status": "ok",
-        "application": "HMS AI Assistant API",
-        "version": "0.2.0",
+        "application": settings.app_name,
+        "version": settings.app_version,
         "documentation": "/docs",
-        "dashboard": "/dashboard",
+        "dashboard": "/cases/dashboard",
         "google_login": "/auth/google/login",
+        "google_status": "/auth/google/status",
+        "gmail_messages": "/gmail/messages",
+        "stored_messages": "/messages/stored",
+        "cases": "/cases",
+        "case_processing": "/cases/process",
     }
 
 
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {
-        "status": "ok",
-        "service": "backend",
-    }
-
-
-@app.get("/database-health")
-def database_health() -> dict[str, Any]:
-    try:
-        supabase = get_supabase_client()
-
-        response = (
-            supabase.table("mail_accounts")
-            .select("*", count="exact")
-            .limit(1)
-            .execute()
-        )
-
-        record_count = response.count if response.count is not None else 0
-
-        return {
-            "status": "ok",
-            "database": "connected",
-            "table": "mail_accounts",
-            "records": record_count,
-        }
-
-    except HTTPException:
-        raise
-
-    except Exception as error:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "status": "error",
-                "database": "disconnected",
-                "message": str(error),
-            },
-        ) from error
-
-
-@app.get("/dashboard", response_class=HTMLResponse)
-def dashboard() -> str:
-    google_status = (
+@app.get(
+    "/dashboard",
+    response_class=HTMLResponse,
+)
+def dashboard_html() -> str:
+    connection = get_google_connection_status()
+    connection_status = (
         "Conectada"
-        if google_credentials
+        if connection.connected
         else "No conectada"
     )
+    account_email = get_connected_google_email()
 
     return f"""
     <!DOCTYPE html>
@@ -196,202 +107,70 @@ def dashboard() -> str:
             body {{
                 margin: 0;
                 padding: 40px 20px;
-                background: #f4f7fb;
-                color: #1f2937;
+                background: #0b1020;
+                color: #eef2ff;
                 font-family: Arial, sans-serif;
             }}
-
             .container {{
-                max-width: 760px;
+                max-width: 820px;
                 margin: 0 auto;
                 padding: 32px;
-                background: white;
-                border-radius: 16px;
-                box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+                background: #11182c;
+                border: 1px solid #26314f;
+                border-radius: 18px;
             }}
-
-            h1 {{
-                margin-top: 0;
-                color: #174ea6;
-            }}
-
+            h1 {{ margin-top: 0; }}
             .status {{
                 padding: 14px;
                 margin: 20px 0;
-                background: #eef4ff;
+                background: #18213a;
                 border-radius: 10px;
             }}
-
-            a.button {{
+            a {{
                 display: inline-block;
                 padding: 12px 18px;
                 margin: 6px 6px 6px 0;
                 color: white;
-                background: #174ea6;
+                background: #345cff;
                 border-radius: 8px;
                 text-decoration: none;
             }}
-
-            a.secondary {{
-                background: #374151;
-            }}
         </style>
     </head>
-
     <body>
         <main class="container">
             <h1>HMS AI Assistant</h1>
-
             <p>
-                Backend de administración y conexión de cuentas de correo.
+                Plataforma de Inteligencia Operacional basada
+                en Casos Inteligentes.
             </p>
-
             <div class="status">
-                <strong>Google Gmail:</strong> {google_status}
+                <strong>Google Gmail:</strong>
+                {connection_status}
+                <div>{account_email}</div>
             </div>
-
-            <a class="button" href="/auth/google/login">
-                Conectar cuenta de Google
-            </a>
-
-            <a class="button secondary" href="/auth/google/status">
-                Consultar estado
-            </a>
-
-            <a class="button secondary" href="/database-health">
-                Probar Supabase
-            </a>
-
-            <a class="button secondary" href="/docs">
-                Documentación API
-            </a>
+            <a href="/auth/google/login">Conectar Google</a>
+            <a href="/cases/dashboard">Dashboard de Casos</a>
+            <a href="/cases">Casos</a>
+            <a href="/messages/stored">Mensajes almacenados</a>
+            <a href="/docs">API</a>
         </main>
     </body>
     </html>
     """
 
 
-# ============================================================
-# GOOGLE OAUTH
-# ============================================================
+gmail_router = create_gmail_router(
+    get_active_google_credentials,
+)
 
-@app.get("/auth/google/login")
-def google_login() -> RedirectResponse:
-    flow = create_google_flow()
-
-    state = secrets.token_urlsafe(32)
-    oauth_states[state] = True
-
-    authorization_url, returned_state = flow.authorization_url(
-        access_type="offline",
-        include_granted_scopes="true",
-        prompt="consent",
-        state=state,
-    )
-
-    if returned_state != state:
-        raise HTTPException(
-            status_code=500,
-            detail="No fue posible crear un estado OAuth válido.",
-        )
-
-    return RedirectResponse(
-        url=authorization_url,
-        status_code=302,
-    )
-
-
-@app.get("/auth/google/callback")
-def google_callback(request: Request) -> dict[str, Any]:
-    error = request.query_params.get("error")
-
-    if error:
-        error_description = request.query_params.get(
-            "error_description",
-            "Google rechazó la autorización.",
-        )
-
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "error",
-                "oauth_error": error,
-                "message": error_description,
-            },
-        )
-
-    state = request.query_params.get("state")
-
-    if not state or state not in oauth_states:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "error",
-                "message": "El estado OAuth es inválido o expiró.",
-            },
-        )
-
-    flow = create_google_flow(state=state)
-
-    try:
-        flow.fetch_token(
-            authorization_response=str(request.url)
-        )
-    except Exception as error:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "error",
-                "message": "No fue posible obtener el token de Google.",
-                "technical_detail": str(error),
-            },
-        ) from error
-    finally:
-        oauth_states.pop(state, None)
-
-    credentials: Credentials = flow.credentials
-
-    google_credentials.clear()
-    google_credentials.update(
-        {
-            "token": credentials.token,
-            "refresh_token": credentials.refresh_token,
-            "token_uri": credentials.token_uri,
-            "client_id": credentials.client_id,
-            "scopes": list(credentials.scopes or []),
-            "connected": True,
-        }
-    )
-
-    return {
-        "status": "ok",
-        "message": "Cuenta de Google conectada correctamente.",
-        "connected": True,
-        "has_access_token": bool(credentials.token),
-        "has_refresh_token": bool(credentials.refresh_token),
-        "scopes": list(credentials.scopes or []),
-        "next_step": "Consultar /auth/google/status",
-    }
-
-
-@app.get("/auth/google/status")
-def google_status() -> dict[str, Any]:
-    if not google_credentials:
-        return {
-            "status": "ok",
-            "connected": False,
-            "message": "No hay una cuenta de Google conectada.",
-            "login_url": "/auth/google/login",
-        }
-
-    return {
-        "status": "ok",
-        "connected": True,
-        "has_access_token": bool(
-            google_credentials.get("token")
-        ),
-        "has_refresh_token": bool(
-            google_credentials.get("refresh_token")
-        ),
-        "scopes": google_credentials.get("scopes", []),
-    }
+app.include_router(system_router)
+app.include_router(identity_router)
+app.include_router(ai_router)
+app.include_router(auth_router)
+app.include_router(gmail_router)
+app.include_router(guided_import_router)
+app.include_router(sync_jobs_router)
+app.include_router(messages_router)
+app.include_router(push_router)
+app.include_router(cases_router)
