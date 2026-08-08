@@ -1,0 +1,12 @@
+# Railway config at repo root — monorepo backend deploy.
+# Leave "Root Directory" EMPTY in the dashboard (or ".") so this file is used.
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+healthcheckPath = "/"
+healthcheckTimeout = 120
+restartPolicyType = "ON_FAILURE"
