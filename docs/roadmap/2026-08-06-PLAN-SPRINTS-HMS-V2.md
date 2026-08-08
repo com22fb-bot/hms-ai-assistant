@@ -24,8 +24,9 @@
 # Sprint 1 — Estabilización y baseline profesional
 
 **Fechas:** 6–19 de agosto de 2026
-**Estado:** iniciado
+**Estado:** en progreso (~70–75 % del DoD; ver tablero de pendientes)
 **Rama recomendada:** `sprint/01-estabilizacion-alertas-20260806`
+**Tablero vivo:** `docs/roadmap/2026-08-07-SPRINT-1-TABLERO.md` (actualizado 2026-08-07)
 
 ## Objetivo
 

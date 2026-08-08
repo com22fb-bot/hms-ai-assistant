@@ -8,6 +8,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 
 
+# scripts/ -> repo root (parents[1]); parents[2] would target the parent of the repo
 repo = Path(__file__).resolve().parents[1]
 secret_dir = repo / ".hms-secrets"
 secret_dir.mkdir(parents=True, exist_ok=True)
