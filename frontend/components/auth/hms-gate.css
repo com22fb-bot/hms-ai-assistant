@@ -1,411 +1,399 @@
-/* Donexto gate — misma paleta turquesa del dashboard (accessible / focus) */
+/*
+  Donexto auth — look institucional (split marca + tarjeta de acceso).
+  Mobile: formulario primero. Desktop: marca | form centrado en columna.
+*/
 
-.hms-gate {
-  --gate-ink: #e8fbff;
-  --gate-muted: #9dc4c8;
-  --gate-line: rgba(46, 225, 218, 0.22);
-  --gate-panel: rgba(4, 31, 39, 0.78);
-  --gate-accent: #20d8d2;
-  --gate-accent-2: #12aaa9;
-  --gate-accent-ink: #001315;
-  --gate-ok: #3bddae;
-  --gate-err: #ff8a9a;
-  --gate-font: var(--font-hms-sans), "Segoe UI", sans-serif;
-  --gate-display: var(--font-hms-display), Georgia, serif;
+.dx-auth {
+  --dx-ink: #0f1c22;
+  --dx-muted: #5c7179;
+  --dx-line: #d5e0e4;
+  --dx-surface: #ffffff;
+  --dx-field: #f3f7f8;
+  --dx-brand-bg: #0a1620;
+  --dx-brand-ink: #eef6f7;
+  --dx-brand-muted: #9db0b7;
+  --dx-teal: #0c8a80;
+  --dx-teal-deep: #0a6f67;
+  --dx-danger: #b42318;
+  --dx-ok: #067647;
+  --dx-font: var(--font-hms-sans), "Segoe UI", system-ui, sans-serif;
+  --dx-display: var(--font-hms-display), Georgia, "Times New Roman", serif;
 
-  position: relative;
   min-height: 100dvh;
   min-height: 100svh;
-  overflow-x: clip;
-  color: var(--gate-ink);
-  font-family: var(--gate-font);
-  background: #02070b;
-}
-
-.hms-gate[data-theme="accessible"] {
-  --gate-ink: #e8fbff;
-  --gate-muted: #a8c9cc;
-  --gate-accent: #20d8d2;
-  --gate-accent-2: #12aaa9;
-}
-
-.hms-gate[data-theme="aurora"] {
-  --gate-ink: #f1fbff;
-  --gate-muted: #9dc4d5;
-  --gate-accent: #25c9ef;
-  --gate-accent-2: #6d72ff;
-  --gate-line: rgba(76, 207, 255, 0.22);
-  --gate-panel: rgba(6, 28, 42, 0.82);
-}
-
-.hms-gate[data-theme="midnight"] {
-  --gate-ink: #f7f9ff;
-  --gate-muted: #9eacc8;
-  --gate-accent: #6f6cff;
-  --gate-accent-2: #a64cff;
-  --gate-line: rgba(132, 156, 211, 0.22);
-  --gate-panel: rgba(12, 18, 40, 0.8);
-  --gate-accent-ink: #070a16;
-}
-
-.hms-gate[data-theme="graphite"] {
-  --gate-ink: #f6f6f7;
-  --gate-muted: #b3b7be;
-  --gate-accent: #a5abff;
-  --gate-accent-2: #d0a6ff;
-  --gate-line: rgba(255, 255, 255, 0.14);
-  --gate-panel: rgba(28, 30, 36, 0.88);
-  --gate-accent-ink: #12141a;
-}
-
-.hms-gate__atmosphere {
-  position: fixed;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 90% 55% at 18% -8%, rgba(32, 216, 210, 0.16), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 100% 100%, rgba(18, 170, 169, 0.14), transparent 50%),
-    linear-gradient(180deg, #02070b 0%, #030a10 55%, #04141a 100%);
-  pointer-events: none;
-}
-
-.hms-gate[data-theme="midnight"] .hms-gate__atmosphere {
-  background:
-    radial-gradient(ellipse 80% 50% at 20% 0%, rgba(111, 108, 255, 0.2), transparent 55%),
-    linear-gradient(180deg, #060a16 0%, #0b1223 100%);
-}
-
-.hms-gate__grid {
-  position: fixed;
-  inset: 0;
-  opacity: 0.18;
-  background-image:
-    linear-gradient(rgba(46, 225, 218, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(46, 225, 218, 0.05) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(circle at 50% 30%, #000 20%, transparent 75%);
-  pointer-events: none;
-}
-
-.hms-gate__frame {
-  position: relative;
-  z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 1.1rem;
-  width: min(100%, 28rem);
-  margin: 0 auto;
-  padding:
-    max(1.15rem, env(safe-area-inset-top))
-    1.15rem
-    max(1.5rem, env(safe-area-inset-bottom));
-  min-height: 100dvh;
-  min-height: 100svh;
-  justify-content: center;
+  font-family: var(--dx-font);
+  color: var(--dx-ink);
+  background: #eef2f4;
 }
 
-.hms-gate__brand {
+/* Mobile: form first */
+.dx-auth__access {
+  order: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding:
+    max(1.25rem, env(safe-area-inset-top))
+    1.15rem
+    max(1.25rem, env(safe-area-inset-bottom));
+  gap: 1rem;
+  background:
+    linear-gradient(180deg, #e8eef1 0%, #f4f7f8 40%, #eef2f4 100%);
+}
+
+.dx-auth__brand {
+  order: 2;
+  padding: 1.5rem 1.15rem 2rem;
+  background: var(--dx-brand-bg);
+  color: var(--dx-brand-ink);
+}
+
+.dx-auth__brand-inner {
+  max-width: 28rem;
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+}
+
+.dx-auth__logo {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-  animation: hms-gate-rise 0.55s ease-out both;
+  gap: 0.75rem;
 }
 
-.hms-gate__mark {
-  width: 3rem;
-  height: 3rem;
+.dx-auth__mark {
+  width: 2.75rem;
+  height: 2.75rem;
   display: grid;
   place-items: center;
-  border-radius: 0.85rem;
-  background: linear-gradient(135deg, #12aaa9, #20d8d2);
-  color: #001315;
-  font-family: var(--gate-display);
-  font-size: 1.45rem;
-  font-weight: 700;
-  box-shadow: 0 12px 32px rgba(18, 170, 169, 0.35);
-}
-
-.hms-gate[data-theme="midnight"] .hms-gate__mark {
-  background: linear-gradient(135deg, #6f6cff, #a64cff);
+  border-radius: 0.65rem;
+  background: var(--dx-teal);
   color: #fff;
-  box-shadow: 0 12px 32px rgba(111, 108, 255, 0.35);
+  font-family: var(--dx-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
-.hms-gate__product {
+.dx-auth__name {
   margin: 0;
-  font-family: var(--gate-display);
-  font-size: 1.7rem;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  font-family: var(--dx-display);
+  font-size: 1.45rem;
   font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
 }
 
-.hms-gate__tagline {
-  margin: 0.25rem 0 0;
-  color: var(--gate-muted);
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: lowercase;
+.dx-auth__slogan {
+  margin: 0.15rem 0 0;
+  color: var(--dx-brand-muted);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
 }
 
-.hms-gate__hero {
-  animation: hms-gate-rise 0.65s ease-out 0.06s both;
+.dx-auth__headline {
+  margin: 0.35rem 0 0;
+  font-family: var(--dx-display);
+  font-size: clamp(1.55rem, 5.5vw, 1.9rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.03em;
+  max-width: 16ch;
 }
 
-.hms-gate__art {
-  margin: 0 0 0.85rem;
+.dx-auth__sub {
+  margin: 0;
+  color: var(--dx-brand-muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  max-width: 34ch;
+}
+
+.dx-auth__visual {
+  margin: 0.5rem 0 0;
+  border-radius: 0.75rem;
   overflow: hidden;
-  border-radius: 1.15rem;
-  border: 1px solid rgba(46, 225, 218, 0.28);
-  background: rgba(4, 31, 39, 0.72);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+  background: #050c12;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.hms-gate__art img {
+.dx-auth__visual img {
   display: block;
   width: 100%;
-  height: clamp(160px, 32vw, 220px);
+  height: auto;
+  max-height: 168px;
   object-fit: contain;
   object-position: center;
-  background: #000;
+  background: #050c12;
 }
 
-.hms-gate__hero h1 {
-  margin: 0;
-  font-family: var(--gate-display);
-  font-size: clamp(1.55rem, 6vw, 1.95rem);
-  line-height: 1.15;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+/* Card */
+.dx-auth__card {
+  width: min(100%, 400px);
+  background: var(--dx-surface);
+  border: 1px solid var(--dx-line);
+  border-radius: 12px;
+  padding: 1.5rem 1.35rem 1.35rem;
+  box-shadow:
+    0 1px 2px rgba(15, 28, 34, 0.04),
+    0 12px 32px rgba(15, 28, 34, 0.08);
 }
 
-.hms-gate__hero p {
-  margin: 0.65rem 0 0;
-  color: var(--gate-muted);
-  font-size: 0.95rem;
-  line-height: 1.45;
+.dx-auth__card-head {
+  margin-bottom: 1.1rem;
 }
 
-.hms-gate__panel {
-  border: 1px solid var(--gate-line);
-  border-radius: 1.25rem;
-  padding: 1.15rem 1.1rem 1.25rem;
-  background: var(--gate-panel);
-  backdrop-filter: blur(18px);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
-  animation: hms-gate-rise 0.7s ease-out 0.12s both;
-}
-
-.hms-gate__panel-head h2 {
-  margin: 0;
-  font-size: 1.15rem;
+.dx-auth__card-brand {
+  display: none;
+  margin: 0 0 0.35rem;
+  font-family: var(--dx-display);
+  font-size: 1.05rem;
   font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--dx-ink);
 }
 
-.hms-gate__panel-head p {
-  margin: 0.35rem 0 0;
-  color: var(--gate-muted);
-  font-size: 0.88rem;
+.dx-auth__card-head h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--dx-ink);
+}
+
+.dx-auth__card-note {
+  margin: 0.4rem 0 0;
+  color: var(--dx-muted);
+  font-size: 0.9rem;
   line-height: 1.4;
 }
 
-.hms-gate__form,
-.hms-gate__help {
+.dx-auth__mode {
   display: grid;
-  gap: 0.85rem;
-  margin-top: 1.15rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  margin-bottom: 1.15rem;
+  border-radius: 10px;
+  background: var(--dx-field);
+  border: 1px solid var(--dx-line);
 }
 
-.hms-gate__field {
+.dx-auth__mode button {
+  border: 0;
+  border-radius: 8px;
+  min-height: 2.5rem;
+  background: transparent;
+  color: var(--dx-muted);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dx-auth__mode button.is-on {
+  background: #fff;
+  color: var(--dx-ink);
+  box-shadow: 0 1px 3px rgba(15, 28, 34, 0.08);
+}
+
+.dx-auth__form,
+.dx-auth__help {
   display: grid;
-  gap: 0.4rem;
+  gap: 0.9rem;
 }
 
-.hms-gate__field > span {
-  font-size: 0.78rem;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--gate-muted);
+.dx-auth__field {
+  display: grid;
+  gap: 0.35rem;
 }
 
-.hms-gate__control {
+.dx-auth__field > span {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--dx-ink);
+}
+
+.dx-auth__control {
   display: flex;
   align-items: center;
-  gap: 0.55rem;
-  min-height: 3.15rem;
+  gap: 0.5rem;
+  min-height: 3rem;
   padding: 0 0.75rem;
-  border: 1px solid var(--gate-line);
-  border-radius: 0.85rem;
-  background: rgba(0, 0, 0, 0.28);
-  color: var(--gate-muted);
+  border: 1px solid var(--dx-line);
+  border-radius: 8px;
+  background: var(--dx-field);
+  color: var(--dx-muted);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
-.hms-gate__control:focus-within {
-  border-color: rgba(32, 216, 210, 0.75);
-  box-shadow: 0 0 0 3px rgba(32, 216, 210, 0.18);
-  color: var(--gate-accent);
+.dx-auth__control:focus-within {
+  border-color: var(--dx-teal);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(12, 138, 128, 0.15);
+  color: var(--dx-teal);
 }
 
-.hms-gate__control input {
+.dx-auth__control input {
   flex: 1;
   min-width: 0;
   border: 0;
   outline: 0;
   background: transparent;
-  color: var(--gate-ink);
-  font-size: 16px;
-  line-height: 1.3;
+  color: var(--dx-ink);
+  font: inherit;
+  font-size: 1rem;
 }
 
-.hms-gate__control input::placeholder {
-  color: rgba(157, 196, 200, 0.45);
+.dx-auth__control input::placeholder {
+  color: #92a3a9;
 }
 
-.hms-gate__icon-btn {
+.dx-auth__eye {
   display: grid;
   place-items: center;
-  width: 2.25rem;
-  height: 2.25rem;
   border: 0;
-  border-radius: 0.55rem;
+  padding: 0.25rem;
   background: transparent;
   color: inherit;
+  cursor: pointer;
 }
 
-.hms-gate__submit,
-.hms-gate__secondary {
-  min-height: 3.15rem;
+.dx-auth__submit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  width: 100%;
+  min-height: 3rem;
+  margin-top: 0.15rem;
   border: 0;
-  border-radius: 0.9rem;
-  font-size: 1rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-}
-
-.hms-gate__submit {
-  margin-top: 0.25rem;
-  background: linear-gradient(135deg, #12aaa9, #20d8d2);
-  color: var(--gate-accent-ink);
-  box-shadow: 0 12px 28px rgba(18, 170, 169, 0.35);
-}
-
-.hms-gate[data-theme="midnight"] .hms-gate__submit {
-  background: linear-gradient(135deg, #6f6cff, #a64cff);
+  border-radius: 8px;
+  background: var(--dx-teal);
   color: #fff;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background 0.15s ease;
 }
 
-.hms-gate__submit:disabled {
-  opacity: 0.7;
+.dx-auth__submit:hover:not(:disabled) {
+  background: var(--dx-teal-deep);
 }
 
-.hms-gate__secondary {
-  border: 1px solid var(--gate-line);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--gate-ink);
+.dx-auth__submit:disabled {
+  opacity: 0.65;
+  cursor: wait;
 }
 
-.hms-gate__secondary.is-ghost {
-  background: transparent;
-}
-
-.hms-gate__links {
-  display: flex;
+.dx-auth__secondary {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-}
-
-.hms-gate__links button,
-.hms-gate__back {
-  border: 0;
-  background: transparent;
-  color: var(--gate-accent);
+  gap: 0.5rem;
+  min-height: 2.85rem;
+  border: 1px solid var(--dx-line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--dx-ink);
+  font: inherit;
   font-size: 0.92rem;
   font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-  padding: 0.35rem;
+  cursor: pointer;
 }
 
-.hms-gate__back {
-  justify-self: start;
-  text-decoration: none;
-  margin-bottom: 0.25rem;
+.dx-auth__secondary.is-ghost {
+  background: transparent;
 }
 
-.hms-gate__help-lead {
+.dx-auth__link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--dx-teal);
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+}
+
+.dx-auth__help-text {
   margin: 0;
-  color: var(--gate-muted);
-  font-size: 0.92rem;
+  color: var(--dx-muted);
+  font-size: 0.9rem;
   line-height: 1.45;
 }
 
-.hms-gate__alert {
+.dx-auth__alert {
   display: flex;
+  align-items: flex-start;
   gap: 0.55rem;
-  align-items: flex-start;
   padding: 0.75rem 0.85rem;
-  border-radius: 0.75rem;
-  font-size: 0.9rem;
-  line-height: 1.35;
-}
-
-.hms-gate__alert.is-error {
-  background: rgba(140, 40, 50, 0.28);
-  color: var(--gate-err);
-}
-
-.hms-gate__alert.is-ok {
-  background: rgba(20, 90, 70, 0.28);
-  color: var(--gate-ok);
-}
-
-.hms-gate__foot {
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
-  margin-top: 1rem;
-  padding-top: 0.95rem;
-  border-top: 1px solid var(--gate-line);
-  color: var(--gate-muted);
-  font-size: 0.8rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
   line-height: 1.4;
 }
 
-.hms-gate__foot svg {
-  flex: 0 0 auto;
+.dx-auth__alert.is-error {
+  background: #fef3f2;
+  color: var(--dx-danger);
+  border: 1px solid #fecdca;
+}
+
+.dx-auth__alert.is-ok {
+  background: #ecfdf3;
+  color: var(--dx-ok);
+  border: 1px solid #abefc6;
+}
+
+.dx-auth__foot {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  margin-top: 1.15rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--dx-line);
+  color: var(--dx-muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.dx-auth__foot svg {
+  flex-shrink: 0;
   margin-top: 0.1rem;
-  color: var(--gate-accent);
+  color: var(--dx-teal);
 }
 
-.hms-gate__aside {
-  display: none;
+.dx-auth__theme {
+  width: min(100%, 400px);
 }
 
-.hms-gate__theme {
-  position: fixed;
-  z-index: 2;
-  top: max(0.65rem, env(safe-area-inset-top));
-  right: max(0.65rem, env(safe-area-inset-right));
+.dx-auth__theme select {
+  width: 100%;
+  min-height: 2.4rem;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dx-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: center;
+  cursor: pointer;
 }
 
-.hms-gate__theme select {
-  min-height: 2.25rem;
-  padding: 0 0.65rem;
-  border: 1px solid var(--gate-line);
-  border-radius: 999px;
-  background: rgba(2, 7, 11, 0.8);
-  color: var(--gate-muted);
-  font-size: 0.75rem;
-  backdrop-filter: blur(10px);
+.dx-auth__spin {
+  animation: dx-auth-spin 0.8s linear infinite;
 }
 
-.hms-gate__spin {
-  animation: hms-gate-spin 0.8s linear infinite;
+@keyframes dx-auth-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .sr-only {
@@ -420,230 +408,80 @@
   border: 0;
 }
 
-@keyframes hms-gate-rise {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@keyframes hms-gate-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
+/* —— Desktop: split serio —————————————— */
 
 @media (min-width: 900px) {
-  .hms-gate__frame {
-    width: min(100%, 68rem);
-    display: grid;
-    grid-template-columns: 1.1fr 0.9fr;
-    grid-template-areas:
-      "brand brand"
-      "hero panel"
-      "aside panel";
-    align-content: center;
-    gap: 1.1rem 2.75rem;
-    padding: 2.5rem 2.5rem;
+  .dx-auth {
+    flex-direction: row;
+    min-height: 100vh;
   }
 
-  .hms-gate__brand {
-    grid-area: brand;
+  .dx-auth__brand {
+    order: 0;
+    flex: 1 1 46%;
+    max-width: 52%;
+    min-height: 100dvh;
+    display: flex;
+    align-items: center;
+    padding: 3rem 3.5rem;
+    background:
+      radial-gradient(
+        ellipse 70% 50% at 20% 15%,
+        rgba(12, 138, 128, 0.18),
+        transparent 55%
+      ),
+      linear-gradient(165deg, #0a1620 0%, #0d1c28 55%, #0a141c 100%);
   }
 
-  .hms-gate__hero {
-    grid-area: hero;
-    align-self: end;
+  .dx-auth__brand-inner {
+    max-width: 28rem;
+    margin: 0;
+    gap: 1.35rem;
   }
 
-  .hms-gate__art img {
-    height: clamp(220px, 32vh, 320px);
-  }
-
-  .hms-gate__hero h1 {
-    font-size: 2.55rem;
+  .dx-auth__headline {
+    font-size: clamp(2rem, 2.8vw, 2.55rem);
     max-width: 14ch;
   }
 
-  .hms-gate__hero p {
+  .dx-auth__sub {
+    font-size: 1.05rem;
     max-width: 36ch;
-    font-size: 1.02rem;
   }
 
-  .hms-gate__panel {
-    grid-area: panel;
-    align-self: center;
-    padding: 1.5rem 1.4rem 1.55rem;
+  .dx-auth__visual {
+    margin-top: 0.75rem;
   }
 
-  .hms-gate__aside {
-    grid-area: aside;
+  .dx-auth__visual img {
+    max-height: 240px;
+  }
+
+  .dx-auth__access {
+    order: 0;
+    flex: 1 1 54%;
+    min-height: 100dvh;
+    padding: 2.5rem;
+    background: #f0f4f6;
+  }
+
+  .dx-auth__card {
+    width: min(100%, 420px);
+    padding: 2rem 1.85rem 1.65rem;
+  }
+
+  .dx-auth__card-brand {
     display: block;
-    align-self: start;
-    animation: hms-gate-rise 0.75s ease-out 0.18s both;
-  }
-
-  .hms-gate__aside-kicker {
-    margin: 0;
-    color: var(--gate-accent);
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-  }
-
-  .hms-gate__aside-title {
-    margin: 0.55rem 0 1rem;
-    font-family: var(--gate-display);
-    font-size: 1.35rem;
-    line-height: 1.3;
-    max-width: 24ch;
-  }
-
-  .hms-gate__aside ul {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    display: grid;
-    gap: 0.55rem;
-    color: var(--gate-muted);
-    font-size: 0.95rem;
-  }
-
-  .hms-gate__aside li {
-    padding-left: 1rem;
-    border-left: 2px solid rgba(32, 216, 210, 0.5);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hms-gate__brand,
-  .hms-gate__hero,
-  .hms-gate__panel,
-  .hms-gate__aside {
+  .dx-auth__spin {
     animation: none;
   }
 }
 
-/* Layout de acceso Donexto (homologado al panel) */
-.dx-login-shell {
-  position: relative;
-  z-index: 1;
-  width: min(1120px, 100%);
-  margin: 0 auto;
-  min-height: 100dvh;
-  min-height: 100svh;
-  display: grid;
-  grid-template-columns: 1fr;
-  align-content: center;
-  gap: 1.25rem;
-  padding:
-    max(1.1rem, env(safe-area-inset-top))
-    1.1rem
-    max(1.4rem, env(safe-area-inset-bottom));
-}
-
-.dx-login-story {
-  display: grid;
-  gap: 1rem;
-}
-
-.dx-login-art {
-  margin: 0;
-}
-
-.dx-login-art img {
-  height: clamp(180px, 34vw, 260px) !important;
-  object-fit: contain !important;
-  object-position: center !important;
-}
-
-.dx-login-copy {
-  display: grid;
-  gap: 0.55rem;
-}
-
-.dx-login-eyebrow {
-  margin: 0;
-  color: var(--gate-accent);
-  font-size: 0.75rem;
-  font-weight: 750;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.dx-login-copy h1 {
-  margin: 0;
-  font-family: var(--gate-display);
-  font-size: clamp(1.7rem, 5.5vw, 2.35rem);
-  line-height: 1.12;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  max-width: 16ch;
-}
-
-.dx-login-lede {
-  margin: 0;
-  color: var(--gate-muted);
-  font-size: 0.98rem;
-  line-height: 1.45;
-  max-width: 38ch;
-}
-
-.dx-login-points {
-  margin: 0.35rem 0 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 0.4rem;
-  color: var(--gate-muted);
-  font-size: 0.9rem;
-}
-
-.dx-login-points li {
-  padding-left: 0.85rem;
-  border-left: 2px solid rgba(15, 159, 148, 0.4);
-}
-
-.dx-login-panel {
-  width: 100%;
-}
-
-.dx-login .hms-gate__frame {
-  display: none;
-}
-
-@media (min-width: 960px) {
-  .dx-login-shell {
-    grid-template-columns: 1.08fr 0.92fr;
-    gap: 2.5rem;
-    align-items: center;
-    padding: 2.5rem 2rem;
-  }
-
-  .dx-login-story {
-    gap: 1.25rem;
-  }
-
-  .dx-login-art img {
-    height: clamp(240px, 34vh, 340px) !important;
-  }
-
-  .dx-login-copy h1 {
-    font-size: 2.6rem;
-  }
-
-  .dx-login-lede {
-    font-size: 1.05rem;
-  }
-
-  .dx-login-panel {
-    max-width: 420px;
-    justify-self: end;
-    width: 100%;
-  }
+/* Compat: classes viejas no usadas */
+.hms-gate {
+  display: contents;
 }

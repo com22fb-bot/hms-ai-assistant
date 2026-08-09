@@ -30,7 +30,8 @@ type LoginScreenProps = {
 };
 
 /**
- * Acceso Donexto — look homologado con el panel (Confianza slate & teal).
+ * Acceso Donexto — layout de producto serio: marca + formulario centrado.
+ * Mobile: formulario primero. Desktop: split marca | acceso.
  */
 export function LoginScreen({
   theme,
@@ -136,78 +137,91 @@ export function LoginScreen({
   }
 
   return (
-    <main className="hms-gate dx-login" data-theme={theme}>
-      <div className="hms-gate__atmosphere" aria-hidden />
-
-      <div className="dx-login-shell">
-        <section className="dx-login-story">
-          <header className="hms-gate__brand">
-            <div className="hms-gate__mark" aria-hidden>
-              <span>D</span>
+    <main className="dx-auth" data-theme={theme}>
+      <aside className="dx-auth__brand" aria-label="Donexto">
+        <div className="dx-auth__brand-inner">
+          <div className="dx-auth__logo">
+            <span className="dx-auth__mark" aria-hidden>
+              D
+            </span>
+            <div>
+              <p className="dx-auth__name">Donexto</p>
+              <p className="dx-auth__slogan">Do Next To…</p>
             </div>
-            <div className="hms-gate__brand-text">
-              <p className="hms-gate__product">Donexto</p>
-              <p className="hms-gate__tagline">Do Next To…</p>
-            </div>
-          </header>
+          </div>
 
-          <figure className="hms-gate__art dx-login-art">
+          <h1 className="dx-auth__headline">
+            Lo que requiere atención en tu correo
+          </h1>
+          <p className="dx-auth__sub">
+            Prioridades y respuestas, sin el caos de la bandeja. El buzón Gmail
+            o Yahoo se conecta después del acceso.
+          </p>
+
+          <figure className="dx-auth__visual">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/hms-import-robot.png"
-              alt="Robot Donexto organizando correos hacia una laptop"
-              width={960}
-              height={640}
+              alt=""
+              width={720}
+              height={480}
+              decoding="async"
             />
           </figure>
+        </div>
+      </aside>
 
-          <div className="dx-login-copy">
-            <p className="dx-login-eyebrow">Correo con criterio</p>
-            <h1>Lo que requiere atención en tu correo.</h1>
-            <p className="dx-login-lede">
-              Prioridades, dinero y respuestas — antes del caos de la bandeja.
-              Entra con tu cuenta Donexto; el buzón se conecta en un paso
-              aparte.
-            </p>
-            <ul className="dx-login-points">
-              <li>Buzón Gmail o Yahoo independiente del login</li>
-              <li>Panel limpio para decidir qué contestar</li>
-              <li>Diseñado para uso diario, no para “demo IA”</li>
-            </ul>
-          </div>
-        </section>
-
-        <section className="hms-gate__panel dx-login-panel" aria-labelledby="hms-gate-title">
-          <div className="hms-gate__panel-head">
-            <h2 id="hms-gate-title">
+      <section className="dx-auth__access">
+        <div className="dx-auth__card">
+          <header className="dx-auth__card-head">
+            <p className="dx-auth__card-brand">Donexto</p>
+            <h2 id="dx-auth-title">
               {mode === "signup" ? "Crear cuenta" : "Iniciar sesión"}
             </h2>
-            <p>
-              Email y contraseña de Donexto — no son los de Gmail ni Yahoo.
+            <p className="dx-auth__card-note">
+              Usa tu cuenta Donexto (no es la contraseña de Gmail ni Yahoo).
             </p>
-          </div>
+          </header>
 
-          <div className="hms-gate__links" style={{ marginTop: "0.35rem" }}>
+          <div className="dx-auth__mode">
             <button
               type="button"
+              className={mode === "signin" ? "is-on" : undefined}
               disabled={busy}
               onClick={() => {
-                setMode(mode === "signin" ? "signup" : "signin");
+                setMode("signin");
                 setError(null);
                 setMessage(null);
+                setStep("credentials");
               }}
             >
-              {mode === "signin"
-                ? "¿No tienes cuenta? Crear una"
-                : "¿Ya tienes cuenta? Entrar"}
+              Entrar
+            </button>
+            <button
+              type="button"
+              className={mode === "signup" ? "is-on" : undefined}
+              disabled={busy}
+              onClick={() => {
+                setMode("signup");
+                setError(null);
+                setMessage(null);
+                setStep("credentials");
+              }}
+            >
+              Crear cuenta
             </button>
           </div>
 
           {step === "credentials" ? (
-            <form className="hms-gate__form" onSubmit={submit} noValidate>
-              <label className="hms-gate__field">
-                <span>Correo Donexto</span>
-                <div className="hms-gate__control">
+            <form
+              className="dx-auth__form"
+              onSubmit={submit}
+              noValidate
+              aria-labelledby="dx-auth-title"
+            >
+              <label className="dx-auth__field">
+                <span>Correo</span>
+                <div className="dx-auth__control">
                   <Mail size={18} aria-hidden />
                   <input
                     type="email"
@@ -225,9 +239,9 @@ export function LoginScreen({
                 </div>
               </label>
 
-              <label className="hms-gate__field">
+              <label className="dx-auth__field">
                 <span>Contraseña</span>
-                <div className="hms-gate__control">
+                <div className="dx-auth__control">
                   <KeyRound size={18} aria-hidden />
                   <input
                     type={showPassword ? "text" : "password"}
@@ -238,13 +252,13 @@ export function LoginScreen({
                     }
                     autoCapitalize="none"
                     spellCheck={false}
-                    placeholder="••••••••"
+                    placeholder="Mínimo 8 caracteres"
                     disabled={busy}
                     onChange={(event) => setPassword(event.target.value)}
                   />
                   <button
                     type="button"
-                    className="hms-gate__icon-btn"
+                    className="dx-auth__eye"
                     aria-label={
                       showPassword
                         ? "Ocultar contraseña"
@@ -258,14 +272,14 @@ export function LoginScreen({
               </label>
 
               {error ? (
-                <div className="hms-gate__alert is-error" role="alert">
+                <div className="dx-auth__alert is-error" role="alert">
                   <AlertTriangle size={18} />
                   <span>{error}</span>
                 </div>
               ) : null}
 
               {message ? (
-                <div className="hms-gate__alert is-ok" role="status">
+                <div className="dx-auth__alert is-ok" role="status">
                   <CheckCircle2 size={18} />
                   <span>{message}</span>
                 </div>
@@ -273,60 +287,58 @@ export function LoginScreen({
 
               <button
                 type="submit"
-                className="hms-gate__submit"
+                className="dx-auth__submit"
                 disabled={busy}
               >
                 {busy ? (
                   <>
-                    <LoaderCircle className="hms-gate__spin" size={18} />
+                    <LoaderCircle className="dx-auth__spin" size={18} />
                     {mode === "signup" ? "Creando…" : "Entrando…"}
                   </>
                 ) : mode === "signup" ? (
                   "Crear cuenta"
                 ) : (
-                  "Entrar a Donexto"
+                  "Continuar"
                 )}
               </button>
 
-              <div className="hms-gate__links">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => {
-                    setStep("help");
-                    setError(null);
-                  }}
-                >
-                  Otras formas de entrar
-                </button>
-              </div>
-            </form>
-          ) : (
-            <div className="hms-gate__help">
               <button
                 type="button"
-                className="hms-gate__back"
+                className="dx-auth__link"
+                disabled={busy}
+                onClick={() => {
+                  setStep("help");
+                  setError(null);
+                }}
+              >
+                Olvidé mi contraseña u otras opciones
+              </button>
+            </form>
+          ) : (
+            <div className="dx-auth__help">
+              <button
+                type="button"
+                className="dx-auth__link"
                 onClick={() => {
                   setStep("credentials");
                   setError(null);
                 }}
               >
-                ← Volver
+                ← Volver al acceso
               </button>
 
-              <p className="hms-gate__help-lead">
-                Usa el mismo correo de arriba. No se pide la contraseña del
-                proveedor de correo.
+              <p className="dx-auth__help-text">
+                Usa el mismo correo. No pedimos la contraseña de Gmail ni Yahoo.
               </p>
 
               {error ? (
-                <div className="hms-gate__alert is-error" role="alert">
+                <div className="dx-auth__alert is-error" role="alert">
                   <AlertTriangle size={18} />
                   <span>{error}</span>
                 </div>
               ) : null}
               {message ? (
-                <div className="hms-gate__alert is-ok" role="status">
+                <div className="dx-auth__alert is-ok" role="status">
                   <CheckCircle2 size={18} />
                   <span>{message}</span>
                 </div>
@@ -334,7 +346,7 @@ export function LoginScreen({
 
               <button
                 type="button"
-                className="hms-gate__secondary"
+                className="dx-auth__secondary"
                 disabled={busy}
                 onClick={() => void magicLink()}
               >
@@ -344,42 +356,37 @@ export function LoginScreen({
 
               <button
                 type="button"
-                className="hms-gate__secondary is-ghost"
+                className="dx-auth__secondary is-ghost"
                 disabled={busy}
                 onClick={() => void recover()}
               >
-                Restablecer contraseña Donexto
+                Restablecer contraseña
               </button>
             </div>
           )}
 
-          <footer className="hms-gate__foot">
+          <footer className="dx-auth__foot">
             <ShieldCheck size={16} aria-hidden />
-            <span>
-              Donexto no pide la contraseña de Gmail ni Yahoo en este
-              formulario.
-            </span>
+            <span>Acceso seguro · acceso independiente del buzón</span>
           </footer>
-        </section>
-      </div>
+        </div>
 
-      <div className="hms-gate__theme">
-        <label>
-          <span className="sr-only">Tema visual</span>
+        <label className="dx-auth__theme">
+          <span className="sr-only">Tema del panel después de entrar</span>
           <select
             value={theme}
             onChange={(event) =>
               setTheme(event.target.value as GateThemeId)
             }
-            aria-label="Tema de la aplicación"
+            aria-label="Tema del panel"
           >
-            <option value="accessible">Confianza · slate & teal</option>
-            <option value="graphite">Institucional · grafito</option>
-            <option value="aurora">Colaboración · cielo</option>
-            <option value="midnight">Noche · indigo</option>
+            <option value="accessible">Tema: Confianza</option>
+            <option value="graphite">Tema: Grafito</option>
+            <option value="aurora">Tema: Cielo</option>
+            <option value="midnight">Tema: Noche</option>
           </select>
         </label>
-      </div>
+      </section>
     </main>
   );
 }
