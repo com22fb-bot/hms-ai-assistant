@@ -138,13 +138,22 @@ export function useConnection() {
     );
     const payload = (await response.json()) as {
       authorization_url?: string;
-      detail?: { message?: string };
+      detail?: { message?: string } | string;
     };
 
     if (!response.ok || !payload.authorization_url) {
+      const detail = payload.detail;
+      const message =
+        typeof detail === "string"
+          ? detail
+          : detail?.message;
+
       throw new Error(
-        payload.detail?.message ??
-          "No fue posible iniciar la conexión segura con Google.",
+        message ??
+          "No fue posible iniciar la conexión con Google. " +
+            "Si Google dice que la app no está verificada, " +
+            "agrega ese Gmail en Test users (Google Cloud → " +
+            "OAuth consent screen).",
       );
     }
 

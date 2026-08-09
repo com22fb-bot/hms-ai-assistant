@@ -351,6 +351,8 @@ def google_start(
         ) from error
 
     flow = create_google_flow(state=state)
+    # select_account: permite elegir CUALQUIER Gmail, no solo el de login Donexto.
+    # consent: asegura refresh_token en reconexiones.
     authorization_url, returned_state = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
@@ -507,6 +509,8 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
             connected_by_profile_id=profile_id,
             status="active",
         )
+        # No se exige que account_email == email de login Donexto:
+        # el buzón Google puede ser cualquiera autorizado por el usuario.
         oauth_storage.save_credentials(
             account_id=account["id"],
             access_token=credentials.token,

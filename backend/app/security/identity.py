@@ -205,6 +205,87 @@ def _ensure_profile(user: AuthenticatedUser) -> dict[str, Any]:
     return created
 
 
+def _ensure_personal_workspace(user: AuthenticatedUser) -> None:
+    """Crea workspace personal si el perfil no tiene membresía activa.
+
+    No exige que el buzón de Gmail coincida con el email de la cuenta Donexto:
+    se puede conectar cualquier cuenta de Google al workspace.
+    """
+    if _active_memberships(user.id):
+        return
+
+    client = get_supabase_client()
+
+    try:
+        client.rpc(
+            "hms_ensure_personal_workspace",
+            {"target_profile_id": user.id},
+        ).execute()
+    except Exception:
+        # Fallback si la función no está en Supabase o falla el RPC.
+        slug = f"personal-{user.id.replace('-', '')}"
+        display = (
+            user.full_name
+            or user.email.split("@")[0]
+            or "Usuario"
+        )
+        workspace = _first_row(
+            client.table("workspaces")
+            .upsert(
+                {
+                    "name": f"{display} — Personal",
+                    "slug": slug,
+                    "status": "active",
+                    "owner_profile_id": user.id,
+                },
+                on_conflict="slug",
+            )
+            .execute()
+        )
+        if not workspace:
+            workspace = _first_row(
+                client.table("workspaces")
+                .select("id")
+                .eq("slug", slug)
+                .limit(1)
+                .execute()
+            )
+        if not workspace:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "status": "workspace_required",
+                    "message": (
+                        "No fue posible crear el espacio de trabajo. "
+                        "Revisa que las migraciones de identidad estén "
+                        "aplicadas en Supabase."
+                    ),
+                },
+            )
+
+        client.table("workspace_members").upsert(
+            {
+                "workspace_id": workspace["id"],
+                "profile_id": user.id,
+                "role": "owner",
+                "status": "active",
+            },
+            on_conflict="workspace_id,profile_id",
+        ).execute()
+
+    if not _active_memberships(user.id):
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "workspace_required",
+                "message": (
+                    "La cuenta Donexto no tiene espacio de trabajo activo. "
+                    "Intenta de nuevo o contacta soporte."
+                ),
+            },
+        )
+
+
 def _active_memberships(user_id: str) -> list[dict[str, Any]]:
     client = get_supabase_client()
     response = (
@@ -226,6 +307,7 @@ def resolve_workspace_context(
     """Resolve the tenant boundary for the authenticated HMS user."""
 
     _ensure_profile(user)
+    _ensure_personal_workspace(user)
     memberships = _active_memberships(user.id)
 
     if not memberships:
@@ -234,8 +316,7 @@ def resolve_workspace_context(
             detail={
                 "status": "workspace_required",
                 "message": (
-                    "La cuenta HMS todavía no tiene un espacio de trabajo. "
-                    "Completa la migración de identidad antes de continuar."
+                    "La cuenta Donexto todavía no tiene un espacio de trabajo."
                 ),
             },
         )
