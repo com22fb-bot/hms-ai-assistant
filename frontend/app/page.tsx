@@ -1105,6 +1105,17 @@ function Dashboard({
                   : "Conectar correo"}
           </button>
 
+          {connection?.connected ? (
+            <button
+              type="button"
+              className="app-logout"
+              onClick={() => openMailboxConnect()}
+            >
+              <Mail size={18} />
+              Cambiar buzón
+            </button>
+          ) : null}
+
           <button
             type="button"
             className="app-logout"
@@ -1366,7 +1377,6 @@ function Dashboard({
             <div className="app-panel">
               <div className="app-panel-heading">
                 <div>
-                  <span>ACTIVIDAD</span>
                   <h2>Últimos eventos</h2>
                 </div>
               </div>
