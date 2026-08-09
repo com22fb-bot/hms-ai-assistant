@@ -5,12 +5,24 @@
 ```text
 GOOGLE_REDIRECT_URI=https://hms-ai-assistant-production.up.railway.app/auth/google/callback
 FRONTEND_ORIGINS=https://app.donexto.com
+OAUTH_ENCRYPTION_KEY=<secreto >= 32 caracteres, ver abajo>
 ```
 
 Google Cloud → Cliente OAuth web:
 - URI de redirección: la misma `GOOGLE_REDIRECT_URI` de arriba
 - Consentimiento: nombre **Donexto**, inicio `https://app.donexto.com`
 - Preferible estado **En producción** (sin lista de Test users)
+
+## OAUTH_ENCRYPTION_KEY (obligatoria)
+
+Cifra tokens de Gmail y contraseñas de aplicación Yahoo antes de guardar en Supabase.
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(48))"
+```
+
+Pega el resultado en Railway Variables del API como `OAUTH_ENCRYPTION_KEY`.  
+Redeploy. **No cambies esta clave** después de conectar buzones.
 
 ## Comprobación sin secretos
 
@@ -25,11 +37,10 @@ Esperado:
   "frontend_mentions_donexto": true,
   "redirect_is_railway_callback": true,
   "redirect_is_codespace": false,
+  "encryption_key_present": true,
   "ready_for_donexto_gmail": true
 }
 ```
-
-Si `redirect_is_codespace` es true, el Gmail button fallará con el mensaje de github.dev.
 
 ## Flujo app
 

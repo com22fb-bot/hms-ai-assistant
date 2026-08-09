@@ -170,7 +170,9 @@ def _get_encryption_secret() -> str:
 
     if not secret:
         raise OAuthConfigurationError(
-            "Falta OAUTH_ENCRYPTION_KEY en backend/.env."
+            "Falta OAUTH_ENCRYPTION_KEY en las variables del servidor "
+            "(Railway Variables). Genera un secreto de 32+ caracteres y "
+            "haz Redeploy."
         )
 
     if len(secret) < 32:

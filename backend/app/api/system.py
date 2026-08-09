@@ -64,6 +64,7 @@ def env_status() -> dict[str, Any]:
             "GOOGLE_CLIENT_ID": _env_is_set("GOOGLE_CLIENT_ID"),
             "GOOGLE_CLIENT_SECRET": _env_is_set("GOOGLE_CLIENT_SECRET"),
             "GOOGLE_REDIRECT_URI": _env_is_set("GOOGLE_REDIRECT_URI"),
+            "OAUTH_ENCRYPTION_KEY": _env_is_set("OAUTH_ENCRYPTION_KEY"),
             "SUPABASE_URL": _env_is_set("SUPABASE_URL"),
             "SUPABASE_SECRET_KEY": _env_is_set("SUPABASE_SECRET_KEY"),
             "FRONTEND_ORIGINS": _env_is_set("FRONTEND_ORIGINS"),
@@ -75,7 +76,9 @@ def env_status() -> dict[str, Any]:
             "frontend_mentions_donexto": frontend_is_donexto,
             "redirect_is_railway_callback": redirect_is_railway,
             "redirect_is_codespace": redirect_is_codespace,
-            "ready_for_donexto_gmail": oauth_ready_for_donexto,
+            "encryption_key_present": _env_is_set("OAUTH_ENCRYPTION_KEY"),
+            "ready_for_donexto_gmail": oauth_ready_for_donexto
+            and _env_is_set("OAUTH_ENCRYPTION_KEY"),
         },
     }
 
