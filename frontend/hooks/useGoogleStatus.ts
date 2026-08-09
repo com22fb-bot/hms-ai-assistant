@@ -118,7 +118,8 @@ export function useGoogleStatus() {
       throw new Error(
         detailMessage(payload) ??
           "No fue posible iniciar la conexión segura con Gmail. " +
-            "Si Google pide verificación, agrega el Gmail en Test users.",
+            "Si Google dice access_denied, publica la app OAuth " +
+            "en estado En producción (Google Cloud) y usa el nombre Donexto.",
       );
     }
 

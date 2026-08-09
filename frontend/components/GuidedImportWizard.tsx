@@ -258,7 +258,7 @@ export function GuidedImportWizard({
             <LoaderCircle className="app-spin" size={38} />
             <h2>Preparando tu correo</h2>
             <p>
-              HMS está verificando el estado de la cuenta y contando
+              Donexto está verificando el estado de la cuenta y contando
               el historial disponible.
             </p>
           </div>
@@ -279,7 +279,7 @@ export function GuidedImportWizard({
             <div className="hms-import-hero">
               <Image
                 src="/hms-import-robot.png"
-                alt="Robot HMS trasladando correo de un maletero a una laptop"
+                alt="Robot Donexto organizando correo hacia una laptop"
                 width={1536}
                 height={1024}
                 priority
@@ -292,7 +292,7 @@ export function GuidedImportWizard({
                   Tu historial de seis meses está listo.
                 </h2>
                 <p>
-                  HMS descargará todos los mensajes elegibles y después
+                  Donexto descargará todos los mensajes elegibles y después
                   los clasificará automáticamente.
                 </p>
               </div>
@@ -341,7 +341,7 @@ export function GuidedImportWizard({
                   {" · "}Papelera {inventory.excluded.trash.toLocaleString()}
                 </span>
                 <small>
-                  HMS no borrará, archivará, marcará ni modificará
+                  Donexto no borrará, archivará, marcará ni modificará
                   mensajes en el proveedor.
                 </small>
               </div>
@@ -458,7 +458,7 @@ export function GuidedImportWizard({
                 <AlertTriangle size={20} />
                 <span>
                   Se registraron {progress.errors} incidencias.
-                  HMS continuará con los mensajes restantes.
+                  Donexto continuará con los mensajes restantes.
                 </span>
               </div>
             ) : null}
@@ -476,7 +476,7 @@ export function GuidedImportWizard({
               Tu primera descarga ya está completa.
             </h2>
             <p>
-              A partir de ahora HMS descargará únicamente mensajes
+              A partir de ahora Donexto descargará únicamente mensajes
               nuevos y volverá al dashboard al terminar.
             </p>
 

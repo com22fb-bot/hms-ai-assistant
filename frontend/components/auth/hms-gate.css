@@ -1,14 +1,15 @@
-/* HMS Gate — acceso mobile-first (independiente de approved-ui auth grid) */
+/* Donexto gate — misma paleta turquesa del dashboard (accessible / focus) */
 
 .hms-gate {
-  --gate-ink: #f4f1ea;
-  --gate-muted: #b7b0a4;
-  --gate-line: rgba(244, 241, 234, 0.14);
-  --gate-panel: rgba(12, 18, 22, 0.72);
-  --gate-accent: #e8a54b;
-  --gate-accent-ink: #1a1208;
-  --gate-ok: #7dce9a;
-  --gate-err: #ffb4a8;
+  --gate-ink: #e8fbff;
+  --gate-muted: #9dc4c8;
+  --gate-line: rgba(46, 225, 218, 0.22);
+  --gate-panel: rgba(4, 31, 39, 0.78);
+  --gate-accent: #20d8d2;
+  --gate-accent-2: #12aaa9;
+  --gate-accent-ink: #001315;
+  --gate-ok: #3bddae;
+  --gate-err: #ff8a9a;
   --gate-font: var(--font-hms-sans), "Segoe UI", sans-serif;
   --gate-display: var(--font-hms-display), Georgia, serif;
 
@@ -18,26 +19,68 @@
   overflow-x: clip;
   color: var(--gate-ink);
   font-family: var(--gate-font);
-  background: #0a0e10;
+  background: #02070b;
+}
+
+.hms-gate[data-theme="accessible"] {
+  --gate-ink: #e8fbff;
+  --gate-muted: #a8c9cc;
+  --gate-accent: #20d8d2;
+  --gate-accent-2: #12aaa9;
+}
+
+.hms-gate[data-theme="aurora"] {
+  --gate-ink: #f1fbff;
+  --gate-muted: #9dc4d5;
+  --gate-accent: #25c9ef;
+  --gate-accent-2: #6d72ff;
+  --gate-line: rgba(76, 207, 255, 0.22);
+  --gate-panel: rgba(6, 28, 42, 0.82);
+}
+
+.hms-gate[data-theme="midnight"] {
+  --gate-ink: #f7f9ff;
+  --gate-muted: #9eacc8;
+  --gate-accent: #6f6cff;
+  --gate-accent-2: #a64cff;
+  --gate-line: rgba(132, 156, 211, 0.22);
+  --gate-panel: rgba(12, 18, 40, 0.8);
+  --gate-accent-ink: #070a16;
+}
+
+.hms-gate[data-theme="graphite"] {
+  --gate-ink: #f6f6f7;
+  --gate-muted: #b3b7be;
+  --gate-accent: #a5abff;
+  --gate-accent-2: #d0a6ff;
+  --gate-line: rgba(255, 255, 255, 0.14);
+  --gate-panel: rgba(28, 30, 36, 0.88);
+  --gate-accent-ink: #12141a;
 }
 
 .hms-gate__atmosphere {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse 90% 60% at 20% -10%, rgba(232, 165, 75, 0.22), transparent 55%),
-    radial-gradient(ellipse 70% 50% at 100% 100%, rgba(47, 140, 140, 0.18), transparent 50%),
-    linear-gradient(165deg, #0a0e10 0%, #121a1f 48%, #0c1216 100%);
+    radial-gradient(ellipse 90% 55% at 18% -8%, rgba(32, 216, 210, 0.16), transparent 55%),
+    radial-gradient(ellipse 70% 50% at 100% 100%, rgba(18, 170, 169, 0.14), transparent 50%),
+    linear-gradient(180deg, #02070b 0%, #030a10 55%, #04141a 100%);
   pointer-events: none;
+}
+
+.hms-gate[data-theme="midnight"] .hms-gate__atmosphere {
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 0%, rgba(111, 108, 255, 0.2), transparent 55%),
+    linear-gradient(180deg, #060a16 0%, #0b1223 100%);
 }
 
 .hms-gate__grid {
   position: fixed;
   inset: 0;
-  opacity: 0.22;
+  opacity: 0.18;
   background-image:
-    linear-gradient(rgba(244, 241, 234, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(244, 241, 234, 0.04) 1px, transparent 1px);
+    linear-gradient(rgba(46, 225, 218, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(46, 225, 218, 0.05) 1px, transparent 1px);
   background-size: 48px 48px;
   mask-image: radial-gradient(circle at 50% 30%, #000 20%, transparent 75%);
   pointer-events: none;
@@ -48,11 +91,11 @@
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.1rem;
   width: min(100%, 28rem);
   margin: 0 auto;
   padding:
-    max(1.25rem, env(safe-area-inset-top))
+    max(1.15rem, env(safe-area-inset-top))
     1.15rem
     max(1.5rem, env(safe-area-inset-bottom));
   min-height: 100dvh;
@@ -73,39 +116,63 @@
   display: grid;
   place-items: center;
   border-radius: 0.85rem;
-  background: linear-gradient(145deg, #f0c27a, #c4782a 55%, #8f5318);
-  color: #1a1208;
+  background: linear-gradient(135deg, #12aaa9, #20d8d2);
+  color: #001315;
   font-family: var(--gate-display);
   font-size: 1.45rem;
   font-weight: 700;
-  box-shadow: 0 12px 32px rgba(200, 130, 40, 0.28);
+  box-shadow: 0 12px 32px rgba(18, 170, 169, 0.35);
+}
+
+.hms-gate[data-theme="midnight"] .hms-gate__mark {
+  background: linear-gradient(135deg, #6f6cff, #a64cff);
+  color: #fff;
+  box-shadow: 0 12px 32px rgba(111, 108, 255, 0.35);
 }
 
 .hms-gate__product {
   margin: 0;
   font-family: var(--gate-display);
-  font-size: 1.65rem;
+  font-size: 1.7rem;
   line-height: 1;
-  letter-spacing: 0.04em;
-  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-weight: 650;
 }
 
 .hms-gate__tagline {
-  margin: 0.2rem 0 0;
+  margin: 0.25rem 0 0;
   color: var(--gate-muted);
-  font-size: 0.82rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: lowercase;
 }
 
 .hms-gate__hero {
   animation: hms-gate-rise 0.65s ease-out 0.06s both;
 }
 
+.hms-gate__art {
+  margin: 0 0 0.85rem;
+  overflow: hidden;
+  border-radius: 1.15rem;
+  border: 1px solid rgba(46, 225, 218, 0.28);
+  background: rgba(4, 31, 39, 0.72);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35);
+}
+
+.hms-gate__art img {
+  display: block;
+  width: 100%;
+  height: clamp(160px, 32vw, 220px);
+  object-fit: contain;
+  object-position: center;
+  background: #000;
+}
+
 .hms-gate__hero h1 {
   margin: 0;
   font-family: var(--gate-display);
-  font-size: clamp(1.65rem, 6.5vw, 2.05rem);
+  font-size: clamp(1.55rem, 6vw, 1.95rem);
   line-height: 1.15;
   font-weight: 600;
   letter-spacing: -0.02em;
@@ -114,9 +181,8 @@
 .hms-gate__hero p {
   margin: 0.65rem 0 0;
   color: var(--gate-muted);
-  font-size: 0.98rem;
+  font-size: 0.95rem;
   line-height: 1.45;
-  max-width: 28ch;
 }
 
 .hms-gate__panel {
@@ -125,7 +191,7 @@
   padding: 1.15rem 1.1rem 1.25rem;
   background: var(--gate-panel);
   backdrop-filter: blur(18px);
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4);
   animation: hms-gate-rise 0.7s ease-out 0.12s both;
 }
 
@@ -176,8 +242,8 @@
 }
 
 .hms-gate__control:focus-within {
-  border-color: rgba(232, 165, 75, 0.65);
-  box-shadow: 0 0 0 3px rgba(232, 165, 75, 0.18);
+  border-color: rgba(32, 216, 210, 0.75);
+  box-shadow: 0 0 0 3px rgba(32, 216, 210, 0.18);
   color: var(--gate-accent);
 }
 
@@ -188,12 +254,12 @@
   outline: 0;
   background: transparent;
   color: var(--gate-ink);
-  font-size: 16px; /* evita zoom iOS */
+  font-size: 16px;
   line-height: 1.3;
 }
 
 .hms-gate__control input::placeholder {
-  color: rgba(183, 176, 164, 0.55);
+  color: rgba(157, 196, 200, 0.45);
 }
 
 .hms-gate__icon-btn {
@@ -224,9 +290,14 @@
 
 .hms-gate__submit {
   margin-top: 0.25rem;
-  background: linear-gradient(180deg, #f0bc6a, #d48a2e);
+  background: linear-gradient(135deg, #12aaa9, #20d8d2);
   color: var(--gate-accent-ink);
-  box-shadow: 0 12px 28px rgba(212, 138, 46, 0.28);
+  box-shadow: 0 12px 28px rgba(18, 170, 169, 0.35);
+}
+
+.hms-gate[data-theme="midnight"] .hms-gate__submit {
+  background: linear-gradient(135deg, #6f6cff, #a64cff);
+  color: #fff;
 }
 
 .hms-gate__submit:disabled {
@@ -284,12 +355,12 @@
 }
 
 .hms-gate__alert.is-error {
-  background: rgba(140, 40, 28, 0.28);
+  background: rgba(140, 40, 50, 0.28);
   color: var(--gate-err);
 }
 
 .hms-gate__alert.is-ok {
-  background: rgba(30, 90, 55, 0.28);
+  background: rgba(20, 90, 70, 0.28);
   color: var(--gate-ok);
 }
 
@@ -327,7 +398,7 @@
   padding: 0 0.65rem;
   border: 1px solid var(--gate-line);
   border-radius: 999px;
-  background: rgba(10, 14, 16, 0.75);
+  background: rgba(2, 7, 11, 0.8);
   color: var(--gate-muted);
   font-size: 0.75rem;
   backdrop-filter: blur(10px);
@@ -366,19 +437,18 @@
   }
 }
 
-/* Escritorio: marca + panel en una composición limpia */
 @media (min-width: 900px) {
   .hms-gate__frame {
-    width: min(100%, 64rem);
+    width: min(100%, 68rem);
     display: grid;
-    grid-template-columns: 1.05fr 0.95fr;
+    grid-template-columns: 1.1fr 0.9fr;
     grid-template-areas:
       "brand brand"
       "hero panel"
       "aside panel";
     align-content: center;
-    gap: 1.25rem 3rem;
-    padding: 3rem 2.5rem;
+    gap: 1.1rem 2.75rem;
+    padding: 2.5rem 2.5rem;
   }
 
   .hms-gate__brand {
@@ -390,14 +460,18 @@
     align-self: end;
   }
 
+  .hms-gate__art img {
+    height: clamp(220px, 32vh, 320px);
+  }
+
   .hms-gate__hero h1 {
-    font-size: 2.75rem;
-    max-width: 12ch;
+    font-size: 2.55rem;
+    max-width: 14ch;
   }
 
   .hms-gate__hero p {
-    max-width: 34ch;
-    font-size: 1.05rem;
+    max-width: 36ch;
+    font-size: 1.02rem;
   }
 
   .hms-gate__panel {
@@ -427,7 +501,7 @@
     font-family: var(--gate-display);
     font-size: 1.35rem;
     line-height: 1.3;
-    max-width: 22ch;
+    max-width: 24ch;
   }
 
   .hms-gate__aside ul {
@@ -442,7 +516,7 @@
 
   .hms-gate__aside li {
     padding-left: 1rem;
-    border-left: 2px solid rgba(232, 165, 75, 0.45);
+    border-left: 2px solid rgba(32, 216, 210, 0.5);
   }
 }
 

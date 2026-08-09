@@ -100,8 +100,8 @@ export default function Sidebar({
             </div>
 
             <div className="quantum-brand-copy">
-              <strong>HMS AI</strong>
-              <span>Operational Intelligence</span>
+              <strong>Donexto</strong>
+              <span>Lo que requiere atención</span>
             </div>
           </div>
 
@@ -192,7 +192,7 @@ export default function Sidebar({
 
         <div className="quantum-sidebar-footer">
           <div className="quantum-version">
-            <span>HMS Cases</span>
+            <span>Donexto Cases</span>
             <strong>v0.4.3</strong>
           </div>
 

@@ -235,7 +235,7 @@ export function useCases(enabled = true) {
 
   const syncAllMessages = useCallback(async () => {
     if (!enabled) {
-      setError("Conecta primero el buzón que HMS administrará.");
+      setError("Conecta primero el buzón que Donexto administrará.");
       return;
     }
 

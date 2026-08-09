@@ -43,7 +43,7 @@ function translateAuthError(message: string): string {
 
   if (normalized.includes("invalid login credentials")) {
     return (
-      "La contraseña de tu cuenta HMS no coincide. " +
+      "La contraseña de tu cuenta Donexto no coincide. " +
       "No tiene que ser la misma contraseña de Yahoo, Gmail u otro buzón."
     );
   }
@@ -53,7 +53,7 @@ function translateAuthError(message: string): string {
   }
 
   if (normalized.includes("user already registered")) {
-    return "Ya existe una cuenta HMS con ese correo.";
+    return "Ya existe una cuenta Donexto con ese correo.";
   }
 
   if (
@@ -78,7 +78,7 @@ function translateAuthError(message: string): string {
     normalized.includes("weak")
   ) {
     return (
-      "La contraseña HMS debe tener al menos 8 caracteres " +
+      "La contraseña Donexto debe tener al menos 8 caracteres " +
       "y cumplir los requisitos de seguridad."
     );
   }

@@ -58,12 +58,12 @@ def get_boolean_environment_variable(
 
 @dataclass(frozen=True)
 class Settings:
-    app_name: str = "HMS AI Assistant API"
+    app_name: str = "Donexto API"
     app_description: str = (
-        "Backend para conectar cuentas de Google "
-        "y consultar correos de Gmail."
+        "Donexto — lo que requiere atención en tu correo. "
+        "Buzones Gmail y Yahoo, prioridades y operaciones."
     )
-    app_version: str = "0.4.1"
+    app_version: str = "0.4.2"
 
     supabase_url: str = field(
         default_factory=lambda: get_environment_variable(

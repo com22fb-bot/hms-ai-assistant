@@ -109,7 +109,7 @@ def dashboard_html() -> str:
             name="viewport"
             content="width=device-width, initial-scale=1.0"
         >
-        <title>HMS AI Assistant</title>
+        <title>Donexto</title>
         <style>
             body {{
                 margin: 0;
@@ -146,7 +146,7 @@ def dashboard_html() -> str:
     </head>
     <body>
         <main class="container">
-            <h1>HMS AI Assistant</h1>
+            <h1>Donexto</h1>
             <p>
                 Plataforma de Inteligencia Operacional basada
                 en Casos Inteligentes.

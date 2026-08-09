@@ -441,7 +441,7 @@ function PasswordRecoveryScreen({
     setError(null);
 
     if (password.length < 8) {
-      setError("La nueva contraseña HMS debe tener al menos 8 caracteres.");
+      setError("La nueva contraseña Donexto debe tener al menos 8 caracteres.");
       return;
     }
 
@@ -458,7 +458,7 @@ function PasswordRecoveryScreen({
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "No fue posible actualizar la contraseña HMS.",
+          : "No fue posible actualizar la contraseña Donexto.",
       );
     } finally {
       setBusy(false);
@@ -476,7 +476,7 @@ function PasswordRecoveryScreen({
               <Sparkles size={25} />
             </span>
             <div>
-              <strong>HMS AI Assistant</strong>
+              <strong>Donexto</strong>
               <small>Recuperación segura</small>
             </div>
           </div>
@@ -500,17 +500,17 @@ function PasswordRecoveryScreen({
 
         <section className="auth-card auth-recovery-card">
           <div className="auth-card-heading">
-            <span>NUEVA CONTRASEÑA HMS</span>
+            <span>NUEVA CONTRASEÑA DONEXTO</span>
             <h2>Protege tu cuenta</h2>
             <p>
-              Esta contraseña pertenece a HMS. No modifica la contraseña
+              Esta contraseña pertenece a Donexto. No modifica la contraseña
               de Yahoo, Gmail, Outlook ni de tu proveedor de correo.
             </p>
           </div>
 
           <form onSubmit={submit}>
             <label className="auth-field">
-              <span>Nueva contraseña HMS</span>
+              <span>Nueva contraseña Donexto</span>
               <div>
                 <KeyRound size={18} />
                 <input
@@ -578,7 +578,7 @@ function PasswordRecoveryScreen({
             >
               {busy
                 ? "Actualizando..."
-                : "Guardar contraseña HMS"}
+                : "Guardar contraseña Donexto"}
             </button>
 
             <button
@@ -679,7 +679,7 @@ function EventRow({
         <strong>{item.title}</strong>
         <p>
           {item.description ??
-            "Evento operativo registrado por HMS AI."}
+            "Evento operativo registrado por Donexto."}
         </p>
         <time>{formatDate(item.created_at)}</time>
       </div>
@@ -968,8 +968,8 @@ function Dashboard({
             <Sparkles size={25} />
           </span>
           <div>
-            <strong>HMS AI Assistant</strong>
-            <small>Centro de Operaciones</small>
+            <strong>Donexto</strong>
+            <small>Lo que requiere atención en tu correo</small>
           </div>
 
           <button
@@ -1250,8 +1250,8 @@ function Dashboard({
               </strong>
               <span>
                 {importFlowStatus?.initial_import_complete
-                  ? "HMS descargará únicamente correo nuevo y mantendrá separados los casos de los mensajes informativos."
-                  : "HMS preparará automáticamente los últimos seis meses, excluirá Spam, Papelera y Borradores, y clasificará cada mensaje antes de mostrar el dashboard final."}
+                  ? "Donexto descargará únicamente correo nuevo y mantendrá separados los casos de los mensajes informativos."
+                  : "Donexto preparará automáticamente los últimos seis meses, excluirá Spam, Papelera y Borradores, y clasificará cada mensaje antes de mostrar el dashboard final."}
               </span>
             </div>
           </section>
@@ -1270,7 +1270,7 @@ function Dashboard({
                 Buenos días, {session.name.split(" ")[0]}
               </h1>
               <p>
-                4D Focus · Centro Inteligente de Operaciones
+                Donexto · Lo que requiere atención en tu correo
               </p>
             </div>
 

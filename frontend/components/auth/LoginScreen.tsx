@@ -30,8 +30,8 @@ type LoginScreenProps = {
 };
 
 /**
- * Pantalla de acceso HMS: mobile-first, una sola tarea (entrar).
- * La cuenta HMS es independiente del buzón de correo.
+ * Acceso Donexto: marca, slogan y misma paleta del dashboard.
+ * La cuenta Donexto es independiente del buzón Gmail/Yahoo.
  */
 export function LoginScreen({
   theme,
@@ -89,7 +89,7 @@ export function LoginScreen({
   async function magicLink() {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail.includes("@")) {
-      setError("Escribe primero tu correo HMS.");
+      setError("Escribe primero tu correo Donexto.");
       return;
     }
     setBusy(true);
@@ -97,7 +97,9 @@ export function LoginScreen({
     setMessage(null);
     try {
       await onMagicLink(cleanEmail);
-      setMessage("Revisa tu correo: enviamos un enlace para entrar sin contraseña.");
+      setMessage(
+        "Revisa tu correo: enviamos un enlace para entrar sin contraseña.",
+      );
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -112,7 +114,7 @@ export function LoginScreen({
   async function recover() {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail.includes("@")) {
-      setError("Escribe primero tu correo HMS.");
+      setError("Escribe primero tu correo Donexto.");
       return;
     }
     setBusy(true);
@@ -120,7 +122,9 @@ export function LoginScreen({
     setMessage(null);
     try {
       await onResetPassword(cleanEmail);
-      setMessage("Enviamos un enlace para restablecer la contraseña de HMS.");
+      setMessage(
+        "Enviamos un enlace para restablecer la contraseña de Donexto.",
+      );
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -140,19 +144,29 @@ export function LoginScreen({
       <div className="hms-gate__frame">
         <header className="hms-gate__brand">
           <div className="hms-gate__mark" aria-hidden>
-            <span>H</span>
+            <span>D</span>
           </div>
           <div className="hms-gate__brand-text">
-            <p className="hms-gate__product">HMS</p>
-            <p className="hms-gate__tagline">AI Assistant</p>
+            <p className="hms-gate__product">Donexto</p>
+            <p className="hms-gate__tagline">donexto.com</p>
           </div>
         </header>
 
         <section className="hms-gate__hero">
-          <h1>Entra a tu centro de pendientes</h1>
+          <figure className="hms-gate__art">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/hms-import-robot.png"
+              alt="Robot organizando correos y enviándolos a una laptop"
+              width={640}
+              height={400}
+            />
+          </figure>
+          <h1>Lo que requiere atención en tu correo.</h1>
           <p>
-            Crea o entra con tu cuenta Donexto. Luego conectarás Gmail (u otro
-            proveedor disponible) en un paso aparte.
+            Prioridades, dinero y respuestas — antes del caos de la bandeja.
+            Entra con tu cuenta Donexto; el buzón Gmail o Yahoo se conecta
+            después.
           </p>
         </section>
 
@@ -205,14 +219,16 @@ export function LoginScreen({
               </label>
 
               <label className="hms-gate__field">
-                <span>Contraseña HMS</span>
+                <span>Contraseña Donexto</span>
                 <div className="hms-gate__control">
                   <KeyRound size={18} aria-hidden />
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
                     value={password}
-                    autoComplete="current-password"
+                    autoComplete={
+                      mode === "signup" ? "new-password" : "current-password"
+                    }
                     autoCapitalize="none"
                     spellCheck={false}
                     placeholder="••••••••"
@@ -223,7 +239,9 @@ export function LoginScreen({
                     type="button"
                     className="hms-gate__icon-btn"
                     aria-label={
-                      showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+                      showPassword
+                        ? "Ocultar contraseña"
+                        : "Mostrar contraseña"
                     }
                     onClick={() => setShowPassword((v) => !v)}
                   >
@@ -259,7 +277,7 @@ export function LoginScreen({
                 ) : mode === "signup" ? (
                   "Crear cuenta"
                 ) : (
-                  "Entrar"
+                  "Entrar a Donexto"
                 )}
               </button>
 
@@ -323,7 +341,7 @@ export function LoginScreen({
                 disabled={busy}
                 onClick={() => void recover()}
               >
-                Restablecer contraseña HMS
+                Restablecer contraseña Donexto
               </button>
             </div>
           )}
@@ -331,21 +349,21 @@ export function LoginScreen({
           <footer className="hms-gate__foot">
             <ShieldCheck size={16} aria-hidden />
             <span>
-              HMS no pide la contraseña de Gmail, Outlook ni Yahoo en este
+              Donexto no pide la contraseña de Gmail, Outlook ni Yahoo en este
               formulario.
             </span>
           </footer>
         </section>
 
         <aside className="hms-gate__aside" aria-hidden="true">
-          <p className="hms-gate__aside-kicker">Centro inteligente</p>
+          <p className="hms-gate__aside-kicker">Inteligencia de correo</p>
           <p className="hms-gate__aside-title">
-            Detecta lo que requiere atención. Tú decides qué hacer.
+            Not another inbox. Un panel de lo que sí importa.
           </p>
           <ul>
             <li>Pendientes y plazos a la vista</li>
             <li>Clasificación antes de la bandeja</li>
-            <li>Avisos solo cuando importan</li>
+            <li>Gmail o Yahoo — cualquier buzón</li>
           </ul>
         </aside>
       </div>
@@ -360,7 +378,7 @@ export function LoginScreen({
             }
             aria-label="Tema de la aplicación"
           >
-            <option value="accessible">Tema accesible</option>
+            <option value="accessible">Tema del panel</option>
             <option value="midnight">Medianoche</option>
             <option value="aurora">Aurora</option>
             <option value="graphite">Grafito</option>

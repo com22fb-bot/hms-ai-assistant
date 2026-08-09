@@ -61,6 +61,35 @@ def validate_google_environment() -> None:
             },
         )
 
+    redirect_uri = os.getenv("GOOGLE_REDIRECT_URI", "").strip().lower()
+    frontend_origins = " ".join(settings.frontend_origins).lower()
+    using_donexto = "donexto.com" in frontend_origins
+    using_codespace_redirect = (
+        "github.dev" in redirect_uri or "githubpreview.dev" in redirect_uri
+    )
+
+    if using_donexto and using_codespace_redirect:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "oauth_redirect_misconfigured",
+                "message": (
+                    "GOOGLE_REDIRECT_URI apunta a Codespace (github.dev). "
+                    "Para Donexto en producción debe ser el callback de Railway "
+                    "y la app OAuth debe llamarse Donexto en Google Cloud."
+                ),
+                "expected_example": (
+                    "https://hms-ai-assistant-production.up.railway.app"
+                    "/auth/google/callback"
+                ),
+                "google_console": (
+                    "Pantalla OAuth: estado En producción (no Testing) "
+                    "para conectar cualquier Gmail sin lista de Test users. "
+                    "Nombre de app: Donexto · inicio: https://app.donexto.com"
+                ),
+            },
+        )
+
 
 def create_google_flow(state: str | None = None) -> Flow:
     import os
@@ -170,7 +199,16 @@ def _default_frontend_url(request: Request) -> str:
                 if configured_host.startswith(codespace_prefix + "-"):
                     return configured
 
-    # 4) Último recurso: primer frontend permitido configurado.
+    # 4) Preferir app.donexto.com si está configurado.
+    donexto_origins = [
+        item.rstrip("/") + "/"
+        for item in settings.frontend_origins
+        if "donexto.com" in item.lower() and item.startswith(("http://", "https://"))
+    ]
+    if donexto_origins:
+        return donexto_origins[0]
+
+    # 5) Último recurso: primer frontend permitido configurado.
     return next(
         (
             item.rstrip("/") + "/"

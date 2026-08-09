@@ -18,9 +18,9 @@ const hmsDisplay = Fraunces({
 
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
-  title: "HMS AI Assistant — Centro Inteligente",
+  title: "Donexto — Lo que requiere atención en tu correo",
   description:
-    "Centro Inteligente de Operaciones basado en Casos Inteligentes.",
+    "Prioridades, dinero y respuestas — antes del caos de la bandeja. donexto.com",
 };
 
 export const viewport: Viewport = {
@@ -28,7 +28,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
-  themeColor: "#0a0e10",
+  themeColor: "#02070b",
 };
 
 export default function RootLayout({

@@ -40,8 +40,8 @@ function getInitials(email?: string | null): string {
 }
 
 export default function Topbar({
-  title = "Centro Inteligente",
-  subtitle = "Casos y prioridades",
+  title = "Donexto",
+  subtitle = "Prioridades del correo",
   accountEmail,
   connected = false,
   loading = false,
@@ -63,7 +63,7 @@ export default function Topbar({
         </button>
 
         <div className="premium-header-title">
-          <span>HMS AI · COMMAND CENTER</span>
+          <span>Donexto · Panel de prioridades</span>
           <h1>{title}</h1>
           <p>{subtitle}</p>
         </div>
