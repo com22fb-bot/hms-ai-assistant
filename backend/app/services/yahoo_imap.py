@@ -57,8 +57,11 @@ def verify_yahoo_login(address: str, app_password: str) -> None:
         raise
     except imaplib.IMAP4.error as error:
         raise YahooImapError(
-            "No fue posible autenticar en Yahoo IMAP. "
-            "Genera una contraseña de aplicación en la cuenta Yahoo."
+            "Yahoo rechazó el acceso IMAP. "
+            "Casi siempre falta la contraseña de aplicación: "
+            "Security → External connections → Create app password → "
+            "nombre Donexto → copia el código de 16 caracteres "
+            "(no uses la contraseña normal de Yahoo ni la de Donexto)."
         ) from error
     except Exception as error:
         raise YahooImapError(

@@ -255,9 +255,24 @@ export function MailboxConnectModal({
                 />
               </label>
               <p className="dx-connect-hint">
-                Campos en blanco a propósito. Escribe el correo de Yahoo y la
-                contraseña de aplicación IMAP (no la de login de Donexto ni la
-                contraseña normal de Yahoo).
+                No se rellenan credenciales de Donexto. Necesitas una{" "}
+                <strong>contraseña de aplicación</strong> de Yahoo (código de
+                ~16 caracteres), no la de mail.yahoo.com ni la de entrar a
+                Donexto.
+              </p>
+              <p className="dx-connect-hint">
+                Cómo crear:{" "}
+                <a
+                  href="https://login.yahoo.com/account/security"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "#20d8d2" }}
+                >
+                  Seguridad de la cuenta Yahoo
+                </a>
+                {" → "}
+                Conexiones externas → Crear contraseña de aplicación → nombre
+                “Donexto” → Generar → copiar aquí.
               </p>
               {localError ? (
                 <div className="dx-connect-error" role="alert">
