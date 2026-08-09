@@ -1,33 +1,43 @@
-# Google OAuth para Donexto (sin lista de Test users)
+# Google OAuth / Donexto — producción
 
-Google **no permite** omitir Test users desde código mientras la app OAuth está en **Prueba / Testing**.
+## Valores canónicos (Railway + Google Cloud)
 
-## Objetivo
+```text
+GOOGLE_REDIRECT_URI=https://hms-ai-assistant-production.up.railway.app/auth/google/callback
+FRONTEND_ORIGINS=https://app.donexto.com
+```
 
-Cualquier cuenta Donexto (p. ej. las 2 de login) debe poder conectar **cualquier Gmail** sin registrar cada dirección en Google Cloud.
+Google Cloud → Cliente OAuth web:
+- URI de redirección: la misma `GOOGLE_REDIRECT_URI` de arriba
+- Consentimiento: nombre **Donexto**, inicio `https://app.donexto.com`
+- Preferible estado **En producción** (sin lista de Test users)
 
-## Pasos en Google Cloud Console
+## Comprobación sin secretos
 
-1. Proyecto OAuth de Donexto → **APIs y servicios** → **Pantalla de consentimiento de OAuth**.
-2. **Nombre de la app:** `Donexto` (no HMS, no github.dev).
-3. **Página de inicio de la aplicación:** `https://app.donexto.com`
-4. **Dominio autorizado:** `donexto.com`
-5. **Estado de publicación:** cambia de **Prueba** a **En producción**.
-6. **Credenciales → Cliente OAuth web**  
-   - URI de redirección autorizada (Railway), por ejemplo:  
-     `https://hms-ai-assistant-production.up.railway.app/auth/google/callback`  
-   - Quita URIs de `*.app.github.dev` si solo usas producción (o déjalas solo para desarrollo).
-7. En **Railway**:  
-   `GOOGLE_REDIRECT_URI` = ese mismo callback de Railway  
-   `FRONTEND_ORIGINS=https://app.donexto.com`
+```text
+GET https://hms-ai-assistant-production.up.railway.app/env-status
+```
 
-## Notas
+Esperado:
 
-- Tras **En producción**, Google deja de exigir la lista de Test users.
-- Los scopes de Gmail son **restringidos**: puede aparecer “app no verificada”. El usuario puede avanzar con *Avanzado → Ir a Donexto* hasta completar la verificación formal de Google (proceso aparte, puede tardar días).
-- **Yahoo** no usa Google OAuth: correo + contraseña de aplicación IMAP en Donexto.
-- Abrir siempre [https://app.donexto.com](https://app.donexto.com), no la preview de Codespace.
+```json
+"oauth_shape": {
+  "frontend_mentions_donexto": true,
+  "redirect_is_railway_callback": true,
+  "redirect_is_codespace": false,
+  "ready_for_donexto_gmail": true
+}
+```
 
-## Yahoo
+Si `redirect_is_codespace` es true, el Gmail button fallará con el mensaje de github.dev.
 
-No requiere usuarios de prueba ni Google Cloud.
+## Flujo app
+
+1. Login Donexto en https://app.donexto.com  
+2. Elegir Gmail → OAuth Google → cualquier Gmail (si app En producción)  
+3. O Yahoo → correo + contraseña de aplicación IMAP  
+
+## Marca
+
+Producto: **Donexto** — *Lo que requiere atención en tu correo.*  
+Proyecto GCP interno puede seguir llamándose “HMS AI Assistant”; el usuario ve **Donexto**.

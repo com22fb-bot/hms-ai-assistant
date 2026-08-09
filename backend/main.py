@@ -74,7 +74,7 @@ def root() -> dict[str, str]:
         "version": settings.app_version,
         "deploy_marker": os.getenv(
             "HMS_DEPLOY_MARKER",
-            "local-or-unset",
+            "donexto-api-0.4.3",
         ),
         "documentation": "/docs",
         "dashboard": "/cases/dashboard",

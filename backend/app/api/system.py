@@ -36,11 +36,30 @@ def health() -> dict[str, Any]:
 
 @router.get("/env-status")
 def env_status() -> dict[str, Any]:
-    """Indica si hay variables requeridas (solo true/false; nunca valores)."""
+    """Indica si hay variables requeridas (solo booleanos; nunca secretos)."""
+    redirect = os.getenv("GOOGLE_REDIRECT_URI", "").strip().lower()
+    origins = os.getenv("FRONTEND_ORIGINS", "").strip().lower()
+
+    redirect_is_codespace = (
+        "github.dev" in redirect or "githubpreview.dev" in redirect
+    )
+    redirect_is_railway = (
+        "railway.app" in redirect and "/auth/google/callback" in redirect
+    )
+    frontend_is_donexto = "donexto.com" in origins
+    oauth_ready_for_donexto = (
+        _env_is_set("GOOGLE_CLIENT_ID")
+        and _env_is_set("GOOGLE_CLIENT_SECRET")
+        and redirect_is_railway
+        and not redirect_is_codespace
+        and frontend_is_donexto
+    )
+
     return {
         "status": "ok",
         "version": settings.app_version,
-        "app_version_code": "0.4.1",
+        "product": "Donexto",
+        "app_version_code": settings.app_version,
         "variables_present": {
             "GOOGLE_CLIENT_ID": _env_is_set("GOOGLE_CLIENT_ID"),
             "GOOGLE_CLIENT_SECRET": _env_is_set("GOOGLE_CLIENT_SECRET"),
@@ -51,6 +70,12 @@ def env_status() -> dict[str, Any]:
             "HMS_DATA_MUTATIONS_ENABLED": _env_is_set(
                 "HMS_DATA_MUTATIONS_ENABLED"
             ),
+        },
+        "oauth_shape": {
+            "frontend_mentions_donexto": frontend_is_donexto,
+            "redirect_is_railway_callback": redirect_is_railway,
+            "redirect_is_codespace": redirect_is_codespace,
+            "ready_for_donexto_gmail": oauth_ready_for_donexto,
         },
     }
 

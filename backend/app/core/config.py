@@ -63,7 +63,7 @@ class Settings:
         "Donexto — lo que requiere atención en tu correo. "
         "Buzones Gmail y Yahoo, prioridades y operaciones."
     )
-    app_version: str = "0.4.2"
+    app_version: str = "0.4.3"
 
     supabase_url: str = field(
         default_factory=lambda: get_environment_variable(

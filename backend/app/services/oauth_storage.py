@@ -261,7 +261,7 @@ class OAuthStorage:
 
         name = os.getenv(
             "DEFAULT_WORKSPACE_NAME",
-            "HMS AI Assistant",
+            "Donexto",
         ).strip()
 
         existing_response = (
