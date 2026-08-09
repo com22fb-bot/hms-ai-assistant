@@ -1,0 +1,1559 @@
+HMS AI ASSISTANT
+RESPALDO HISTÓRICO, TÉCNICO Y ESTRATÉGICO
+PROMPT MAESTRO — VERSIÓN 2
+
+Fecha de corte: 6 de agosto de 2026
+Proyecto: HMS AI Assistant
+Repositorio: com22fb-bot/hms-ai-assistant
+Rama activa: sprint/01-estabilizacion-alertas-20260806
+Rama base de trabajo: feature/logistica-1
+Desarrollo: 100% en la nube mediante GitHub Codespaces
+Frontend: Next.js
+Backend: FastAPI
+Base de datos y servicios: Supabase
+Primer proveedor integrado: Gmail / Google Workspace
+
+======================================================================
+1. PROPÓSITO DE ESTE DOCUMENTO
+======================================================================
+
+Este archivo constituye el respaldo maestro del proyecto HMS AI Assistant
+hasta el 6 de agosto de 2026.
+
+Su finalidad es conservar:
+
+1. El origen real del proyecto.
+2. La evolución funcional y estratégica.
+3. Las decisiones técnicas tomadas.
+4. Los avances realizados en el repositorio.
+5. Los problemas encontrados y cómo se resolvieron.
+6. El estado actual de frontend, backend y datos.
+7. La nueva visión de HMS AI Assistant Versión 2.
+8. El Prompt Maestro completo.
+9. El plan de desarrollo por sprints.
+10. Las reglas obligatorias para continuar el proyecto.
+11. Los puntos pendientes y el siguiente paso operativo.
+
+Este documento no contiene llaves privadas, tokens OAuth, contraseñas ni
+secretos de infraestructura.
+
+======================================================================
+2. ORIGEN DEL PROYECTO
+======================================================================
+
+HMS AI Assistant nació para resolver un problema empresarial concreto:
+
+- Correos importantes sin atender.
+- Solicitudes repetidas.
+- Personas esperando una respuesta.
+- Tareas y compromisos olvidados.
+- Pagos o trámites detenidos.
+- Falta de visibilidad sobre asuntos pendientes.
+- Dificultad para revisar varias bandejas.
+- Exceso de mensajes promocionales o secundarios.
+- Ausencia de métricas sobre tiempos de respuesta y pendientes.
+
+El caso inicial se relacionó con una empresa de construcción en la que podían
+quedar correos sin responder, solicitudes críticas y pagos detenidos, incluso
+por cantidades importantes.
+
+Desde el inicio se acordó que HMS no debía convertirse en otro cliente de
+correo. Su misión debía ser actuar como una capa inteligente sobre las cuentas
+existentes.
+
+La visión original fue:
+
+“Detectar lo que requiere atención, identificar quién espera respuesta,
+convertir mensajes en tareas o casos, avisar al usuario y permitirle actuar
+sin revisar manualmente cada correo.”
+
+======================================================================
+3. VISIÓN ORIGINAL DE HMS PROFESIONAL
+======================================================================
+
+HMS Profesional debe responder:
+
+“¿Qué asunto laboral requiere atención, quién debe resolverlo y qué puede
+ocurrir si no se atiende?”
+
+La unidad principal del sistema no debe ser el correo aislado, sino el
+ASUNTO OPERATIVO o CASO.
+
+Capacidades buscadas:
+
+- Detectar correos importantes.
+- Identificar mensajes sin respuesta.
+- Distinguir espera interna y espera externa.
+- Detectar solicitudes.
+- Extraer tareas.
+- Detectar compromisos.
+- Identificar fechas límite.
+- Detectar pagos, facturas, documentos y autorizaciones.
+- Agrupar por conversación o hilo.
+- Resumir conversaciones.
+- Crear estados operativos.
+- Asignar responsables.
+- Notificar por prioridad.
+- Generar métricas.
+- Conservar el acceso al mensaje original.
+- Permitir varias cuentas y varios proveedores.
+- Operar desde celular, tableta y computadora.
+- Mantener seguridad y privacidad por usuario o espacio de trabajo.
+
+======================================================================
+4. EVOLUCIÓN DEL PROYECTO
+======================================================================
+
+4.1. Decisiones iniciales
+
+- El desarrollo se trasladó a un esquema 100% nube.
+- Se descartó depender de instalaciones locales.
+- Se definió GitHub como repositorio central.
+- Se eligió FastAPI para backend.
+- Se eligió Next.js para frontend.
+- Se eligió Supabase para persistencia y servicios.
+- Gmail se convirtió en el primer proveedor.
+- La terminología “Compromisos” evolucionó a “Tareas”.
+- Se mantuvo la meta futura de soportar Gmail, Outlook, Hotmail, Yahoo,
+  iCloud y otros proveedores.
+
+4.2. Estructura del repositorio
+
+La estructura prevista incluyó:
+
+hms-ai-assistant/
+  backend/
+  frontend/
+  database/
+  docs/
+  assets/
+  scripts/
+  .github/
+
+Con la evolución real del proyecto se agregaron servicios, APIs, componentes,
+migraciones y documentación especializada.
+
+4.3. Backend inicial
+
+Se creó el backend con FastAPI y conexión con Supabase.
+
+Commit histórico:
+
+b4683d72dda59278f5502a78365847c2faa38ae9
+“Backend inicial con FastAPI y Supabase”
+
+Fecha registrada: 18 de julio de 2026.
+
+4.4. Google OAuth
+
+Se configuró la conexión con Google OAuth y se documentó el avance.
+
+Commit histórico:
+
+b57e48158dc6f63499325bc0ea94f5be855058ba
+“Configura Google OAuth y documenta avance”
+
+Fecha registrada: 20 de julio de 2026.
+
+4.5. Estabilización de frontend y backend
+
+Durante el desarrollo aparecieron diversos problemas operativos:
+
+- Frontend en puertos distintos.
+- Túneles de Codespaces con error 404.
+- Backend detenido.
+- Frontend detenido.
+- Cambios de Webpack.
+- Procesos anteriores ocupando puertos.
+- Necesidad de reparar o reiniciar servicios.
+- Diferencias entre la respuesta local y la URL externa de Codespaces.
+
+Se consolidó la operación con:
+
+- Frontend: puerto 3000.
+- Backend: puerto 8000.
+- Comando de reparación de frontend.
+- Verificación mediante `./hms status`.
+- Healthcheck de backend mediante `/health`.
+- Inicio manual del backend cuando fue necesario.
+- Uso de logs en `.hms-logs/`.
+
+4.6. Checkpoint previo a Logística 1
+
+Se creó un punto seguro antes de avanzar con Logística 1:
+
+Commit:
+
+fc73abab3be596d4e0b5a085ecdec52a52ba98c1
+
+Mensaje:
+
+“checkpoint: frontend estable y base preparada para Logística 1”
+
+Tag asociado:
+
+checkpoint-pre-logistica-1-20260804
+
+Este checkpoint representa un punto de restauración anterior a los cambios
+amplios de Logística 1.
+
+======================================================================
+5. DESARROLLO DE LOGÍSTICA 1
+======================================================================
+
+La etapa Logística 1 amplió considerablemente el sistema.
+
+Objetivos principales:
+
+- Clasificación inteligente de correos.
+- Categorías.
+- Pendientes.
+- Búsqueda.
+- Favoritos.
+- Reglas.
+- Reclasificación controlada.
+- Robot visual.
+- Notificaciones Push.
+- Experiencia responsiva.
+- Sincronización automática.
+- Paneles de correo.
+- Mejor agrupación por conversación.
+
+Funciones y archivos incorporados o modificados:
+
+BACKEND
+
+- APIs de mensajes.
+- Importación guiada.
+- Push notifications.
+- Reclasificación.
+- Clasificador seguro.
+- Reglas de mensajes.
+- Repositorio de triage.
+- Sincronización automática.
+- Watch service.
+- Push service.
+- Web Push sender.
+- Reclassification service.
+- Case engine.
+- Case repository.
+- Message repository.
+- Gmail full sync.
+- Gmail inventory.
+- Configuración.
+- Contexto de autenticación.
+- Registro de APIs en main.py.
+
+FRONTEND
+
+- MailCategoriesPanel.
+- MailInbox.
+- PushNotificationsPanel.
+- SmartClassificationPanel.
+- CSS responsivo.
+- CSS de categorías.
+- CSS de bandeja.
+- CSS Push.
+- CSS de clasificación.
+- Service worker.
+- Manifest.
+- Ajustes de layout.
+- Ajustes de página principal.
+- Wizard de importación.
+- Hook de casos.
+
+SUPABASE
+
+Se prepararon migraciones relacionadas con:
+
+- Categorías de triage.
+- Reclasificación.
+- Favoritos.
+- Búsqueda.
+- Reglas.
+- Push.
+
+DOCUMENTACIÓN
+
+Se agregaron documentos de implementación de Logística 1:
+
+- Bloque A.
+- Bloque B: búsqueda y Push.
+- Reclasificación, favoritos y buzón.
+- Hotfix de categorías y casos.
+
+======================================================================
+6. PROBLEMAS TÉCNICOS RESUELTOS
+======================================================================
+
+6.1. Error de sintaxis en el clasificador
+
+El archivo:
+
+backend/app/services/safe_case_classifier.py
+
+presentó un f-string incompleto alrededor de las líneas 194 y 195.
+
+Código incorrecto:
+
+short_text = f"{subject}
+{body[:1600]}".lower()
+
+Se corrigió para usar un salto de línea válido dentro del string.
+
+Después de la corrección:
+
+- El archivo compiló correctamente.
+- El backend pudo iniciar.
+- El proceso de Uvicorn quedó activo.
+
+6.2. TypeScript en PushNotificationsPanel
+
+Se detectó un error de tipos en `applicationServerKey`.
+
+El frontend esperaba `BufferSource` y la función devolvía un
+`Uint8Array<ArrayBufferLike>`.
+
+Se corrigió utilizando el buffer como `ArrayBuffer`.
+
+6.3. Error 404 del frontend
+
+El error 404 estuvo relacionado con:
+
+- URL incorrecta.
+- Puerto equivocado.
+- Túnel anterior de Codespaces.
+- Frontend detenido o recompilado.
+- Necesidad de abrir la URL actual del puerto 3000.
+
+La URL funcional del Codespace en este punto fue:
+
+https://stunning-potato-r45467jvg69gh5p4x-3000.app.github.dev
+
+Se confirmó que no era necesario ejecutar algunos bloques de reparación
+posteriores una vez que la aplicación volvió a cargar.
+
+6.4. Firma GPG en Git
+
+Al intentar crear el commit documental apareció:
+
+“gpg failed to sign the data”
+“403 Author is invalid”
+“fatal: failed to write commit object”
+
+Se resolvió desactivando la firma GPG solo en este repositorio:
+
+commit.gpgsign=false
+tag.gpgsign=false
+
+No se cambió la configuración global de otros repositorios.
+
+6.5. Espacios finales en Markdown
+
+`git diff --cached --check` detectó trailing whitespace.
+
+Los espacios fueron eliminados antes de crear el commit.
+
+======================================================================
+7. RESPALDO DE LA VERSIÓN 2 EN GITHUB
+======================================================================
+
+El 6 de agosto de 2026 se guardó en GitHub la nueva visión estratégica.
+
+Commit:
+
+07a894ac45c9db8db9d278ede42af2fa65eca27f
+
+Mensaje:
+
+“docs: establece Prompt Maestro V2 e inicia Sprint 1”
+
+Archivos incluidos:
+
+docs/decisions/DE-2026-08-06-01-HMS-PROFESIONAL-FAMILY.md
+docs/history/2026-08-06-ESTADO-ANTES-SPRINT-1.md
+docs/master/2026-08-06-PROMPT-MAESTRO-HMS-V2.md
+docs/roadmap/2026-08-06-PLAN-SPRINTS-HMS-V2.md
+
+Push realizado a:
+
+feature/logistica-1
+
+Tag creado:
+
+checkpoint-hms-v2-master-20260806
+
+Rama creada:
+
+sprint/01-estabilizacion-alertas-20260806
+
+Esta rama quedó configurada para seguir:
+
+origin/sprint/01-estabilizacion-alertas-20260806
+
+======================================================================
+8. ESTADO DEL PROYECTO AL 6 DE AGOSTO DE 2026
+======================================================================
+
+8.1. Rama activa
+
+sprint/01-estabilizacion-alertas-20260806
+
+8.2. Commit actual
+
+07a894ac45c9db8db9d278ede42af2fa65eca27f
+
+8.3. Tag actual
+
+checkpoint-hms-v2-master-20260806
+
+8.4. Estado de servicios
+
+Backend:
+
+HTTP 200
+Versión: 0.4.0
+Estado: ok
+
+Modo de datos:
+
+data_mutations_enabled: false
+data_mode: inventory_read_only
+
+Frontend:
+
+HTTP 200
+Puerto: 3000
+Modo: Webpack
+
+Backend:
+
+Puerto: 8000
+
+8.5. Validación Python
+
+PYTHON_COMPILE=OK
+
+8.6. Protección de datos
+
+Las mutaciones generales permanecen desactivadas.
+
+No debe ejecutarse ninguna reclasificación general ni modificación productiva
+sin autorización explícita.
+
+8.7. Cambios funcionales pendientes
+
+Existen múltiples archivos modificados y archivos nuevos sin commit.
+
+Estos cambios corresponden principalmente a Logística 1.
+
+No deben agregarse con `git add .` sin auditoría.
+
+Deben dividirse en commits funcionales coherentes después de:
+
+- validar visualmente;
+- validar backend;
+- validar frontend;
+- validar TypeScript;
+- validar build;
+- validar endpoints;
+- validar Push;
+- verificar que no existan secretos;
+- confirmar el comportamiento de las migraciones.
+
+======================================================================
+9. ESTADO DE PUSH Y VAPID
+======================================================================
+
+El frontend y backend están activos, pero Push todavía requiere cerrar la
+configuración VAPID.
+
+Variables que espera el backend:
+
+HMS_VAPID_PUBLIC_KEY
+HMS_VAPID_PRIVATE_KEY_PATH
+HMS_VAPID_SUBJECT
+
+Valor predeterminado del subject:
+
+mailto:hmcelinfo@gmail.com
+
+El generador:
+
+scripts/generate_vapid_keys.py
+
+crea:
+
+- `.hms-secrets/vapid_private.pem`
+- `.hms-secrets/push.env`
+
+Contenido esperado de `push.env`:
+
+- HMS_VAPID_PUBLIC_KEY
+- HMS_VAPID_PRIVATE_KEY_PATH
+- HMS_VAPID_SUBJECT
+- HMS_AUTO_SYNC_ENABLED
+- HMS_AUTO_SYNC_INTERVAL_SECONDS
+
+Hallazgo importante:
+
+El script utilizaba `parents[2]`, lo que podía dirigir los secretos a:
+
+/workspaces/.hms-secrets
+
+en lugar de:
+
+/workspaces/hms-ai-assistant/.hms-secrets
+
+Antes de generar nuevas llaves debe comprobarse si ya existen llaves válidas
+en cualquiera de esas ubicaciones.
+
+Nunca se debe:
+
+- imprimir la llave privada;
+- guardar la llave privada en Git;
+- copiar la llave privada a documentación;
+- compartirla en el chat;
+- hacer commit de `.hms-secrets`.
+
+======================================================================
+10. GRAN DIFERENCIA ENTRE EL INICIO Y LA VERSIÓN 2
+======================================================================
+
+INICIO
+
+- Un asistente para detectar correos sin respuesta.
+- Gmail como primer proveedor.
+- Un caso empresarial concreto.
+- Clasificación inicial.
+- Idea de notificaciones por WhatsApp.
+- Un prototipo rápido.
+- Enfoque centrado en pendientes de correo.
+
+VERSIÓN 2
+
+- SaaS completo de control de comunicaciones.
+- Motor central de inteligencia.
+- Casos operativos.
+- Espera interna y externa.
+- Reglas deterministas más IA.
+- Clasificación explicable.
+- Búsqueda amplia.
+- Favoritos.
+- Notificaciones Push selectivas.
+- Resúmenes.
+- Auditoría.
+- Aislamiento por workspace.
+- Multicuenta.
+- Multiproveedor.
+- Microsoft 365 como siguiente integración.
+- Piloto empresarial.
+- Nueva oportunidad B2C.
+- HMS Family / HMS Hogar.
+- Privacidad por miembro.
+- Alertas familiares.
+- Pilotos antes de comercializar.
+- Hoja de ruta por sprints.
+- Commits, tags y puntos de restauración.
+
+======================================================================
+11. DECISIÓN ESTRATÉGICA DE LA VERSIÓN 2
+======================================================================
+
+HMS AI Assistant utilizará un motor común para dos experiencias distintas:
+
+A. HMS PROFESIONAL
+
+Orientado a:
+
+- empresas;
+- profesionales;
+- construcción;
+- administración;
+- logística;
+- contabilidad;
+- despachos;
+- proveedores;
+- equipos.
+
+Pregunta principal:
+
+“¿Qué asunto laboral requiere atención, quién debe resolverlo y qué ocurrirá
+si no se atiende?”
+
+B. HMS FAMILY / HMS HOGAR
+
+Orientado a:
+
+- personas;
+- parejas;
+- padres;
+- cuidadores;
+- hogares con varias cuentas.
+
+Pregunta principal:
+
+“¿Qué ocurrió hoy que afecta a mi hogar?”
+
+El correo será la fuente, pero no la interfaz principal.
+
+======================================================================
+12. FUNCIONES COMPARTIDAS ENTRE PROFESIONAL Y FAMILY
+======================================================================
+
+- Conectores de correo.
+- Sincronización.
+- Agrupación por conversaciones.
+- Deduplicación.
+- Clasificación.
+- Extracción de fechas.
+- Extracción de cantidades.
+- Extracción de personas.
+- Extracción de acciones.
+- Reglas deterministas.
+- IA.
+- Favoritos.
+- Búsqueda.
+- Notificaciones.
+- Resúmenes.
+- Retroalimentación.
+- Explicación.
+- Auditoría.
+- Acceso al mensaje original.
+- Seguridad de credenciales.
+- Historial de decisiones.
+
+======================================================================
+13. FUNCIONES QUE DEBEN MANTENERSE SEPARADAS
+======================================================================
+
+HMS PROFESIONAL
+
+- Workspaces.
+- Equipos.
+- Departamentos.
+- Responsables.
+- Casos.
+- SLA.
+- Métricas operativas.
+- Clientes.
+- Proveedores.
+- Espera interna.
+- Espera externa.
+- Delegación.
+- Auditoría corporativa.
+
+HMS FAMILY
+
+- Hogares.
+- Miembros.
+- Parejas.
+- Cuidadores.
+- Dependientes.
+- Privacidad individual.
+- Alertas domésticas.
+- Finanzas familiares.
+- Escuela.
+- Salud.
+- Viajes.
+- Entregas.
+- Agenda.
+- Resumen diario.
+- Compartición selectiva.
+
+======================================================================
+14. PRINCIPIOS DE PRIVACIDAD FAMILIAR
+======================================================================
+
+1. Ser miembro de un hogar no concede acceso automático a todos los correos.
+2. Cada cuenta conectada tiene un propietario.
+3. Una alerta puede ser privada.
+4. Una alerta puede compartirse con miembros seleccionados.
+5. Una alerta puede compartirse con el hogar.
+6. El administrador del hogar no ve automáticamente datos privados de otro adulto.
+7. Finanzas, salud, viajes y seguridad requieren protección especial.
+8. Los códigos 2FA no deben conservarse como contenido histórico normal.
+9. Las notificaciones externas deben ocultar datos sensibles.
+10. SMS y WhatsApp deben ser opcionales.
+11. Toda compartición debe ser explícita.
+12. Toda modificación de permisos debe quedar auditada.
+13. Los menores deben recibir solo información autorizada.
+14. No deben descargarse adjuntos sensibles sin necesidad.
+15. El usuario debe poder eliminar o revocar datos y accesos.
+
+======================================================================
+15. ESTRATEGIA DE NOTIFICACIONES
+======================================================================
+
+NIVEL 1 — INMEDIATA
+
+Ejemplos:
+
+- Inicio de sesión extraño.
+- Cambio de contraseña.
+- Código 2FA.
+- Cargo relevante.
+- Pago rechazado.
+- Transferencia.
+- Factura por vencer.
+- Servicio en riesgo.
+- Paquete entregado.
+- Incidencia de entrega.
+- Aviso escolar urgente.
+- Cambio de vuelo.
+- Cita médica modificada.
+- Remitente VIP.
+- Tema favorito crítico.
+
+NIVEL 2 — RESUMEN
+
+Ejemplos:
+
+- Renovaciones.
+- Garantías.
+- Mantenimiento.
+- Suscripciones.
+- Facturas con plazo amplio.
+- Boletines escolares.
+- Promociones de favoritos.
+- Documentos informativos.
+- Reservaciones futuras sin cambios.
+
+NIVEL 3 — SILENCIOSA
+
+Ejemplos:
+
+- Promociones generales.
+- Boletines secundarios.
+- Campañas masivas.
+- Redes sociales.
+- Cambios rutinarios de términos.
+- Recibos sin anomalía.
+- Mensajes automáticos de baja relevancia.
+
+======================================================================
+16. PROMPT MAESTRO — VERSIÓN 2
+======================================================================
+
+El siguiente prompt consolida la dirección estratégica solicitada para HMS.
+
+----------------------------------------------------------------------
+PROMPT 1 — ACTUALIZAR EL LIBRO MAESTRO
+----------------------------------------------------------------------
+
+Actualiza conceptualmente el Libro Maestro de HMS AI Assistant con la nueva
+oportunidad de mercado personal y familiar.
+
+No escribas código todavía.
+
+Incluye:
+
+1. La visión original empresarial.
+2. La nueva oportunidad B2C y familiar.
+3. La decisión de utilizar un motor común con dos experiencias:
+   - HMS Profesional;
+   - HMS Family u Hogar.
+4. Qué problemas resuelve cada modalidad.
+5. Qué funciones comparten.
+6. Qué funciones deben mantenerse separadas.
+7. Principios de privacidad familiar.
+8. Estrategia de notificaciones:
+   - inmediata;
+   - resumen;
+   - silenciosa.
+9. Riesgos de mezclar ambos mercados prematuramente.
+10. Secuencia recomendada de desarrollo.
+11. Hipótesis de precio que deben validarse.
+12. Datos de mercado pendientes de verificación.
+
+Presenta el contenido como una Decisión Estratégica formal, fechada y lista
+para integrarse posteriormente en docs/ del repositorio.
+
+----------------------------------------------------------------------
+PROMPT 2 — DISEÑAR EL MVP DE HMS FAMILY
+----------------------------------------------------------------------
+
+Diseña el MVP completo de una futura edición familiar de HMS AI Assistant.
+
+Nombre provisional:
+HMS Family o HMS Hogar.
+
+Objetivo:
+Supervisar varias cuentas de correo y avisar únicamente sobre información que
+afecte la seguridad, las finanzas y la logística del hogar.
+
+El MVP debe contemplar:
+
+- múltiples cuentas;
+- Gmail inicialmente;
+- panel móvil;
+- notificaciones Push;
+- cargos y pagos;
+- servicios del hogar;
+- entregas;
+- escuela;
+- salud;
+- viajes;
+- citas;
+- suscripciones;
+- reglas de favoritos;
+- resumen diario;
+- privacidad entre miembros;
+- explicación de cada alerta;
+- acceso al mensaje original.
+
+Entrega:
+
+1. Perfil del usuario objetivo.
+2. Problemas principales.
+3. Historias de usuario.
+4. Funciones obligatorias.
+5. Funciones excluidas del MVP.
+6. Flujo de onboarding.
+7. Navegación.
+8. Estados de cada alerta.
+9. Modelo de permisos familiares.
+10. Métricas de éxito.
+11. Riesgos.
+12. Plan piloto con 5 a 10 familias.
+
+No escribas código todavía.
+
+----------------------------------------------------------------------
+PROMPT 3 — MOTOR DE NOTIFICACIONES
+----------------------------------------------------------------------
+
+Diseña la especificación funcional del motor de notificaciones de HMS.
+
+El sistema no debe notificar cada correo.
+
+Debe clasificar eventos en tres niveles:
+
+Nivel 1:
+Notificación inmediata.
+
+Nivel 2:
+Resumen periódico.
+
+Nivel 3:
+Clasificación silenciosa.
+
+Categorías críticas:
+
+- seguridad;
+- códigos 2FA;
+- cargos;
+- transferencias;
+- pagos rechazados;
+- facturas por vencer;
+- servicios del hogar;
+- entregas;
+- escuela;
+- citas médicas;
+- viajes;
+- remitentes VIP;
+- temas favoritos.
+
+Requisitos:
+
+1. Define reglas deterministas previas a la IA.
+2. Define cuándo utilizar IA.
+3. Define umbrales de confianza.
+4. Define prevención de alertas duplicadas.
+5. Define frecuencia máxima.
+6. Define horarios silenciosos.
+7. Define escalamiento.
+8. Define agrupamiento de alertas.
+9. Define Push, resumen y silencio.
+10. Define retroalimentación:
+    - útil;
+    - no relevante;
+    - no volver a notificar;
+    - siempre notificar.
+11. Define auditoría y explicación.
+12. Define tratamiento especial de datos sensibles.
+13. Define pruebas unitarias y escenarios de aceptación.
+
+No modifiques aún el repositorio.
+
+----------------------------------------------------------------------
+PROMPT 4 — ARQUITECTURA TÉCNICA FUTURA
+----------------------------------------------------------------------
+
+Diseña la arquitectura técnica futura para que HMS soporte uso profesional y
+familiar sin duplicar el motor central.
+
+Contexto actual:
+
+- repositorio: com22fb-bot/hms-ai-assistant;
+- rama de trabajo: feature/logistica-1;
+- frontend Next.js;
+- backend FastAPI;
+- Supabase;
+- Gmail ya integrado;
+- desarrollo 100% en la nube;
+- no se trabaja localmente.
+
+Requisitos futuros:
+
+- múltiples cuentas por usuario;
+- múltiples proveedores;
+- hogares;
+- miembros familiares;
+- roles;
+- espacios de trabajo empresariales;
+- datos privados;
+- datos compartidos;
+- reglas por cuenta;
+- reglas por usuario;
+- reglas por hogar;
+- notificaciones;
+- casos;
+- tareas;
+- eventos;
+- auditoría.
+
+Entrega:
+
+1. Diagrama lógico.
+2. Modelo de entidades.
+3. Relaciones.
+4. Políticas RLS.
+5. Aislamiento por workspace y household.
+6. Estrategia de migración desde el modelo actual.
+7. Adaptadores por proveedor.
+8. Seguridad de credenciales.
+9. Retención de datos.
+10. Riesgos técnicos.
+11. Fases de implementación.
+
+No cambies código ni base de datos todavía.
+
+----------------------------------------------------------------------
+PROMPT 5 — EXPERIENCIA MOBILE-FIRST
+----------------------------------------------------------------------
+
+Diseña la experiencia mobile-first de HMS Family.
+
+No quiero una bandeja de correo tradicional.
+
+La pantalla inicial debe responder:
+
+¿Qué ocurrió hoy que afecta a mi hogar?
+
+Debe mostrar tarjetas para:
+
+- cargos;
+- pagos;
+- entregas;
+- escuela;
+- salud;
+- viajes;
+- servicios;
+- citas;
+- suscripciones;
+- documentos.
+
+Cada tarjeta debe incluir:
+
+- categoría;
+- nivel;
+- resumen;
+- motivo;
+- fecha;
+- cantidad, cuando exista;
+- miembro afectado;
+- acción sugerida;
+- acceso al mensaje original.
+
+Entrega:
+
+1. Arquitectura de navegación.
+2. Wireframes descritos.
+3. Componentes.
+4. Estados vacíos.
+5. Estados de error.
+6. Centro de notificaciones.
+7. Resumen diario.
+8. Configuración familiar.
+9. Privacidad.
+10. Accesibilidad.
+11. Diseño para teléfono, tableta y escritorio.
+
+No generes todavía archivos ni modifiques el proyecto.
+
+----------------------------------------------------------------------
+PROMPT 6 — INVESTIGACIÓN COMPETITIVA FAMILIAR
+----------------------------------------------------------------------
+
+Investiga productos y empresas activas que utilicen correo electrónico para
+administrar finanzas, entregas, seguridad, escuela, viajes o logística
+familiar.
+
+No incluyas únicamente clientes de correo o redactores con IA.
+
+Busca productos en estas categorías:
+
+- asistentes familiares;
+- household management;
+- family organizers;
+- parcel tracking;
+- financial notification aggregation;
+- subscription management;
+- school communication aggregation;
+- travel email assistants;
+- multi-inbox personal assistants;
+- AI email triage for consumers.
+
+Para cada producto indica:
+
+- empresa;
+- país;
+- año;
+- estado actual;
+- precio;
+- proveedores compatibles;
+- funciones;
+- uso de IA;
+- notificaciones;
+- diferenciación;
+- limitaciones;
+- similitud con HMS Family.
+
+Separa:
+
+1. Competidores directos.
+2. Competidores parciales.
+3. Sustitutos.
+4. Productos cerrados o descontinuados.
+
+Concluye qué espacio de mercado continúa sin cubrir.
+Incluye fuentes actuales y verificables.
+
+----------------------------------------------------------------------
+PROMPT 7 — PROTOCOLO OBLIGATORIO DE IMPLEMENTACIÓN
+----------------------------------------------------------------------
+
+Vamos a implementar una nueva función en HMS AI Assistant.
+
+Antes de escribir o modificar cualquier archivo:
+
+1. Audita el estado actual del repositorio.
+2. Confirma la rama feature/logistica-1 o la rama de sprint aprobada.
+3. Revisa cambios sin commit.
+4. Identifica los archivos relacionados.
+5. Verifica que no exista una implementación previa.
+6. Crea un respaldo de los archivos que serán modificados.
+7. No sobrescribas el diseño actual.
+8. No elimines funciones existentes.
+9. No modifiques datos productivos sin autorización.
+10. No ejecutes reclasificaciones generales.
+11. Entrega archivos completos, no fragmentos para insertar.
+12. Haz que el instalador sea idempotente.
+13. Valida:
+    - Python;
+    - TypeScript;
+    - build;
+    - endpoints;
+    - puertos 3000 y 8000.
+14. Detente ante cualquier error y muestra el diagnóstico exacto.
+15. No hagas commit hasta que yo valide visualmente.
+
+Función a implementar:
+
+[DESCRIBIR AQUÍ LA FUNCIÓN]
+
+======================================================================
+17. SECUENCIA ESTRATÉGICA APROBADA
+======================================================================
+
+HMS Profesional estable
+        ↓
+Motor de clasificación y alertas confiable
+        ↓
+Multicuenta
+        ↓
+Microsoft 365
+        ↓
+Piloto empresarial
+        ↓
+Prototipo HMS Family
+        ↓
+Piloto con hogares
+        ↓
+Decisión de marca y comercialización
+
+======================================================================
+18. PLAN DE DESARROLLO POR SPRINTS
+======================================================================
+
+Cadencia:
+
+14 días por sprint.
+
+SPRINT 1
+6–19 de agosto de 2026
+
+Objetivo:
+Estabilizar HMS Profesional y cerrar Logística 1.
+
+Entregables:
+
+- Frontend 200.
+- Backend 200.
+- Arranque reproducible.
+- Clasificador sin errores.
+- Categorías coherentes.
+- Pendientes coherentes.
+- Robot validado.
+- Push/VAPID configurado.
+- Prueba Push.
+- Deduplicación básica.
+- Documentación.
+- Commit.
+- Push.
+- Tag.
+- Validación visual.
+
+Gate:
+
+- Servicios estables.
+- Python correcto.
+- TypeScript correcto.
+- Build correcto.
+- Endpoints correctos.
+- Sin secretos en Git.
+- Aprobación visual.
+
+SPRINT 2
+20 de agosto–2 de septiembre de 2026
+
+Objetivo:
+Motor confiable de clasificación y alertas.
+
+Entregables:
+
+- Taxonomía oficial.
+- Reglas deterministas.
+- IA separada.
+- Extracción estructurada.
+- Umbrales.
+- Explicación.
+- Evidencia.
+- Feedback.
+- Deduplicación.
+- Auditoría.
+
+SPRINT 3
+3–16 de septiembre de 2026
+
+Objetivo:
+Multicuenta Gmail.
+
+Entregables:
+
+- Varias cuentas por usuario.
+- Vista consolidada.
+- Reglas por cuenta.
+- Sincronización incremental.
+- Idempotencia.
+- Renovación de credenciales.
+- Desconexión.
+
+SPRINT 4
+17–30 de septiembre de 2026
+
+Objetivo:
+Seguridad SaaS.
+
+Entregables:
+
+- RLS.
+- Aislamiento por workspace.
+- Auditoría.
+- Retención.
+- Matriz de permisos.
+- Pruebas de acceso cruzado.
+- Revisión de secretos.
+
+SPRINT 5
+1–14 de octubre de 2026
+
+Objetivo:
+Microsoft 365.
+
+Entregables:
+
+- Microsoft Graph Adapter.
+- OAuth.
+- Importación.
+- Sincronización.
+- Hilos.
+- Adjuntos.
+- Outlook.
+- Hotmail.
+- Microsoft 365.
+
+SPRINT 6
+15–28 de octubre de 2026
+
+Objetivo:
+Preparar piloto empresarial.
+
+Entregables:
+
+- Onboarding.
+- Panel operativo.
+- Métricas.
+- Responsables.
+- Exportación.
+- Manual.
+- Privacidad.
+- Soporte.
+
+SPRINT 7
+29 de octubre–11 de noviembre de 2026
+
+Objetivo:
+Piloto con 3–5 empresas.
+
+Medición:
+
+- Asuntos críticos.
+- Solicitudes recuperadas.
+- Tiempo ahorrado.
+- Falsos positivos.
+- Retención.
+- Disposición de pago.
+
+SPRINT 8
+12–25 de noviembre de 2026
+
+Objetivo:
+Modelo común Profesional/Family.
+
+Entregables:
+
+- Contexts.
+- Workspaces.
+- Households.
+- Members.
+- Permisos.
+- Visibilidad.
+- Eventos.
+- Alertas.
+- Estrategia de migración.
+
+SPRINT 9
+26 de noviembre–9 de diciembre de 2026
+
+Objetivo:
+Fundación HMS Family.
+
+Entregables:
+
+- Crear hogar.
+- Miembros.
+- Roles.
+- Cuentas privadas.
+- Cuentas compartidas.
+- Pantalla Hoy.
+- Tarjetas.
+- Gmail.
+- Mobile-first.
+
+SPRINT 10
+10–23 de diciembre de 2026
+
+Objetivo:
+Alertas familiares.
+
+Entregables:
+
+- Seguridad.
+- Finanzas.
+- Servicios.
+- Entregas.
+- Escuela.
+- Salud.
+- Viajes.
+- Citas.
+- Suscripciones.
+- Favoritos.
+- Push.
+- Resumen diario.
+
+SPRINT 11
+7–20 de enero de 2027
+
+Objetivo:
+Piloto con 5–10 hogares.
+
+Medición:
+
+- Precisión.
+- Utilidad.
+- Privacidad.
+- Uso de Push.
+- Acciones.
+- Retención.
+- Precio.
+
+SPRINT 12
+21 de enero–3 de febrero de 2027
+
+Objetivo:
+Decisión comercial.
+
+Entregables:
+
+- Go / No-Go.
+- Nombre definitivo.
+- Segmentación.
+- Planes.
+- Precio.
+- Posicionamiento.
+- Landing.
+- Roadmap de lanzamiento.
+
+======================================================================
+19. DEFINITION OF DONE DEL SPRINT 1
+======================================================================
+
+El Sprint 1 se considera terminado cuando:
+
+1. Frontend responde 200.
+2. Backend responde 200.
+3. `/health` funciona.
+4. Python compila.
+5. TypeScript compila.
+6. El build termina.
+7. Las métricas muestran datos coherentes.
+8. El robot aparece en los estados correctos.
+9. El panel Push muestra servidor configurado.
+10. El dispositivo puede registrarse.
+11. La prueba Push funciona.
+12. No hay duplicados evidentes.
+13. No hay secretos en Git.
+14. Se ha realizado validación visual.
+15. Los cambios están divididos en commits coherentes.
+16. Existe tag de cierre.
+17. Existe documentación de restauración.
+
+======================================================================
+20. REGLAS DE DESARROLLO OBLIGATORIAS
+======================================================================
+
+1. Trabajar 100% en la nube.
+2. Mantener el repositorio como fuente de verdad.
+3. No trabajar sobre datos productivos sin autorización.
+4. No ejecutar reclasificaciones globales.
+5. No borrar datos.
+6. No exponer secretos.
+7. No usar `git add .` sin auditoría.
+8. No mezclar documentación y cambios funcionales sin razón.
+9. No hacer commit funcional antes de validación visual.
+10. Entregar archivos completos.
+11. Crear instaladores idempotentes.
+12. Detenerse ante cualquier error.
+13. Mostrar diagnóstico exacto.
+14. Mantener checkpoints y tags.
+15. Mantener bitácora.
+16. Validar Python.
+17. Validar TypeScript.
+18. Validar build.
+19. Validar endpoints.
+20. Validar puertos 3000 y 8000.
+21. Mantener diseño aprobado.
+22. No sustituir funcionalidades existentes.
+23. No confiar en estadísticas sin fuente.
+24. Tratar datos no verificados como hipótesis.
+25. Proteger privacidad profesional y familiar.
+
+======================================================================
+21. MÉTRICAS CLAVE FUTURAS
+======================================================================
+
+HMS PROFESIONAL
+
+- Solicitudes detectadas.
+- Correos sin respuesta.
+- Casos creados.
+- Casos resueltos.
+- Tiempo de respuesta.
+- Tiempo de resolución.
+- Espera interna.
+- Espera externa.
+- Pagos detectados.
+- Documentos pendientes.
+- Alertas útiles.
+- Falsos positivos.
+- Falsos negativos.
+- Horas ahorradas.
+
+HMS FAMILY
+
+- Alertas útiles.
+- Pagos o cargos atendidos.
+- Entregas detectadas.
+- Avisos escolares detectados.
+- Citas recuperadas.
+- Eventos de viaje actualizados.
+- Resúmenes consultados.
+- Push mantenido activo.
+- Incidentes de privacidad.
+- Retención de hogares.
+- Disposición de pago.
+
+======================================================================
+22. RIESGOS PRINCIPALES
+======================================================================
+
+TÉCNICOS
+
+- Cruce de datos entre usuarios.
+- Cruce de cuentas.
+- Tokens revocados.
+- Duplicados.
+- Sincronización incompleta.
+- Límites de API.
+- Clasificación errónea.
+- Costos de IA.
+- RLS incorrecto.
+- Secretos expuestos.
+- Migraciones destructivas.
+- Notificaciones duplicadas.
+- Fallos de túnel en Codespaces.
+
+DE PRODUCTO
+
+- Exceso de notificaciones.
+- Falta de confianza.
+- Intentar competir como cliente de correo.
+- Mezclar B2B y B2C prematuramente.
+- Construir dos productos incompletos.
+- Falta de explicación.
+- Alertas irrelevantes.
+- Automatización sin autorización.
+
+FAMILIARES Y PRIVACIDAD
+
+- Compartir datos médicos.
+- Compartir importes.
+- Exponer viajes.
+- Exponer 2FA.
+- Permisos ambiguos.
+- Administradores con exceso de acceso.
+- Menores con acceso no autorizado.
+
+======================================================================
+23. SIGUIENTE PASO OPERATIVO
+======================================================================
+
+El siguiente paso del Sprint 1 es cerrar Push/VAPID.
+
+Secuencia:
+
+1. Buscar llaves existentes en:
+   - /workspaces/.hms-secrets
+   - /workspaces/hms-ai-assistant/.hms-secrets
+
+2. Confirmar:
+   - push.env
+   - vapid_private.pem
+
+3. Reutilizar llaves existentes si son válidas.
+
+4. Si no existen:
+   - corregir la ruta del generador;
+   - generar llaves nuevas;
+   - proteger archivos con permisos 600;
+   - agregar `.hms-secrets/` a `.gitignore`.
+
+5. Cargar:
+   - HMS_VAPID_PUBLIC_KEY
+   - HMS_VAPID_PRIVATE_KEY_PATH
+   - HMS_VAPID_SUBJECT
+
+6. Reiniciar backend.
+
+7. Confirmar:
+   - backend 200;
+   - servidor Push configurado;
+   - registro de dispositivo;
+   - permiso concedido;
+   - botón Enviar prueba habilitado;
+   - prueba recibida.
+
+8. Después:
+   - validar visualmente Inicio;
+   - validar Correos;
+   - validar Categorías;
+   - validar Pendientes;
+   - validar robot;
+   - validar búsqueda;
+   - validar responsividad.
+
+======================================================================
+24. PUNTOS DE RESTAURACIÓN IMPORTANTES
+======================================================================
+
+Commit inicial:
+
+07288946e84165cb9a4a4fdbb0f49f7dfaafc2b3
+
+Backend inicial:
+
+b4683d72dda59278f5502a78365847c2faa38ae9
+
+Google OAuth:
+
+b57e48158dc6f63499325bc0ea94f5be855058ba
+
+Checkpoint previo a Logística 1:
+
+fc73abab3be596d4e0b5a085ecdec52a52ba98c1
+
+Tag:
+
+checkpoint-pre-logistica-1-20260804
+
+Prompt Maestro V2 e inicio de Sprint 1:
+
+07a894ac45c9db8db9d278ede42af2fa65eca27f
+
+Tag:
+
+checkpoint-hms-v2-master-20260806
+
+Rama:
+
+sprint/01-estabilizacion-alertas-20260806
+
+======================================================================
+25. CIERRE
+======================================================================
+
+HMS AI Assistant dejó de ser solamente un detector de correos pendientes.
+
+Al 6 de agosto de 2026 se ha convertido conceptualmente en:
+
+“Un sistema inteligente de control de comunicaciones que transforma correos
+en asuntos accionables, detecta riesgos, controla respuestas y evita que algo
+importante quede sin atender.”
+
+La Versión 2 añade una segunda oportunidad:
+
+“HMS Family, un asistente de seguridad, finanzas y logística del hogar que
+vigila varias cuentas y avisa solo cuando algo afecta realmente a la familia.”
+
+La prioridad vigente no cambia:
+
+Primero estabilizar HMS Profesional.
+Después construir clasificación y alertas confiables.
+Luego multicuenta.
+Después Microsoft 365.
+A continuación realizar piloto empresarial.
+Solo entonces construir HMS Family.
+
+FIN DEL RESPALDO
