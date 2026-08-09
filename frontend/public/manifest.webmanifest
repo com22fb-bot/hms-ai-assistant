@@ -1,7 +1,7 @@
 {
   "name": "Donexto",
   "short_name": "Donexto",
-  "description": "Lo que requiere atención en tu correo. Prioridades, dinero y respuestas.",
+  "description": "Do Next To… — lo que requiere atención en tu correo.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#02070b",

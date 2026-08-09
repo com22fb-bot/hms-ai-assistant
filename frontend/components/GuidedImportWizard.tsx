@@ -287,7 +287,7 @@ export function GuidedImportWizard({
               />
 
               <div>
-                <span>LOGÍSTICA 1 · PRIMERA DESCARGA</span>
+                <span className="hms-import-kicker">Donexto · Do Next To…</span>
                 <h2 id="hms-import-title">
                   Tu historial de seis meses está listo.
                 </h2>
@@ -376,7 +376,7 @@ export function GuidedImportWizard({
         {!loading && status?.active && progress ? (
           <section className="hms-processing">
             <header>
-              <span>LOGÍSTICA 1 EN PROCESO</span>
+              <span className="hms-import-kicker">Donexto · Do Next To…</span>
               <h2 id="hms-import-title">
                 {status.phase === "classifying"
                   ? "Organizando tus pendientes"
@@ -471,7 +471,7 @@ export function GuidedImportWizard({
         && status.phase === "ready" ? (
           <section className="hms-import-ready">
             <CheckCircle2 size={48} />
-            <span>CORREO PREPARADO</span>
+            <span className="hms-import-kicker">Donexto · Correo preparado</span>
             <h2 id="hms-import-title">
               Tu primera descarga ya está completa.
             </h2>

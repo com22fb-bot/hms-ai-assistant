@@ -148,7 +148,7 @@ export function LoginScreen({
           </div>
           <div className="hms-gate__brand-text">
             <p className="hms-gate__product">Donexto</p>
-            <p className="hms-gate__tagline">donexto.com</p>
+            <p className="hms-gate__tagline">Do Next To…</p>
           </div>
         </header>
 

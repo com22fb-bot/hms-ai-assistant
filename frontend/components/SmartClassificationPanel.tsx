@@ -164,7 +164,7 @@ export function SmartClassificationPanel({
           <div>
             <strong>Protección antes de reclasificar</strong>
             <span>
-              HMS crea un respaldo interno de los casos y relaciones actuales.
+              Donexto crea un respaldo interno de los casos y relaciones actuales.
               Gmail permanece en modo de solo lectura.
             </span>
           </div>
@@ -218,7 +218,7 @@ export function SmartClassificationPanel({
                   : "La última reclasificación requiere revisión"}
               </strong>
               <span>
-                {run.last_error || `Clasificador ${run.classifier_version || "HMS"}`}
+                {run.last_error || `Clasificador ${run.classifier_version || "Donexto"}`}
               </span>
             </div>
           </section>

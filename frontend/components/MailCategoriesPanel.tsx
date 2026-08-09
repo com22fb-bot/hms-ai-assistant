@@ -65,7 +65,7 @@ const CATEGORY_CONFIG: Record<
   },
   review: {
     label: "Revisión humana",
-    description: "Mensajes personales ambiguos que HMS no debe decidir solo.",
+    description: "Mensajes personales ambiguos que Donexto no debe decidir solo.",
     icon: CircleHelp,
     tone: "review",
   },

@@ -101,7 +101,7 @@ export default function Sidebar({
 
             <div className="quantum-brand-copy">
               <strong>Donexto</strong>
-              <span>Lo que requiere atención</span>
+              <span>Do Next To…</span>
             </div>
           </div>
 

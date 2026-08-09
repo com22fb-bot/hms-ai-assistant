@@ -610,32 +610,79 @@
 }
 
 
-/* HOTFIX ROBOT ÚNICO · Logística 1 */
+/* HOTFIX ROBOT ÚNICO · Donexto import */
 .hms-processing-robot {
-  width: min(760px, 100%);
-  height: clamp(220px, 34dvh, 360px);
+  width: min(820px, 100%);
+  /* Altura suficiente para robot + maleta + laptop (imagen horizontal completa) */
+  min-height: clamp(300px, 44dvh, 440px);
+  height: auto;
+  aspect-ratio: 3 / 2;
   display: grid;
   place-items: center;
-  margin: 22px auto;
-  overflow: hidden;
+  margin: 16px auto 20px;
+  padding: 14px 18px;
+  overflow: visible;
   border: 1px solid rgba(47, 220, 220, 0.24);
   border-radius: 26px;
-  background: radial-gradient(circle at 50% 100%, rgba(42, 228, 218, 0.14), transparent 52%), rgba(4, 24, 31, 0.84);
+  background:
+    radial-gradient(circle at 50% 88%, rgba(42, 228, 218, 0.16), transparent 55%),
+    rgba(4, 24, 31, 0.9);
+  box-sizing: border-box;
+}
+.hms-processing-robot img,
+.hms-processing-robot picture,
+.hms-processing-robot span {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
 }
 .hms-processing-robot img {
-  width: 96%;
-  height: 96%;
-  object-fit: contain;
+  object-fit: contain !important;
+  object-position: center center !important;
   filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.32));
   animation: hms-robot-delivering 2.8s ease-in-out infinite;
 }
 @keyframes hms-robot-delivering {
   0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
-  50% { transform: translate3d(0, -8px, 0) scale(1.015); }
+  50% { transform: translate3d(0, -6px, 0) scale(1.01); }
 }
 @media (max-height: 800px) and (min-width: 701px) {
-  .hms-processing-robot { height: clamp(170px, 28dvh, 230px); margin: 12px auto; }
+  .hms-processing-robot {
+    min-height: clamp(240px, 36dvh, 320px);
+    margin: 10px auto 14px;
+    padding: 10px 14px;
+  }
 }
 @media (max-width: 700px) {
-  .hms-processing-robot { height: 240px; border-radius: 20px; }
+  .hms-processing-robot {
+    min-height: 260px;
+    aspect-ratio: 4 / 3;
+    border-radius: 20px;
+    padding: 12px;
+  }
+}
+
+/* Hero de importación: robot completo */
+.hms-import-hero img {
+  width: 100%;
+  height: auto !important;
+  max-height: clamp(200px, 32dvh, 280px);
+  object-fit: contain;
+  object-position: center;
+}
+
+/* Quitar recorte del pseudo-robot en ready/loading */
+.hms-import-ready::before,
+.hms-logistics-loading::before {
+  height: clamp(160px, 26dvh, 220px);
+  background-size: contain;
+  background-position: center;
+}
+
+.hms-import-kicker {
+  color: #2fe3df !important;
+  font-size: 0.78rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: none !important;
 }

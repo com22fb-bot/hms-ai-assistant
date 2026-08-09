@@ -18,9 +18,9 @@ const hmsDisplay = Fraunces({
 
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
-  title: "Donexto — Lo que requiere atención en tu correo",
+  title: "Donexto — Do Next To…",
   description:
-    "Prioridades, dinero y respuestas — antes del caos de la bandeja. donexto.com",
+    "Do Next To…: prioridades, dinero y respuestas — antes del caos de la bandeja. donexto.com",
 };
 
 export const viewport: Viewport = {

@@ -753,7 +753,7 @@ function Dashboard({
     useState<ImportFlowStatus | null>(null);
   const [initialFlowOpened, setInitialFlowOpened] = useState(false);
 
-  // Tras login HMS sin buzón: pedir Gmail o Yahoo (fin del flujo de conexión).
+  // Tras login Donexto sin buzón: pedir Gmail o Yahoo.
   useEffect(() => {
     if (loadingConnection || mailboxPickerDismissed) {
       return;
@@ -969,7 +969,7 @@ function Dashboard({
           </span>
           <div>
             <strong>Donexto</strong>
-            <small>Lo que requiere atención en tu correo</small>
+            <small>Do Next To…</small>
           </div>
 
           <button
@@ -1270,7 +1270,7 @@ function Dashboard({
                 Buenos días, {session.name.split(" ")[0]}
               </h1>
               <p>
-                Donexto · Lo que requiere atención en tu correo
+                Donexto · Do Next To…
               </p>
             </div>
 

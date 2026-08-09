@@ -521,7 +521,7 @@ export function MailInbox({
                   {textList(message.cc) !== "—" ? <span>CC: {textList(message.cc)}</span> : null}
                   <em>{CATEGORY_LABELS[message.triage_category] || message.triage_category}</em>
                 </div>
-                <section className="hms-message-summary"><ShieldCheck size={18} /><div><strong>Resumen HMS</strong><p>{message.summary}</p><small>{message.triage_reason || "Sin explicación adicional."}</small></div></section>
+                <section className="hms-message-summary"><ShieldCheck size={18} /><div><strong>Resumen Donexto</strong><p>{message.summary}</p><small>{message.triage_reason || "Sin explicación adicional."}</small></div></section>
                 {message.related_cases?.length ? (
                   <div className="hms-mail-related-case">
                     <strong>Caso relacionado</strong>
@@ -546,7 +546,7 @@ export function MailInbox({
           <section className="hms-favorite-dialog">
             <Heart size={30} />
             <h3>{favoriteTarget.favorite ? "Editar favorito" : "Seguir este correo"}</h3>
-            <p>HMS te avisará únicamente por las coincidencias que elijas.</p>
+            <p>Donexto te avisará únicamente por las coincidencias que elijas.</p>
             <button disabled={saving} type="button" onClick={() => void saveFavorite(favoriteTarget, true, "sender")}>Avisar por este remitente</button>
             <button disabled={saving} type="button" onClick={() => void saveFavorite(favoriteTarget, true, "subject")}>Avisar por este tema</button>
             <button disabled={saving} type="button" onClick={() => void saveFavorite(favoriteTarget, true, "sender_subject")}>Remitente y tema</button>

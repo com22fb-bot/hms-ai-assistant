@@ -63,7 +63,7 @@ export default function Topbar({
         </button>
 
         <div className="premium-header-title">
-          <span>Donexto · Panel de prioridades</span>
+          <span>Donexto · Do Next To…</span>
           <h1>{title}</h1>
           <p>{subtitle}</p>
         </div>

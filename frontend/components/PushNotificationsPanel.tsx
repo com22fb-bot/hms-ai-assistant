@@ -367,7 +367,7 @@ export function PushNotificationsPanel({ onClose }: { onClose: () => void }) {
             {!supported ? (
               <p className="hms-push-note">
                 Este navegador no ofrece Push API. En iPhone/iPad usa Safari,
-                añade HMS a la pantalla de inicio y vuelve a activar.
+                añade Donexto a la pantalla de inicio y vuelve a activar.
               </p>
             ) : null}
 
