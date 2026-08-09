@@ -1,0 +1,465 @@
+/*
+  Donexto product skin — capa final de UI.
+  Objetivo: look serio (SaaS / banca), login y panel homologados.
+  Se importa DESPUÉS de approved-ui.css.
+*/
+
+:root {
+  --dx-bg: #071018;
+  --dx-bg-elevated: #0c171e;
+  --dx-surface: #101e26;
+  --dx-surface-2: #15262f;
+  --dx-line: rgba(148, 185, 194, 0.14);
+  --dx-text: #edf6f7;
+  --dx-muted: #93a8b0;
+  --dx-accent: #0f9f94;
+  --dx-accent-soft: rgba(15, 159, 148, 0.14);
+  --dx-danger: #e46b6b;
+  --dx-ok: #3dbb8a;
+  --dx-radius: 14px;
+  --dx-radius-sm: 10px;
+  --dx-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  --dx-font: var(--font-hms-sans), "Segoe UI", system-ui, sans-serif;
+  --dx-display: var(--font-hms-display), Georgia, serif;
+}
+
+/* ═══════════════════════════════════════════
+   App shell (dashboard)
+   ═══════════════════════════════════════════ */
+
+.app-shell[data-theme],
+.app-shell {
+  --ui-bg: var(--dx-bg) !important;
+  --ui-sidebar: var(--dx-bg-elevated) !important;
+  --ui-surface: var(--dx-surface) !important;
+  --ui-surface-2: var(--dx-surface-2) !important;
+  --ui-surface-3: #1b303a !important;
+  --ui-border: var(--dx-line) !important;
+  --ui-text: var(--dx-text) !important;
+  --ui-muted: var(--dx-muted) !important;
+  --ui-accent: var(--dx-accent) !important;
+  --ui-accent-2: #0b7f76 !important;
+  --ui-success: var(--dx-ok) !important;
+  --ui-danger: var(--dx-danger) !important;
+  --ui-warning: #d4a017 !important;
+  --ui-cyan: #2bb8ac !important;
+  --ui-shadow: rgba(0, 0, 0, 0.34) !important;
+  font-family: var(--dx-font) !important;
+  background:
+    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(15, 159, 148, 0.07), transparent 55%),
+    linear-gradient(180deg, #071018 0%, #08131a 100%) !important;
+  color: var(--dx-text) !important;
+}
+
+.app-sidebar {
+  background: rgba(8, 18, 24, 0.96) !important;
+  border-right: 1px solid var(--dx-line) !important;
+  box-shadow: none !important;
+}
+
+.app-brand {
+  padding: 1.15rem 1.1rem 1rem !important;
+  border-bottom: 1px solid var(--dx-line) !important;
+  gap: 0.75rem !important;
+}
+
+.app-brand-icon {
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 12px !important;
+  background: linear-gradient(145deg, #0f9f94, #0b7f76) !important;
+  color: #031416 !important;
+  box-shadow: none !important;
+}
+
+.app-brand strong {
+  font-family: var(--dx-display) !important;
+  font-size: 1.2rem !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.app-brand small {
+  color: var(--dx-muted) !important;
+  font-size: 0.78rem !important;
+  letter-spacing: 0.04em !important;
+  text-transform: none !important;
+}
+
+.app-nav-item {
+  border-radius: 10px !important;
+  margin: 2px 10px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--dx-muted) !important;
+  min-height: 44px !important;
+}
+
+.app-nav-item:hover {
+  background: rgba(15, 159, 148, 0.08) !important;
+  color: var(--dx-text) !important;
+}
+
+.app-nav-item.is-active {
+  background: var(--dx-accent-soft) !important;
+  color: var(--dx-text) !important;
+  box-shadow: inset 3px 0 0 var(--dx-accent) !important;
+  border: 0 !important;
+}
+
+.app-nav-item-state,
+.app-nav-item [data-control-state],
+.app-nav-item .app-nav-item-state {
+  opacity: 0.85;
+}
+
+.app-sidebar-primary {
+  background: linear-gradient(135deg, #0f9f94, #0d8a80) !important;
+  color: #031416 !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  font-weight: 700 !important;
+  box-shadow: none !important;
+}
+
+.app-sidebar-secondary,
+.app-logout {
+  border: 1px solid var(--dx-line) !important;
+  background: transparent !important;
+  color: var(--dx-text) !important;
+  border-radius: 12px !important;
+}
+
+.app-main {
+  background: transparent !important;
+}
+
+.app-topbar,
+.app-header,
+[class*="app-header"] {
+  border-bottom: 1px solid var(--dx-line) !important;
+  background: rgba(7, 16, 24, 0.72) !important;
+  backdrop-filter: blur(12px);
+}
+
+.app-content {
+  max-width: 1180px !important;
+  margin-inline: auto !important;
+  padding: 1.25rem 1.35rem 2.5rem !important;
+  gap: 1.15rem !important;
+}
+
+.app-hero,
+.app-home-hero,
+.app-welcome {
+  border: 1px solid var(--dx-line) !important;
+  border-radius: var(--dx-radius) !important;
+  background: var(--dx-surface) !important;
+  box-shadow: none !important;
+  padding: 1.25rem 1.35rem !important;
+}
+
+.app-metrics {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  gap: 0.75rem !important;
+}
+
+.app-metric {
+  border: 1px solid var(--dx-line) !important;
+  border-radius: var(--dx-radius) !important;
+  background: var(--dx-surface) !important;
+  box-shadow: none !important;
+  min-height: 108px !important;
+  padding: 1rem 1.05rem !important;
+  overflow: hidden !important;
+}
+
+.app-metric::before,
+.app-metric::after {
+  display: none !important;
+}
+
+.app-metric div span {
+  color: var(--dx-muted) !important;
+  font-size: 0.72rem !important;
+  font-weight: 650 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+}
+
+.app-metric div strong {
+  color: var(--dx-text) !important;
+  font-size: 1.75rem !important;
+  font-weight: 650 !important;
+  letter-spacing: -0.03em !important;
+  margin-top: 0.35rem !important;
+}
+
+.app-metric div small {
+  color: var(--dx-muted) !important;
+  font-size: 0.72rem !important;
+  line-height: 1.3 !important;
+  margin-top: 0.35rem !important;
+  opacity: 0.9 !important;
+}
+
+.app-metric svg {
+  opacity: 0.35 !important;
+  color: var(--dx-accent) !important;
+}
+
+.app-metric-blue,
+.app-metric-red,
+.app-metric-violet,
+.app-metric-green,
+.app-metric-cyan {
+  background: var(--dx-surface) !important;
+  border-color: var(--dx-line) !important;
+}
+
+.app-panel,
+.app-dashboard-grid .app-panel {
+  border: 1px solid var(--dx-line) !important;
+  border-radius: var(--dx-radius) !important;
+  background: var(--dx-surface) !important;
+  box-shadow: none !important;
+}
+
+.app-panel-heading span {
+  color: var(--dx-accent) !important;
+  letter-spacing: 0.12em !important;
+  font-size: 0.68rem !important;
+}
+
+.app-panel-heading h2 {
+  font-family: var(--dx-display) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.app-quick-actions {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 0.75rem !important;
+  z-index: 1 !important;
+}
+
+.app-quick-actions button {
+  border: 1px solid var(--dx-line) !important;
+  border-radius: var(--dx-radius) !important;
+  background: var(--dx-surface) !important;
+  color: var(--dx-text) !important;
+  box-shadow: none !important;
+  min-height: 88px !important;
+  text-align: left !important;
+  padding: 1rem 1.1rem !important;
+}
+
+.app-quick-actions button:hover {
+  border-color: rgba(15, 159, 148, 0.45) !important;
+  background: var(--dx-surface-2) !important;
+}
+
+.app-quick-actions button strong {
+  font-size: 0.98rem !important;
+}
+
+.app-quick-actions button span {
+  color: var(--dx-muted) !important;
+  font-size: 0.82rem !important;
+}
+
+.app-quick-actions button svg {
+  color: var(--dx-accent) !important;
+}
+
+.app-empty {
+  color: var(--dx-muted) !important;
+  border: 1px dashed var(--dx-line) !important;
+  border-radius: var(--dx-radius-sm) !important;
+  background: rgba(0, 0, 0, 0.12) !important;
+}
+
+.app-case-card,
+.app-event-item,
+.app-panel article {
+  border-color: var(--dx-line) !important;
+}
+
+/* ═══════════════════════════════════════════
+   Mobile
+   ═══════════════════════════════════════════ */
+
+@media (max-width: 1100px) {
+  .app-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .app-metrics > :last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-metrics {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.55rem !important;
+  }
+
+  .app-metric {
+    min-height: 96px !important;
+    padding: 0.85rem !important;
+  }
+
+  .app-metric div strong {
+    font-size: 1.45rem !important;
+  }
+
+  .app-quick-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-content {
+    padding: 0.9rem 0.85rem 5.5rem !important;
+  }
+}
+
+/* ═══════════════════════════════════════════
+   Login gate (homologado)
+   ═══════════════════════════════════════════ */
+
+.hms-gate {
+  --gate-ink: var(--dx-text) !important;
+  --gate-muted: var(--dx-muted) !important;
+  --gate-line: var(--dx-line) !important;
+  --gate-panel: rgba(16, 30, 38, 0.92) !important;
+  --gate-accent: var(--dx-accent) !important;
+  --gate-accent-2: #0b7f76 !important;
+  --gate-accent-ink: #031416 !important;
+  --gate-ok: var(--dx-ok) !important;
+  --gate-err: #f0a0a0 !important;
+  background: var(--dx-bg) !important;
+}
+
+.hms-gate__atmosphere {
+  background:
+    radial-gradient(ellipse 80% 55% at 12% -10%, rgba(15, 159, 148, 0.14), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(11, 127, 118, 0.1), transparent 50%),
+    linear-gradient(180deg, #071018 0%, #0a141b 100%) !important;
+}
+
+.hms-gate__grid {
+  opacity: 0.12 !important;
+  background-image:
+    linear-gradient(rgba(148, 185, 194, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 185, 194, 0.05) 1px, transparent 1px) !important;
+}
+
+.hms-gate__mark {
+  background: linear-gradient(145deg, #0f9f94, #0b7f76) !important;
+  color: #031416 !important;
+  box-shadow: none !important;
+  border-radius: 12px !important;
+}
+
+.hms-gate__product {
+  font-family: var(--dx-display) !important;
+  font-weight: 650 !important;
+}
+
+.hms-gate__tagline {
+  letter-spacing: 0.06em !important;
+  text-transform: none !important;
+  color: var(--dx-muted) !important;
+}
+
+.hms-gate__art {
+  border: 1px solid var(--dx-line) !important;
+  border-radius: var(--dx-radius) !important;
+  background: #050c10 !important;
+  box-shadow: none !important;
+}
+
+.hms-gate__panel {
+  border: 1px solid var(--dx-line) !important;
+  border-radius: 16px !important;
+  background: var(--dx-surface) !important;
+  box-shadow: var(--dx-shadow) !important;
+  backdrop-filter: none !important;
+}
+
+.hms-gate__control {
+  border: 1px solid var(--dx-line) !important;
+  background: rgba(0, 0, 0, 0.22) !important;
+  border-radius: var(--dx-radius-sm) !important;
+}
+
+.hms-gate__control:focus-within {
+  border-color: rgba(15, 159, 148, 0.65) !important;
+  box-shadow: 0 0 0 3px rgba(15, 159, 148, 0.14) !important;
+  color: var(--dx-accent) !important;
+}
+
+.hms-gate__submit {
+  background: linear-gradient(135deg, #0f9f94, #0d8a80) !important;
+  color: #031416 !important;
+  box-shadow: none !important;
+  border-radius: 12px !important;
+}
+
+.hms-gate__secondary {
+  border: 1px solid var(--dx-line) !important;
+  border-radius: 12px !important;
+}
+
+.hms-gate__links button,
+.hms-gate__back {
+  color: var(--dx-accent) !important;
+}
+
+.hms-gate__aside-kicker {
+  color: var(--dx-accent) !important;
+}
+
+.hms-gate__aside li {
+  border-left-color: rgba(15, 159, 148, 0.45) !important;
+}
+
+.hms-gate__theme select {
+  border: 1px solid var(--dx-line) !important;
+  background: rgba(7, 16, 24, 0.9) !important;
+  color: var(--dx-muted) !important;
+}
+
+/* Connect / modal overlays */
+.dx-connect-overlay {
+  background: rgba(4, 10, 14, 0.78) !important;
+}
+
+.dx-connect-card {
+  border: 1px solid var(--dx-line) !important;
+  background: var(--dx-surface) !important;
+  box-shadow: var(--dx-shadow) !important;
+}
+
+.dx-connect-btn--primary {
+  background: linear-gradient(135deg, #0f9f94, #0d8a80) !important;
+  color: #031416 !important;
+}
+
+.dx-connect-btn--secondary {
+  border: 1px solid var(--dx-line) !important;
+  background: rgba(0, 0, 0, 0.18) !important;
+}
+
+/* Guided import chrome */
+.hms-import-modal {
+  border: 1px solid var(--dx-line) !important;
+  background: var(--dx-bg-elevated) !important;
+  box-shadow: var(--dx-shadow) !important;
+}
+
+.hms-import-kicker {
+  color: var(--dx-accent) !important;
+}

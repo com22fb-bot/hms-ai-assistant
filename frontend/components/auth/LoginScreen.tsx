@@ -30,8 +30,7 @@ type LoginScreenProps = {
 };
 
 /**
- * Acceso Donexto: marca, slogan y misma paleta del dashboard.
- * La cuenta Donexto es independiente del buzón Gmail/Yahoo.
+ * Acceso Donexto — look homologado con el panel (Confianza slate & teal).
  */
 export function LoginScreen({
   theme,
@@ -137,69 +136,77 @@ export function LoginScreen({
   }
 
   return (
-    <main className="hms-gate" data-theme={theme}>
+    <main className="hms-gate dx-login" data-theme={theme}>
       <div className="hms-gate__atmosphere" aria-hidden />
-      <div className="hms-gate__grid" aria-hidden />
 
-      <div className="hms-gate__frame">
-        <header className="hms-gate__brand">
-          <div className="hms-gate__mark" aria-hidden>
-            <span>D</span>
-          </div>
-          <div className="hms-gate__brand-text">
-            <p className="hms-gate__product">Donexto</p>
-            <p className="hms-gate__tagline">Do Next To…</p>
-          </div>
-        </header>
+      <div className="dx-login-shell">
+        <section className="dx-login-story">
+          <header className="hms-gate__brand">
+            <div className="hms-gate__mark" aria-hidden>
+              <span>D</span>
+            </div>
+            <div className="hms-gate__brand-text">
+              <p className="hms-gate__product">Donexto</p>
+              <p className="hms-gate__tagline">Do Next To…</p>
+            </div>
+          </header>
 
-        <section className="hms-gate__hero">
-          <figure className="hms-gate__art">
+          <figure className="hms-gate__art dx-login-art">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/hms-import-robot.png"
-              alt="Robot organizando correos y enviándolos a una laptop"
-              width={640}
-              height={400}
+              alt="Robot Donexto organizando correos hacia una laptop"
+              width={960}
+              height={640}
             />
           </figure>
-          <h1>Lo que requiere atención en tu correo.</h1>
-          <p>
-            Prioridades, dinero y respuestas — antes del caos de la bandeja.
-            Entra con tu cuenta Donexto; el buzón Gmail o Yahoo se conecta
-            después.
-          </p>
+
+          <div className="dx-login-copy">
+            <p className="dx-login-eyebrow">Correo con criterio</p>
+            <h1>Lo que requiere atención en tu correo.</h1>
+            <p className="dx-login-lede">
+              Prioridades, dinero y respuestas — antes del caos de la bandeja.
+              Entra con tu cuenta Donexto; el buzón se conecta en un paso
+              aparte.
+            </p>
+            <ul className="dx-login-points">
+              <li>Buzón Gmail o Yahoo independiente del login</li>
+              <li>Panel limpio para decidir qué contestar</li>
+              <li>Diseñado para uso diario, no para “demo IA”</li>
+            </ul>
+          </div>
         </section>
 
-        <section className="hms-gate__panel" aria-labelledby="hms-gate-title">
+        <section className="hms-gate__panel dx-login-panel" aria-labelledby="hms-gate-title">
           <div className="hms-gate__panel-head">
             <h2 id="hms-gate-title">
               {mode === "signup" ? "Crear cuenta" : "Iniciar sesión"}
             </h2>
             <p>
-              Email y contraseña de Donexto — no son los de Gmail, Yahoo ni
-              Outlook.
+              Email y contraseña de Donexto — no son los de Gmail ni Yahoo.
             </p>
-            <div className="hms-gate__links" style={{ marginTop: "0.75rem" }}>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setMode(mode === "signin" ? "signup" : "signin");
-                  setError(null);
-                  setMessage(null);
-                }}
-              >
-                {mode === "signin"
-                  ? "¿No tienes cuenta? Crear una"
-                  : "¿Ya tienes cuenta? Entrar"}
-              </button>
-            </div>
+          </div>
+
+          <div className="hms-gate__links" style={{ marginTop: "0.35rem" }}>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setMode(mode === "signin" ? "signup" : "signin");
+                setError(null);
+                setMessage(null);
+              }}
+            >
+              {mode === "signin"
+                ? "¿No tienes cuenta? Crear una"
+                : "¿Ya tienes cuenta? Entrar"}
+            </button>
           </div>
 
           {step === "credentials" ? (
             <form className="hms-gate__form" onSubmit={submit} noValidate>
               <label className="hms-gate__field">
-                <span>Correo de la cuenta Donexto</span>
+                <span>Correo Donexto</span>
                 <div className="hms-gate__control">
                   <Mail size={18} aria-hidden />
                   <input
@@ -219,7 +226,7 @@ export function LoginScreen({
               </label>
 
               <label className="hms-gate__field">
-                <span>Contraseña Donexto</span>
+                <span>Contraseña</span>
                 <div className="hms-gate__control">
                   <KeyRound size={18} aria-hidden />
                   <input
@@ -304,12 +311,12 @@ export function LoginScreen({
                   setError(null);
                 }}
               >
-                ← Volver al inicio de sesión
+                ← Volver
               </button>
 
               <p className="hms-gate__help-lead">
-                Usa el mismo correo de arriba. No se usa la contraseña del
-                correo personal.
+                Usa el mismo correo de arriba. No se pide la contraseña del
+                proveedor de correo.
               </p>
 
               {error ? (
@@ -349,23 +356,11 @@ export function LoginScreen({
           <footer className="hms-gate__foot">
             <ShieldCheck size={16} aria-hidden />
             <span>
-              Donexto no pide la contraseña de Gmail, Outlook ni Yahoo en este
+              Donexto no pide la contraseña de Gmail ni Yahoo en este
               formulario.
             </span>
           </footer>
         </section>
-
-        <aside className="hms-gate__aside" aria-hidden="true">
-          <p className="hms-gate__aside-kicker">Inteligencia de correo</p>
-          <p className="hms-gate__aside-title">
-            Not another inbox. Un panel de lo que sí importa.
-          </p>
-          <ul>
-            <li>Pendientes y plazos a la vista</li>
-            <li>Clasificación antes de la bandeja</li>
-            <li>Gmail o Yahoo — cualquier buzón</li>
-          </ul>
-        </aside>
       </div>
 
       <div className="hms-gate__theme">
@@ -379,9 +374,9 @@ export function LoginScreen({
             aria-label="Tema de la aplicación"
           >
             <option value="accessible">Confianza · slate & teal</option>
-            <option value="midnight">Noche · indigo</option>
-            <option value="aurora">Colaboración · cielo</option>
             <option value="graphite">Institucional · grafito</option>
+            <option value="aurora">Colaboración · cielo</option>
+            <option value="midnight">Noche · indigo</option>
           </select>
         </label>
       </div>

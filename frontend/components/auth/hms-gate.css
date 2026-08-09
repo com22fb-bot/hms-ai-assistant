@@ -528,3 +528,122 @@
     animation: none;
   }
 }
+
+/* Layout de acceso Donexto (homologado al panel) */
+.dx-login-shell {
+  position: relative;
+  z-index: 1;
+  width: min(1120px, 100%);
+  margin: 0 auto;
+  min-height: 100dvh;
+  min-height: 100svh;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: center;
+  gap: 1.25rem;
+  padding:
+    max(1.1rem, env(safe-area-inset-top))
+    1.1rem
+    max(1.4rem, env(safe-area-inset-bottom));
+}
+
+.dx-login-story {
+  display: grid;
+  gap: 1rem;
+}
+
+.dx-login-art {
+  margin: 0;
+}
+
+.dx-login-art img {
+  height: clamp(180px, 34vw, 260px) !important;
+  object-fit: contain !important;
+  object-position: center !important;
+}
+
+.dx-login-copy {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.dx-login-eyebrow {
+  margin: 0;
+  color: var(--gate-accent);
+  font-size: 0.75rem;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.dx-login-copy h1 {
+  margin: 0;
+  font-family: var(--gate-display);
+  font-size: clamp(1.7rem, 5.5vw, 2.35rem);
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  max-width: 16ch;
+}
+
+.dx-login-lede {
+  margin: 0;
+  color: var(--gate-muted);
+  font-size: 0.98rem;
+  line-height: 1.45;
+  max-width: 38ch;
+}
+
+.dx-login-points {
+  margin: 0.35rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+  color: var(--gate-muted);
+  font-size: 0.9rem;
+}
+
+.dx-login-points li {
+  padding-left: 0.85rem;
+  border-left: 2px solid rgba(15, 159, 148, 0.4);
+}
+
+.dx-login-panel {
+  width: 100%;
+}
+
+.dx-login .hms-gate__frame {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .dx-login-shell {
+    grid-template-columns: 1.08fr 0.92fr;
+    gap: 2.5rem;
+    align-items: center;
+    padding: 2.5rem 2rem;
+  }
+
+  .dx-login-story {
+    gap: 1.25rem;
+  }
+
+  .dx-login-art img {
+    height: clamp(240px, 34vh, 340px) !important;
+  }
+
+  .dx-login-copy h1 {
+    font-size: 2.6rem;
+  }
+
+  .dx-login-lede {
+    font-size: 1.05rem;
+  }
+
+  .dx-login-panel {
+    max-width: 420px;
+    justify-self: end;
+    width: 100%;
+  }
+}

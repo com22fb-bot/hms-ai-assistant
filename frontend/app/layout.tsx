@@ -3,6 +3,7 @@ import { Fraunces, Outfit } from "next/font/google";
 
 import "./globals.css";
 import "./approved-ui.css";
+import "./donexto-skin.css";
 
 const hmsSans = Outfit({
   variable: "--font-hms-sans",
@@ -28,7 +29,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
-  themeColor: "#02070b",
+  themeColor: "#071018",
 };
 
 export default function RootLayout({
