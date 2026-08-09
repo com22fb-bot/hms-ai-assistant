@@ -1,0 +1,584 @@
+================================================================================
+RESPALDO MAESTRO — HMS AI ASSISTANT / DONEXTO
+Versión documental: 2.1 (amplía Prompt Maestro V2 del 2026-08-06)
+Fecha de este archivo: 2026-08-09
+Repositorio: com22fb-bot/hms-ai-assistant
+Propietario product: Héctor / equipo Donexto
+Clasificación: respaldo estratégico + estado técnico; no expone secretos
+================================================================================
+
+ÍNDICE
+------
+1. Historia del proyecto
+2. Evolución técnica (stack y arquitectura)
+3. Marca Donexto y promesa de producto
+4. Commits, tags y ramas relevantes
+5. Problemas resueltos (log operativo)
+6. Estado actual (2026-08-09)
+7. Logística 1
+8. Push / VAPID (diagnóstico cerrado y procedimiento)
+9. Diferencia: inicio vs Versión 2 vs continuidad actual
+10. Decisión Estratégica Profesional / Family
+11. Prompt Maestro V2 (completo)
+12. Plan de 12 sprints + Definition of Done
+13. Mercado EE.UU. — consumidores, notificaciones y hogar (conclusión ejecutiva)
+14. Prompts correctos para desarrollo (listos para pegar)
+15. Protocolo de implementación y reglas de seguridad
+16. Próximos pasos recomendados
+17. Referencias de archivos en el repo
+
+================================================================================
+1. HISTORIA DEL PROYECTO
+================================================================================
+
+Origen (pre-Nombre Donexto / HMS AI Assistant)
+- Nació para resolver: correos importantes sin atender, solicitudes repetidas,
+  compromisos olvidados, pagos detenidos, falta de claridad sobre quién espera
+  respuesta.
+- Visión permanente: NO es “otro cliente de correo”. Es una capa inteligente que
+  detecta, clasifica, resume y convierte mensajes en acciones y seguimiento.
+- Pregunta de producto: ¿Qué requiere mi atención en este momento?
+
+Fases consecutivas (alta nivel)
+A) Prototipo: backend FastAPI + Supabase + conexión Google OAuth inicial.
+B) Motor de casos inteligentes, importación guiada Gmail, dashboard operativo.
+C) Logística 1: búsqueda, clasificador seguro, triage, Push web, PWA pieces.
+D) Versión 2 estratégica (2026-08-06): motor común + Profesional + Family; sprints.
+E) Producción Donexto (2026-08): marca, app.donexto.com (Cloudflare Worker),
+   API Railway, Gmail/Yahoo como buzón independiente del login Donexto, UX.
+
+Línea de producto actual (nombre comercial)
+- Marca: Donexto — slogan: “Do Next To…”
+- Promesa operativa corta:
+  “Lo que requiere atención en tu correo” (prioridades, dinero, respuestas).
+- Login Donexto (cuenta producto) ≠ buzón Gmail/Yahoo (fuente de mensajes).
+
+================================================================================
+2. EVOLUCIÓN TÉCNICA
+================================================================================
+
+Stack
+- Frontend: Next.js (app en /frontend), React, CSS producto (approved-ui + skins).
+- Deploy frontend: OpenNext + Cloudflare Workers (nombre worker: donexto-app).
+- Backend: FastAPI (uvicorn), Python, carpeta /backend.
+- Deploy API: Railway (https://hms-ai-assistant-production.up.railway.app).
+- Datos / auth: Supabase (workspaces, communication_accounts, mensajes, casos).
+- Correo: Gmail OAuth; Yahoo IMAP + contraseña de aplicación.
+- Push: Web Push VAPID (cryptography + servicio propio web_push_sender).
+- Secretos locales Codespace: .hms-secrets/ (gitignored).
+
+Identidad
+- Cuenta Donexto (email+password Supabase auth).
+- Workspace provisionado al login cuando falta.
+- communication_accounts = buzón activo (google | yahoo | imap).
+- Cifrado de tokens de buzón: OAUTH_ENCRYPTION_KEY en Railway (obligatoria).
+
+Monorepo
+- Raíz del repo no es Next; el app root para Next es frontend/.
+- Docker/Railway: build pensado en monorepo desde raíz.
+
+================================================================================
+3. MARCA DONEXTO Y PROMESA
+================================================================================
+
+- Producto: Donexto (ex HMS AI Assistant a nivel marca de cara al usuario).
+- Dominio app: https://app.donexto.com
+- Landing/API: Railway + Worker Cloudflare.
+- Home deseado (producto, no solo UI): cola de atención, no mini-Gmail.
+  Prioridades: dinero/seguridad/logística antes que promo/social.
+- Diferenciación B2C hogar (Family futuro): “asistente de logística y finanzas
+  del hogar”, no “gestor de correo”.
+
+================================================================================
+4. COMMITS, TAGS Y RAMAS RELEVANTES
+================================================================================
+
+Ramas (2026-08-09)
+- main (HEAD de trabajo Donexto producción UI/backend latest)
+- sprint/01-estabilizacion-alertas-20260806
+- remotes/origin/main
+- remotes/origin/sprint/01-estabilizacion-alertas-20260806
+
+Tags
+- checkpoint-hms-v2-master-20260806
+  (docs Prompt Maestro V2 + inicio Sprint 1)
+
+Commits recientes principales (main, extracto 2026-08)
+- b46c3c0 feat: add change mailbox action for another Gmail or Yahoo
+- 0a02567 fix: fit login to viewport without page scroll
+- 3fd5674 / 70ac8a0 / 9473361 / 3dfa57a skins y login institucionales
+- dff6d19 Yahoo IMAP harden + trust UX
+- 1b79ba8 robot import completo + branding Donexto
+- fd4c541 OAUTH_ENCRYPTION_KEY required for mailbox credentials
+- da3b1e4 force HTTPS Google OAuth token exchange (Railway)
+- 12c6096 / 5266399 any Gmail or Yahoo after Donexto login
+- 4ab3b92 signup de cuentas Donexto
+- 8cc8cf5 Cloudflare Worker deploy + Railway API
+- 2dea5d9 (sprint) Logística 1 classification push inbox schema
+- ea863f9 correct VAPID secret path + classifier message direction
+- 07a894a docs Prompt Maestro V2 / Sprint 1
+- b57e481 Google OAuth early
+- b4683d7 Backend inicial FastAPI + Supabase
+- 0728894 Initial commit
+
+Nota: el HEAD de main local y origin puede divergir respecto a
+sprint/01-…; validar con `git log` antes de hotfixes de producción.
+
+================================================================================
+5. PROBLEMAS RESUELTOS (RESUMEN OPERATIVO)
+================================================================================
+
+OAuth / Gmail
+- Consent Google en Testing vs Production / test users.
+- Redirect Railway HTTPS vs http insecure_transport (force HTTPS en callback).
+- OAUTH_ENCRYPTION_KEY faltante (tokens no se guardaban).
+- Códigospace vs donexto.com como redirect (ops docs).
+
+Yahoo
+- No OAuth; IMAP + app password.
+- Middleware auth faltante en /auth/yahoo (corregido).
+- Deactiva otros providers al conectar.
+- Errores y UX de contraseña de aplicación clarificados.
+- Antifill de credenciales del login Donexto en form Yahoo.
+
+Frontend / Deploy
+- UI “vieja” en producción = falta `npm run deploy` Cloudflare (Worker).
+- Wrangler OAuth timeout en Codespace: usar CLOUDFLARE_API_TOKEN.
+- Token mal pegado en export (invalid header Bearer …).
+- Shell `>` por comillas abiertas (Ctrl+C / una línea a la vez).
+
+Producto / UX
+- Login con scroll / form abajo: rediseño viewport-fit (dx-auth).
+- Dashboard “laboratorio de controles / En prueba”: limpia UI.
+- Métricas en cero: son de casos clasificados, no del inbox crudo.
+- Cambiar buzón: acción lateral “Cambiar buzón” añadida.
+- Identidad: login Donexto ≠ correo de buzón.
+
+Push / VAPID (detalle en sección 8)
+- Confusión de nombre de archivo: no vapid.env sino push.env.
+- path parents[2] generaba secretos fuera del repo; corregido a parents[1].
+- Variables exactas: HMS_VAPID_PUBLIC_KEY, HMS_VAPID_PRIVATE_KEY_PATH,
+  HMS_VAPID_SUBJECT.
+
+================================================================================
+6. ESTADO ACTUAL (2026-08-09)
+================================================================================
+
+Producción
+- App: https://app.donexto.com (Cloudflare Worker donexto-app)
+- API: https://hms-ai-assistant-production.up.railway.app
+- Marca y login/dashboard en evolución visual (main).
+
+Funcional
+- Alta/login Donexto.
+- Conectar Gmail (OAuth) o Yahoo (IMAP app password).
+- Importación guiada / triage / categorías / mail panels (código Logística 1).
+- Push implementado en código; VAPID debe cargarse en cada entorno (Codespace
+  vs Railway) con secretos fuera de Git.
+- Códigos de despliegue UI y API documentados / practicados.
+
+Producto pendiente (decisión)
+- Home “correo personal inteligente” alineado a N1/N2/N3 mercado EE.UU.
+- No aplicar diseños genéricos de call-center como identidad final.
+- Sprint 1 DoD formal: parcialmente abierto (tag cierre, validación visual
+  propietaria completa, restorepoint pre-rediseño formal).
+
+Archivos locales no commiteados típicos
+- .cursor/, previews PNG en frontend/public (diseño experimental).
+
+================================================================================
+7. LOGÍSTICA 1
+================================================================================
+
+Objetivo del bloque (históricamente)
+- Búsqueda, watch/schedule, clasificador seguro, reclass, favoritos.
+- Inbox por triage_category, resumen de categorías, reglas.
+- Push notifications + service worker + panel de dispositivos.
+
+Migraciones Supabase (Logística 1)
+- Referencia en docs/LOGISTICA_1.md y migrations bajo supabase/migrations/
+- Incluye search, rules, push schemas (verificar aplicadas en prod con checklist).
+
+Commits ancla (sprint branch)
+- 2dea5d9 feat: integrate Logistica 1 classification push inbox and schema
+- ea863f9 fix VAPID path + classifier
+- e017f11 mobile viewport + device-targeted push test
+
+Documentación
+- docs/LOGISTICA_1.md/*
+- docs/ops (Gmail/Yahoo)
+- docs/roadmap Sprint 1 tablero
+
+================================================================================
+8. PUSH / VAPID — DIAGNÓSTICO Y PROCEDIMIENTO
+================================================================================
+
+8.1 Hallazgo exacto (Codespace / diagnóstico propietario)
+
+Backend lee SOLO:
+  HMS_VAPID_PUBLIC_KEY          (string base64url de clave pública P-256)
+  HMS_VAPID_PRIVATE_KEY_PATH    (ruta a archivo PEM EC privada)
+  HMS_VAPID_SUBJECT             (default mailto:hmcelinfo@gmail.com)
+
+Archivos del generador scripts/generate_vapid_keys.py:
+  .hms-secrets/vapid_private.pem
+  .hms-secrets/push.env
+NO crea: vapid.env ni .hms-secrets/vapid.env (nombre incorrecto a buscar).
+
+Idempotencia del generador:
+  Si existen private_path y env_path → imprime VAPID_KEYS=EXISTING y exit 0.
+  Si no → genera PEM + push.env (chmod 600).
+
+Ruta de repo en script (actual en main):
+  repo = Path(__file__).resolve().parents[1]
+  → /workspaces/hms-ai-assistant
+
+Bug histórico corregido:
+  parents[2] escribía en /workspaces/.hms-secrets (fuera del repo).
+  Buscar ambas ubicaciones al recuperar llaves existentes.
+
+Código:
+  backend/app/services/push_service.py  (_public_key, _private_key_path, _subject)
+  backend/app/services/web_push_sender.py  (_load_vapid_private_key, envío VAPID)
+  configured := bool(public_key AND private_key_path)
+
+8.2 Procedimiento recomendado (solo cuando el propietario autorice generar)
+
+1) Localizar llaves existentes en:
+   /workspaces/.hms-secrets/push.env + vapid_private.pem
+   o $ROOT/.hms-secrets/...
+2) Si no existen: corregir parents[1], mkdir .hms-secrets 700, gitignore,
+   python3 scripts/generate_vapid_keys.py (NO ejecutar sin autorización en prod).
+3) source push.env; reiniciar uvicorn con env cargado.
+4) Validar /health 200 y panel Push: servidor configurado / activo.
+5) NO enviar “prueba” hasta que la UI reporte llaves configuradas.
+6) Nunca commitear .pem ni push.env.
+
+8.3 Railway / producción
+- Exponer HMS_VAPID_* vía variables de entorno o montaje de secreto de path.
+- Public key también al frontend si el flujo de suscripción la requiere
+  (según endpoint de configuración push del backend).
+
+================================================================================
+9. DIFERENCIA: INICIO vs VERSIÓN 2 vs CONTINUIDAD 2026-08
+================================================================================
+
+INICIO
+- Asistente de pendientes, Gmail puntual, necesidad más empresarial/prototipo.
+- Clasificación básica, velocidad de demo.
+
+VERSIÓN 2 (2026-08-06) — documento estratégico
+- SaaS: multicuenta, multiproveedor (visión).
+- Motor común + dos experiencias (Profesional / Family).
+- Casos, espera, reglas explicables, Push selectivo 3 niveles.
+- Seguridad workspace, Microsoft 365 futuro, Family futuro.
+- 12 sprints, protocolo de implementación, pilotos antes de comercializar.
+
+CONTINUIDAD OPERATIVA (ago 2026, Donexto)
+- Marca y dominio en producción (Cloudflare + Railway).
+- Login propio + buzón Gmail/Yahoo desacoplados.
+- Push logístico en código + endurecimiento IMAP/OAuth.
+- Enfoque UI móvil/login; debate de home “personal/hogar” vs dashboard casos.
+- Evidencia de mercado EE.UU. (notificaciones N1/N2/N3) incorporada a V2.1.
+
+================================================================================
+10. DECISIÓN ESTRATÉGICA (DE-2026-08-06-01)
+================================================================================
+
+Estado: aprobada conceptualmente (no autoriza por sí sola migraciones Family).
+
+Motor central compartido:
+  conectores, sync, conversaciones, clasificación, extracción, reglas,
+  favoritos, notificaciones, búsqueda, auditoría, explicaciones, original.
+
+Profesional:
+  workspaces, equipos, casos, responsables, SLA, métricas operativas.
+
+Family / Hogar:
+  hogares, miembros, privacidad individual, alertas domésticas, agenda,
+  resúmenes.
+
+Privacidad familiar:
+  admin no ve todo por defecto; cuentas con dueño; alertas privadas o
+  compartidas; finanzas/salud/viajes/2FA con protección extra; share
+  explícito y auditable.
+
+Condiciones para empezar Family en código de producto:
+  1) Profesional estable
+  2) Clasificación y Push confiables
+  3) Aislamiento usuario/workspace
+  4) Multicuenta
+  5) Microsoft 365
+  6) Piloto empresarial
+
+================================================================================
+11. PROMPT MAESTRO V2 (TEXTO COMPLETO DE RESPALDO)
+================================================================================
+
+Origen del archivo canónico:
+  docs/master/2026-08-06-PROMPT-MAESTRO-HMS-V2.md
+
+--- INICIO PROMPT MAESTRO V2 ---
+
+HMS AI Assistant / Donexto — Prompt Maestro V2
+Fecha original: 2026-08-06
+Estado: respaldo estratégico; no autoriza solo cambios productivos.
+
+1. Origen
+Resolver correos importantes sin atender, solicitudes repetidas, compromisos
+olvidados, pagos detenidos y falta de visibilidad sobre quién espera respuesta.
+No construir otro cliente de correo: capa inteligente de detección,
+clasificación, resumen, acciones y seguimiento.
+
+2. Evolución aprobada
+Motor común + dos experiencias:
+- HMS Profesional (casos, responsables, espera I/E, pagos, docs, tareas, métricas)
+- HMS Family / Hogar (seguridad, finanzas, logística doméstica multi-cuenta)
+No duplicar motor; no mezclar UI, lenguaje, permisos ni modelo comercial
+prematuramente.
+
+3. Libro Maestro (puntos conceptuales)
+visión empresarial; oportunidad B2C familiar; motor común; problemas por
+modalidad; funciones compartidas/separadas; privacidad familiar; notificaciones
+inmediata/resumen/silenciosa; riesgos de mezclar mercados; secuencia de
+desarrollo; hipótesis de precio; datos pendientes de validación.
+
+4. MVP HMS Family
+Supervisar varias cuentas; avisar solo lo que afecte seguridad, finanzas y
+logística del hogar. Gmail inicial, móvil, Push, cargos, servicios, entregas,
+escuela, salud, viajes, citas, suscripciones, favoritos, resumen diario,
+privacidad miembros, explicación de alertas, mensaje original.
+Piloto 5–10 familias.
+
+5. Motor de notificaciones
+No notificar cada correo.
+Nivel 1 inmediata | Nivel 2 resumen periódico | Nivel 3 silenciosa.
+Críticos: seguridad, 2FA, cargos, transferencias, pagos fallidos, facturas,
+servicios, entregas, escuela, salud, viajes, VIP, favoritos.
+Reglas deterministas primero; IA después; umbrales; dedupe; quiet hours;
+escalamiento; agrupamiento; feedback; auditoría; datos sensibles; pruebas.
+
+6. Arquitectura futura
+Next.js, FastAPI, Supabase, Gmail, nube, repo com22fb-bot/hms-ai-assistant.
+Soportar multi-cuenta, proveedores, hogares, miembros, roles, workspaces,
+privacidad, reglas, notificaciones, casos, tareas, eventos, auditoría, RLS,
+migración, adaptadores, seguridad, retención. Microsoft 365.
+
+7. Mobile-first
+No bandeja tradicional. Pantalla principal Family:
+“¿Qué ocurrió hoy que afecta a mi hogar?”
+Tarjetas con categoría, nivel, resumen, motivo, fecha, monto, miembro, acción,
+enlace al original.
+
+8. Competencia
+Investigar household, finanzas, paquetería, multi-inbox, AI triage, etc.
+Clasificar directos/parciales/sustitutos; registrar precio, estado, IA, límites.
+
+9. Protocolo obligatorio de implementación
+1 auditar repo 2 rama 3 uncommitted 4 archivos 5 implementación previa
+6 respaldar 7 no sobrescribir diseño 8 no eliminar funciones
+9 no datos productivos sin autorización 10 no reclasificar global
+11 archivos completos 12 instaladores idempotentes
+13 validar Python/TS/build/endpoints 3000/8000 14 detenerse en errores
+15 no commit funcional antes de validación visual
++ no secretos en Git, restaurabilidad, datos de mercado = hipótesis.
+
+10. Secuencia aprobada
+Profesional estable → clasificación/alertas → multicuenta → Microsoft 365 →
+piloto empresarial → prototipo Family → piloto hogares → marca/comercialización.
+
+--- FIN PROMPT MAESTRO V2 ---
+
+================================================================================
+12. PLAN DE 12 SPRINTS + DEFINITION OF DONE
+================================================================================
+
+Cadencia: 14 días (plan 2026-08-06)
+Base histórica: feature/logistica-1 ; Sprint 1 branch:
+  sprint/01-estabilizacion-alertas-20260806
+
+| Sprint | Fechas (plan)     | Objetivo                              |
+|--------|-------------------|----------------------------------------|
+| 1      | 6–19 ago 2026     | Estabilizar Profesional + Logística 1 |
+| 2      | 20 ago–2 sep      | Clasificación y alertas confiables    |
+| 3      | 3–16 sep          | Multicuenta Gmail                     |
+| 4      | 17–30 sep         | Seguridad SaaS / RLS / auditoría      |
+| 5      | 1–14 oct          | Microsoft 365                         |
+| 6      | 15–28 oct         | Preparar piloto empresarial           |
+| 7      | 29 oct–11 nov     | Piloto 3–5 empresas                   |
+| 8      | 12–25 nov         | Modelo común Profesional/Family       |
+| 9      | 26 nov–9 dic      | Fundación HMS Family                  |
+| 10     | 10–23 dic         | Alertas familiares                    |
+| 11     | 7–20 ene 2027     | Piloto 5–10 hogares                   |
+| 12     | 21 ene–3 feb      | Marca y comercialización go/no-go     |
+
+Sprint 1 — Definition of Done (resumen)
+- frontend/backend reproducibles; puertos 3000/8000 OK
+- sin errores de compilación
+- métricas coherentes; robot correcto
+- Push activable y prueba funcional; sin duplicados evidentes
+- sin secretos en Git; documentación y tag; validación visual del propietario
+Excluye: M365, Family, migraciones destructivas, facturación, WhatsApp,
+reclasificación total, envío automático masivo.
+
+Reglas de sprints
+1 rama + DoD + evidencia + commit + tag por sprint
+2 no mezclar dos sprints en un commit
+3 no commit funcional sin validación visual
+4 no datos productivos sin autorización
+5 instaladores se detienen en error
+6 instaladores idempotentes
+
+Estado Sprint 1 (tablero 2026-08-07, ~70–75%):
+Hecho: docs V2, Logística 1 en Git, VAPID path fix, viewport móvil, push
+laptop/celular en Codespace en su momento.
+Pendiente: tag pre-rediseño formal, cierre DoD, evidencia migraciones,
+rediseño producto post-restorepoint.
+
+================================================================================
+13. MERCADO EE.UU. — CONCLUSIÓN EJECUTIVA (V2.1)
+================================================================================
+
+Fuente: síntesis de comportamiento de consumidores EE.UU. aportada 2026-08-09
+(hipótesis de trabajo; validar con fuentes primarias antes de claims públicos).
+
+13.1 Fatiga y preferencias de notificación
+
+INBOX FATIGUE alto → solo alertas inmediatas con utilidad práctica,
+financiera o de seguridad en tiempo real.
+
+Nivel 1 — Altamente preferido (80–90%+ aceptación) — PUSH INMEDIATO
+- Finanzas y pagos (transferencias, recibos, facturas, cobros)
+- Seguridad / 2FA (códigos, login nuevo, cambio contraseña)
+- Logística y envíos (Amazon, FedEx, UPS, USPS) + viajes/vuelos
+
+Nivel 2 — Moderado (40–60%) — digest / opt-in
+- Agenda/citas, servicios
+- Menciones trabajo/VIP en colaboración (Slack, Workspace, Jira, Teams)
+- Precio/stock en wishlists (configurado)
+
+Nivel 3 — Rechazo (<20% aceptación; >75% evita push de promo)
+- Batch-and-blast, newsletters, promo general → spam folders / silencio
+- ~80% silencia si irrelevancia o demasiada frecuencia
+
+13.2 Correo personal / familiar (no laboral)
+
+- Tiempo personal: ~1.5–2.5 h/día (laboral 3+)
+- 90% revisa personal en horario laboral; 25% en primeros 5 min al despertar
+- 86% mantiene ≥3 cuentas personales (Principal / Comercial / Spam-registros)
+- >60% volumen = boletines/ofertas; solo ~37% percibido útil
+- Prioridad hogar: cargos/tarjeta/hogar ~90%; paquetes (porch piracy) ~85%;
+  escuela/hijos ~80%; viajes familiares ~78%
+- Lectura: smartphone 75–85%; desktop 15–20%; tablet/watch 5–10%
+- Proveedores uso personal: Gmail ~78%; iCloud ~30–35%; Yahoo ~28%;
+  Outlook/Hotmail ~20%
+
+13.3 Impacto para el SaaS B2C/Family
+
+Argumento de venta:
+  “Tu asistente de logística y finanzas del hogar”
+  (paquete, cargo raro, aviso escolar) — NO “gestionar correo”.
+
+WTP: ~USD 4.99–9.99 / mes por utilidad familiar.
+
+Canal: Push (o SMS/WhatsApp en el futuro) >> reenviar por email.
+
+Implicación de producto (orden de build):
+1) Taxonomía N1/N2/N3 + política push
+2) Home personal: pila N1; ruido colapsado
+3) Push solo N1 + quiet hours + dedupe
+4) Gmail estable (+ Yahoo ya en camino); multi-cuenta roles después
+5) Copy EN + Stripe band WTP; Family cuando DoD Profesional/Push OK
+
+================================================================================
+14. PROMPTS CORRECTOS PARA DESARROLLO (V2.1)
+================================================================================
+
+--- P1 Ancla producto ---
+Contexto Donexto/HMS: SaaS inteligencia de correo personal/familiar EE.UU.
+NO cliente de correo. Promesa: asistente de logística y finanzas del hogar /
+qué requiere atención (dinero, seguridad, paquetes, familia).
+Push: N1 default dinero+seguridad+envíos+viajes+escuela/salud; N2 digests;
+N3 mute (promo/newsletters). Reglas deterministas antes IA; tarjeta con
+categoría+motivo+original. Home ≠ bandeja. Login Donexto ≠ buzón. Sin secretos
+en Git. Tarea: [..]. Salida: plan + archivos + validación móvil.
+
+--- P2 Home personal ---
+Rediseña home logueado: buzón chip + Cambiar buzón; Hoy te necesita (N1);
+ítems con motivo y acción; N2 colapsado; ruido N3 colapsado; sin KPIs vacíos
+de casos como héroe; mobile-first; reutiliza triage; no romper OAuth/IMAP.
+
+--- P3 Push ---
+Motor 3 niveles EE.UU.; quiet hours; dedupe; preferencias; no email-for-email;
+código existente push_service + web_push_sender + VAPID HMS_VAPID_*.
+
+--- P4 Clasificador ---
+Alinear categories a N1/N2/N3 US personal; determinista primero; sin reclas
+global sin flag.
+
+--- P5 Copy/pricing EN ---
+Landing/paywall: household logistics+money; Free/Pro 4.99–9.99; trust tone.
+
+--- P6 Family multi-cuenta (posterior) ---
+Roles Principal / Comercial / Registros; privacidad miembros; plan sprints;
+no código hasta home N1 estable.
+
+--- P7 Auditoría ---
+Gaps repo vs N1/N2/N3; 5 P0 S/M/L; no implementar hasta aprobación.
+
+================================================================================
+15. PROTOCOLO DE IMPLEMENTACIÓN Y SEGURIDAD
+================================================================================
+
+(Del Prompt Maestro V2, recordatorio obligatorio)
+- Auditar, rama, backup, instaladores idempotentes.
+- No secretos (pem, push.env, tokens API, OAUTH_ENCRYPTION_KEY) en Git.
+- No datos productivos sin autorización.
+- No declarar función terminada sin validación (preferible visual + health).
+- Codespace / Railway / Cloudflare: tres entornos; variables por entorno.
+- Deploy frontend: cd frontend && export CLOUDFLARE_API_TOKEN=... && npm run deploy
+  (no confiar en wrangler login OAuth dentro de Codespace).
+
+================================================================================
+16. PRÓXIMOS PASOS RECOMENDADOS
+================================================================================
+
+Corto plazo (producto técnico)
+1. Cerrar carga VAPID en el entorno de trabajo (reuse keys / generate once).
+2. Confirmar panel Push “servidor configurado” antes de prueba de envío.
+3. Cerrar DoD Sprint 1 formal (tag + evidencia).
+4. Home personal N1 alineado a mercado EE.UU. (sustituir dashboard genérico).
+
+Mediano
+5. Sprint 2: precisión alertas + dedupe + explicación.
+6. Multicuenta y roles.
+7. Solo entonces Family UI.
+
+Producto
+8. Copy EN + pricing hypothesis; no overclaim stats sin fuentes citables.
+
+================================================================================
+17. REFERENCIAS EN REPO
+================================================================================
+
+docs/master/2026-08-06-PROMPT-MAESTRO-HMS-V2.md
+docs/decisions/DE-2026-08-06-01-HMS-PROFESIONAL-FAMILY.md
+docs/roadmap/2026-08-06-PLAN-SPRINTS-HMS-V2.md
+docs/roadmap/2026-08-07-SPRINT-1-TABLERO.md
+docs/adr/ADR-002-MERCADO-USA.md
+docs/ops/GOOGLE_OAUTH_DONEXTO.md
+docs/ops/YAHOO_IMAP.md
+docs/LOGISTICA_1.md/*
+scripts/generate_vapid_keys.py
+backend/app/services/push_service.py
+backend/app/services/web_push_sender.py
+frontend/ (LoginScreen, page.tsx, push panel, mail modules)
+
+ESTE ARCHIVO
+docs/recovery/RESPALDO_MAESTRO_HMS_DONEXTO_V2_2026-08-09.txt
+
+================================================================================
+FIN DEL RESPALDO — 2026-08-09
+No incluye claves privadas ni valores de HMS_VAPID_PUBLIC_KEY reales.
+Si este TXT se versiona en Git, mantenerlo libre de secretos.
+================================================================================
