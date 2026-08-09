@@ -35,9 +35,21 @@ export function MailboxConnectModal({
       return;
     }
     setStep("choose");
+    setYahooEmail("");
+    setYahooPassword("");
     setLocalError(null);
     setConnectingGoogle(false);
   }, [open]);
+
+  // Al entrar al paso Yahoo: siempre en blanco (sin autofill de Donexto).
+  useEffect(() => {
+    if (step !== "yahoo") {
+      return;
+    }
+    setYahooEmail("");
+    setYahooPassword("");
+    setLocalError(null);
+  }, [step]);
 
   if (!open) {
     return null;
@@ -163,45 +175,89 @@ export function MailboxConnectModal({
           ) : (
             <form
               className="dx-connect-form"
+              autoComplete="off"
+              data-1p-ignore="true"
+              data-lpignore="true"
+              data-form-type="other"
               onSubmit={(event) => void handleYahooSubmit(event)}
             >
+              {/* Señuelos: evitan que el password manager rellene el buzón Yahoo
+                  con el login de Donexto. */}
+              <input
+                type="text"
+                name="dx_fake_user"
+                autoComplete="username"
+                tabIndex={-1}
+                aria-hidden="true"
+                className="dx-connect-honeypot"
+                value=""
+                readOnly
+              />
+              <input
+                type="password"
+                name="dx_fake_pass"
+                autoComplete="current-password"
+                tabIndex={-1}
+                aria-hidden="true"
+                className="dx-connect-honeypot"
+                value=""
+                readOnly
+              />
+
               <button
                 type="button"
                 className="dx-connect-back"
                 onClick={() => {
                   setStep("choose");
+                  setYahooEmail("");
+                  setYahooPassword("");
                   setLocalError(null);
                 }}
               >
                 ← Volver a Gmail o Yahoo
               </button>
 
-              <label>
+              <label htmlFor="dx-yahoo-mailbox-email">
                 Correo Yahoo
                 <input
-                  type="email"
+                  id="dx-yahoo-mailbox-email"
+                  name="dx_yahoo_mailbox_email"
+                  type="text"
+                  inputMode="email"
                   required
-                  autoComplete="email"
+                  autoComplete="off"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  data-1p-ignore="true"
+                  data-lpignore="true"
+                  data-form-type="other"
                   placeholder="tucorreo@yahoo.com"
                   value={yahooEmail}
                   onChange={(event) => setYahooEmail(event.target.value)}
                 />
               </label>
-              <label>
+              <label htmlFor="dx-yahoo-app-password">
                 Contraseña de aplicación
                 <input
+                  id="dx-yahoo-app-password"
+                  name="dx_yahoo_app_password"
                   type="password"
                   required
                   minLength={8}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
+                  data-1p-ignore="true"
+                  data-lpignore="true"
+                  data-form-type="other"
                   placeholder="xxxx xxxx xxxx xxxx"
                   value={yahooPassword}
                   onChange={(event) => setYahooPassword(event.target.value)}
                 />
               </label>
               <p className="dx-connect-hint">
-                Yahoo → Seguridad de la cuenta → Generar contraseña de
-                aplicación (IMAP). No uses la contraseña normal de Yahoo.
+                Campos en blanco a propósito. Escribe el correo de Yahoo y la
+                contraseña de aplicación IMAP (no la de login de Donexto ni la
+                contraseña normal de Yahoo).
               </p>
               {localError ? (
                 <div className="dx-connect-error" role="alert">
@@ -223,8 +279,7 @@ export function MailboxConnectModal({
                 )}
               </button>
             </form>
-          )}
-        </div>
+          )}        </div>
       </section>
     </div>
   );
