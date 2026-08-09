@@ -161,10 +161,10 @@ export function LoginScreen({
           <figure className="dx-auth__visual">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/hms-import-robot.png"
+              src="/donexto-hero.png"
               alt=""
               width={720}
-              height={480}
+              height={720}
               decoding="async"
             />
           </figure>

@@ -1017,8 +1017,8 @@ function Dashboard({
         }
       >
         <div className="app-brand">
-          <span className="app-brand-icon">
-            <Sparkles size={25} />
+          <span className="app-brand-icon" aria-hidden>
+            D
           </span>
           <div>
             <strong>Donexto</strong>
@@ -1065,30 +1065,6 @@ function Dashboard({
         </nav>
 
         <div className="app-sidebar-bottom">
-          <div className="app-sync-state">
-            <RefreshCw
-              size={20}
-              className={syncing ? "app-spin" : undefined}
-            />
-            <div>
-              <strong>
-                {syncing
-                  ? `Lote ${syncProgress.currentBatch}`
-                  : connection?.connected
-                    ? "Correo conectado"
-                    : "Correo desconectado"}
-              </strong>
-              <small>
-                {syncProgress.completed
-                  ? `${syncProgress.found} revisados`
-                  : connection?.connected
-                    ? "Sistema disponible"
-                    : "Conecta tu cuenta de correo"}
-              </small>
-            </div>
-            <span />
-          </div>
-
           <button
             type="button"
             className="app-sidebar-primary"
@@ -1119,29 +1095,14 @@ function Dashboard({
               <Mail size={19} />
             )}
             {loadingConnection
-              ? "Verificando correo..."
+              ? "Verificando…"
               : syncing
-                ? `Procesando lote ${syncProgress.currentBatch}`
+                ? `Lote ${syncProgress.currentBatch}…`
                 : connection?.connected
                   ? isYahooMailbox
-                    ? "Cargar correos Yahoo"
-                    : "Descargar correos nuevos"
+                    ? "Cargar Yahoo"
+                    : "Actualizar correo"
                   : "Conectar correo"}
-          </button>
-
-          <button
-            type="button"
-            className="app-sidebar-secondary"
-            disabled={busy}
-            onClick={() => {
-              void Promise.all([
-                loadDashboard(),
-                loadGoogleStatus(),
-              ]);
-            }}
-          >
-            <RefreshCw size={18} />
-            Actualizar panel
           </button>
 
           <button
@@ -1172,7 +1133,7 @@ function Dashboard({
               <input
                 type="search"
                 value={search}
-                placeholder="Filtrar casos prioritarios visibles..."
+                placeholder="Buscar casos, correos o remitentes…"
                 onChange={(event) =>
                   setSearch(event.target.value)
                 }
@@ -1203,32 +1164,11 @@ function Dashboard({
                   : "Sin conexión"}
               </div>
 
-              <label className="app-theme-select">
-                <span>Tema</span>
-                <select
-                  value={theme}
-                  onChange={(event) =>
-                    setTheme(
-                      event.target.value as ThemeId,
-                    )
-                  }
-                >
-                  {THEMES.map((item) => (
-                    <option
-                      key={item.id}
-                      value={item.id}
-                    >
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
               <div className="app-user-menu">
                 <button type="button" className="app-user" aria-haspopup="menu" aria-expanded={profileOpen} onClick={() => setProfileOpen((current) => !current)}>
                   <span>{initials(session.name)}</span>
                   <div>
-                    <strong>{session.name}</strong>
+                    <strong>{session.name.split(" ")[0]}</strong>
                     <small>{session.email}</small>
                   </div>
                   <ChevronDown size={16} />
@@ -1381,7 +1321,6 @@ function Dashboard({
             <div className="app-panel">
               <div className="app-panel-heading">
                 <div>
-                  <span>ENFOQUE</span>
                   <h2>Casos por revisar</h2>
                 </div>
               </div>
@@ -1451,71 +1390,82 @@ function Dashboard({
             </div>
           </section>
 
-          <section className="app-quick-actions">
-            <button
-              type="button"
-              disabled={
-                loadingConnection ||
-                Boolean(connection?.connected && syncing)
-              }
-              onClick={() => {
-                if (connection?.connected) {
-                  openConnectedMailboxActions();
-                  return;
-                }
+          <section className="app-actions-block" aria-label="Acciones rápidas">
+            <div className="app-actions-heading">
+              <h2>Acciones rápidas</h2>
+            </div>
+            <div className="app-quick-actions">
+              <button
+                type="button"
+                onClick={() => selectView("cases", "Casos")}
+              >
+                <BriefcaseBusiness size={22} />
+                <div>
+                  <strong>Revisar casos abiertos</strong>
+                  <span>Prioridad y pendientes</span>
+                </div>
+              </button>
 
-                openMailboxConnect();
-              }}
-            >
-              {connection?.connected ? (
-                <RefreshCw
-                  size={22}
-                  className={syncing ? "app-spin" : undefined}
-                />
-              ) : (
+              <button
+                type="button"
+                onClick={() => openMailView()}
+              >
                 <Mail size={22} />
-              )}
-              <div>
-                <strong>
-                  {connection?.connected
-                    ? isYahooMailbox
-                      ? "Cargar correos Yahoo"
-                      : "Descargar correos nuevos"
-                    : "Conectar cuenta de correo"}
-                </strong>
-                <span>
-                  {connection?.connected
-                    ? isYahooMailbox
-                      ? connection.email || "Lectura en vivo por IMAP"
-                      : "Revisa únicamente los mensajes nuevos"
-                    : "Gmail (Google) o Yahoo con contraseña de aplicación"}
-                </span>
-              </div>
-            </button>
+                <div>
+                  <strong>Ver correos</strong>
+                  <span>Bandeja del buzón conectado</span>
+                </div>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                void loadDashboard();
-              }}
-            >
-              <RefreshCw size={22} />
-              <div>
-                <strong>Actualizar panel</strong>
-                <span>Datos al momento</span>
-              </div>
-            </button>
+              <button
+                type="button"
+                disabled={
+                  loadingConnection ||
+                  Boolean(connection?.connected && syncing)
+                }
+                onClick={() => {
+                  if (connection?.connected) {
+                    openConnectedMailboxActions();
+                    return;
+                  }
+                  openMailboxConnect();
+                }}
+              >
+                {connection?.connected ? (
+                  <RefreshCw
+                    size={22}
+                    className={syncing ? "app-spin" : undefined}
+                  />
+                ) : (
+                  <Mail size={22} />
+                )}
+                <div>
+                  <strong>
+                    {connection?.connected
+                      ? "Actualizar correo"
+                      : "Conectar correo"}
+                  </strong>
+                  <span>
+                    {connection?.connected
+                      ? "Traer mensajes nuevos"
+                      : "Gmail o Yahoo"}
+                  </span>
+                </div>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => openMailView()}
-            >
-              <Mail size={25} />
-              <div>
-                <strong>Bandeja en vivo</strong>
-                <span>Ver correos del buzón conectado</span>
-              </div>
-            </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void loadDashboard();
+                }}
+              >
+                <RefreshCw size={22} />
+                <div>
+                  <strong>Actualizar panel</strong>
+                  <span>Datos al momento</span>
+                </div>
+              </button>
+            </div>
           </section>
         </div>
 
