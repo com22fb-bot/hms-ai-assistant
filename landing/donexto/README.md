@@ -1,41 +1,54 @@
-# Landing Donexto → Cloudflare Pages
+# Landing Donexto → donexto.com (Cloudflare Pages)
 
-Sitio estático en `landing/donexto/`.
+Sitio estático: `landing/donexto/`
 
-## Publicar (panel Cloudflare)
+Archivos a subir:
 
-1. Entra a [dash.cloudflare.com](https://dash.cloudflare.com).
-2. **Workers & Pages** → **Create** → **Pages** → **Upload assets**.
-3. Nombre del proyecto: `donexto` (o similar).
-4. Sube **todos** los archivos de esta carpeta:
-   - `index.html`
-   - `styles.css`
-   - `app.js`
-   - `favicon.svg`
-5. **Deploy site**.
-6. Cuando termine: **Custom domains** → **Set up a custom domain** → `donexto.com` y opcional `www.donexto.com`.
-7. Cloudflare creará el DNS (CNAME/A) automáticamente. Espera a **Active**.
+- `index.html`
+- `styles.css`
+- `app.js`
+- `favicon.svg`
+- `promo.mp4` (video promocional)
 
-## Probar en local
+## Ver en tu PC (ya)
 
-Abre `index.html` en el navegador, o:
-
-```bash
-cd landing/donexto
-# Python
+```powershell
+cd C:\Users\hsalc\hms-ai-assistant\landing\donexto
 python -m http.server 5500
 ```
 
-Luego `http://127.0.0.1:5500`
+Abre: http://127.0.0.1:5500
 
-## Lista de espera
+O doble clic en `index.html` (el video puede fallar por file:// en algunos navegadores; el servidor local es más fiable).
 
-El formulario abre un **mailto** a `hello@` / `hola@donexto.com` (ya reenviados a Gmail).  
-Más adelante se puede conectar Formspree / Worker sin rehacer el diseño.
+## Publicar en donexto.com
+
+1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages**
+2. Proyecto Pages de la landing (o **Create** → **Upload assets**)
+3. Sube **toda** la carpeta `landing/donexto/` (incluye `promo.mp4` ~2.6 MB)
+4. **Custom domains**: `donexto.com` y `www.donexto.com`
+
+Alternativa Wrangler (si tienes token):
+
+```bash
+cd landing/donexto
+npx wrangler pages deploy . --project-name=donexto
+```
+
+## Contenido de la página
+
+- Hero plan maestro / promesa hogar
+- Video `promo.mp4`
+- Niveles N1 / N2 / N3 (mercado EE. UU.)
+- Cómo funciona (login ≠ buzón)
+- Qué hay en la app (home atención)
+- CTA → https://app.donexto.com
+- ES/EN, redes, mailto hola@ / hello@
 
 ## Checklist post-deploy
 
-- [ ] `https://donexto.com` carga
-- [ ] Botón ES/EN cambia textos
-- [ ] Formulario abre correo de marca
-- [ ] Enlaces IG / TikTok / FB / YouTube abren
+- [ ] https://donexto.com carga
+- [ ] Video se reproduce
+- [ ] EN/ES cambia textos
+- [ ] app.donexto.com abre la app
+- [ ] Formulario mailto funciona

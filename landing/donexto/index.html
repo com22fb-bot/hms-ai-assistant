@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="utf-8" />
     <meta
@@ -8,10 +8,17 @@
     />
     <meta
       name="description"
-      content="Donexto — What needs attention in your email. Priorities, money, and replies before the inbox chaos."
+      content="Donexto — Do Next To… Lo que requiere atención en tu correo: dinero, seguridad y logística del hogar. No es otra bandeja."
     />
-    <meta name="theme-color" content="#0a0e10" />
-    <title>Donexto — What needs attention in your email</title>
+    <meta name="theme-color" content="#0a1620" />
+    <meta property="og:title" content="Donexto — Do Next To…" />
+    <meta
+      property="og:description"
+      content="Tu capa de atención sobre Gmail o Yahoo. Push solo cuando importa."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://donexto.com/" />
+    <title>Donexto — Do Next To… · Correo con criterio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -23,87 +30,252 @@
   </head>
   <body>
     <div class="atmosphere" aria-hidden="true"></div>
-    <div class="grid" aria-hidden="true"></div>
 
     <header class="top">
       <a class="brand" href="#top" id="top">
         <span class="mark" aria-hidden="true">D</span>
         <span class="brand-text">
           <strong>Donexto</strong>
-          <small>donexto.com</small>
+          <small>Do Next To…</small>
         </span>
       </a>
       <nav class="top-nav">
-        <button type="button" class="lang" id="langToggle" aria-label="Cambiar idioma">
-          ES
+        <a class="nav-link subtle" href="#video" data-i18n="nav_video">Video</a>
+        <a class="nav-link subtle" href="#levels" data-i18n="nav_levels">Alertas</a>
+        <a class="nav-link subtle" href="#how" data-i18n="nav_how">Cómo</a>
+        <button type="button" class="lang" id="langToggle" aria-label="Language">
+          EN
         </button>
-        <a class="nav-link" href="#waitlist" data-i18n="nav_cta">Join waitlist</a>
+        <a
+          class="nav-link app"
+          href="https://app.donexto.com"
+          data-i18n="nav_app"
+          >Abrir app</a
+        >
       </nav>
     </header>
 
     <main>
       <section class="hero">
-        <p class="kicker" data-i18n="kicker">Email intelligence · US &amp; Mexico</p>
+        <p class="kicker" data-i18n="kicker">
+          Inteligencia de correo · EE. UU. y México
+        </p>
         <h1 data-i18n="hero_title">
-          What needs attention<br />in your email.
+          Lo que requiere atención<br />en tu correo.
         </h1>
         <p class="lede" data-i18n="hero_lede">
-          Not another inbox. A dashboard for replies waiting on you, money
-          moves, deadlines—and quiet silence for social and promotions.
+          No es otra bandeja. Es tu capa de atención: dinero, seguridad,
+          paquetes y familia — y silencio para el ruido promocional.
         </p>
         <div class="hero-actions">
-          <a class="btn primary" href="#waitlist" data-i18n="cta_primary"
-            >Join the waitlist</a
+          <a
+            class="btn primary"
+            href="https://app.donexto.com"
+            data-i18n="cta_app"
+            >Entrar a Donexto</a
           >
-          <a class="btn ghost" href="mailto:hello@donexto.com" data-i18n="cta_mail"
-            >hello@donexto.com</a
+          <a class="btn ghost" href="#video" data-i18n="cta_video"
+            >Ver video</a
           >
         </div>
-        <ul class="trust" aria-label="Highlights">
-          <li data-i18n="trust_1">Web + phone + tablet · PWA-ready</li>
-          <li data-i18n="trust_2">Start with Gmail · more providers next</li>
-          <li data-i18n="trust_3">Built for real people, not mail clutter</li>
+        <ul class="trust">
+          <li data-i18n="trust_1">Login Donexto ≠ contraseña de Gmail</li>
+          <li data-i18n="trust_2">Gmail o Yahoo como buzón</li>
+          <li data-i18n="trust_3">Push solo cuando importa (N1)</li>
         </ul>
       </section>
 
+      <section class="video-section" id="video">
+        <div class="section-head">
+          <h2 data-i18n="video_title">Mira cómo lo pensamos</h2>
+          <p data-i18n="video_lede">
+            Promesa de producto alineada al plan maestro: no otro Gmail — capa
+            de atención.
+          </p>
+        </div>
+        <div class="video-frame">
+          <video
+            class="promo"
+            controls
+            playsinline
+            preload="metadata"
+            poster=""
+            aria-label="Video promocional Donexto"
+          >
+            <source src="./promo.mp4" type="video/mp4" />
+            Tu navegador no reproduce video HTML5.
+          </video>
+        </div>
+        <p class="video-caption" data-i18n="video_caption">
+          Guion: dinero · paquetes · seguridad · silencio al promo · app.donexto.com
+        </p>
+      </section>
+
+      <section class="panel" id="promise">
+        <div class="section-head">
+          <h2 data-i18n="promise_title">La promesa</h2>
+          <p data-i18n="promise_lede">
+            Detectar lo que importa, silenciar el ruido, y que sepas en
+            segundos: ¿pago, paquete, seguridad… o puedo ignorarlo?
+          </p>
+        </div>
+        <blockquote class="quote" data-i18n="promise_quote">
+          “Tu asistente de logística y finanzas del hogar — sobre el correo que
+          ya usas.”
+        </blockquote>
+      </section>
+
+      <section class="panel levels" id="levels">
+        <div class="section-head">
+          <h2 data-i18n="levels_title">Tres niveles de alerta (EE. UU.)</h2>
+          <p data-i18n="levels_lede">
+            Diseño pensado en fatiga de notificaciones: solo interrumpir lo que
+            la gente realmente quiere.
+          </p>
+        </div>
+        <div class="level-grid">
+          <article class="level n1">
+            <span class="badge" data-i18n="n1_badge">N1 · Ahora ~80–90%</span>
+            <h3 data-i18n="n1_title">Inmediato</h3>
+            <p data-i18n="n1_p">
+              Finanzas y pagos, 2FA y seguridad, paquetes y envíos, viajes,
+              escuela y familia.
+            </p>
+            <p class="hint" data-i18n="n1_hint">Candidato a push al celular.</p>
+          </article>
+          <article class="level n2">
+            <span class="badge" data-i18n="n2_badge">N2 · Después ~40–60%</span>
+            <h3 data-i18n="n2_title">Resumen / configurado</h3>
+            <p data-i18n="n2_p">
+              Agenda y citas, VIP, alertas de precio o stock que tú pediste.
+            </p>
+            <p class="hint" data-i18n="n2_hint">Digest o solo si lo activas.</p>
+          </article>
+          <article class="level n3">
+            <span class="badge" data-i18n="n3_badge">N3 · Silencio &lt;20%</span>
+            <h3 data-i18n="n3_title">Sin interrumpir</h3>
+            <p data-i18n="n3_p">
+              Promos, boletines masivos, redes, ruido automático. Nunca en la
+              portada ni como push.
+            </p>
+            <p class="hint" data-i18n="n3_hint">Clasificado y callado.</p>
+          </article>
+        </div>
+      </section>
+
       <section class="panel" id="how">
-        <h2 data-i18n="how_title">One job</h2>
+        <div class="section-head">
+          <h2 data-i18n="how_title">Cómo funciona</h2>
+        </div>
         <div class="cards">
           <article>
             <span class="n">01</span>
-            <h3 data-i18n="how_1_t">See priorities</h3>
+            <h3 data-i18n="how_1_t">Cuenta Donexto</h3>
             <p data-i18n="how_1_p">
-              Who is waiting, what is due, what can wait until next week.
+              Entras con email y contraseña del producto — no son las de Gmail.
             </p>
           </article>
           <article>
             <span class="n">02</span>
-            <h3 data-i18n="how_2_t">Track money signals</h3>
+            <h3 data-i18n="how_2_t">Conectas el buzón</h3>
             <p data-i18n="how_2_p">
-              Banks, charges, failed payments, invoices that need a decision.
+              Gmail (OAuth) o Yahoo (contraseña de aplicación). Puedes cambiar
+              de buzón después.
             </p>
           </article>
           <article>
             <span class="n">03</span>
-            <h3 data-i18n="how_3_t">Mute the noise</h3>
+            <h3 data-i18n="how_3_t">Ves “Hoy te necesita”</h3>
             <p data-i18n="how_3_p">
-              Social and promotions stay classified—never the front page.
+              Cola N1 primero. Ruido colapsado. Casos operativos, si los hay,
+              en segundo plano.
             </p>
           </article>
         </div>
       </section>
 
+      <section class="panel" id="home">
+        <div class="section-head">
+          <h2 data-i18n="home_title">Lo que ves en la app</h2>
+          <p data-i18n="home_lede">
+            El inicio no es un tablero de ceros. Es atención personal
+            organizada.
+          </p>
+        </div>
+        <ul class="feature-list">
+          <li data-i18n="home_f1">
+            Chip del buzón conectado y acción “Cambiar buzón”
+          </li>
+          <li data-i18n="home_f2">
+            “Te necesita ahora” — dinero, seguridad, acción, revisión humana
+          </li>
+          <li data-i18n="home_f3">N2 y N3 plegados (después / silencio)</li>
+          <li data-i18n="home_f4">
+            Impulso a abrirse en el celular (web + PWA)
+          </li>
+        </ul>
+        <a class="btn primary" href="https://app.donexto.com" data-i18n="cta_app2"
+          >Probar en app.donexto.com</a
+        >
+      </section>
+
+      <section class="panel muted" id="market">
+        <div class="section-head">
+          <h2 data-i18n="market_title">Por qué así (mercado personal EE. UU.)</h2>
+          <p data-i18n="market_lede">
+            En el correo del hogar, la bandeja es control logístico y
+            financiero — no un chat. Más de la mitad del volumen es ruido;
+            solo una fracción se percibe útil. Por eso Donexto prioriza lo que
+            la gente sí acepta en notificaciones: cargos, paquetes, seguridad y
+            familia.
+          </p>
+        </div>
+        <div class="stats">
+          <article>
+            <strong data-i18n="stat1_v">N1 80–90%+</strong>
+            <span data-i18n="stat1_l">Aceptación de alertas útiles</span>
+          </article>
+          <article>
+            <strong data-i18n="stat2_v">&gt;60%</strong>
+            <span data-i18n="stat2_l">Volumen personal = ofertas y boletines</span>
+          </article>
+          <article>
+            <strong data-i18n="stat3_v">75–85%</strong>
+            <span data-i18n="stat3_l">Aperturas de correo personal en el móvil</span>
+          </article>
+        </div>
+        <p class="disclaimer" data-i18n="market_note">
+          Cifras de trabajo de producto (hipótesis documentadas); no son claims
+          publicitarios certificados.
+        </p>
+      </section>
+
       <section class="waitlist" id="waitlist">
         <div class="waitlist-box">
-          <h2 data-i18n="wait_title">Get early access</h2>
+          <h2 data-i18n="wait_title">¿Listo para entrar?</h2>
           <p data-i18n="wait_lede">
-            Stage one: limited seats while we stabilize for the first
-            subscribers. Leave your email—we write from hello@donexto.com.
+            Abre la app o déjanos un mensaje. Escribimos desde
+            hello@ / hola@donexto.com.
           </p>
+          <div class="hero-actions">
+            <a
+              class="btn primary"
+              href="https://app.donexto.com"
+              data-i18n="cta_app3"
+              >Abrir app.donexto.com</a
+            >
+            <a
+              class="btn ghost"
+              href="mailto:hola@donexto.com?subject=Donexto%20contacto"
+              data-i18n="cta_mail"
+              >hola@donexto.com</a
+            >
+          </div>
 
           <form class="form" id="waitForm" novalidate>
+            <p class="form-label" data-i18n="or_wait">O pide acceso por correo</p>
             <label class="field">
-              <span data-i18n="label_name">Name</span>
+              <span data-i18n="label_name">Nombre</span>
               <input
                 type="text"
                 name="name"
@@ -114,7 +286,7 @@
               />
             </label>
             <label class="field">
-              <span data-i18n="label_email">Email</span>
+              <span data-i18n="label_email">Correo</span>
               <input
                 type="email"
                 name="email"
@@ -123,23 +295,23 @@
                 required
                 maxlength="120"
                 data-i18n-placeholder="ph_email"
-                placeholder="you@company.com"
+                placeholder="tu@correo.com"
               />
             </label>
             <label class="field">
-              <span data-i18n="label_country">Country</span>
+              <span data-i18n="label_country">País</span>
               <select name="country" required>
-                <option value="US" data-i18n="opt_us">United States</option>
-                <option value="MX" data-i18n="opt_mx">Mexico</option>
-                <option value="OTHER" data-i18n="opt_other">Other</option>
+                <option value="MX" data-i18n="opt_mx">México</option>
+                <option value="US" data-i18n="opt_us">Estados Unidos</option>
+                <option value="OTHER" data-i18n="opt_other">Otro</option>
               </select>
             </label>
             <button type="submit" class="btn primary full" data-i18n="btn_join">
-              Request access
+              Enviar mensaje
             </button>
             <p class="form-note" data-i18n="form_note">
-              Opens your email app to message hello@donexto.com. No spam list
-              sold. Ever.
+              Abre tu app de correo hacia hola@ o hello@donexto.com. No vendemos
+              listas.
             </p>
             <p class="form-status" id="formStatus" role="status" hidden></p>
           </form>
@@ -147,7 +319,7 @@
       </section>
 
       <section class="social">
-        <h2 data-i18n="social_title">Follow the build</h2>
+        <h2 data-i18n="social_title">Sigue el avance</h2>
         <div class="social-links">
           <a
             href="https://www.instagram.com/donexto.app/"
@@ -180,11 +352,12 @@
     <footer class="foot">
       <div>
         <strong>Donexto</strong>
-        <span data-i18n="foot_tag">Priorities from your email.</span>
+        <span data-i18n="foot_tag">Do Next To… lo que requiere atención.</span>
       </div>
       <div class="foot-mail">
         <a href="mailto:hello@donexto.com">hello@donexto.com</a>
         <a href="mailto:hola@donexto.com">hola@donexto.com</a>
+        <a href="https://app.donexto.com">app.donexto.com</a>
       </div>
       <p class="copy">© <span id="year"></span> Donexto · donexto.com</p>
     </footer>
