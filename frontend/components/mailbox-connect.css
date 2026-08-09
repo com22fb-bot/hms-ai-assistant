@@ -1,0 +1,143 @@
+.dx-connect-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(2, 7, 11, 0.82);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+}
+
+.dx-connect-card {
+  width: min(460px, 100%);
+  max-height: min(92vh, 720px);
+  overflow: auto;
+  border-radius: 18px;
+  border: 1px solid rgba(46, 225, 218, 0.28);
+  background: #041f27;
+  color: #eaffff;
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+  pointer-events: auto;
+}
+
+.dx-connect-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 18px 12px;
+  border-bottom: 1px solid rgba(97, 200, 211, 0.18);
+}
+
+.dx-connect-header strong {
+  display: block;
+  font-size: 1.15rem;
+}
+
+.dx-connect-header p {
+  margin: 6px 0 0;
+  font-size: 0.9rem;
+  color: #9db9c2;
+  line-height: 1.4;
+}
+
+.dx-connect-icon-btn {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  border: 1px solid rgba(109, 204, 214, 0.22);
+  background: rgba(6, 35, 44, 0.9);
+  color: #eaffff;
+  cursor: pointer;
+}
+
+.dx-connect-body {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px 22px;
+  pointer-events: auto;
+}
+
+.dx-connect-btn {
+  width: 100%;
+  min-height: 54px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 14px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.dx-connect-btn:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
+.dx-connect-btn--primary {
+  border: 0;
+  background: linear-gradient(135deg, #12aaa9, #20d8d2);
+  color: #001315;
+}
+
+.dx-connect-btn--secondary {
+  border: 1px solid rgba(46, 225, 218, 0.35);
+  background: rgba(6, 35, 44, 0.95);
+  color: #eaffff;
+}
+
+.dx-connect-hint {
+  margin: -2px 0 4px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #9db9c2;
+}
+
+.dx-connect-error {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(140, 40, 50, 0.35);
+  color: #ffb4b8;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.dx-connect-form {
+  display: grid;
+  gap: 12px;
+}
+
+.dx-connect-form label {
+  display: grid;
+  gap: 6px;
+  font-size: 0.82rem;
+}
+
+.dx-connect-form input {
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(109, 204, 214, 0.28);
+  background: rgba(2, 12, 16, 0.7);
+  color: #eaffff;
+  font-size: 16px;
+}
+
+.dx-connect-back {
+  justify-self: start;
+  border: 0;
+  background: transparent;
+  color: #20d8d2;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 0;
+}
