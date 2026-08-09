@@ -266,6 +266,22 @@ def get_google_credentials_for_account(
 
 def get_active_google_credentials() -> Credentials:
     context, account = require_google_account()
+    provider = str(account.get("provider") or "google")
+
+    if provider != "google":
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "status": "google_required",
+                "provider": provider,
+                "message": (
+                    "Esta operación requiere un buzón Gmail (Google). "
+                    "El espacio tiene un buzón de otro proveedor."
+                ),
+                "start_url": "/auth/google/start",
+            },
+        )
+
     return get_google_credentials_for_account(
         str(account["id"]),
         expected_workspace_id=context.workspace_id,
@@ -279,15 +295,33 @@ def get_google_connection_status() -> GoogleConnectionStatus:
     if not account:
         return GoogleConnectionStatus(
             connected=False,
-            message="Este workspace no tiene una cuenta Google conectada.",
+            message=(
+                "Este workspace no tiene un buzón de correo conectado "
+                "(Gmail o Yahoo)."
+            ),
             login_url="/auth/google/start",
         )
 
     credentials = oauth_storage.get_credentials(str(account["id"]))
+    provider = str(account.get("provider") or "google")
+
+    if provider in ("yahoo", "imap"):
+        return GoogleConnectionStatus(
+            connected=bool(credentials and credentials.get("access_token")),
+            email=account.get("email") or None,
+            provider="yahoo",
+            has_access_token=bool(
+                credentials and credentials.get("access_token")
+            ),
+            has_refresh_token=False,
+            scopes=(credentials or {}).get("scopes", []),
+            message="Buzón Yahoo conectado a este workspace.",
+        )
 
     return GoogleConnectionStatus(
         connected=bool(credentials),
         email=account.get("email") or None,
+        provider="google",
         has_access_token=bool(
             credentials and credentials.get("access_token")
         ),
@@ -295,7 +329,7 @@ def get_google_connection_status() -> GoogleConnectionStatus:
             credentials and credentials.get("refresh_token")
         ),
         scopes=(credentials or {}).get("scopes", []),
-        message="Cuenta de Google conectada a este workspace.",
+        message="Cuenta de Google (Gmail) conectada a este workspace.",
     )
 
 

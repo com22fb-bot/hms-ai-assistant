@@ -32,17 +32,25 @@ async function parseStatus(
     }
 
     throw new Error(
-      `No fue posible consultar Gmail. Código ${response.status}.`,
+      `No fue posible consultar el buzón. Código ${response.status}.`,
     );
   }
 
   if (!payload || typeof payload !== "object") {
     throw new Error(
-      "El backend devolvió un estado de Google no válido.",
+      "El backend devolvió un estado de correo no válido.",
     );
   }
 
   return payload as GoogleConnectionStatus;
+}
+
+function detailMessage(payload: {
+  detail?: { message?: string } | string;
+}): string | undefined {
+  const detail = payload.detail;
+  if (typeof detail === "string") return detail;
+  return detail?.message;
 }
 
 export function useGoogleStatus() {
@@ -51,6 +59,7 @@ export function useGoogleStatus() {
   const [loadingConnection, setLoadingConnection] = useState(true);
   const [connectionError, setConnectionError] =
     useState<string | null>(null);
+  const [connectingYahoo, setConnectingYahoo] = useState(false);
 
   const loadGoogleStatus = useCallback(async () => {
     setLoadingConnection(true);
@@ -68,7 +77,7 @@ export function useGoogleStatus() {
       setConnectionError(
         requestError instanceof Error
           ? requestError.message
-          : "No fue posible consultar Google.",
+          : "No fue posible consultar el buzón.",
       );
     } finally {
       setLoadingConnection(false);
@@ -102,24 +111,68 @@ export function useGoogleStatus() {
 
     const payload = (await response.json()) as {
       authorization_url?: string;
-      detail?: { message?: string };
+      detail?: { message?: string } | string;
     };
 
     if (!response.ok || !payload.authorization_url) {
       throw new Error(
-        payload.detail?.message ??
-          "No fue posible iniciar la conexión segura con Google.",
+        detailMessage(payload) ??
+          "No fue posible iniciar la conexión segura con Gmail. " +
+            "Si Google pide verificación, agrega el Gmail en Test users.",
       );
     }
 
     window.location.assign(payload.authorization_url);
   }, []);
 
+  const connectYahoo = useCallback(
+    async (email: string, appPassword: string) => {
+      setConnectingYahoo(true);
+      setConnectionError(null);
+
+      try {
+        const response = await hmsFetch(
+          `${API_BASE_URL}/auth/yahoo/connect`,
+          {
+            method: "POST",
+            cache: "no-store",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: email.trim(),
+              app_password: appPassword.trim(),
+            }),
+          },
+        );
+
+        const payload = (await response.json()) as GoogleConnectionStatus & {
+          detail?: { message?: string } | string;
+        };
+
+        if (!response.ok) {
+          throw new Error(
+            detailMessage(payload) ??
+              "No fue posible conectar Yahoo. Usa una contraseña de aplicación.",
+          );
+        }
+
+        setConnection(payload);
+        return payload;
+      } finally {
+        setConnectingYahoo(false);
+      }
+    },
+    [],
+  );
+
   return {
     connection,
     loadingConnection,
     connectionError,
+    connectingYahoo,
     loadGoogleStatus,
     startGoogleConnection,
+    connectYahoo,
   };
 }

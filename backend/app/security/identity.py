@@ -381,11 +381,13 @@ def resolve_workspace_context(
             },
         )
 
+    # Buzón activo del workspace: Gmail (OAuth) o Yahoo (IMAP).
+    # El nombre google_account es histórico; puede ser google o yahoo.
     google_account = _first_row(
         client.table("communication_accounts")
         .select("*")
         .eq("workspace_id", workspace_id)
-        .eq("provider", "google")
+        .in_("provider", ["google", "yahoo", "imap"])
         .eq("status", "active")
         .order("updated_at", desc=True)
         .limit(1)
@@ -438,8 +440,8 @@ def require_google_account() -> tuple[WorkspaceContext, dict[str, Any]]:
                 "status": "mailbox_required",
                 "connected": False,
                 "message": (
-                    "La cuenta HMS no tiene un buzón Google conectado "
-                    "en este espacio de trabajo."
+                    "La cuenta HMS no tiene un buzón de correo conectado "
+                    "en este espacio de trabajo (Gmail o Yahoo)."
                 ),
                 "start_url": "/auth/google/start",
             },

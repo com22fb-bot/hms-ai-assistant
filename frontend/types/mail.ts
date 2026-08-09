@@ -2,6 +2,7 @@ export type GoogleConnectionStatus = {
   status: string;
   connected: boolean;
   email: string | null;
+  provider?: string | null;
   has_access_token: boolean;
   has_refresh_token: boolean;
   scopes: string[];

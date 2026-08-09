@@ -25,6 +25,7 @@ class GoogleConnectionStatus(BaseModel):
     status: str = "ok"
     connected: bool
     email: str | None = None
+    provider: str | None = None
     has_access_token: bool = False
     has_refresh_token: bool = False
     scopes: list[str] = Field(default_factory=list)

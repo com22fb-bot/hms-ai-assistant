@@ -32,6 +32,8 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { GuidedImportWizard } from "@/components/GuidedImportWizard";
 import { LoginScreen } from "@/components/auth/LoginScreen";
+import { LiveMailPanel } from "@/components/LiveMailPanel";
+import { MailboxConnectModal } from "@/components/MailboxConnectModal";
 import "@/components/hms-mobile-shell.css";
 import "@/components/guided-import.css";
 import { MailCategoriesPanel } from "@/components/MailCategoriesPanel";
@@ -710,9 +712,17 @@ function Dashboard({
     connection,
     loadingConnection,
     connectionError,
+    connectingYahoo,
     loadGoogleStatus,
     startGoogleConnection,
+    connectYahoo,
   } = useGoogleStatus();
+
+  const isGoogleMailbox =
+    connection?.connected &&
+    (connection.provider == null || connection.provider === "google");
+  const isYahooMailbox =
+    connection?.connected && connection.provider === "yahoo";
 
   const {
     dashboard,
@@ -724,7 +734,7 @@ function Dashboard({
     error,
     setSearch,
     loadDashboard,
-  } = useCases(Boolean(connection?.connected));
+  } = useCases(Boolean(isGoogleMailbox));
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeView, setActiveView] = useState("home");
@@ -732,6 +742,9 @@ function Dashboard({
   const [notice, setNotice] = useState<string | null>(null);
   const [evaluationKey, setEvaluationKey] = useState<string | null>(null);
   const [guidedImportOpen, setGuidedImportOpen] = useState(false);
+  const [mailboxPickerOpen, setMailboxPickerOpen] = useState(false);
+  const [mailboxPickerDismissed, setMailboxPickerDismissed] = useState(false);
+  const [liveMailOpen, setLiveMailOpen] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
   const [mailInitialMessageId, setMailInitialMessageId] = useState<string | null>(null);
   const [pushOpen, setPushOpen] = useState(false);
@@ -740,10 +753,26 @@ function Dashboard({
     useState<ImportFlowStatus | null>(null);
   const [initialFlowOpened, setInitialFlowOpened] = useState(false);
 
+  // Tras login HMS sin buzón: pedir Gmail o Yahoo (fin del flujo de conexión).
+  useEffect(() => {
+    if (loadingConnection || mailboxPickerDismissed) {
+      return;
+    }
+    if (connection?.connected) {
+      setMailboxPickerOpen(false);
+      return;
+    }
+    setMailboxPickerOpen(true);
+  }, [
+    connection?.connected,
+    loadingConnection,
+    mailboxPickerDismissed,
+  ]);
+
   useEffect(() => {
     if (
       loadingConnection
-      || !connection?.connected
+      || !isGoogleMailbox
       || initialFlowOpened
     ) {
       return;
@@ -786,7 +815,7 @@ function Dashboard({
       cancelled = true;
     };
   }, [
-    connection?.connected,
+    isGoogleMailbox,
     initialFlowOpened,
     loadingConnection,
   ]);
@@ -801,6 +830,34 @@ function Dashboard({
     setProfileOpen(false);
   }
 
+  function openMailboxConnect() {
+    setMailboxPickerDismissed(false);
+    setMailboxPickerOpen(true);
+    setNotice(null);
+  }
+
+  function openConnectedMailboxActions() {
+    if (isYahooMailbox) {
+      setLiveMailOpen(true);
+      return;
+    }
+    setGuidedImportOpen(true);
+  }
+
+  function openMailView() {
+    setMailCategory(null);
+    setMailInitialMessageId(null);
+    if (isYahooMailbox || !isGoogleMailbox) {
+      if (connection?.connected) {
+        setLiveMailOpen(true);
+      } else {
+        openMailboxConnect();
+      }
+      return;
+    }
+    setMailOpen(true);
+  }
+
   function selectView(view: string, label: string) {
     setMobileOpen(false);
     setProfileOpen(false);
@@ -811,9 +868,7 @@ function Dashboard({
     }
 
     if (view === "mail") {
-      setMailCategory(null);
-      setMailInitialMessageId(null);
-      setMailOpen(true);
+      openMailView();
       return;
     }
 
@@ -998,19 +1053,11 @@ function Dashboard({
             }
             onClick={() => {
               if (connection?.connected) {
-                setGuidedImportOpen(true);
+                openConnectedMailboxActions();
                 return;
               }
 
-              setNotice("Abriendo la autorización segura de Google...");
-
-              void startGoogleConnection().catch((requestError) => {
-                setNotice(
-                  requestError instanceof Error
-                    ? requestError.message
-                    : "No fue posible iniciar la conexión con Google.",
-                );
-              });
+              openMailboxConnect();
             }}
           >
             {connection?.connected ? (
@@ -1026,7 +1073,9 @@ function Dashboard({
               : syncing
                 ? `Procesando lote ${syncProgress.currentBatch}`
                 : connection?.connected
-                  ? "Descargar correos nuevos"
+                  ? isYahooMailbox
+                    ? "Cargar correos Yahoo"
+                    : "Descargar correos nuevos"
                   : "Conectar correo"}
           </button>
 
@@ -1302,6 +1351,10 @@ function Dashboard({
 
           <MailCategoriesPanel
             onOpenCategory={(category) => {
+              if (isYahooMailbox || !isGoogleMailbox) {
+                openMailView();
+                return;
+              }
               setMailCategory(category);
               setMailInitialMessageId(null);
               setMailOpen(true);
@@ -1409,17 +1462,11 @@ function Dashboard({
               }
               onClick={() => {
                 if (connection?.connected) {
-                  setGuidedImportOpen(true);
+                  openConnectedMailboxActions();
                   return;
                 }
 
-                void startGoogleConnection().catch((requestError) => {
-                  setNotice(
-                    requestError instanceof Error
-                      ? requestError.message
-                      : "No fue posible iniciar la conexión con Google.",
-                  );
-                });
+                openMailboxConnect();
               }}
             >
               {connection?.connected ? (
@@ -1433,13 +1480,17 @@ function Dashboard({
               <div>
                 <strong>
                   {connection?.connected
-                    ? "Descargar correos nuevos"
+                    ? isYahooMailbox
+                      ? "Cargar correos Yahoo"
+                      : "Descargar correos nuevos"
                     : "Conectar cuenta de correo"}
                 </strong>
                 <span>
                   {connection?.connected
-                    ? "Revisa únicamente los mensajes nuevos"
-                    : "Autorización en el sitio oficial del proveedor"}
+                    ? isYahooMailbox
+                      ? connection.email || "Lectura en vivo por IMAP"
+                      : "Revisa únicamente los mensajes nuevos"
+                    : "Gmail (Google) o Yahoo con contraseña de aplicación"}
                 </span>
               </div>
             </button>
@@ -1509,8 +1560,7 @@ function Dashboard({
           <button
             type="button"
             onClick={() => {
-              setMailCategory(null);
-              setMailOpen(true);
+              openMailView();
             }}
             data-control-state="active"
           >
@@ -1526,6 +1576,44 @@ function Dashboard({
 
         {pushOpen ? (
           <PushNotificationsPanel onClose={() => setPushOpen(false)} />
+        ) : null}
+
+        {mailboxPickerOpen ? (
+          <MailboxConnectModal
+            open={mailboxPickerOpen}
+            connectingYahoo={connectingYahoo}
+            required={!connection?.connected}
+            onClose={() => {
+              setMailboxPickerOpen(false);
+              setMailboxPickerDismissed(true);
+            }}
+            onConnectGoogle={() => {
+              setNotice("Te llevamos a Google para iniciar sesión…");
+              void startGoogleConnection().catch((requestError) => {
+                setNotice(
+                  requestError instanceof Error
+                    ? requestError.message
+                    : "No fue posible iniciar la conexión con Google.",
+                );
+              });
+            }}
+            onConnectYahoo={async (email, appPassword) => {
+              await connectYahoo(email, appPassword);
+              setMailboxPickerDismissed(true);
+              setNotice(
+                `Yahoo verificado (${email}). Buzón listo.`,
+              );
+              setLiveMailOpen(true);
+            }}
+          />
+        ) : null}
+
+        {liveMailOpen ? (
+          <LiveMailPanel
+            open={liveMailOpen}
+            mailboxLabel={connection?.email}
+            onClose={() => setLiveMailOpen(false)}
+          />
         ) : null}
 
         {mailOpen ? (

@@ -3,16 +3,18 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, HTTPException, Query
 from google.oauth2.credentials import Credentials
 
-from app.schemas.gmail import GmailMessagesResponse
+from app.schemas.gmail import GmailMessage, GmailMessagesResponse
 from app.security.identity import require_google_account
 from app.security.mutation_guard import require_data_mutations_enabled
 from app.services.case_engine import process_pending_messages
 from app.services.gmail import list_messages
 from app.services.gmail_full_sync import sync_gmail_page
 from app.services.gmail_sync import sync_gmail_messages
+from app.services.oauth_storage import oauth_storage
+from app.services.yahoo_imap import YahooImapError, list_yahoo_messages
 
 
 CredentialsProvider = Callable[[], Credentials]
@@ -34,6 +36,47 @@ def create_gmail_router(
         limit: int = Query(default=20, ge=1, le=100),
         query: str | None = Query(default=None),
     ) -> GmailMessagesResponse:
+        _, account = require_google_account()
+        provider = str(account.get("provider") or "google")
+
+        if provider in ("yahoo", "imap"):
+            credentials = oauth_storage.get_credentials(str(account["id"]))
+            address = str(account.get("email") or "").strip()
+            app_password = str(
+                (credentials or {}).get("access_token") or ""
+            ).strip()
+            if not address or not app_password:
+                raise HTTPException(
+                    status_code=401,
+                    detail={
+                        "status": "yahoo_credentials_missing",
+                        "message": (
+                            "El buzón Yahoo no tiene credenciales válidas. "
+                            "Vuelve a conectar el correo."
+                        ),
+                    },
+                )
+            try:
+                raw_messages = list_yahoo_messages(
+                    address,
+                    app_password,
+                    max_results=limit,
+                )
+            except YahooImapError as error:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "status": "yahoo_read_failed",
+                        "message": str(error),
+                    },
+                ) from error
+
+            messages = [GmailMessage.model_validate(item) for item in raw_messages]
+            return GmailMessagesResponse(
+                total=len(messages),
+                messages=messages,
+            )
+
         credentials = get_credentials()
 
         messages = list_messages(
