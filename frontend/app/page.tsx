@@ -1054,14 +1054,11 @@ function Dashboard({
               >
                 <Icon size={21} />
                 <span>{item.label}</span>
-                <span className="app-nav-item-state">
-                  {item.id === "cases" ? (
+                {item.id === "cases" && dashboard.metrics.total_open > 0 ? (
+                  <span className="app-nav-item-state">
                     <b>{dashboard.metrics.total_open}</b>
-                  ) : null}
-                  {item.id !== "home" ? (
-                    <ControlStateBadge state={item.state} compact />
-                  ) : null}
-                </span>
+                  </span>
+                ) : null}
               </button>
             );
           })}
@@ -1190,15 +1187,6 @@ function Dashboard({
                   <X size={16} />
                 </button>
               ) : null}
-              <kbd>⌘ K</kbd>
-              <button
-                type="button"
-                className="app-search-state"
-                onClick={() => evaluateControl("search")}
-                aria-label="Ver estado de la búsqueda"
-              >
-                En prueba
-              </button>
             </label>
 
             <div className="app-top-actions">
@@ -1214,8 +1202,6 @@ function Dashboard({
                   ? "Correo conectado"
                   : "Sin conexión"}
               </div>
-
-              <div className="app-ai-pill is-active"><Sparkles size={17} />Clasificación automática</div>
 
               <label className="app-theme-select">
                 <span>Tema</span>
@@ -1238,16 +1224,6 @@ function Dashboard({
                 </select>
               </label>
 
-              <button
-                type="button"
-                className="app-icon-button"
-                aria-label="Evaluar notificaciones"
-                onClick={() => evaluateControl("notifications")}
-                data-control-state="evaluation"
-              >
-                <Bell size={19} />
-              </button>
-
               <div className="app-user-menu">
                 <button type="button" className="app-user" aria-haspopup="menu" aria-expanded={profileOpen} onClick={() => setProfileOpen((current) => !current)}>
                   <span>{initials(session.name)}</span>
@@ -1264,7 +1240,6 @@ function Dashboard({
                       <span>{initials(session.name)}</span>
                       <div><strong>{session.name}</strong><small>{session.email}</small></div>
                     </div>
-                    <button type="button" role="menuitem" onClick={() => evaluateControl("settings")}><Settings size={19} />Ajustes de la cuenta <ControlStateBadge state="blocked" compact /></button>
                     <button type="button" role="menuitem" className="is-danger" onClick={onLogout}><LogOut size={17} />Cerrar sesión</button>
                   </div>
                 ) : null}
@@ -1285,29 +1260,27 @@ function Dashboard({
                 ? "Correo conectado"
                 : "Sin conexión"}
             </div>
-
-            <div className="app-ai-pill is-active"><Sparkles size={17} />Clasificación automática</div>
           </div>
         </header>
 
         <div className="app-content">
-          <section className="app-alert app-historical-alert" role="status">
-            <Sparkles size={23} />
-            <div>
-              <strong>
-                {importFlowStatus?.initial_import_complete
-                  ? "Correo preparado"
-                  : importFlowStatus?.active
-                    ? "Descarga y clasificación en proceso"
-                    : "Primera descarga pendiente"}
-              </strong>
-              <span>
-                {importFlowStatus?.initial_import_complete
-                  ? "Donexto descargará únicamente correo nuevo y mantendrá separados los casos de los mensajes informativos."
-                  : "Donexto preparará automáticamente los últimos seis meses, excluirá Spam, Papelera y Borradores, y clasificará cada mensaje antes de mostrar el dashboard final."}
-              </span>
-            </div>
-          </section>
+          {!importFlowStatus?.initial_import_complete ? (
+            <section className="app-alert app-historical-alert" role="status">
+              <Sparkles size={20} />
+              <div>
+                <strong>
+                  {importFlowStatus?.active
+                    ? "Preparando tu correo…"
+                    : "Conecta o importa tu buzón"}
+                </strong>
+                <span>
+                  {importFlowStatus?.active
+                    ? "Clasificamos mensajes útiles y separamos el ruido. Esto puede tomar unos minutos."
+                    : "Al conectar Gmail o Yahoo, Donexto organiza lo que requiere atención."}
+                </span>
+              </div>
+            </section>
+          ) : null}
 
           {notice ? (
             <section className="app-navigation-notice" role="status">
@@ -1320,22 +1293,12 @@ function Dashboard({
           <section className="app-welcome">
             <div>
               <h1>
-                Buenos días, {session.name.split(" ")[0]}
+                Hola, {session.name.split(" ")[0]}
               </h1>
               <p>
-                Donexto · Do Next To…
+                Lo que requiere atención en tu correo.
               </p>
             </div>
-
-            <button
-              type="button"
-              onClick={() => evaluateControl("personalize")}
-              data-control-state="evaluation"
-            >
-              <Settings size={20} />
-              <span>Personalizar vista</span>
-              <ControlStateBadge state="evaluation" compact />
-            </button>
           </section>
 
           {(connectionError || error) ? (
@@ -1418,18 +1381,9 @@ function Dashboard({
             <div className="app-panel">
               <div className="app-panel-heading">
                 <div>
-                  <span>PRIORIDAD OPERATIVA</span>
-                  <h2>Casos generados por revisar</h2>
+                  <span>ENFOQUE</span>
+                  <h2>Casos por revisar</h2>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => evaluateControl("cases-all")}
-                  data-control-state="evaluation"
-                >
-                  Ver todos
-                  <ControlStateBadge state="evaluation" compact />
-                </button>
               </div>
 
               <div className="app-case-list">
@@ -1473,18 +1427,9 @@ function Dashboard({
             <div className="app-panel">
               <div className="app-panel-heading">
                 <div>
-                  <span>ACTIVIDAD RECIENTE</span>
+                  <span>ACTIVIDAD</span>
                   <h2>Últimos eventos</h2>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => evaluateControl("activity-all")}
-                  data-control-state="evaluation"
-                >
-                  Ver toda
-                  <ControlStateBadge state="evaluation" compact />
-                </button>
               </div>
 
               <div className="app-event-list">
@@ -1557,45 +1502,30 @@ function Dashboard({
               <RefreshCw size={22} />
               <div>
                 <strong>Actualizar panel</strong>
-                <span>Datos en tiempo real</span>
+                <span>Datos al momento</span>
               </div>
             </button>
 
             <button
               type="button"
-              onClick={() => evaluateControl("new-case")}
-              data-control-state="evaluation"
+              onClick={() => openMailView()}
             >
-              <Plus size={27} />
+              <Mail size={25} />
               <div>
-                <strong>Nuevo caso</strong>
-                <span>En evaluación · crear solicitud</span>
-              </div>
-            </button>
-
-
-
-            <button
-              type="button"
-              onClick={() => evaluateControl("generate-report")}
-              data-control-state="evaluation"
-            >
-              <FileBarChart size={25} />
-              <div>
-                <strong>Generar reporte</strong>
-                <span>En evaluación · exportar datos</span>
+                <strong>Bandeja en vivo</strong>
+                <span>Ver correos del buzón conectado</span>
               </div>
             </button>
           </section>
         </div>
 
         <nav className="app-mobile-nav" aria-label="Navegación móvil">
-          <button type="button" className="is-active" data-control-state="active">
+          <button type="button" className="is-active" onClick={() => selectView("home", "Inicio")}>
             <Home size={23} />
             <span>Inicio</span>
           </button>
 
-          <button type="button" onClick={() => evaluateControl("cases")} data-control-state="evaluation">
+          <button type="button" onClick={() => selectView("cases", "Casos")}>
             <BriefcaseBusiness size={23} />
             <span>Casos</span>
           </button>
@@ -1603,9 +1533,14 @@ function Dashboard({
           <button
             type="button"
             className="app-mobile-plus"
-            aria-label="Evaluar creación de caso"
-            onClick={() => evaluateControl("new-case")}
-            data-control-state="evaluation"
+            aria-label="Conectar o refrescar correo"
+            onClick={() => {
+              if (connection?.connected) {
+                openConnectedMailboxActions();
+                return;
+              }
+              openMailboxConnect();
+            }}
           >
             <Plus size={29} />
           </button>
@@ -1615,15 +1550,14 @@ function Dashboard({
             onClick={() => {
               openMailView();
             }}
-            data-control-state="active"
           >
             <Mail size={23} />
             <span>Correos</span>
           </button>
 
-          <button type="button" onClick={() => evaluateControl("mobile-more")} data-control-state="evaluation">
+          <button type="button" onClick={() => setMobileOpen(true)}>
             <Menu size={23} />
-            <span>Más</span>
+            <span>Menú</span>
           </button>
         </nav>
 

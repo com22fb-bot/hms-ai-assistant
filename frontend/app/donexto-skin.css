@@ -218,6 +218,113 @@
   border-color: var(--dx-line) !important;
 }
 
+/* Tipografía legible en topbar (antes era 7–9px) */
+.app-search input {
+  font-size: 0.9rem !important;
+}
+
+.app-connected,
+.app-ai-pill {
+  font-size: 0.78rem !important;
+  font-weight: 650 !important;
+  box-shadow: none !important;
+  background: var(--dx-surface) !important;
+}
+
+.app-theme-select {
+  box-shadow: none !important;
+  background: var(--dx-surface) !important;
+}
+
+.app-theme-select > span {
+  font-size: 0.68rem !important;
+  font-weight: 650 !important;
+}
+
+.app-theme-select select {
+  max-width: 11rem !important;
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+}
+
+.app-user {
+  box-shadow: none !important;
+  background: var(--dx-surface) !important;
+}
+
+.app-user strong {
+  font-size: 0.82rem !important;
+}
+
+.app-user small {
+  font-size: 0.72rem !important;
+}
+
+.app-user > span {
+  font-size: 0.75rem !important;
+  color: #031416 !important;
+}
+
+/* Ruido de laboratorio de controles */
+.app-control-state,
+.app-search-state,
+.app-ai-pill,
+.app-search kbd,
+.app-row-arrow[data-control-state="evaluation"],
+.app-event-arrow[data-control-state="evaluation"] {
+  display: none !important;
+}
+
+.app-welcome {
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: space-between !important;
+  gap: 1rem !important;
+}
+
+.app-welcome h1 {
+  margin: 0 !important;
+  font-family: var(--dx-display) !important;
+  font-size: clamp(1.45rem, 2.6vw, 1.85rem) !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.03em !important;
+}
+
+.app-welcome p {
+  margin: 0.3rem 0 0 !important;
+  color: var(--dx-muted) !important;
+  font-size: 0.95rem !important;
+}
+
+.app-historical-alert {
+  border: 1px solid rgba(15, 159, 148, 0.28) !important;
+  background: rgba(15, 159, 148, 0.08) !important;
+  border-radius: var(--dx-radius) !important;
+  box-shadow: none !important;
+}
+
+.app-top-actions {
+  gap: 0.5rem !important;
+}
+
+.app-mobile-nav {
+  border-top: 1px solid var(--dx-line) !important;
+  background: rgba(8, 18, 24, 0.96) !important;
+  backdrop-filter: blur(12px);
+}
+
+.app-mobile-nav button.is-active,
+.app-mobile-plus {
+  color: var(--dx-accent) !important;
+}
+
+.app-mobile-plus {
+  background: linear-gradient(135deg, #0f9f94, #0d8a80) !important;
+  color: #031416 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
 .app-panel,
 .app-dashboard-grid .app-panel {
   border: 1px solid var(--dx-line) !important;
