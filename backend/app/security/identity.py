@@ -87,7 +87,7 @@ def _extract_bearer_token(request: Request) -> str:
             status_code=401,
             detail={
                 "status": "unauthorized",
-                "message": "La sesión HMS enviada no es válida.",
+                "message": "La sesión Donexto enviada no es válida.",
             },
         )
 
@@ -108,7 +108,7 @@ def authenticate_request(request: Request) -> AuthenticatedUser:
             detail={
                 "status": "unauthorized",
                 "message": (
-                    "La sesión HMS expiró o no pudo validarse. "
+                    "La sesión Donexto expiró o no pudo validarse. "
                     "Vuelve a iniciar sesión."
                 ),
             },
@@ -423,7 +423,7 @@ def require_request_context() -> WorkspaceContext:
             status_code=401,
             detail={
                 "status": "unauthorized",
-                "message": "La operación requiere una sesión HMS validada.",
+                "message": "La operación requiere una sesión Donexto validada.",
             },
         )
 

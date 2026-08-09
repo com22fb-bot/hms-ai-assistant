@@ -25,6 +25,7 @@ _PROTECTED_PREFIXES = (
     "/auth/google/start",
     "/auth/google/status",
     "/auth/google/disconnect",
+    "/auth/yahoo",
 )
 
 _PUBLIC_PATHS = {
@@ -84,7 +85,7 @@ class AuthenticationContextMiddleware(BaseHTTPMiddleware):
                         "status": "identity_error",
                         "message": (
                             "No fue posible establecer el contexto seguro "
-                            "de la cuenta HMS."
+                            "de la cuenta Donexto."
                         ),
                     }
                 },

@@ -38,7 +38,7 @@ export async function hmsFetch(
 
   if (error || !data.session?.access_token) {
     throw new HmsApiError(
-      "La sesión HMS expiró. Vuelve a iniciar sesión.",
+      "La sesión Donexto expiró. Vuelve a iniciar sesión.",
       401,
     );
   }
@@ -74,7 +74,7 @@ export async function hmsJson<T>(
   if (!response.ok) {
     throw new HmsApiError(
       detailMessage(payload) ??
-        `La operación HMS respondió HTTP ${response.status}.`,
+        `La operación de Donexto respondió HTTP ${response.status}.`,
       response.status,
     );
   }
