@@ -460,7 +460,7 @@ def _public_request_url(request: Request) -> str:
     Preferimos reconstruir desde GOOGLE_REDIRECT_URI + query.
     """
     import os
-    from urllib.parse import urlencode, urlparse, urlunparse
+    from urllib.parse import urlparse, urlunparse
 
     configured = os.getenv("GOOGLE_REDIRECT_URI", "").strip()
     if configured.startswith("https://"):
