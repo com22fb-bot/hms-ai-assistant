@@ -451,6 +451,50 @@ def google_start(
     }
 
 
+def _public_request_url(request: Request) -> str:
+    """
+    URL pública del request para OAuth.
+
+    Railway termina TLS en el proxy y a FastAPI le llega `http://...`.
+    google-auth/oauthlib exige https en authorization_response.
+    Preferimos reconstruir desde GOOGLE_REDIRECT_URI + query.
+    """
+    import os
+    from urllib.parse import urlencode, urlparse, urlunparse
+
+    configured = os.getenv("GOOGLE_REDIRECT_URI", "").strip()
+    if configured.startswith("https://"):
+        parsed = urlparse(configured)
+        query = request.url.query
+        return urlunparse(
+            (
+                "https",
+                parsed.netloc,
+                parsed.path or request.url.path,
+                "",
+                query,
+                "",
+            )
+        )
+
+    # Fallback: confiar en X-Forwarded-Proto del proxy
+    proto = (
+        request.headers.get("x-forwarded-proto", "").split(",")[0].strip()
+        or request.url.scheme
+    )
+    host = (
+        request.headers.get("x-forwarded-host", "").split(",")[0].strip()
+        or request.headers.get("host", "")
+        or request.url.netloc
+    )
+    if proto == "http" and "localhost" not in host and "127.0.0.1" not in host:
+        proto = "https"
+
+    return str(
+        request.url.replace(scheme=proto, netloc=host or request.url.netloc)
+    )
+
+
 @router.get("/callback", response_model=None)
 def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
     oauth_error = request.query_params.get("error")
@@ -468,7 +512,7 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
             <title>Error de conexión</title></head><body>
             <h1>No fue posible conectar Google</h1>
             <p>{escape(error_description)}</p>
-            <p>Regresa a HMS e inténtalo nuevamente.</p>
+            <p>Regresa a Donexto e inténtalo nuevamente.</p>
             </body></html>
             """,
         )
@@ -513,8 +557,8 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
             detail={
                 "status": "unbound_oauth_state",
                 "message": (
-                    "La autorización no está vinculada a una cuenta HMS y "
-                    "un workspace. Inicia la conexión nuevamente desde HMS."
+                    "La autorización no está vinculada a una cuenta Donexto y "
+                    "un workspace. Inicia la conexión nuevamente desde Donexto."
                 ),
             },
         )
@@ -522,7 +566,7 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
     flow = create_google_flow(state=state)
 
     try:
-        flow.fetch_token(authorization_response=str(request.url))
+        flow.fetch_token(authorization_response=_public_request_url(request))
     except Exception as error:
         raise HTTPException(
             status_code=400,
