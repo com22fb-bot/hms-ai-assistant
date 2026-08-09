@@ -1,0 +1,126 @@
+================================================================================
+DONEXTO — GUION SHOT-A-SHOT PROMO VIDEO
+Alineado a: Prompt Maestro V2 + mercado EE.UU. N1/N2/N3 + producto actual
+Fecha: 2026-08-09
+Duración objetivo: 40 s (versión corta 15 s al final)
+================================================================================
+
+PROMESA (no negociable)
+No es otro Gmail. Es capa de atención: dinero, seguridad, logística del hogar.
+Push solo cuando importa (N1). Promo en silencio (N3).
+
+TÍTULO DE TRABAJO
+“Do Next To… lo que requiere atención”
+
+================================================================================
+TIMELINE 40 SEGUNDOS
+================================================================================
+
+SHOT 01 — 0:00–0:03 | HOOK
+Visual: manoscrollback en smartphone, bandeja llena, badges rojos de
+          “100+”, toast de “30% OFF” interrumpiendo.
+Audio/texto: “Todos los días: correo de más. Atención de menos.”
+Regla: sin logo aún. Dolor primero.
+
+SHOT 02 — 0:03–0:07 | RUIDO N3
+Visual: iconos de boletín / % / redes caen a una carpeta “Silencio” o se
+          tapan con X.
+Audio/texto: “El ruido no merece un push.”
+Regla: N3 nunca se vende como “inteligente y urgente”.
+
+SHOT 03 — 0:07–0:16 | VALOR N1 (el corazón)
+Visual: tres tarjetas apiladas en UI limpia (estilo home real):
+  1) Banco / cargo o factura
+  2) Paquete / Amazon-UPS (porch)
+  3) Seguridad 2FA o aviso escolar/familia
+Cada tarjeta: remitente corto + motivo en una línea.
+Audio/texto: “Sí te avisamos de: cargos y pagos, paquetes, seguridad y familia.”
+Regla: cero métricas “casos abiertos 0”.
+
+SHOT 04 — 0:16–0:24 | PRODUCTO = HOME “TE NECESITA AHORA”
+Visual: screengrab o mock del home Donexto: chip buzón conectado,
+          lista N1, N2/N3 colapsados abajo.
+Audio/texto: “Donexto te muestra qué hacer ahora — sin abrir toda la bandeja.”
+CTA visual sutil en UI, no botón de “suscríbete” todavía.
+
+SHOT 05 — 0:24–0:30 | LOGIN ≠ BUZÓN
+Visual: dos pasos simples animados:
+  A) “Cuenta Donexto” (email producto)
+  B) “Conecta Gmail o Yahoo” (buzón)
+Audio/texto: “Entras con Donexto. Conectas el correo que ya usas.”
+Regla: nunca decir “pon la contraseña de Gmail en el login”.
+
+SHOT 06 — 0:30–0:36 | MARCA
+Visual: logo Donexto + monograma D + slogan.
+Audio/texto: “Donexto. Do Next To… lo que requiere atención en tu correo.”
+
+SHOT 07 — 0:36–0:40 | CTA
+Visual: app.donexto.com + “Push solo cuando importa.”
+Audio/texto: “Empieza en app.donexto.com”
+End card: fondo slate, acento teal (no púrpura).
+
+================================================================================
+VERSIÓN CORTA 15 s
+================================================================================
+0–3: Shot 01
+3–9: Shot 03 (solo 3 tarjetas N1)
+9–12: Shot 04 (home flash)
+12–15: Shot 06 + CTA
+
+================================================================================
+GUION HABLADO ES (voiceover 40 s)
+================================================================================
+Todos los días llegan cientos de correos. La mayoría es ruido.
+Donexto no es otra bandeja: es tu capa de atención.
+Te avisa de lo que mueve tu casa: un cargo, un paquete en la puerta,
+un código de seguridad o un aviso familiar.
+Lo promocional se queda en silencio.
+Entras con tu cuenta Donexto, conectas Gmail o Yahoo,
+y ves qué hacer ahora.
+Donexto. Do Next To… lo que requiere atención en tu correo.
+app.donexto.com
+
+================================================================================
+GUION HABLADO EN (mercado EE.UU.)
+================================================================================
+Your inbox isn’t a chat. It’s how the home runs—money, packages, school, safety.
+Donexto isn’t another email app. It’s your attention layer.
+Instant alerts only when it matters. Promo stays silent.
+Sign in. Connect Gmail. See what needs you—now.
+Donexto. Do Next To…
+app.donexto.com
+
+================================================================================
+LISTA DE PROHIBICIONES EN PANTALLA
+================================================================================
+- Dashboard de “KPI cases” como héroe
+- “AI that reads ALL your email and notifies everything”
+- Confundir contraseña Gmail con login Donexto
+- Prometer multi-familia / M365 si no está en producto
+- Robot vintage a pantalla completa como identidad de banca (máx. 1s onboarding)
+
+================================================================================
+CHECKLIST QA AL EXPORTAR MP4
+================================================================================
+[ ] Hook en 3 s
+[ ] N1 visible y claro
+[ ] Silencio de promo explícito
+[ ] Home de atención (no bandeja genérica)
+[ ] Login vs buzón
+[ ] CTA + URL
+[ ] Audio claro en móvil sin auriculares
+[ ] Subtítulos burned-in (recomendado EE.UU. feed silencioso)
+
+================================================================================
+RELACIÓN CON EL CÓDIGO (Opción B)
+================================================================================
+El home implementado (AttentionHome) es la verdad visual del SHOT 04:
+- Chip buzón + Cambiar buzón
+- Cola N1 (action_required, notice, review)
+- N2 / N3 colapsados
+- Sin métricas vacías de casos como primer plano
+
+Si el video y el home divergen, actualiza el video o el producto — no ambos
+en direcciones distintas.
+
+FIN

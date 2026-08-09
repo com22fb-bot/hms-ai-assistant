@@ -36,6 +36,8 @@ import { LiveMailPanel } from "@/components/LiveMailPanel";
 import { MailboxConnectModal } from "@/components/MailboxConnectModal";
 import "@/components/hms-mobile-shell.css";
 import "@/components/guided-import.css";
+import { AttentionHome } from "@/components/AttentionHome";
+import "@/components/attention-home.css";
 import { MailCategoriesPanel } from "@/components/MailCategoriesPanel";
 import "@/components/mail-categories.css";
 import { MailInbox } from "@/components/MailInbox";
@@ -1241,15 +1243,32 @@ function Dashboard({
             </section>
           ) : null}
 
-          <section className="app-welcome">
-            <div>
-              <h1>
-                Hola, {session.name.split(" ")[0]}
-              </h1>
-              <p>
-                Lo que requiere atención en tu correo.
-              </p>
-            </div>
+          <section className="app-welcome dx-attention-welcome">
+            <AttentionHome
+              personName={session.name.split(" ")[0] || ""}
+              mailboxEmail={connection?.email}
+              mailboxConnected={Boolean(connection?.connected)}
+              mailboxLoading={loadingConnection}
+              onConnectMailbox={() => openMailboxConnect()}
+              onChangeMailbox={() => openMailboxConnect()}
+              onRefreshMailbox={() => {
+                if (connection?.connected) {
+                  openConnectedMailboxActions();
+                  return;
+                }
+                openMailboxConnect();
+              }}
+              onOpenAllMail={() => openMailView()}
+              onOpenCategory={(category) => {
+                if (isYahooMailbox || !isGoogleMailbox) {
+                  openMailView();
+                  return;
+                }
+                setMailCategory(category);
+                setMailInitialMessageId(null);
+                setMailOpen(true);
+              }}
+            />
           </section>
 
           {(connectionError || error) ? (
@@ -1293,112 +1312,114 @@ function Dashboard({
             </section>
           ) : null}
 
-          <section className="app-metrics">
-            {metrics.map((metric) => {
-              const Icon = metric.icon;
+          {connection?.connected && isGoogleMailbox ? (
+            <details className="dx-home-more">
+              <summary>Clasificación completa del correo</summary>
+              <MailCategoriesPanel
+                onOpenCategory={(category) => {
+                  setMailCategory(category);
+                  setMailInitialMessageId(null);
+                  setMailOpen(true);
+                }}
+              />
+            </details>
+          ) : null}
 
-              return (
-                <article
-                  key={metric.label}
-                  className={`app-metric app-metric-${metric.tone}`}
-                >
+          <details className="dx-home-more">
+            <summary>Casos y actividad (vista operativa)</summary>
+            <section className="app-metrics" style={{ marginTop: "0.85rem" }}>
+              {metrics.map((metric) => {
+                const Icon = metric.icon;
+
+                return (
+                  <article
+                    key={metric.label}
+                    className={`app-metric app-metric-${metric.tone}`}
+                  >
+                    <div>
+                      <span>{metric.label}</span>
+                      <strong>{metric.value}</strong>
+                      <small>{metric.hint}</small>
+                    </div>
+
+                    <Icon size={29} />
+                  </article>
+                );
+              })}
+            </section>
+
+            <section className="app-dashboard-grid">
+              <div className="app-panel">
+                <div className="app-panel-heading">
                   <div>
-                    <span>{metric.label}</span>
-                    <strong>{metric.value}</strong>
-                    <small>{metric.hint}</small>
+                    <h2>Casos por revisar</h2>
                   </div>
+                </div>
 
-                  <Icon size={29} />
-                </article>
-              );
-            })}
-          </section>
-
-
-
-          <MailCategoriesPanel
-            onOpenCategory={(category) => {
-              if (isYahooMailbox || !isGoogleMailbox) {
-                openMailView();
-                return;
-              }
-              setMailCategory(category);
-              setMailInitialMessageId(null);
-              setMailOpen(true);
-            }}
-          />
-
-          <section className="app-dashboard-grid">
-            <div className="app-panel">
-              <div className="app-panel-heading">
-                <div>
-                  <h2>Casos por revisar</h2>
+                <div className="app-case-list">
+                  {loading ? (
+                    <div className="app-empty">
+                      <RefreshCw
+                        size={23}
+                        className="app-spin"
+                      />
+                      Cargando casos...
+                    </div>
+                  ) : visibleCases.length === 0 ? (
+                    <div className="app-empty">
+                      {search ? (
+                        <div className="app-empty-search">
+                          <Search size={24} />
+                          <span>
+                            No hay coincidencias para “{search}”. Los casos no se eliminaron.
+                          </span>
+                          <button type="button" onClick={() => setSearch("")}>Limpiar búsqueda</button>
+                        </div>
+                      ) : (
+                        <>
+                          <CheckCircle2 size={26} />
+                          No hay casos pendientes.
+                        </>
+                      )}
+                    </div>
+                  ) : (
+                    visibleCases.map((item) => (
+                      <CaseRow
+                        key={item.id}
+                        item={item}
+                        onEvaluate={evaluateControl}
+                      />
+                    ))
+                  )}
                 </div>
               </div>
 
-              <div className="app-case-list">
-                {loading ? (
-                  <div className="app-empty">
-                    <RefreshCw
-                      size={23}
-                      className="app-spin"
-                    />
-                    Cargando casos...
+              <div className="app-panel">
+                <div className="app-panel-heading">
+                  <div>
+                    <h2>Últimos eventos</h2>
                   </div>
-                ) : visibleCases.length === 0 ? (
-                  <div className="app-empty">
-                    {search ? (
-                      <div className="app-empty-search">
-                        <Search size={24} />
-                        <span>
-                          No hay coincidencias para “{search}”. Los casos no se eliminaron.
-                        </span>
-                        <button type="button" onClick={() => setSearch("")}>Limpiar búsqueda</button>
-                      </div>
-                    ) : (
-                      <>
-                        <CheckCircle2 size={26} />
-                        No hay casos pendientes.
-                      </>
-                    )}
-                  </div>
-                ) : (
-                  visibleCases.map((item) => (
-                    <CaseRow
-                      key={item.id}
-                      item={item}
-                      onEvaluate={evaluateControl}
-                    />
-                  ))
-                )}
-              </div>
-            </div>
+                </div>
 
-            <div className="app-panel">
-              <div className="app-panel-heading">
-                <div>
-                  <h2>Últimos eventos</h2>
+                <div className="app-event-list">
+                  {visibleEvents.length === 0 ? (
+                    <div className="app-empty">
+                      <Activity size={26} />
+                      Aún no hay eventos.
+                    </div>
+                  ) : (
+                    visibleEvents.map((item) => (
+                      <EventRow
+                        key={item.id}
+                        item={item}
+                        onEvaluate={evaluateControl}
+                      />
+                    ))
+                  )}
                 </div>
               </div>
-
-              <div className="app-event-list">
-                {visibleEvents.length === 0 ? (
-                  <div className="app-empty">
-                    <Activity size={26} />
-                    Aún no hay eventos.
-                  </div>
-                ) : (
-                  visibleEvents.map((item) => (
-                    <EventRow
-                      key={item.id}
-                      item={item}
-                      onEvaluate={evaluateControl}
-                    />
-                  ))
-                )}
-              </div>
-            </div>
-          </section>
+            </section>
+          </details>
 
           <section className="app-actions-block" aria-label="Acciones rápidas">
             <div className="app-actions-heading">
@@ -1407,22 +1428,11 @@ function Dashboard({
             <div className="app-quick-actions">
               <button
                 type="button"
-                onClick={() => selectView("cases", "Casos")}
-              >
-                <BriefcaseBusiness size={22} />
-                <div>
-                  <strong>Revisar casos abiertos</strong>
-                  <span>Prioridad y pendientes</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
                 onClick={() => openMailView()}
               >
                 <Mail size={22} />
                 <div>
-                  <strong>Ver correos</strong>
+                  <strong>Abrir correos</strong>
                   <span>Bandeja del buzón conectado</span>
                 </div>
               </button>
@@ -1452,7 +1462,7 @@ function Dashboard({
                 <div>
                   <strong>
                     {connection?.connected
-                      ? "Actualizar correo"
+                      ? "Actualizar buzón"
                       : "Conectar correo"}
                   </strong>
                   <span>
@@ -1460,6 +1470,17 @@ function Dashboard({
                       ? "Traer mensajes nuevos"
                       : "Gmail o Yahoo"}
                   </span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => openMailboxConnect()}
+              >
+                <Mail size={22} />
+                <div>
+                  <strong>Cambiar buzón</strong>
+                  <span>Otro Gmail o Yahoo</span>
                 </div>
               </button>
 

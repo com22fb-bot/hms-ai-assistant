@@ -156,27 +156,36 @@
   display: grid !important;
 }
 
-.app-welcome {
+/* Home personal: el welcome ya no es una tarjeta doble */
+.app-welcome.dx-attention-welcome {
   border: 0 !important;
-  border-radius: 0 !important;
   background: transparent !important;
+  padding: 0 !important;
   box-shadow: none !important;
-  padding: 0.35rem 0 0.15rem !important;
 }
 
-.app-welcome h1 {
-  margin: 0 !important;
-  font-family: var(--dx-font) !important;
-  font-size: clamp(1.55rem, 2.4vw, 1.95rem) !important;
-  font-weight: 650 !important;
-  letter-spacing: -0.03em !important;
-  color: var(--dx-text) !important;
-}
-
-.app-welcome p {
-  margin: 0.35rem 0 0 !important;
+.dx-home-more {
+  border: 1px solid var(--dx-line) !important;
+  border-radius: 12px !important;
+  background: rgba(14, 26, 34, 0.55) !important;
+  padding: 0.65rem 0.95rem 0.95rem !important;
   color: var(--dx-muted) !important;
-  font-size: 0.98rem !important;
+}
+
+.dx-home-more > summary {
+  cursor: pointer;
+  font-weight: 650;
+  color: var(--dx-text) !important;
+  list-style: none;
+  padding: 0.35rem 0;
+}
+
+.dx-home-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.dx-home-more[open] {
+  padding-bottom: 1rem !important;
 }
 
 .app-metrics {
