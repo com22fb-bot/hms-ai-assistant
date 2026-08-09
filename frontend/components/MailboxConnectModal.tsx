@@ -1,7 +1,7 @@
 "use client";
 
 import { LoaderCircle, Mail, X } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 type ProviderChoice = "choose" | "yahoo";
 
@@ -10,7 +10,7 @@ type MailboxConnectModalProps = {
   connectingYahoo: boolean;
   required?: boolean;
   onClose: () => void;
-  onConnectGoogle: () => void;
+  onConnectGoogle: () => void | Promise<void>;
   onConnectYahoo: (email: string, appPassword: string) => Promise<void>;
 };
 
@@ -26,9 +26,35 @@ export function MailboxConnectModal({
   const [yahooEmail, setYahooEmail] = useState("");
   const [yahooPassword, setYahooPassword] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
+  const [connectingGoogle, setConnectingGoogle] = useState(false);
+
+  // Cada vez que se abre el modal, volver a la elección Gmail / Yahoo.
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    setStep("choose");
+    setLocalError(null);
+    setConnectingGoogle(false);
+  }, [open]);
 
   if (!open) {
     return null;
+  }
+
+  async function handleGoogleClick() {
+    setLocalError(null);
+    setConnectingGoogle(true);
+    try {
+      await onConnectGoogle();
+    } catch (error) {
+      setLocalError(
+        error instanceof Error
+          ? error.message
+          : "No fue posible iniciar la conexión con Gmail.",
+      );
+      setConnectingGoogle(false);
+    }
   }
 
   async function handleYahooSubmit(event: FormEvent) {
@@ -67,40 +93,62 @@ export function MailboxConnectModal({
                 : "Usa tu correo Yahoo y una contraseña de aplicación (IMAP)."}
             </p>
           </div>
-          {!required || step === "yahoo" ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (step === "yahoo") {
-                  setStep("choose");
-                  setLocalError(null);
-                  return;
-                }
+          <button
+            type="button"
+            onClick={() => {
+              if (step === "yahoo") {
+                setStep("choose");
+                setLocalError(null);
+                return;
+              }
+              if (!required) {
                 onClose();
-              }}
-              aria-label={step === "yahoo" ? "Volver" : "Cerrar"}
-            >
-              <X size={20} />
-            </button>
-          ) : (
-            <span />
-          )}
+              }
+            }}
+            aria-label={step === "yahoo" ? "Volver a elegir proveedor" : "Cerrar"}
+            style={
+              required && step === "choose"
+                ? { visibility: "hidden" }
+                : undefined
+            }
+          >
+            <X size={20} />
+          </button>
         </header>
 
         <div style={{ padding: "16px 20px 24px", display: "grid", gap: 14 }}>
+          {localError && step === "choose" ? (
+            <div className="hms-mailbox-error">{localError}</div>
+          ) : null}
+
           {step === "choose" ? (
             <>
               <button
                 type="button"
                 className="primary-button app-sidebar-primary"
-                style={{ width: "100%", minHeight: 52 }}
-                onClick={() => {
-                  setLocalError(null);
-                  onConnectGoogle();
+                style={{
+                  width: "100%",
+                  minHeight: 56,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  cursor: connectingGoogle ? "wait" : "pointer",
                 }}
+                disabled={connectingGoogle || connectingYahoo}
+                onClick={() => void handleGoogleClick()}
               >
-                <Mail size={18} />
-                Gmail (Google)
+                {connectingGoogle ? (
+                  <>
+                    <LoaderCircle size={18} className="app-spin" />
+                    Abriendo Google…
+                  </>
+                ) : (
+                  <>
+                    <Mail size={18} />
+                    Gmail (Google)
+                  </>
+                )}
               </button>
               <p style={{ margin: 0, fontSize: 13, opacity: 0.75 }}>
                 Te llevamos a la página oficial de Google para iniciar sesión y
@@ -110,7 +158,17 @@ export function MailboxConnectModal({
               <button
                 type="button"
                 className="secondary-button app-sidebar-secondary"
-                style={{ width: "100%", minHeight: 52, marginTop: 8 }}
+                style={{
+                  width: "100%",
+                  minHeight: 56,
+                  marginTop: 4,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 10,
+                  cursor: "pointer",
+                }}
+                disabled={connectingGoogle || connectingYahoo}
                 onClick={() => {
                   setLocalError(null);
                   setStep("yahoo");
@@ -119,12 +177,34 @@ export function MailboxConnectModal({
                 Yahoo Mail
               </button>
               <p style={{ margin: 0, fontSize: 13, opacity: 0.75 }}>
-                Te pediremos el correo y la contraseña de aplicación de Yahoo
-                para verificar el buzón.
+                Luego te pedimos el correo y la contraseña de aplicación de
+                Yahoo (IMAP).
               </p>
             </>
           ) : (
             <form onSubmit={(event) => void handleYahooSubmit(event)}>
+              <button
+                type="button"
+                onClick={() => {
+                  setStep("choose");
+                  setLocalError(null);
+                }}
+                style={{
+                  border: 0,
+                  background: "transparent",
+                  color: "inherit",
+                  opacity: 0.85,
+                  textAlign: "left",
+                  padding: 0,
+                  marginBottom: 8,
+                  cursor: "pointer",
+                  textDecoration: "underline",
+                  fontSize: 14,
+                }}
+              >
+                ← Volver a Gmail o Yahoo
+              </button>
+
               <label
                 style={{
                   display: "grid",
@@ -187,7 +267,14 @@ export function MailboxConnectModal({
               <button
                 type="submit"
                 className="primary-button app-sidebar-primary"
-                style={{ width: "100%" }}
+                style={{
+                  width: "100%",
+                  minHeight: 52,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                }}
                 disabled={connectingYahoo}
               >
                 {connectingYahoo ? (

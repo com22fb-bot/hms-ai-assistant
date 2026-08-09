@@ -1587,15 +1587,20 @@ function Dashboard({
               setMailboxPickerOpen(false);
               setMailboxPickerDismissed(true);
             }}
-            onConnectGoogle={() => {
+            onConnectGoogle={async () => {
               setNotice("Te llevamos a Google para iniciar sesión…");
-              void startGoogleConnection().catch((requestError) => {
-                setNotice(
+              try {
+                await startGoogleConnection();
+              } catch (requestError) {
+                const message =
                   requestError instanceof Error
                     ? requestError.message
-                    : "No fue posible iniciar la conexión con Google.",
-                );
-              });
+                    : "No fue posible iniciar la conexión con Google.";
+                setNotice(message);
+                throw requestError instanceof Error
+                  ? requestError
+                  : new Error(message);
+              }
             }}
             onConnectYahoo={async (email, appPassword) => {
               await connectYahoo(email, appPassword);

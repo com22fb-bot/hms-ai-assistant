@@ -109,14 +109,26 @@ export function useGoogleStatus() {
       },
     );
 
-    const payload = (await response.json()) as {
+    let payload: {
       authorization_url?: string;
-      detail?: { message?: string } | string;
-    };
+      detail?: { message?: string; status?: string } | string;
+    } = {};
+
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      throw new Error(
+        `No fue posible leer la respuesta de Google OAuth (HTTP ${response.status}).`,
+      );
+    }
 
     if (!response.ok || !payload.authorization_url) {
+      const detail =
+        typeof payload.detail === "string"
+          ? payload.detail
+          : payload.detail?.message;
       throw new Error(
-        detailMessage(payload) ??
+        detail ??
           "No fue posible iniciar la conexión segura con Gmail. " +
             "Si Google dice access_denied, publica la app OAuth " +
             "en estado En producción (Google Cloud) y usa el nombre Donexto.",
