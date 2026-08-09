@@ -10,7 +10,7 @@ import {
   Mail,
   ShieldCheck,
 } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 
 import "./hms-gate.css";
 
@@ -49,6 +49,23 @@ export function LoginScreen({
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [step, setStep] = useState<"credentials" | "help">("credentials");
+
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    html.style.height = "100%";
+    body.style.height = "100%";
+    return () => {
+      html.style.overflow = prevHtml;
+      body.style.overflow = prevBody;
+      html.style.height = "";
+      body.style.height = "";
+    };
+  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
