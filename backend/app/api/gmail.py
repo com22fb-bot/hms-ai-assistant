@@ -14,7 +14,11 @@ from app.services.gmail import list_messages
 from app.services.gmail_full_sync import sync_gmail_page
 from app.services.gmail_sync import sync_gmail_messages
 from app.services.oauth_storage import oauth_storage
-from app.services.yahoo_imap import YahooImapError, list_yahoo_messages
+from app.services.yahoo_imap import (
+    YahooImapError,
+    list_yahoo_messages,
+    normalize_yahoo_app_password,
+)
 
 
 CredentialsProvider = Callable[[], Credentials]
@@ -42,9 +46,9 @@ def create_gmail_router(
         if provider in ("yahoo", "imap"):
             credentials = oauth_storage.get_credentials(str(account["id"]))
             address = str(account.get("email") or "").strip()
-            app_password = str(
-                (credentials or {}).get("access_token") or ""
-            ).strip()
+            app_password = normalize_yahoo_app_password(
+                str((credentials or {}).get("access_token") or "")
+            )
             if not address or not app_password:
                 raise HTTPException(
                     status_code=401,

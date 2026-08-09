@@ -247,10 +247,10 @@ const THEMES: Array<{
   id: ThemeId;
   label: string;
 }> = [
-  { id: "midnight", label: "Midnight Social" },
-  { id: "aurora", label: "Aurora Collaboration" },
-  { id: "accessible", label: "4D Focus Turquesa" },
-  { id: "graphite", label: "Soft Graphite" },
+  { id: "accessible", label: "Confianza · slate & teal" },
+  { id: "aurora", label: "Colaboración · cielo" },
+  { id: "graphite", label: "Institucional · grafito" },
+  { id: "midnight", label: "Noche · indigo" },
 ];
 
 const NAV_ITEMS: Array<{
@@ -262,12 +262,12 @@ const NAV_ITEMS: Array<{
   { id: "home", label: "Inicio", icon: Home, state: "active" },
   { id: "mail", label: "Correos", icon: Mail, state: "active" },
   { id: "push", label: "Avisos", icon: Bell, state: "active" },
-  { id: "cases", label: "Casos", icon: BriefcaseBusiness, state: "evaluation" },
-  { id: "tasks", label: "Tareas", icon: CheckCircle2, state: "evaluation" },
-  { id: "activity", label: "Actividad", icon: Activity, state: "evaluation" },
-  { id: "reports", label: "Reportes", icon: FileBarChart, state: "evaluation" },
-  { id: "metrics", label: "Métricas", icon: BarChart3, state: "evaluation" },
-  { id: "settings", label: "Ajustes", icon: Settings, state: "blocked" },
+  { id: "cases", label: "Casos", icon: BriefcaseBusiness, state: "active" },
+  { id: "tasks", label: "Tareas", icon: CheckCircle2, state: "active" },
+  { id: "activity", label: "Actividad", icon: Activity, state: "active" },
+  { id: "reports", label: "Reportes", icon: FileBarChart, state: "active" },
+  { id: "metrics", label: "Métricas", icon: BarChart3, state: "active" },
+  { id: "settings", label: "Ajustes", icon: Settings, state: "active" },
 ];
 
 function priorityLabel(priority: CasePriority): string {
@@ -734,7 +734,7 @@ function Dashboard({
     error,
     setSearch,
     loadDashboard,
-  } = useCases(Boolean(isGoogleMailbox));
+  } = useCases(Boolean(connection?.connected));
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeView, setActiveView] = useState("home");
@@ -878,50 +878,103 @@ function Dashboard({
       return;
     }
 
+    if (view === "cases" || view === "tasks" || view === "activity") {
+      setActiveView("home");
+      setNotice(
+        view === "cases"
+          ? "Casos: se generan al clasificar el correo descargado."
+          : view === "tasks"
+            ? "Tareas: se alimentan desde casos y correos clasificados."
+            : "Actividad: verás eventos cuando haya clasificación en curso.",
+      );
+      void loadDashboard();
+      return;
+    }
+
+    if (view === "metrics" || view === "reports") {
+      setActiveView("home");
+      setNotice(
+        "Las métricas se llenan con casos clasificados. Si ves ceros, descarga y clasifica correo primero.",
+      );
+      void loadDashboard();
+      return;
+    }
+
+    if (view === "settings") {
+      setActiveView("home");
+      setProfileOpen(true);
+      setNotice("Ajustes: perfil y cuenta Donexto.");
+      return;
+    }
+
     setActiveView("home");
-    setNotice(`${label} permanece visible para evaluar su orden y alcance.`);
-    evaluateControl(view);
+    setNotice(`${label} listo en el panel principal.`);
   }
 
   const busy =
     loading || syncing || loadingConnection;
 
   const metrics = useMemo(
-    () => [
-      {
-        label: "Casos por revisar",
-        value: dashboard.metrics.total_open,
-        icon: Inbox,
-        tone: "blue",
-      },
-      {
-        label: "Marcados críticos",
-        value: dashboard.metrics.critical,
-        icon: AlertTriangle,
-        tone: "red",
-      },
-      {
-        label: "Marcados en espera",
-        value:
-          dashboard.metrics.waiting_internal +
-          dashboard.metrics.waiting_external,
-        icon: Clock3,
-        tone: "violet",
-      },
-      {
-        label: "Vencidos",
-        value: dashboard.metrics.overdue,
-        icon: Bell,
-        tone: "green",
-      },
-      {
-        label: "Resueltos hoy",
-        value: dashboard.metrics.resolved_today,
-        icon: CheckCircle2,
-        tone: "cyan",
-      },
-    ],
-    [dashboard.metrics],
+    () => {
+      const emptyHint = connection?.connected
+        ? isYahooMailbox
+          ? "Yahoo en vivo · casos al clasificar"
+          : "Aparecen al clasificar el correo"
+        : "Conecta un buzón para empezar";
+
+      return [
+        {
+          label: "Casos por revisar",
+          value: dashboard.metrics.total_open,
+          icon: Inbox,
+          tone: "blue",
+          hint: dashboard.metrics.total_open
+            ? "Conteo en vivo"
+            : emptyHint,
+        },
+        {
+          label: "Marcados críticos",
+          value: dashboard.metrics.critical,
+          icon: AlertTriangle,
+          tone: "red",
+          hint: dashboard.metrics.critical
+            ? "Conteo en vivo"
+            : emptyHint,
+        },
+        {
+          label: "Marcados en espera",
+          value:
+            dashboard.metrics.waiting_internal +
+            dashboard.metrics.waiting_external,
+          icon: Clock3,
+          tone: "violet",
+          hint:
+            dashboard.metrics.waiting_internal +
+              dashboard.metrics.waiting_external
+              ? "Conteo en vivo"
+              : emptyHint,
+        },
+        {
+          label: "Vencidos",
+          value: dashboard.metrics.overdue,
+          icon: Bell,
+          tone: "green",
+          hint: dashboard.metrics.overdue
+            ? "Conteo en vivo"
+            : emptyHint,
+        },
+        {
+          label: "Resueltos hoy",
+          value: dashboard.metrics.resolved_today,
+          icon: CheckCircle2,
+          tone: "cyan",
+          hint: dashboard.metrics.resolved_today
+            ? "Conteo en vivo"
+            : emptyHint,
+        },
+      ];
+    },
+    [connection?.connected, dashboard.metrics, isYahooMailbox],
   );
 
   useEffect(() => {
@@ -1338,7 +1391,7 @@ function Dashboard({
                   <div>
                     <span>{metric.label}</span>
                     <strong>{metric.value}</strong>
-                    <small>Conteo exacto · clasificación pendiente</small>
+                    <small>{metric.hint}</small>
                   </div>
 
                   <Icon size={29} />

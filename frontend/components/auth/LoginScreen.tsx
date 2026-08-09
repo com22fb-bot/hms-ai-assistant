@@ -378,10 +378,10 @@ export function LoginScreen({
             }
             aria-label="Tema de la aplicación"
           >
-            <option value="accessible">Tema del panel</option>
-            <option value="midnight">Medianoche</option>
-            <option value="aurora">Aurora</option>
-            <option value="graphite">Grafito</option>
+            <option value="accessible">Confianza · slate & teal</option>
+            <option value="midnight">Noche · indigo</option>
+            <option value="aurora">Colaboración · cielo</option>
+            <option value="graphite">Institucional · grafito</option>
           </select>
         </label>
       </div>

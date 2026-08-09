@@ -5,6 +5,8 @@ from __future__ import annotations
 import email
 import imaplib
 import re
+import socket
+import ssl
 from email.header import decode_header, make_header
 from email.utils import parseaddr, parsedate_to_datetime
 from typing import Any
@@ -12,6 +14,13 @@ from typing import Any
 
 YAHOO_IMAP_HOST = "imap.mail.yahoo.com"
 YAHOO_IMAP_PORT = 993
+YAHOO_DOMAINS = (
+    "yahoo.com",
+    "yahoo.com.mx",
+    "yahoo.es",
+    "ymail.com",
+    "rocketmail.com",
+)
 
 
 class YahooImapError(RuntimeError):
@@ -27,26 +36,113 @@ def _decode_header_value(value: str | None) -> str:
         return value or ""
 
 
+def normalize_yahoo_address(address: str) -> str:
+    return address.strip().lower()
+
+
+def normalize_yahoo_app_password(raw: str) -> str:
+    """
+    Normaliza contraseña de aplicación Yahoo.
+
+    Yahoo genera ~16 caracteres alfanuméricos (a veces con espacios).
+    El gestor de contraseñas a veces pega guiones o textos extra.
+    """
+    cleaned = raw.strip()
+    # Quita etiquetas tipo "App password: "
+    cleaned = re.sub(
+        r"(?i)^(?:app\s*password|contrase[nñ]a(?:\s+de\s+aplicaci[oó]n)?)\s*[:=]?\s*",
+        "",
+        cleaned,
+    ).strip()
+    cleaned = cleaned.replace("\u00a0", " ")
+    cleaned = cleaned.replace("-", " ").replace(".", " ")
+    cleaned = re.sub(r"\s+", "", cleaned)
+    # Solo caracteres alfanuméricos típicos de app password
+    alnum = re.sub(r"[^A-Za-z0-9]", "", cleaned)
+    if len(alnum) >= 12:
+        return alnum
+    return cleaned
+
+
+def _is_yahoo_like_address(address: str) -> bool:
+    if "@" not in address:
+        return False
+    domain = address.rsplit("@", 1)[-1]
+    return any(
+        domain == item or domain.endswith("." + item)
+        for item in YAHOO_DOMAINS
+    )
+
+
+def _open_yahoo_client(address: str, app_password: str) -> imaplib.IMAP4_SSL:
+    context = ssl.create_default_context()
+    try:
+        client = imaplib.IMAP4_SSL(
+            YAHOO_IMAP_HOST,
+            YAHOO_IMAP_PORT,
+            ssl_context=context,
+            timeout=45,
+        )
+    except TypeError:
+        # Python sin soporte timeout en este build
+        socket.setdefaulttimeout(45)
+        client = imaplib.IMAP4_SSL(
+            YAHOO_IMAP_HOST,
+            YAHOO_IMAP_PORT,
+            ssl_context=context,
+        )
+
+    status, data = client.login(address, app_password)
+    if status != "OK":
+        try:
+            client.logout()
+        except Exception:
+            pass
+        detail = ""
+        if data:
+            detail = " ".join(
+                part.decode("utf-8", errors="ignore")
+                if isinstance(part, bytes)
+                else str(part)
+                for part in data
+            )
+        raise YahooImapError(
+            "Yahoo rechazó el acceso IMAP"
+            + (f" ({detail.strip()})" if detail.strip() else "")
+            + ". Usa una contraseña de aplicación nueva."
+        )
+    return client
+
+
 def verify_yahoo_login(address: str, app_password: str) -> None:
     """Comprueba usuario/contraseña de aplicación contra Yahoo IMAP."""
-    address = address.strip().lower()
-    app_password = app_password.strip().replace(" ", "")
+    address = normalize_yahoo_address(address)
+    app_password = normalize_yahoo_app_password(app_password)
+
     if not address or "@" not in address:
         raise YahooImapError("El correo de Yahoo no es válido.")
-    if len(app_password) < 8:
+
+    if not _is_yahoo_like_address(address):
         raise YahooImapError(
-            "Usa la contraseña de aplicación de Yahoo "
-            "(no la contraseña normal de la cuenta)."
+            "Indica un correo de Yahoo (@yahoo.com, @ymail.com, "
+            "@rocketmail.com o similar)."
+        )
+
+    if len(app_password) < 12:
+        raise YahooImapError(
+            "La contraseña de aplicación es demasiado corta. "
+            "En Yahoo genera una en Seguridad → Conexiones externas → "
+            "Crear contraseña de aplicación (código de ~16 caracteres)."
         )
 
     try:
-        client = imaplib.IMAP4_SSL(YAHOO_IMAP_HOST, YAHOO_IMAP_PORT)
+        client = _open_yahoo_client(address, app_password)
         try:
-            status, _ = client.login(address, app_password)
+            status, _ = client.select("INBOX", readonly=True)
             if status != "OK":
                 raise YahooImapError(
-                    "Yahoo rechazó el acceso. Revisa el correo y la "
-                    "contraseña de aplicación."
+                    "La contraseña es válida, pero no se pudo abrir el INBOX. "
+                    "Revisa la cuenta Yahoo e inténtalo de nuevo."
                 )
         finally:
             try:
@@ -56,16 +152,24 @@ def verify_yahoo_login(address: str, app_password: str) -> None:
     except YahooImapError:
         raise
     except imaplib.IMAP4.error as error:
+        err = str(error).lower()
+        if "invalid" in err or "login" in err or "auth" in err:
+            raise YahooImapError(
+                "Yahoo rechazó usuario o contraseña. "
+                "Genera una contraseña de aplicación nueva (no la de "
+                "mail.yahoo.com ni la de Donexto) y pégala sin espacios."
+            ) from error
         raise YahooImapError(
-            "Yahoo rechazó el acceso IMAP. "
-            "Casi siempre falta la contraseña de aplicación: "
-            "Security → External connections → Create app password → "
-            "nombre Donexto → copia el código de 16 caracteres "
-            "(no uses la contraseña normal de Yahoo ni la de Donexto)."
+            f"Yahoo IMAP falló al autenticar: {error}"
+        ) from error
+    except (TimeoutError, socket.timeout, OSError) as error:
+        raise YahooImapError(
+            "No hubo respuesta de los servidores IMAP de Yahoo "
+            f"(imap.mail.yahoo.com:993). Detalle de red: {error}"
         ) from error
     except Exception as error:
         raise YahooImapError(
-            f"Error de red al conectar con Yahoo: {error}"
+            f"Error al conectar con Yahoo IMAP: {error}"
         ) from error
 
 
@@ -76,19 +180,14 @@ def list_yahoo_messages(
     max_results: int = 20,
 ) -> list[dict[str, Any]]:
     """Lista mensajes recientes del INBOX de Yahoo."""
-    address = address.strip().lower()
-    app_password = app_password.strip().replace(" ", "")
+    address = normalize_yahoo_address(address)
+    app_password = normalize_yahoo_app_password(app_password)
     max_results = max(1, min(int(max_results), 100))
-
     messages: list[dict[str, Any]] = []
 
     try:
-        client = imaplib.IMAP4_SSL(YAHOO_IMAP_HOST, YAHOO_IMAP_PORT)
+        client = _open_yahoo_client(address, app_password)
         try:
-            status, _ = client.login(address, app_password)
-            if status != "OK":
-                raise YahooImapError("Yahoo rechazó el acceso IMAP.")
-
             status, _ = client.select("INBOX", readonly=True)
             if status != "OK":
                 raise YahooImapError(
@@ -142,8 +241,9 @@ def list_yahoo_messages(
                         received_at = date_raw
 
                 is_unread = "\\Seen" not in flags_text
-                snippet = subject or "(sin vista previa)"
-                snippet = re.sub(r"\s+", " ", snippet).strip()[:280]
+                snippet = re.sub(
+                    r"\s+", " ", subject or "(sin vista previa)"
+                ).strip()[:280]
 
                 messages.append(
                     {

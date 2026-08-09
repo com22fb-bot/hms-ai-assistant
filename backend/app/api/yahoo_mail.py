@@ -12,7 +12,12 @@ from app.services.oauth_storage import (
     OAuthStorageError,
     oauth_storage,
 )
-from app.services.yahoo_imap import YahooImapError, verify_yahoo_login
+from app.services.yahoo_imap import (
+    YahooImapError,
+    normalize_yahoo_address,
+    normalize_yahoo_app_password,
+    verify_yahoo_login,
+)
 
 
 router = APIRouter(prefix="/auth/yahoo", tags=["Yahoo Mail"])
@@ -20,15 +25,15 @@ router = APIRouter(prefix="/auth/yahoo", tags=["Yahoo Mail"])
 
 class YahooConnectRequest(BaseModel):
     email: str = Field(min_length=5, max_length=320)
-    app_password: str = Field(min_length=8, max_length=128)
+    app_password: str = Field(min_length=8, max_length=256)
 
 
 @router.post("/connect")
 def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
-    """Vincula un buzón Yahoo al workspace HMS actual (cualquier @yahoo)."""
+    """Vincula un buzón Yahoo al workspace Donexto actual."""
     context = require_request_context()
-    address = payload.email.strip().lower()
-    app_password = payload.app_password.strip().replace(" ", "")
+    address = normalize_yahoo_address(payload.email)
+    app_password = normalize_yahoo_app_password(payload.app_password)
 
     if "@" not in address:
         raise HTTPException(
@@ -51,6 +56,16 @@ def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
         ) from error
 
     try:
+        # Desactiva otros buzones del workspace para que Yahoo quede como activo.
+        try:
+            oauth_storage.client.table("communication_accounts").update(
+                {"status": "inactive"}
+            ).eq("workspace_id", context.workspace_id).eq(
+                "status", "active"
+            ).neq("provider", "yahoo").execute()
+        except Exception:
+            pass
+
         account = oauth_storage.upsert_communication_account(
             provider="yahoo",
             provider_account_id=address,
@@ -91,7 +106,7 @@ def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
         has_access_token=True,
         has_refresh_token=False,
         scopes=["imap.mail.yahoo.com"],
-        message="Buzón Yahoo conectado. Puedes cargar correos.",
+        message="Buzón Yahoo conectado. Puedes cargar correos en vivo.",
         login_url=None,
     )
 

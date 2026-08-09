@@ -81,21 +81,22 @@ button:disabled {
 
 .auth-screen[data-theme="accessible"],
 .app-shell[data-theme="accessible"] {
-  --ui-bg: #090b0b;
-  --ui-sidebar: #111413;
-  --ui-surface: #171c1a;
-  --ui-surface-2: #202723;
-  --ui-surface-3: #2a342e;
-  --ui-border: rgba(255, 255, 255, 0.24);
-  --ui-text: #ffffff;
-  --ui-muted: #d1d7d3;
-  --ui-accent: #ffd21f;
-  --ui-accent-2: #ff9f1c;
-  --ui-success: #7ee35d;
-  --ui-danger: #ff5d5d;
-  --ui-warning: #ffd21f;
-  --ui-cyan: #77d7ff;
-  --ui-shadow: rgba(0, 0, 0, 0.42);
+  /* Donexto Confianza: slate + teal (banca / SaaS serio) */
+  --ui-bg: #071018;
+  --ui-sidebar: #0b161c;
+  --ui-surface: #102028;
+  --ui-surface-2: #152a33;
+  --ui-surface-3: #1b3640;
+  --ui-border: rgba(46, 225, 218, 0.16);
+  --ui-text: #e8fbff;
+  --ui-muted: #9eb8bf;
+  --ui-accent: #14b8a6;
+  --ui-accent-2: #0d9488;
+  --ui-success: #34d399;
+  --ui-danger: #f87171;
+  --ui-warning: #fbbf24;
+  --ui-cyan: #2dd4bf;
+  --ui-shadow: rgba(0, 0, 0, 0.38);
 }
 
 .auth-screen[data-theme="graphite"],
