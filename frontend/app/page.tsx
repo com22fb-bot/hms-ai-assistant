@@ -1578,6 +1578,7 @@ export default function HomePage() {
     loading,
     passwordRecovery,
     signIn,
+    signUp,
     signInWithMagicLink,
     signOut,
     resetPassword,
@@ -1615,6 +1616,7 @@ export default function HomePage() {
         theme={theme}
         setTheme={setTheme}
         onSignIn={signIn}
+        onSignUp={signUp}
         onMagicLink={signInWithMagicLink}
         onResetPassword={resetPassword}
       />

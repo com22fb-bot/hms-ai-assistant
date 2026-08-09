@@ -145,12 +145,38 @@ export function useAppAuth() {
     [],
   );
 
+  const signUp = useCallback(
+    async (email: string, password: string) => {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+
+      if (error) {
+        throw new Error(translateAuthError(error.message));
+      }
+
+      // Si Supabase exige confirmación de email, no hay session aún.
+      if (!data.session) {
+        throw new Error(
+          "Cuenta creada. Revisa tu correo para confirmar, " +
+            "o desactiva la confirmación en Supabase Auth " +
+            "(Authentication → Providers → Email) para entrar al instante.",
+        );
+      }
+    },
+    [],
+  );
+
   const signInWithMagicLink = useCallback(
     async (email: string) => {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          shouldCreateUser: false,
+          shouldCreateUser: true,
           emailRedirectTo: `${window.location.origin}/`,
         },
       });
@@ -218,6 +244,7 @@ export function useAppAuth() {
     loading,
     passwordRecovery,
     signIn,
+    signUp,
     signInWithMagicLink,
     signOut,
     resetPassword,

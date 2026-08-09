@@ -24,6 +24,7 @@ type LoginScreenProps = {
   theme: GateThemeId;
   setTheme: (theme: GateThemeId) => void;
   onSignIn: (email: string, password: string) => Promise<void>;
+  onSignUp: (email: string, password: string) => Promise<void>;
   onMagicLink: (email: string) => Promise<void>;
   onResetPassword: (email: string) => Promise<void>;
 };
@@ -36,6 +37,7 @@ export function LoginScreen({
   theme,
   setTheme,
   onSignIn,
+  onSignUp,
   onMagicLink,
   onResetPassword,
 }: LoginScreenProps) {
@@ -45,6 +47,7 @@ export function LoginScreen({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [step, setStep] = useState<"credentials" | "help">("credentials");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -54,22 +57,29 @@ export function LoginScreen({
 
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail.includes("@")) {
-      setError("Escribe el correo de tu cuenta HMS.");
+      setError("Escribe el correo de tu cuenta Donexto.");
       return;
     }
     if (password.length < 8) {
-      setError("La contraseña HMS usa al menos 8 caracteres.");
+      setError("La contraseña usa al menos 8 caracteres.");
       return;
     }
 
     setBusy(true);
     try {
-      await onSignIn(cleanEmail, password);
+      if (mode === "signup") {
+        await onSignUp(cleanEmail, password);
+        setMessage("Cuenta creada. Ya puedes usar la app.");
+      } else {
+        await onSignIn(cleanEmail, password);
+      }
     } catch (requestError) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "No fue posible iniciar sesión.",
+          : mode === "signup"
+            ? "No fue posible crear la cuenta."
+            : "No fue posible iniciar sesión.",
       );
     } finally {
       setBusy(false);
@@ -141,21 +151,41 @@ export function LoginScreen({
         <section className="hms-gate__hero">
           <h1>Entra a tu centro de pendientes</h1>
           <p>
-            Una sola cuenta HMS. Después conectarás el correo en otro paso
-            seguro.
+            Crea o entra con tu cuenta Donexto. Luego conectarás Gmail (u otro
+            proveedor disponible) en un paso aparte.
           </p>
         </section>
 
         <section className="hms-gate__panel" aria-labelledby="hms-gate-title">
           <div className="hms-gate__panel-head">
-            <h2 id="hms-gate-title">Iniciar sesión</h2>
-            <p>Correo y contraseña de HMS — no los de Gmail ni Outlook.</p>
+            <h2 id="hms-gate-title">
+              {mode === "signup" ? "Crear cuenta" : "Iniciar sesión"}
+            </h2>
+            <p>
+              Email y contraseña de Donexto — no son los de Gmail, Yahoo ni
+              Outlook.
+            </p>
+            <div className="hms-gate__links" style={{ marginTop: "0.75rem" }}>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setMode(mode === "signin" ? "signup" : "signin");
+                  setError(null);
+                  setMessage(null);
+                }}
+              >
+                {mode === "signin"
+                  ? "¿No tienes cuenta? Crear una"
+                  : "¿Ya tienes cuenta? Entrar"}
+              </button>
+            </div>
           </div>
 
           {step === "credentials" ? (
             <form className="hms-gate__form" onSubmit={submit} noValidate>
               <label className="hms-gate__field">
-                <span>Correo HMS</span>
+                <span>Correo de la cuenta Donexto</span>
                 <div className="hms-gate__control">
                   <Mail size={18} aria-hidden />
                   <input
@@ -224,8 +254,10 @@ export function LoginScreen({
                 {busy ? (
                   <>
                     <LoaderCircle className="hms-gate__spin" size={18} />
-                    Entrando…
+                    {mode === "signup" ? "Creando…" : "Entrando…"}
                   </>
+                ) : mode === "signup" ? (
+                  "Crear cuenta"
                 ) : (
                   "Entrar"
                 )}
