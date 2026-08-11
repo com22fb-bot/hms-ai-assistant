@@ -173,15 +173,20 @@ export function LoginScreen({
     <main className="dx-auth" data-theme={theme}>
       <aside className="dx-auth__brand" aria-label="Donexto">
         <div className="dx-auth__brand-inner">
+          {/* Marca primero: monograma discreto + nombre grande (nunca sobres como héroe) */}
           <div className="dx-auth__logo">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              className="dx-auth__logo-img"
-              src="/brand/donexto-logo-official.png"
-              width={220}
-              height={220}
-              alt="Donexto — Do Next To…"
+              className="dx-auth__mark-img"
+              src="/brand/donexto-mark.svg"
+              width={72}
+              height={72}
+              alt=""
             />
+            <div className="dx-auth__wordmark">
+              <p className="dx-auth__name">Donexto</p>
+              <p className="dx-auth__slogan">Do Next To…</p>
+            </div>
           </div>
 
           <h1 className="dx-auth__headline">
@@ -189,16 +194,13 @@ export function LoginScreen({
           </h1>
           <p className="dx-auth__sub">{ACCOUNT_VS_MAILBOX.brandSub}</p>
 
-          <figure className="dx-auth__visual">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/brand/donexto-logo-official-hero.png"
-              alt=""
-              width={720}
-              height={405}
-              decoding="async"
-            />
-          </figure>
+          <p className="dx-auth__trust">
+            Acceso a la cuenta Donexto · el buzón se conecta después
+          </p>
+          <p className="dx-auth__legal">
+            © HMSR · MR
+            <span>Héctor M. Salcido Roacho</span>
+          </p>
         </div>
       </aside>
 
@@ -207,10 +209,10 @@ export function LoginScreen({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             className="dx-auth__mobile-hero-logo"
-            src="/brand/donexto-logo-official.png"
-            width={112}
-            height={112}
-            alt="Donexto — Do Next To…"
+            src="/brand/donexto-mark.svg"
+            width={56}
+            height={56}
+            alt=""
             decoding="async"
           />
           <p className="dx-auth__mobile-hero-name">Donexto</p>
@@ -219,17 +221,22 @@ export function LoginScreen({
 
         <div className="dx-auth__card">
           <header className="dx-auth__card-head">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              className="dx-auth__card-logo"
-              src="/brand/donexto-logo-official.png"
-              width={56}
-              height={56}
-              alt=""
-            />
-            <p className="dx-auth__card-brand">
-              {ACCOUNT_VS_MAILBOX.loginEyebrow}
-            </p>
+            <div className="dx-auth__card-brandrow">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                className="dx-auth__card-logo"
+                src="/brand/donexto-mark.svg"
+                width={40}
+                height={40}
+                alt=""
+              />
+              <div>
+                <p className="dx-auth__card-brand">Donexto</p>
+                <p className="dx-auth__card-eyebrow">
+                  {ACCOUNT_VS_MAILBOX.loginEyebrow}
+                </p>
+              </div>
+            </div>
             <h2 id="dx-auth-title">
               {mode === "signup"
                 ? ACCOUNT_VS_MAILBOX.loginTitleSignUp
