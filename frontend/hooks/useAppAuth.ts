@@ -146,12 +146,22 @@ export function useAppAuth() {
   );
 
   const signUp = useCallback(
-    async (email: string, password: string) => {
+    async (email: string, password: string, fullName: string) => {
+      const cleanName = fullName.trim().replace(/\s+/g, " ");
+      if (cleanName.length < 2) {
+        throw new Error(
+          "Escribe tu nombre completo para la cuenta Donexto.",
+        );
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            full_name: cleanName,
+          },
         },
       });
 
@@ -162,7 +172,7 @@ export function useAppAuth() {
       // Si Supabase exige confirmación de email, no hay session aún.
       if (!data.session) {
         throw new Error(
-          "Cuenta creada. Revisa tu correo para confirmar, " +
+          "Cuenta Donexto creada. Revisa tu correo para confirmar, " +
             "o desactiva la confirmación en Supabase Auth " +
             "(Authentication → Providers → Email) para entrar al instante.",
         );
