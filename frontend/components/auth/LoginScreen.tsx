@@ -8,14 +8,13 @@ import {
   KeyRound,
   LoaderCircle,
   Mail,
-  ShieldCheck,
   User,
 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
+import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
 
-import { AccountVsMailboxHint } from "./AccountVsMailboxHint";
 import "./hms-gate.css";
 
 export type GateThemeId =
@@ -38,8 +37,8 @@ type LoginScreenProps = {
 };
 
 /**
- * Acceso Donexto — una sola composición (sin split).
- * Marca tipográfica: "Donexto" + slogan. Sin monogramas inventados ni sobres.
+ * Acceso Donexto desde cero: misión + política de calidad visibles,
+ * una sola composición, marca tipográfica (sin logos inventados).
  */
 export function LoginScreen({
   theme,
@@ -171,19 +170,29 @@ export function LoginScreen({
 
   return (
     <main className="dx-auth" data-theme={theme}>
-      <div className="dx-auth__shell">
-        <header className="dx-auth__brandhead">
-          <p className="dx-auth__name">Donexto</p>
-          <p className="dx-auth__slogan">Do Next To…</p>
-          <p className="dx-auth__tagline">
-            Lo que requiere atención en tu correo
-          </p>
+      <div className="dx-auth__frame">
+        <header className="dx-auth__mission">
+          <p className="dx-auth__brand">Donexto</p>
+          <p className="dx-auth__slogan">{DONEXTO_QUALITY.slogan}</p>
+          <h1 className="dx-auth__promise">{DONEXTO_QUALITY.promise}</h1>
+          <p className="dx-auth__mission-body">{DONEXTO_QUALITY.mission}</p>
+
+          <ul className="dx-auth__quality" aria-label="Política de calidad">
+            {DONEXTO_QUALITY.quality.map((item) => (
+              <li key={item.title}>
+                <strong>{item.title}</strong>
+                <span>{item.line}</span>
+              </li>
+            ))}
+          </ul>
         </header>
 
-        <section className="dx-auth__panel" aria-labelledby="dx-auth-title">
-          <div className="dx-auth__mode">
+        <section className="dx-auth__access" aria-labelledby="dx-auth-title">
+          <div className="dx-auth__mode" role="tablist" aria-label="Modo de acceso">
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === "signin"}
               className={mode === "signin" ? "is-on" : undefined}
               disabled={busy}
               onClick={() => {
@@ -197,6 +206,8 @@ export function LoginScreen({
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={mode === "signup"}
               className={mode === "signup" ? "is-on" : undefined}
               disabled={busy}
               onClick={() => {
@@ -210,12 +221,12 @@ export function LoginScreen({
             </button>
           </div>
 
-          <h1 id="dx-auth-title" className="dx-auth__title">
+          <h2 id="dx-auth-title" className="dx-auth__title">
             {mode === "signup"
               ? ACCOUNT_VS_MAILBOX.loginTitleSignUp
               : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
-          </h1>
-          <AccountVsMailboxHint variant="login" />
+          </h2>
+          <p className="dx-auth__boundary">{DONEXTO_QUALITY.boundary}</p>
 
           {step === "credentials" ? (
             <form
@@ -310,11 +321,7 @@ export function LoginScreen({
                 </div>
               ) : null}
 
-              <button
-                type="submit"
-                className="dx-auth__submit"
-                disabled={busy}
-              >
+              <button type="submit" className="dx-auth__submit" disabled={busy}>
                 {busy ? (
                   <>
                     <LoaderCircle className="dx-auth__spin" size={18} />
@@ -353,8 +360,8 @@ export function LoginScreen({
               </button>
 
               <p className="dx-auth__help-text">
-                Usa el correo de tu cuenta Donexto. No pedimos aquí la
-                contraseña de Gmail ni Yahoo.
+                Usa el correo de tu <strong>cuenta Donexto</strong>. No es la
+                contraseña de Gmail ni Yahoo; el buzón se conecta después.
               </p>
 
               {error ? (
@@ -390,33 +397,30 @@ export function LoginScreen({
               </button>
             </div>
           )}
-
-          <footer className="dx-auth__foot">
-            <ShieldCheck size={16} aria-hidden />
-            <span>{ACCOUNT_VS_MAILBOX.loginFoot}</span>
-          </footer>
         </section>
 
-        <p className="dx-auth__legal">
-          <span>© HMSR · MR</span>
-          <span>Héctor M. Salcido Roacho</span>
-        </p>
-
-        <label className="dx-auth__theme">
-          <span className="sr-only">Tema del panel después de entrar</span>
-          <select
-            value={theme}
-            onChange={(event) =>
-              setTheme(event.target.value as GateThemeId)
-            }
-            aria-label="Tema del panel"
-          >
-            <option value="accessible">Tema: Confianza</option>
-            <option value="graphite">Tema: Grafito</option>
-            <option value="aurora">Tema: Cielo</option>
-            <option value="midnight">Tema: Noche</option>
-          </select>
-        </label>
+        <footer className="dx-auth__footer">
+          <p className="dx-auth__standard">{DONEXTO_QUALITY.standard}</p>
+          <p className="dx-auth__legal">
+            <span>© HMSR · MR</span>
+            <span>Héctor M. Salcido Roacho</span>
+          </p>
+          <label className="dx-auth__theme">
+            <span className="sr-only">Tema del panel después de entrar</span>
+            <select
+              value={theme}
+              onChange={(event) =>
+                setTheme(event.target.value as GateThemeId)
+              }
+              aria-label="Tema del panel"
+            >
+              <option value="accessible">Tema: Confianza</option>
+              <option value="graphite">Tema: Grafito</option>
+              <option value="aurora">Tema: Cielo</option>
+              <option value="midnight">Tema: Noche</option>
+            </select>
+          </label>
+        </footer>
       </div>
     </main>
   );
