@@ -48,6 +48,7 @@ import "@/components/logistica-responsive.css";
 import { useCases } from "@/hooks/useCases";
 import { useGoogleStatus } from "@/hooks/useGoogleStatus";
 import { useAppAuth } from "@/hooks/useAppAuth";
+import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import { hmsJson } from "@/lib/hmsApi";
 import type {
   CaseEvent,
@@ -755,7 +756,7 @@ function Dashboard({
     useState<ImportFlowStatus | null>(null);
   const [initialFlowOpened, setInitialFlowOpened] = useState(false);
 
-  // Tras login Donexto sin buzón: pedir Gmail o Yahoo.
+  // Tras login Donexto sin buzón: pedir Gmail o Yahoo (Paso 2, no re-login).
   useEffect(() => {
     if (loadingConnection || mailboxPickerDismissed) {
       return;
@@ -922,7 +923,7 @@ function Dashboard({
         ? isYahooMailbox
           ? "Yahoo en vivo · casos al clasificar"
           : "Aparecen al clasificar el correo"
-        : "Conecta un buzón para empezar";
+        : ACCOUNT_VS_MAILBOX.step2Title;
 
       return [
         {
@@ -1073,7 +1074,7 @@ function Dashboard({
             aria-label={
               connection?.connected
                 ? "Descargar correos nuevos"
-                : "Conectar correo"
+                : ACCOUNT_VS_MAILBOX.connectMailboxLabel
             }
             disabled={
               loadingConnection ||
@@ -1104,7 +1105,7 @@ function Dashboard({
                   ? isYahooMailbox
                     ? "Cargar Yahoo"
                     : "Actualizar correo"
-                  : "Conectar correo"}
+                  : ACCOUNT_VS_MAILBOX.connectMailboxLabel}
           </button>
 
           {connection?.connected ? (
@@ -1114,7 +1115,7 @@ function Dashboard({
               onClick={() => openMailboxConnect()}
             >
               <Mail size={18} />
-              Cambiar buzón
+              {ACCOUNT_VS_MAILBOX.changeMailboxLabel}
             </button>
           ) : null}
 
@@ -1173,8 +1174,8 @@ function Dashboard({
               >
                 <span />
                 {connection?.connected
-                  ? "Correo conectado"
-                  : "Sin conexión"}
+                  ? ACCOUNT_VS_MAILBOX.mailboxConnected
+                  : ACCOUNT_VS_MAILBOX.mailboxMissing}
               </div>
 
               <div className="app-user-menu">
@@ -1210,26 +1211,26 @@ function Dashboard({
             >
               <span />
               {connection?.connected
-                ? "Correo conectado"
-                : "Sin conexión"}
+                ? ACCOUNT_VS_MAILBOX.mailboxConnected
+                : ACCOUNT_VS_MAILBOX.mailboxMissing}
             </div>
           </div>
         </header>
 
         <div className="app-content">
-          {!importFlowStatus?.initial_import_complete ? (
+          {isGoogleMailbox && !importFlowStatus?.initial_import_complete ? (
             <section className="app-alert app-historical-alert" role="status">
               <Sparkles size={20} />
               <div>
                 <strong>
                   {importFlowStatus?.active
                     ? "Preparando tu correo…"
-                    : "Conecta o importa tu buzón"}
+                    : "Importa tu buzón Gmail"}
                 </strong>
                 <span>
                   {importFlowStatus?.active
                     ? "Clasificamos mensajes útiles y separamos el ruido. Esto puede tomar unos minutos."
-                    : "Al conectar Gmail o Yahoo, Donexto organiza lo que requiere atención."}
+                    : "Tu cuenta Donexto ya está lista. Completa la importación del buzón Gmail que conectaste."}
                 </span>
               </div>
             </section>
@@ -1325,6 +1326,7 @@ function Dashboard({
             </details>
           ) : null}
 
+          {connection?.connected ? (
           <details className="dx-home-more">
             <summary>Casos y actividad (vista operativa)</summary>
             <section className="app-metrics" style={{ marginTop: "0.85rem" }}>
@@ -1420,7 +1422,9 @@ function Dashboard({
               </div>
             </section>
           </details>
+          ) : null}
 
+          {connection?.connected ? (
           <section className="app-actions-block" aria-label="Acciones rápidas">
             <div className="app-actions-heading">
               <h2>Acciones rápidas</h2>
@@ -1463,7 +1467,7 @@ function Dashboard({
                   <strong>
                     {connection?.connected
                       ? "Actualizar buzón"
-                      : "Conectar correo"}
+                      : ACCOUNT_VS_MAILBOX.connectMailboxLabel}
                   </strong>
                   <span>
                     {connection?.connected
@@ -1479,7 +1483,7 @@ function Dashboard({
               >
                 <Mail size={22} />
                 <div>
-                  <strong>Cambiar buzón</strong>
+                  <strong>{ACCOUNT_VS_MAILBOX.changeMailboxLabel}</strong>
                   <span>Otro Gmail o Yahoo</span>
                 </div>
               </button>
@@ -1498,6 +1502,7 @@ function Dashboard({
               </button>
             </div>
           </section>
+          ) : null}
         </div>
 
         <nav className="app-mobile-nav" aria-label="Navegación móvil">

@@ -9,9 +9,13 @@ import {
   LoaderCircle,
   Mail,
   ShieldCheck,
+  User,
 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
+import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
+
+import { AccountVsMailboxHint } from "./AccountVsMailboxHint";
 import "./hms-gate.css";
 
 export type GateThemeId =
@@ -24,13 +28,17 @@ type LoginScreenProps = {
   theme: GateThemeId;
   setTheme: (theme: GateThemeId) => void;
   onSignIn: (email: string, password: string) => Promise<void>;
-  onSignUp: (email: string, password: string) => Promise<void>;
+  onSignUp: (
+    email: string,
+    password: string,
+    fullName: string,
+  ) => Promise<void>;
   onMagicLink: (email: string) => Promise<void>;
   onResetPassword: (email: string) => Promise<void>;
 };
 
 /**
- * Acceso Donexto — layout de producto serio: marca + formulario centrado.
+ * Acceso Donexto — cuenta de producto (no buzón Gmail/Yahoo).
  * Mobile: formulario primero. Desktop: split marca | acceso.
  */
 export function LoginScreen({
@@ -41,6 +49,7 @@ export function LoginScreen({
   onMagicLink,
   onResetPassword,
 }: LoginScreenProps) {
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -72,21 +81,28 @@ export function LoginScreen({
     setError(null);
     setMessage(null);
 
+    const cleanName = fullName.trim().replace(/\s+/g, " ");
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail.includes("@")) {
       setError("Escribe el correo de tu cuenta Donexto.");
       return;
     }
+    if (mode === "signup" && cleanName.length < 2) {
+      setError("Escribe tu nombre completo para la cuenta Donexto.");
+      return;
+    }
     if (password.length < 8) {
-      setError("La contraseña usa al menos 8 caracteres.");
+      setError(
+        "La contraseña de tu cuenta Donexto usa al menos 8 caracteres.",
+      );
       return;
     }
 
     setBusy(true);
     try {
       if (mode === "signup") {
-        await onSignUp(cleanEmail, password);
-        setMessage("Cuenta creada. Ya puedes usar la app.");
+        await onSignUp(cleanEmail, password, cleanName);
+        setMessage("Cuenta Donexto creada. Ya puedes usar la app.");
       } else {
         await onSignIn(cleanEmail, password);
       }
@@ -95,8 +111,8 @@ export function LoginScreen({
         requestError instanceof Error
           ? requestError.message
           : mode === "signup"
-            ? "No fue posible crear la cuenta."
-            : "No fue posible iniciar sesión.",
+            ? "No fue posible crear la cuenta Donexto."
+            : "No fue posible iniciar sesión en Donexto.",
       );
     } finally {
       setBusy(false);
@@ -106,7 +122,7 @@ export function LoginScreen({
   async function magicLink() {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail.includes("@")) {
-      setError("Escribe primero tu correo Donexto.");
+      setError("Escribe primero el correo de tu cuenta Donexto.");
       return;
     }
     setBusy(true);
@@ -115,7 +131,7 @@ export function LoginScreen({
     try {
       await onMagicLink(cleanEmail);
       setMessage(
-        "Revisa tu correo: enviamos un enlace para entrar sin contraseña.",
+        "Revisa tu correo: enviamos un enlace para entrar a Donexto sin contraseña.",
       );
     } catch (requestError) {
       setError(
@@ -131,7 +147,7 @@ export function LoginScreen({
   async function recover() {
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail.includes("@")) {
-      setError("Escribe primero tu correo Donexto.");
+      setError("Escribe primero el correo de tu cuenta Donexto.");
       return;
     }
     setBusy(true);
@@ -140,7 +156,7 @@ export function LoginScreen({
     try {
       await onResetPassword(cleanEmail);
       setMessage(
-        "Enviamos un enlace para restablecer la contraseña de Donexto.",
+        "Enviamos un enlace para restablecer la contraseña de tu cuenta Donexto.",
       );
     } catch (requestError) {
       setError(
@@ -158,30 +174,28 @@ export function LoginScreen({
       <aside className="dx-auth__brand" aria-label="Donexto">
         <div className="dx-auth__brand-inner">
           <div className="dx-auth__logo">
-            <span className="dx-auth__mark" aria-hidden>
-              D
-            </span>
-            <div>
-              <p className="dx-auth__name">Donexto</p>
-              <p className="dx-auth__slogan">Do Next To…</p>
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className="dx-auth__logo-img"
+              src="/brand/donexto-logo-official.png"
+              width={220}
+              height={220}
+              alt="Donexto — Do Next To…"
+            />
           </div>
 
           <h1 className="dx-auth__headline">
             Lo que requiere atención en tu correo
           </h1>
-          <p className="dx-auth__sub">
-            Prioridades y respuestas, sin el caos de la bandeja. El buzón Gmail
-            o Yahoo se conecta después del acceso.
-          </p>
+          <p className="dx-auth__sub">{ACCOUNT_VS_MAILBOX.brandSub}</p>
 
           <figure className="dx-auth__visual">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/donexto-hero.png"
+              src="/brand/donexto-logo-official-hero.png"
               alt=""
               width={720}
-              height={720}
+              height={405}
               decoding="async"
             />
           </figure>
@@ -189,15 +203,39 @@ export function LoginScreen({
       </aside>
 
       <section className="dx-auth__access">
+        <div className="dx-auth__mobile-hero" aria-hidden={false}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="dx-auth__mobile-hero-logo"
+            src="/brand/donexto-logo-official.png"
+            width={112}
+            height={112}
+            alt="Donexto — Do Next To…"
+            decoding="async"
+          />
+          <p className="dx-auth__mobile-hero-name">Donexto</p>
+          <p className="dx-auth__mobile-hero-slogan">Do Next To…</p>
+        </div>
+
         <div className="dx-auth__card">
           <header className="dx-auth__card-head">
-            <p className="dx-auth__card-brand">Donexto</p>
-            <h2 id="dx-auth-title">
-              {mode === "signup" ? "Crear cuenta" : "Iniciar sesión"}
-            </h2>
-            <p className="dx-auth__card-note">
-              Usa tu cuenta Donexto (no es la contraseña de Gmail ni Yahoo).
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className="dx-auth__card-logo"
+              src="/brand/donexto-logo-official.png"
+              width={56}
+              height={56}
+              alt=""
+            />
+            <p className="dx-auth__card-brand">
+              {ACCOUNT_VS_MAILBOX.loginEyebrow}
             </p>
+            <h2 id="dx-auth-title">
+              {mode === "signup"
+                ? ACCOUNT_VS_MAILBOX.loginTitleSignUp
+                : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
+            </h2>
+            <AccountVsMailboxHint variant="login" />
           </header>
 
           <div className="dx-auth__mode">
@@ -236,8 +274,28 @@ export function LoginScreen({
               noValidate
               aria-labelledby="dx-auth-title"
             >
+              {mode === "signup" ? (
+                <label className="dx-auth__field">
+                  <span>{ACCOUNT_VS_MAILBOX.signupFullNameLabel}</span>
+                  <div className="dx-auth__control">
+                    <User size={18} aria-hidden />
+                    <input
+                      type="text"
+                      name="full_name"
+                      value={fullName}
+                      autoComplete="name"
+                      autoCapitalize="words"
+                      spellCheck={false}
+                      placeholder="Nombre y apellido"
+                      disabled={busy}
+                      onChange={(event) => setFullName(event.target.value)}
+                    />
+                  </div>
+                </label>
+              ) : null}
+
               <label className="dx-auth__field">
-                <span>Correo</span>
+                <span>{ACCOUNT_VS_MAILBOX.loginEmailLabel}</span>
                 <div className="dx-auth__control">
                   <Mail size={18} aria-hidden />
                   <input
@@ -257,7 +315,7 @@ export function LoginScreen({
               </label>
 
               <label className="dx-auth__field">
-                <span>Contraseña</span>
+                <span>{ACCOUNT_VS_MAILBOX.loginPasswordLabel}</span>
                 <div className="dx-auth__control">
                   <KeyRound size={18} aria-hidden />
                   <input
@@ -269,7 +327,7 @@ export function LoginScreen({
                     }
                     autoCapitalize="none"
                     spellCheck={false}
-                    placeholder="Mínimo 8 caracteres"
+                    placeholder="Mínimo 8 caracteres · Donexto"
                     disabled={busy}
                     onChange={(event) => setPassword(event.target.value)}
                   />
@@ -313,9 +371,9 @@ export function LoginScreen({
                     {mode === "signup" ? "Creando…" : "Entrando…"}
                   </>
                 ) : mode === "signup" ? (
-                  "Crear cuenta"
+                  "Crear cuenta Donexto"
                 ) : (
-                  "Continuar"
+                  "Entrar a Donexto"
                 )}
               </button>
 
@@ -328,7 +386,7 @@ export function LoginScreen({
                   setError(null);
                 }}
               >
-                Olvidé mi contraseña u otras opciones
+                Olvidé mi contraseña Donexto u otras opciones
               </button>
             </form>
           ) : (
@@ -341,11 +399,12 @@ export function LoginScreen({
                   setError(null);
                 }}
               >
-                ← Volver al acceso
+                ← Volver al acceso Donexto
               </button>
 
               <p className="dx-auth__help-text">
-                Usa el mismo correo. No pedimos la contraseña de Gmail ni Yahoo.
+                Usa el correo de tu cuenta Donexto. No pedimos la contraseña de
+                Gmail ni Yahoo aquí.
               </p>
 
               {error ? (
@@ -368,7 +427,7 @@ export function LoginScreen({
                 onClick={() => void magicLink()}
               >
                 <Mail size={18} />
-                Enviarme enlace de acceso
+                Enviarme enlace de acceso Donexto
               </button>
 
               <button
@@ -377,14 +436,14 @@ export function LoginScreen({
                 disabled={busy}
                 onClick={() => void recover()}
               >
-                Restablecer contraseña
+                Restablecer contraseña Donexto
               </button>
             </div>
           )}
 
           <footer className="dx-auth__foot">
             <ShieldCheck size={16} aria-hidden />
-            <span>Acceso seguro · acceso independiente del buzón</span>
+            <span>{ACCOUNT_VS_MAILBOX.loginFoot}</span>
           </footer>
         </div>
 

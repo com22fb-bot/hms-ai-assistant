@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Donexto monograma">
+  <title>Donexto</title>
+  <rect width="64" height="64" rx="14" fill="#0c8a80"/>
+  <g
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="5.25"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <circle cx="31" cy="30" r="13.5"/>
+    <path d="M44.5 16.5 V44"/>
+    <path d="M44.5 44
+             C50 46.5 53.5 51 53.5 55.5
+             C53.5 55.5 53.2 57 51.5 57
+             C48 57 44 54.5 40.5 51"/>
+  </g>
+  <circle
+    cx="31"
+    cy="30"
+    r="5.5"
+    fill="none"
+    stroke="rgba(255,255,255,0.55)"
+    stroke-width="2.75"
+  />
+</svg>

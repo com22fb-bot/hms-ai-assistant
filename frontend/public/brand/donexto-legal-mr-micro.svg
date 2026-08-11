@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" role="img" aria-label="Donexto � � HMSR � MR">
+  <title>Donexto  Do Next To& � � HMSR � MR � H�ctor M. Salcido Roacho</title>
+  <!--
+    Layout de referencia para marketing:
+    - Logo principal = usa PNG 3d-v2 / official renders
+    - Legal micro: inferior derecha, MR = marca registrada (ES)
+  -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a1830"/>
+      <stop offset="100%" stop-color="#02060c"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <text x="80" y="80" fill="#5ecfc4" font-family="system-ui,sans-serif" font-size="22" font-weight="600" letter-spacing="0.12em">DONEXTO � PLANTILLA LEGAL</text>
+  <text x="80" y="140" fill="#9db0b7" font-family="system-ui,sans-serif" font-size="18">Usar con el PNG: donexto-at-D-like-a-3d-v2.png / donexto-official-*.png</text>
+  <text x="80" y="200" fill="#9db0b7" font-family="system-ui,sans-serif" font-size="18">Efecto visual: glossy 3D dark � rim light azul (estilo keynote / iconos premium)</text>
+
+  <!-- micro legal bottom-right -->
+  <text
+    x="1560" y="850"
+    text-anchor="end"
+    font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+    font-size="11"
+    font-weight="600"
+    letter-spacing="0.14em"
+    fill="#8aa4b5"
+  >� HMSR � MR</text>
+  <text
+    x="1560" y="872"
+    text-anchor="end"
+    font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+    font-size="10"
+    font-weight="500"
+    letter-spacing="0.04em"
+    fill="#6a8294"
+  >H�ctor M. Salcido Roacho � Marca registrada</text>
+</svg>

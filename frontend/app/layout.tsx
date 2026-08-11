@@ -22,6 +22,14 @@ export const metadata: Metadata = {
   title: "Donexto — Do Next To…",
   description:
     "Do Next To…: prioridades, dinero y respuestas — antes del caos de la bandeja. donexto.com",
+  icons: {
+    icon: [
+      { url: "/brand/donexto-logo-official.png", type: "image/png" },
+      { url: "/brand/donexto-mark.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico" },
+    ],
+    apple: "/brand/donexto-logo-official.png",
+  },
 };
 
 export const viewport: Viewport = {
