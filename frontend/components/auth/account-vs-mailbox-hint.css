@@ -19,7 +19,8 @@
 }
 
 .dx-avm-hint--login {
-  margin-top: 0.35rem;
+  margin-top: 0.15rem;
+  margin-bottom: 0;
 }
 
 .dx-avm-hint--connect {

@@ -38,8 +38,8 @@ type LoginScreenProps = {
 };
 
 /**
- * Acceso Donexto — cuenta de producto (no buzón Gmail/Yahoo).
- * Mobile: formulario primero. Desktop: split marca | acceso.
+ * Acceso Donexto — una sola composición (sin split).
+ * Marca tipográfica: "Donexto" + slogan. Sin monogramas inventados ni sobres.
  */
 export function LoginScreen({
   theme,
@@ -171,80 +171,16 @@ export function LoginScreen({
 
   return (
     <main className="dx-auth" data-theme={theme}>
-      <aside className="dx-auth__brand" aria-label="Donexto">
-        <div className="dx-auth__brand-inner">
-          {/* Marca primero: monograma discreto + nombre grande (nunca sobres como héroe) */}
-          <div className="dx-auth__logo">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              className="dx-auth__mark-img"
-              src="/brand/donexto-mark.svg"
-              width={72}
-              height={72}
-              alt=""
-            />
-            <div className="dx-auth__wordmark">
-              <p className="dx-auth__name">Donexto</p>
-              <p className="dx-auth__slogan">Do Next To…</p>
-            </div>
-          </div>
-
-          <h1 className="dx-auth__headline">
+      <div className="dx-auth__shell">
+        <header className="dx-auth__brandhead">
+          <p className="dx-auth__name">Donexto</p>
+          <p className="dx-auth__slogan">Do Next To…</p>
+          <p className="dx-auth__tagline">
             Lo que requiere atención en tu correo
-          </h1>
-          <p className="dx-auth__sub">{ACCOUNT_VS_MAILBOX.brandSub}</p>
-
-          <p className="dx-auth__trust">
-            Acceso a la cuenta Donexto · el buzón se conecta después
           </p>
-          <p className="dx-auth__legal">
-            © HMSR · MR
-            <span>Héctor M. Salcido Roacho</span>
-          </p>
-        </div>
-      </aside>
+        </header>
 
-      <section className="dx-auth__access">
-        <div className="dx-auth__mobile-hero" aria-hidden={false}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            className="dx-auth__mobile-hero-logo"
-            src="/brand/donexto-mark.svg"
-            width={56}
-            height={56}
-            alt=""
-            decoding="async"
-          />
-          <p className="dx-auth__mobile-hero-name">Donexto</p>
-          <p className="dx-auth__mobile-hero-slogan">Do Next To…</p>
-        </div>
-
-        <div className="dx-auth__card">
-          <header className="dx-auth__card-head">
-            <div className="dx-auth__card-brandrow">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                className="dx-auth__card-logo"
-                src="/brand/donexto-mark.svg"
-                width={40}
-                height={40}
-                alt=""
-              />
-              <div>
-                <p className="dx-auth__card-brand">Donexto</p>
-                <p className="dx-auth__card-eyebrow">
-                  {ACCOUNT_VS_MAILBOX.loginEyebrow}
-                </p>
-              </div>
-            </div>
-            <h2 id="dx-auth-title">
-              {mode === "signup"
-                ? ACCOUNT_VS_MAILBOX.loginTitleSignUp
-                : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
-            </h2>
-            <AccountVsMailboxHint variant="login" />
-          </header>
-
+        <section className="dx-auth__panel" aria-labelledby="dx-auth-title">
           <div className="dx-auth__mode">
             <button
               type="button"
@@ -273,6 +209,13 @@ export function LoginScreen({
               Crear cuenta
             </button>
           </div>
+
+          <h1 id="dx-auth-title" className="dx-auth__title">
+            {mode === "signup"
+              ? ACCOUNT_VS_MAILBOX.loginTitleSignUp
+              : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
+          </h1>
+          <AccountVsMailboxHint variant="login" />
 
           {step === "credentials" ? (
             <form
@@ -334,7 +277,7 @@ export function LoginScreen({
                     }
                     autoCapitalize="none"
                     spellCheck={false}
-                    placeholder="Mínimo 8 caracteres · Donexto"
+                    placeholder="Mínimo 8 caracteres"
                     disabled={busy}
                     onChange={(event) => setPassword(event.target.value)}
                   />
@@ -393,7 +336,7 @@ export function LoginScreen({
                   setError(null);
                 }}
               >
-                Olvidé mi contraseña Donexto u otras opciones
+                Olvidé mi contraseña u otras opciones
               </button>
             </form>
           ) : (
@@ -406,12 +349,12 @@ export function LoginScreen({
                   setError(null);
                 }}
               >
-                ← Volver al acceso Donexto
+                ← Volver al acceso
               </button>
 
               <p className="dx-auth__help-text">
-                Usa el correo de tu cuenta Donexto. No pedimos la contraseña de
-                Gmail ni Yahoo aquí.
+                Usa el correo de tu cuenta Donexto. No pedimos aquí la
+                contraseña de Gmail ni Yahoo.
               </p>
 
               {error ? (
@@ -434,7 +377,7 @@ export function LoginScreen({
                 onClick={() => void magicLink()}
               >
                 <Mail size={18} />
-                Enviarme enlace de acceso Donexto
+                Enviarme enlace de acceso
               </button>
 
               <button
@@ -452,7 +395,12 @@ export function LoginScreen({
             <ShieldCheck size={16} aria-hidden />
             <span>{ACCOUNT_VS_MAILBOX.loginFoot}</span>
           </footer>
-        </div>
+        </section>
+
+        <p className="dx-auth__legal">
+          <span>© HMSR · MR</span>
+          <span>Héctor M. Salcido Roacho</span>
+        </p>
 
         <label className="dx-auth__theme">
           <span className="sr-only">Tema del panel después de entrar</span>
@@ -469,7 +417,7 @@ export function LoginScreen({
             <option value="midnight">Tema: Noche</option>
           </select>
         </label>
-      </section>
+      </div>
     </main>
   );
 }
