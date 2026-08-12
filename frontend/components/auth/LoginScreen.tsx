@@ -37,12 +37,13 @@ type LoginScreenProps = {
 };
 
 /**
- * Acceso Donexto — una columna, marca tipográfica, P0 en una sola línea.
- * Sin avisos duplicados ni paredes de texto antes del formulario.
+ * Gate Donexto — una composición vertical:
+ * franja de marca (logo chico + nombre) → promesa → form.
+ * Sin split vacío, sin avisos duplicados, sin “olvidé” en alta.
  */
 export function LoginScreen({
-  theme,
-  setTheme,
+  theme: _theme,
+  setTheme: _setTheme,
   onSignIn,
   onSignUp,
   onMagicLink,
@@ -168,19 +169,34 @@ export function LoginScreen({
     }
   }
 
+  const qualityLine = DONEXTO_QUALITY.quality
+    .map((item) => item.title)
+    .join(" · ");
+
   return (
-    <main className="dx-auth" data-theme={theme}>
+    <main className="dx-auth">
       <div className="dx-auth__frame">
-        <header className="dx-auth__mission">
-          <p className="dx-auth__brand">Donexto</p>
-          <p className="dx-auth__slogan">{DONEXTO_QUALITY.slogan}</p>
-          <h1 className="dx-auth__promise">{DONEXTO_QUALITY.promise}</h1>
-          <ul className="dx-auth__quality" aria-label="Política de calidad">
-            {DONEXTO_QUALITY.quality.map((item) => (
-              <li key={item.title}>{item.title}</li>
-            ))}
-          </ul>
+        <header className="dx-auth__brandbar">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="dx-auth__mark"
+            src="/brand/donexto-logo-official.png"
+            width={48}
+            height={48}
+            alt=""
+            decoding="async"
+          />
+          <div className="dx-auth__wordmark">
+            <p className="dx-auth__brand">Donexto</p>
+            <p className="dx-auth__slogan">{DONEXTO_QUALITY.slogan}</p>
+          </div>
         </header>
+
+        <div className="dx-auth__mission">
+          <h1 className="dx-auth__promise">{DONEXTO_QUALITY.promise}</h1>
+          <p className="dx-auth__mission-body">{DONEXTO_QUALITY.mission}</p>
+          <p className="dx-auth__pillars">{qualityLine}</p>
+        </div>
 
         <section className="dx-auth__access" aria-labelledby="dx-auth-title">
           <div className="dx-auth__mode" role="tablist" aria-label="Modo de acceso">
@@ -221,10 +237,7 @@ export function LoginScreen({
               ? ACCOUNT_VS_MAILBOX.loginTitleSignUp
               : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
           </h2>
-          <p className="dx-auth__boundary">
-            Cuenta Donexto ≠ buzón. Gmail o Yahoo se conectan después; esta
-            contraseña no es la del correo.
-          </p>
+          <p className="dx-auth__boundary">{DONEXTO_QUALITY.boundary}</p>
 
           {step === "credentials" ? (
             <form
@@ -332,17 +345,19 @@ export function LoginScreen({
                 )}
               </button>
 
-              <button
-                type="button"
-                className="dx-auth__link"
-                disabled={busy}
-                onClick={() => {
-                  setStep("help");
-                  setError(null);
-                }}
-              >
-                Olvidé mi contraseña u otras opciones
-              </button>
+              {mode === "signin" ? (
+                <button
+                  type="button"
+                  className="dx-auth__link"
+                  disabled={busy}
+                  onClick={() => {
+                    setStep("help");
+                    setError(null);
+                  }}
+                >
+                  Olvidé mi contraseña u otras opciones
+                </button>
+              ) : null}
             </form>
           ) : (
             <div className="dx-auth__help">
@@ -401,21 +416,6 @@ export function LoginScreen({
             <span>© HMSR · MR</span>
             <span>Héctor M. Salcido Roacho</span>
           </p>
-          <label className="dx-auth__theme">
-            <span className="sr-only">Tema del panel después de entrar</span>
-            <select
-              value={theme}
-              onChange={(event) =>
-                setTheme(event.target.value as GateThemeId)
-              }
-              aria-label="Tema del panel"
-            >
-              <option value="accessible">Tema: Confianza</option>
-              <option value="graphite">Tema: Grafito</option>
-              <option value="aurora">Tema: Cielo</option>
-              <option value="midnight">Tema: Noche</option>
-            </select>
-          </label>
         </footer>
       </div>
     </main>
