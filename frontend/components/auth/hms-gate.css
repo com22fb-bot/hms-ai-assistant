@@ -1,7 +1,6 @@
 /*
-  Donexto auth — pantalla de acceso de calidad.
-  Una composición. Misión + compromisos + formulario.
-  Sin split vacío. Sin monogramas ni sobres en el gate.
+  Donexto auth — acceso limpio.
+  Marca + 3 chips de calidad + formulario. Sin avisos duplicados.
 */
 
 .dx-auth {
@@ -28,18 +27,18 @@
   display: grid;
   place-items: center;
   padding:
-    max(0.65rem, env(safe-area-inset-top))
+    max(0.75rem, env(safe-area-inset-top))
     1rem
-    max(0.65rem, env(safe-area-inset-bottom));
+    max(0.75rem, env(safe-area-inset-bottom));
   font-family: var(--dx-font);
   color: var(--dx-ink);
   background:
     radial-gradient(
-      ellipse 100% 60% at 50% -8%,
-      rgba(12, 138, 128, 0.13),
+      ellipse 100% 55% at 50% -10%,
+      rgba(12, 138, 128, 0.12),
       transparent 55%
     ),
-    linear-gradient(180deg, #f6f8f9 0%, #e9eef0 100%);
+    linear-gradient(180deg, #f7f9fa 0%, #eef2f4 100%);
 }
 
 .dx-auth *,
@@ -49,31 +48,28 @@
 }
 
 .dx-auth__frame {
-  width: min(100%, 26.5rem);
+  width: min(100%, 26rem);
   max-height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.85rem;
   overflow: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }
 
-/* ——— Misión & calidad (parte superior de la misma composición) ——— */
 .dx-auth__mission {
   text-align: center;
   flex-shrink: 0;
-  padding: 0.1rem 0.15rem 0;
 }
 
 .dx-auth__brand {
   margin: 0;
   font-family: var(--dx-display);
-  font-size: clamp(2.2rem, 8.5vw, 2.85rem);
+  font-size: clamp(2.1rem, 8vw, 2.75rem);
   font-weight: 700;
   letter-spacing: -0.045em;
   line-height: 0.95;
-  color: var(--dx-ink);
 }
 
 .dx-auth__slogan {
@@ -85,55 +81,38 @@
 }
 
 .dx-auth__promise {
-  margin: 0.7rem 0 0;
+  margin: 0.55rem 0 0;
   font-family: var(--dx-display);
-  font-size: clamp(1.05rem, 3.6vw, 1.28rem);
+  font-size: clamp(1rem, 3.2vw, 1.15rem);
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.25;
   color: var(--dx-ink);
 }
 
-.dx-auth__mission-body {
-  margin: 0.45rem auto 0;
-  max-width: 38ch;
-  font-size: 0.86rem;
-  line-height: 1.45;
-  color: var(--dx-muted);
-}
-
+/* Chips compactos — misión/calidad sin cajas pesadas */
 .dx-auth__quality {
   list-style: none;
-  margin: 0.8rem 0 0;
+  margin: 0.7rem 0 0;
   padding: 0;
-  display: grid;
-  gap: 0.4rem;
-  text-align: left;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.35rem;
 }
 
 .dx-auth__quality li {
-  display: grid;
-  gap: 0.08rem;
-  padding: 0.5rem 0.65rem;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(213, 224, 228, 0.9);
-}
-
-.dx-auth__quality strong {
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.01em;
+  margin: 0;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--dx-line);
+  background: rgba(255, 255, 255, 0.85);
+  font-size: 0.72rem;
+  font-weight: 650;
   color: var(--dx-teal-deep);
+  line-height: 1.2;
 }
 
-.dx-auth__quality span {
-  font-size: 0.78rem;
-  line-height: 1.35;
-  color: var(--dx-muted);
-}
-
-/* ——— Acceso ——— */
 .dx-auth__access {
   background: var(--dx-surface);
   border: 1px solid var(--dx-line);
@@ -179,7 +158,7 @@
 }
 
 .dx-auth__boundary {
-  margin: 0.4rem 0 0;
+  margin: 0.35rem 0 0;
   font-size: 0.8rem;
   line-height: 1.4;
   color: var(--dx-muted);
@@ -188,7 +167,7 @@
 .dx-auth__form,
 .dx-auth__help {
   display: grid;
-  gap: 0.72rem;
+  gap: 0.7rem;
   margin-top: 0.85rem;
 }
 
@@ -338,18 +317,10 @@
 
 .dx-auth__footer {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.4rem;
   justify-items: center;
   text-align: center;
   flex-shrink: 0;
-}
-
-.dx-auth__standard {
-  margin: 0;
-  max-width: 40ch;
-  font-size: 0.72rem;
-  line-height: 1.4;
-  color: var(--dx-soft);
 }
 
 .dx-auth__legal {
@@ -396,32 +367,9 @@
   border: 0;
 }
 
-/* Pantallas bajas: primero el acceso; misión se reduce */
-@media (max-height: 760px) {
-  .dx-auth__mission-body {
-    display: none;
-  }
-
-  .dx-auth__quality li span {
-    display: none;
-  }
-
-  .dx-auth__quality li {
-    padding: 0.4rem 0.55rem;
-  }
-
-  .dx-auth__standard {
-    display: none;
-  }
-}
-
-@media (max-height: 640px) {
+@media (max-height: 720px) {
   .dx-auth__quality {
     display: none;
-  }
-
-  .dx-auth__promise {
-    font-size: 1rem;
   }
 
   .dx-auth__theme {
@@ -429,9 +377,8 @@
   }
 }
 
-@media (max-height: 540px) {
-  .dx-auth__promise,
-  .dx-auth__slogan {
+@media (max-height: 600px) {
+  .dx-auth__promise {
     display: none;
   }
 
@@ -440,22 +387,20 @@
   }
 }
 
-/* Escritorio: misma columna, un poco más de aire — sin desperdiciar mitad de pantalla */
 @media (min-width: 900px) {
   .dx-auth__frame {
-    width: min(100%, 28rem);
-    gap: 0.9rem;
+    width: min(100%, 27rem);
   }
 
   .dx-auth__brand {
-    font-size: 3rem;
+    font-size: 2.85rem;
   }
 
   .dx-auth__access {
-    padding: 1.25rem 1.3rem 1.1rem;
+    padding: 1.2rem 1.25rem 1.1rem;
     box-shadow:
       0 1px 2px rgba(15, 28, 34, 0.04),
-      0 12px 32px rgba(15, 28, 34, 0.06);
+      0 12px 28px rgba(15, 28, 34, 0.06);
   }
 }
 

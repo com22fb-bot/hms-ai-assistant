@@ -15,7 +15,6 @@ import { FormEvent, useEffect, useState } from "react";
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
 
-import { AccountVsMailboxHint } from "./AccountVsMailboxHint";
 import "./hms-gate.css";
 
 export type GateThemeId =
@@ -38,8 +37,8 @@ type LoginScreenProps = {
 };
 
 /**
- * Acceso Donexto desde cero: misión + política de calidad visibles,
- * una sola composición, marca tipográfica (sin logos inventados).
+ * Acceso Donexto — una columna, marca tipográfica, P0 en una sola línea.
+ * Sin avisos duplicados ni paredes de texto antes del formulario.
  */
 export function LoginScreen({
   theme,
@@ -176,14 +175,9 @@ export function LoginScreen({
           <p className="dx-auth__brand">Donexto</p>
           <p className="dx-auth__slogan">{DONEXTO_QUALITY.slogan}</p>
           <h1 className="dx-auth__promise">{DONEXTO_QUALITY.promise}</h1>
-          <p className="dx-auth__mission-body">{DONEXTO_QUALITY.mission}</p>
-
           <ul className="dx-auth__quality" aria-label="Política de calidad">
             {DONEXTO_QUALITY.quality.map((item) => (
-              <li key={item.title}>
-                <strong>{item.title}</strong>
-                <span>{item.line}</span>
-              </li>
+              <li key={item.title}>{item.title}</li>
             ))}
           </ul>
         </header>
@@ -227,8 +221,10 @@ export function LoginScreen({
               ? ACCOUNT_VS_MAILBOX.loginTitleSignUp
               : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
           </h2>
-          <p className="dx-auth__boundary">{DONEXTO_QUALITY.boundary}</p>
-          <AccountVsMailboxHint variant="login" />
+          <p className="dx-auth__boundary">
+            Cuenta Donexto ≠ buzón. Gmail o Yahoo se conectan después; esta
+            contraseña no es la del correo.
+          </p>
 
           {step === "credentials" ? (
             <form
@@ -362,8 +358,7 @@ export function LoginScreen({
               </button>
 
               <p className="dx-auth__help-text">
-                Usa el correo de tu <strong>cuenta Donexto</strong>. No es la
-                contraseña de Gmail ni Yahoo; el buzón se conecta después.
+                Usa el correo de tu cuenta Donexto. El buzón se conecta después.
               </p>
 
               {error ? (
@@ -402,7 +397,6 @@ export function LoginScreen({
         </section>
 
         <footer className="dx-auth__footer">
-          <p className="dx-auth__standard">{DONEXTO_QUALITY.standard}</p>
           <p className="dx-auth__legal">
             <span>© HMSR · MR</span>
             <span>Héctor M. Salcido Roacho</span>
