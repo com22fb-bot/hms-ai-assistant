@@ -15,6 +15,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
 
+import { AccountVsMailboxHint } from "./AccountVsMailboxHint";
 import "./hms-gate.css";
 
 export type GateThemeId =
@@ -227,6 +228,7 @@ export function LoginScreen({
               : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
           </h2>
           <p className="dx-auth__boundary">{DONEXTO_QUALITY.boundary}</p>
+          <AccountVsMailboxHint variant="login" />
 
           {step === "credentials" ? (
             <form

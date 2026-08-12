@@ -3,6 +3,9 @@
 import { LoaderCircle, Mail, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
+import { AccountVsMailboxHint } from "@/components/auth/AccountVsMailboxHint";
+import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
+
 import "./mailbox-connect.css";
 
 type ProviderChoice = "choose" | "yahoo";
@@ -94,13 +97,13 @@ export function MailboxConnectModal({
           <div>
             <strong>
               {step === "choose"
-                ? "¿Qué correo quieres cargar?"
-                : "Inicia sesión en Yahoo"}
+                ? ACCOUNT_VS_MAILBOX.connectChooserTitle
+                : ACCOUNT_VS_MAILBOX.connectYahooTitle}
             </strong>
             <p>
               {step === "choose"
-                ? "Elige Gmail o Yahoo. Puede ser cualquier cuenta, no tiene que ser la de Donexto."
-                : "Usa tu correo Yahoo y una contraseña de aplicación (IMAP)."}
+                ? ACCOUNT_VS_MAILBOX.connectChooserBody
+                : ACCOUNT_VS_MAILBOX.connectYahooBody}
             </p>
           </div>
           {!(required && step === "choose") ? (
@@ -125,6 +128,8 @@ export function MailboxConnectModal({
         </header>
 
         <div className="dx-connect-body">
+          <AccountVsMailboxHint variant="connect" />
+
           {localError && step === "choose" ? (
             <div className="dx-connect-error" role="alert">
               {localError}
@@ -152,8 +157,7 @@ export function MailboxConnectModal({
                 )}
               </button>
               <p className="dx-connect-hint">
-                Te llevamos a la página oficial de Google para iniciar sesión y
-                autorizar Donexto.
+                {ACCOUNT_VS_MAILBOX.connectGoogleHint}
               </p>
 
               <button
@@ -168,9 +172,18 @@ export function MailboxConnectModal({
                 Yahoo Mail
               </button>
               <p className="dx-connect-hint">
-                Luego te pedimos el correo y la contraseña de aplicación de
-                Yahoo (IMAP).
+                {ACCOUNT_VS_MAILBOX.connectYahooChooserHint}
               </p>
+              {required ? (
+                <button
+                  type="button"
+                  className="dx-connect-link"
+                  disabled={connectingGoogle || connectingYahoo}
+                  onClick={onClose}
+                >
+                  Ver la app y conectar el buzón después
+                </button>
+              ) : null}
             </>
           ) : (
             <form
@@ -218,7 +231,7 @@ export function MailboxConnectModal({
               </button>
 
               <label htmlFor="dx-yahoo-mailbox-email">
-                Correo Yahoo
+                Correo del buzón Yahoo
                 <input
                   id="dx-yahoo-mailbox-email"
                   name="dx_yahoo_mailbox_email"
@@ -238,7 +251,7 @@ export function MailboxConnectModal({
                 />
               </label>
               <label htmlFor="dx-yahoo-app-password">
-                Contraseña de aplicación
+                {ACCOUNT_VS_MAILBOX.connectYahooAppPasswordLabel}
                 <input
                   id="dx-yahoo-app-password"
                   name="dx_yahoo_app_password"
@@ -266,7 +279,8 @@ export function MailboxConnectModal({
                 </a>
                 . 2) Verificación en 2 pasos. 3) Conexiones externas → Crear
                 contraseña de aplicación → nombre <strong>Donexto</strong>. 4)
-                Pega aquí el código de ~16 caracteres (no la contraseña normal).
+                Pega aquí el código de ~16 caracteres (no la contraseña de
+                Yahoo ni la de Donexto).
               </p>
               {localError ? (
                 <div className="dx-connect-error" role="alert">
@@ -284,11 +298,12 @@ export function MailboxConnectModal({
                     Verificando Yahoo…
                   </>
                 ) : (
-                  "Verificar y conectar Yahoo"
+                  "Verificar y conectar buzón Yahoo"
                 )}
               </button>
             </form>
-          )}        </div>
+          )}
+        </div>
       </section>
     </div>
   );

@@ -142,6 +142,25 @@
   padding: 0;
 }
 
+.dx-connect-link {
+  border: 0;
+  background: transparent;
+  color: #9db9c2;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  padding: 0.35rem 0.25rem;
+}
+
+.dx-connect-link:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
 .dx-connect-honeypot {
   position: absolute;
   left: -10000px;

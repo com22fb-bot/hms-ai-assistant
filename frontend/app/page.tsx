@@ -1557,6 +1557,7 @@ function Dashboard({
             connectingYahoo={connectingYahoo}
             required={!connection?.connected}
             onClose={() => {
+              // P0: cerrar modal; el home sin buzón sigue con CTA Paso 2.
               setMailboxPickerOpen(false);
               setMailboxPickerDismissed(true);
             }}

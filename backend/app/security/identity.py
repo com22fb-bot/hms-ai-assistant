@@ -76,7 +76,7 @@ def _extract_bearer_token(request: Request) -> str:
             status_code=401,
             detail={
                 "status": "unauthorized",
-                "message": "Falta la sesión de la cuenta HMS.",
+                "message": "Falta la sesión de la cuenta Donexto.",
             },
         )
 
@@ -131,7 +131,7 @@ def authenticate_request(request: Request) -> AuthenticatedUser:
             status_code=401,
             detail={
                 "status": "unauthorized",
-                "message": "Supabase no devolvió una identidad HMS completa.",
+                "message": "Supabase no devolvió una identidad Donexto completa.",
             },
         )
 
@@ -142,7 +142,7 @@ def authenticate_request(request: Request) -> AuthenticatedUser:
             status_code=401,
             detail={
                 "status": "unauthorized",
-                "message": "El identificador interno de la cuenta HMS no es válido.",
+                "message": "El identificador interno de la cuenta Donexto no es válido.",
             },
         ) from error
 
@@ -173,9 +173,20 @@ def _ensure_profile(user: AuthenticatedUser) -> dict[str, Any]:
                 status_code=403,
                 detail={
                     "status": "forbidden",
-                    "message": "La cuenta HMS está desactivada.",
+                    "message": "La cuenta Donexto está desactivada.",
                 },
             )
+        # P0: sincronizar nombre desde metadata de Auth si el perfil nació vacío.
+        existing_name = str(profile.get("full_name") or "").strip()
+        if user.full_name and not existing_name:
+            updated = _first_row(
+                client.table("profiles")
+                .update({"full_name": user.full_name})
+                .eq("id", user.id)
+                .execute()
+            )
+            if updated:
+                return updated
         return profile
 
     payload = {
@@ -196,7 +207,7 @@ def _ensure_profile(user: AuthenticatedUser) -> dict[str, Any]:
             detail={
                 "status": "identity_not_ready",
                 "message": (
-                    "No fue posible preparar el perfil HMS. "
+                    "No fue posible preparar el perfil Donexto. "
                     "Aplica primero la migración de identidad."
                 ),
             },
@@ -344,7 +355,7 @@ def resolve_workspace_context(
                 detail={
                     "status": "forbidden",
                     "message": (
-                        "La cuenta HMS no pertenece al espacio de trabajo "
+                        "La cuenta Donexto no pertenece al espacio de trabajo "
                         "solicitado."
                     ),
                 },
@@ -359,7 +370,7 @@ def resolve_workspace_context(
             status_code=403,
             detail={
                 "status": "workspace_required",
-                "message": "La membresía HMS no contiene un workspace válido.",
+                "message": "La membresía Donexto no contiene un workspace válido.",
             },
         )
 
@@ -377,7 +388,7 @@ def resolve_workspace_context(
             status_code=403,
             detail={
                 "status": "workspace_unavailable",
-                "message": "El espacio de trabajo HMS no está activo.",
+                "message": "El espacio de trabajo Donexto no está activo.",
             },
         )
 
@@ -397,7 +408,7 @@ def resolve_workspace_context(
     return WorkspaceContext(
         user=user,
         workspace_id=workspace_id,
-        workspace_name=str(workspace.get("name") or "Espacio HMS"),
+        workspace_name=str(workspace.get("name") or "Espacio Donexto"),
         membership_role=str(membership.get("role") or "viewer"),
         google_account=google_account,
     )
@@ -440,8 +451,9 @@ def require_google_account() -> tuple[WorkspaceContext, dict[str, Any]]:
                 "status": "mailbox_required",
                 "connected": False,
                 "message": (
-                    "La cuenta HMS no tiene un buzón de correo conectado "
-                    "en este espacio de trabajo (Gmail o Yahoo)."
+                    "La cuenta Donexto no tiene un buzón de correo conectado "
+                    "en este espacio de trabajo (Gmail o Yahoo). "
+                    "Completa el Paso 2: conectar buzón (no es el login Donexto)."
                 ),
                 "start_url": "/auth/google/start",
             },
