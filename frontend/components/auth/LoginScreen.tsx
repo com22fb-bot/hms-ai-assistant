@@ -14,6 +14,7 @@ import { FormEvent, useEffect, useState } from "react";
 
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
+import type { SignUpResult } from "@/hooks/useAppAuth";
 
 import "./hms-gate.css";
 
@@ -31,7 +32,8 @@ type LoginScreenProps = {
     email: string,
     password: string,
     fullName: string,
-  ) => Promise<void>;
+  ) => Promise<SignUpResult>;
+  onResendSignupEmail?: (email: string) => Promise<void>;
   onMagicLink: (email: string) => Promise<void>;
   onResetPassword: (email: string) => Promise<void>;
 };
@@ -46,6 +48,7 @@ export function LoginScreen({
   setTheme: _setTheme,
   onSignIn,
   onSignUp,
+  onResendSignupEmail,
   onMagicLink,
   onResetPassword,
 }: LoginScreenProps) {
@@ -58,6 +61,8 @@ export function LoginScreen({
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [step, setStep] = useState<"credentials" | "help">("credentials");
+  /** Alta hecha: bloquea reenvíos múltiples del formulario */
+  const [signupDone, setSignupDone] = useState(false);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -78,6 +83,9 @@ export function LoginScreen({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (busy || signupDone) {
+      return;
+    }
     setError(null);
     setMessage(null);
 
@@ -101,7 +109,21 @@ export function LoginScreen({
     setBusy(true);
     try {
       if (mode === "signup") {
-        await onSignUp(cleanEmail, password, cleanName);
+        const result = await onSignUp(cleanEmail, password, cleanName);
+        if (result.kind === "already_registered") {
+          setError(
+            "Ya existe una cuenta Donexto con ese correo. Entra o recupera tu contraseña.",
+          );
+          return;
+        }
+        if (result.kind === "confirm_email") {
+          setSignupDone(true);
+          setMessage(
+            `Cuenta creada. Revisa ${cleanEmail} (bandeja y spam) y confirma el enlace. Luego vuelve aquí y entra.`,
+          );
+          return;
+        }
+        setSignupDone(true);
         setMessage("Cuenta Donexto creada. Ya puedes usar la app.");
       } else {
         await onSignIn(cleanEmail, password);
@@ -113,6 +135,33 @@ export function LoginScreen({
           : mode === "signup"
             ? "No fue posible crear la cuenta Donexto."
             : "No fue posible iniciar sesión en Donexto.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resendConfirm() {
+    if (!onResendSignupEmail || busy) {
+      return;
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail.includes("@")) {
+      setError("Escribe el correo de tu cuenta Donexto.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await onResendSignupEmail(cleanEmail);
+      setMessage(
+        `Reenviamos el correo de confirmación a ${cleanEmail}. Revisa bandeja y spam.`,
+      );
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "No fue posible reenviar el correo de confirmación.",
       );
     } finally {
       setBusy(false);
@@ -211,6 +260,7 @@ export function LoginScreen({
                 setError(null);
                 setMessage(null);
                 setStep("credentials");
+                setSignupDone(false);
               }}
             >
               Entrar
@@ -226,6 +276,7 @@ export function LoginScreen({
                 setError(null);
                 setMessage(null);
                 setStep("credentials");
+                setSignupDone(false);
               }}
             >
               Crear cuenta
@@ -233,13 +284,64 @@ export function LoginScreen({
           </div>
 
           <h2 id="dx-auth-title" className="dx-auth__title">
-            {mode === "signup"
-              ? ACCOUNT_VS_MAILBOX.loginTitleSignUp
-              : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
+            {signupDone
+              ? "Confirma tu correo"
+              : mode === "signup"
+                ? ACCOUNT_VS_MAILBOX.loginTitleSignUp
+                : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
           </h2>
-          <p className="dx-auth__boundary">{DONEXTO_QUALITY.boundary}</p>
+          {!signupDone ? (
+            <p className="dx-auth__boundary">{DONEXTO_QUALITY.boundary}</p>
+          ) : null}
 
-          {step === "credentials" ? (
+          {signupDone ? (
+            <div className="dx-auth__done">
+              <div className="dx-auth__alert is-ok" role="status">
+                <CheckCircle2 size={18} />
+                <span>{message}</span>
+              </div>
+              {error ? (
+                <div className="dx-auth__alert is-error" role="alert">
+                  <AlertTriangle size={18} />
+                  <span>{error}</span>
+                </div>
+              ) : null}
+              {onResendSignupEmail ? (
+                <button
+                  type="button"
+                  className="dx-auth__secondary"
+                  disabled={busy}
+                  onClick={() => void resendConfirm()}
+                >
+                  {busy ? (
+                    <>
+                      <LoaderCircle className="dx-auth__spin" size={18} />
+                      Reenviando…
+                    </>
+                  ) : (
+                    <>
+                      <Mail size={18} />
+                      Reenviar correo de confirmación
+                    </>
+                  )}
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="dx-auth__submit"
+                disabled={busy}
+                onClick={() => {
+                  setSignupDone(false);
+                  setMode("signin");
+                  setStep("credentials");
+                  setMessage(null);
+                  setError(null);
+                }}
+              >
+                Ya confirmé — Entrar
+              </button>
+            </div>
+          ) : step === "credentials" ? (
             <form
               className="dx-auth__form"
               onSubmit={submit}
@@ -332,7 +434,11 @@ export function LoginScreen({
                 </div>
               ) : null}
 
-              <button type="submit" className="dx-auth__submit" disabled={busy}>
+              <button
+                type="submit"
+                className="dx-auth__submit"
+                disabled={busy || signupDone}
+              >
                 {busy ? (
                   <>
                     <LoaderCircle className="dx-auth__spin" size={18} />

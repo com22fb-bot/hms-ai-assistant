@@ -5,6 +5,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
 
+export type SignUpResult =
+  | { kind: "signed_in" }
+  | { kind: "confirm_email" }
+  | { kind: "already_registered" };
+
 type AppSession = {
   id: string;
   email: string;
@@ -146,7 +151,11 @@ export function useAppAuth() {
   );
 
   const signUp = useCallback(
-    async (email: string, password: string, fullName: string) => {
+    async (
+      email: string,
+      password: string,
+      fullName: string,
+    ): Promise<SignUpResult> => {
       const cleanName = fullName.trim().replace(/\s+/g, " ");
       if (cleanName.length < 2) {
         throw new Error(
@@ -169,17 +178,35 @@ export function useAppAuth() {
         throw new Error(translateAuthError(error.message));
       }
 
-      // Si Supabase exige confirmación de email, no hay session aún.
-      if (!data.session) {
-        throw new Error(
-          "Cuenta Donexto creada. Revisa tu correo para confirmar, " +
-            "o desactiva la confirmación en Supabase Auth " +
-            "(Authentication → Providers → Email) para entrar al instante.",
-        );
+      // Supabase a veces “oculta” usuarios existentes con identities vacías.
+      const identities = data.user?.identities ?? [];
+      if (data.user && identities.length === 0) {
+        return { kind: "already_registered" };
       }
+
+      if (data.session) {
+        return { kind: "signed_in" };
+      }
+
+      // Confirmación de email activa: cuenta creada, sin sesión aún.
+      return { kind: "confirm_email" };
     },
     [],
   );
+
+  const resendSignupEmail = useCallback(async (email: string) => {
+    const cleanEmail = email.trim().toLowerCase();
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: cleanEmail,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+      },
+    });
+    if (error) {
+      throw new Error(translateAuthError(error.message));
+    }
+  }, []);
 
   const signInWithMagicLink = useCallback(
     async (email: string) => {
@@ -255,6 +282,7 @@ export function useAppAuth() {
     passwordRecovery,
     signIn,
     signUp,
+    resendSignupEmail,
     signInWithMagicLink,
     signOut,
     resetPassword,
