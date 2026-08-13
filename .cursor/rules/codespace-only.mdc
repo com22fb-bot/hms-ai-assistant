@@ -1,0 +1,12 @@
+---
+description: Donexto se desarrolla solo en GitHub Codespace, nunca en la laptop Windows.
+alwaysApply: true
+---
+
+# Entorno de trabajo — solo Codespace
+
+- **Nunca** editar, commitear, pushear ni hacer deploy desde la laptop Windows (`C:\Users\hsalc\hms-ai-assistant`).
+- Trabajo de producto, git y `npm run deploy` (siempre `cd frontend`) solo en GitHub Codespace: `/workspaces/hms-ai-assistant`.
+- Si el workspace abierto es la laptop: **parar**, pedir que abran el Codespace en Cursor, y no seguir con cambios de código aquí.
+- No copiar zips ni “pasar archivos” como flujo normal. El remoto es `com22fb-bot/hms-ai-assistant`.
+- Si hace falta Cursor en la laptop, es solo chat; el código vive en Codespace.

@@ -165,6 +165,8 @@ export default function AdminPage() {
     session,
     loading: authLoading,
     signIn,
+    signInWithGoogle,
+    signInWithProvider,
     signUp,
     resendSignupEmail,
     signInWithMagicLink,
@@ -342,6 +344,8 @@ export default function AdminPage() {
           setTheme={setTheme}
           onSignIn={signIn}
           onSignUp={signUp}
+          onSignInWithGoogle={signInWithGoogle}
+          onSignInWithProvider={signInWithProvider}
           onResendSignupEmail={resendSignupEmail}
           onMagicLink={signInWithMagicLink}
           onResetPassword={resetPassword}

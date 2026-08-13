@@ -1645,6 +1645,8 @@ export default function HomePage() {
     loading,
     passwordRecovery,
     signIn,
+    signInWithGoogle,
+    signInWithProvider,
     signUp,
     resendSignupEmail,
     signInWithMagicLink,
@@ -1685,6 +1687,8 @@ export default function HomePage() {
         setTheme={setTheme}
         onSignIn={signIn}
         onSignUp={signUp}
+        onSignInWithGoogle={signInWithGoogle}
+        onSignInWithProvider={signInWithProvider}
         onResendSignupEmail={resendSignupEmail}
         onMagicLink={signInWithMagicLink}
         onResetPassword={resetPassword}

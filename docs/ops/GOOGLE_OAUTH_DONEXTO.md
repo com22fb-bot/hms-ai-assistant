@@ -1,5 +1,7 @@
 # Google OAuth / Donexto — producción
 
+> Lectura del **buzón** Gmail (`/auth/google/*`). El alta con Google (Crear cuenta) es [SUPABASE_GOOGLE_AUTH.md](./SUPABASE_GOOGLE_AUTH.md); no mezclar los callbacks.
+
 ## Valores canónicos (Railway + Google Cloud)
 
 ```text
@@ -44,9 +46,9 @@ Esperado:
 
 ## Flujo app
 
-1. Login Donexto en https://app.donexto.com  
-2. Elegir Gmail → OAuth Google → cualquier Gmail (si app En producción)  
-3. O Yahoo → correo + contraseña de aplicación IMAP  
+1. **Paso 1 — Cuenta Donexto** en https://app.donexto.com (nombre + email + contraseña Donexto; no es Gmail/Yahoo).  
+2. **Paso 2 — Buzón a vigilar:** Gmail (OAuth) o Yahoo (app password IMAP). Puede ser otro correo que el de login.  
+3. Con buzón activo: home / clasificación. Ver [P0 Cuenta Donexto ≠ buzón](./P0-cuenta-donexto-vs-buzon.md).
 
 ## Marca
 

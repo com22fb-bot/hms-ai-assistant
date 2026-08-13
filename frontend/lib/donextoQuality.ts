@@ -3,14 +3,15 @@
  * Fuente: producto “capa de atención”, no otra bandeja.
  */
 export const DONEXTO_QUALITY = {
-  slogan: "Do Next To…",
-  whatItDoes: "Te muestra lo que requiere acción en tu correo. El resto, silencio.",
-  promise: "Lo que requiere atención en tu correo.",
+  /** Slogan principal: tarjeta de login, bajo el título Login. */
+  slogan: "Do Next To... The email that Matters",
+  /** Síntesis en el hero izquierdo (slot del viejo “Te muestra…”). */
+  whatItDoes: "El correo que te necesita. Sin el ruido.",
+  promise: "El correo que te necesita. Sin el ruido.",
   mission:
     "No somos otra bandeja. Somos la capa de atención: dinero, seguridad, paquetes y familia; silencio para el ruido promocional.",
-  /** Frontera de seguridad de producto */
-  boundary:
-    "Esta es tu cuenta Donexto. La contraseña no es la de Gmail ni Yahoo. El buzón se conecta después del acceso.",
+  /** Línea de la tarjeta de login (cuenta Donexto). */
+  boundary: "Esta es tu cuenta de Donexto.",
   /** Compromisos de calidad visibles en el acceso */
   quality: [
     {

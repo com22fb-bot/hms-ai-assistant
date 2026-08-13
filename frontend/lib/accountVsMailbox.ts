@@ -8,14 +8,32 @@ export const ACCOUNT_VS_MAILBOX = {
     "La cuenta Donexto es tu acceso a la app; el buzón es el correo (Gmail, Yahoo u otro) que vigilamos y puede ser distinto.",
 
   loginEyebrow: "Cuenta Donexto",
-  loginTitleSignIn: "Iniciar sesión",
-  loginTitleSignUp: "Crear cuenta Donexto",
-  loginEmailLabel: "Correo de cuenta Donexto",
-  loginPasswordLabel: "Contraseña de cuenta Donexto",
+  loginTitleSignIn: "Login",
+  loginTitleSignUp: "Crear cuenta",
+  loginEmailLabel: "Correo de tu cuenta",
+  loginPasswordLabel: "Contraseña",
   signupFullNameLabel: "Nombre completo",
-  loginHelper:
-    "Después del acceso conectarás el buzón a vigilar. Esta contraseña no es la de Gmail ni Yahoo.",
-  loginFoot: "Acceso seguro · independiente del buzón",
+  loginHelper: "Esta es tu cuenta de Donexto.",
+  loginFoot: "Esta es tu cuenta de Donexto.",
+  signupChooserBody:
+    "Elige el correo que vas a vigilar. Te llevamos al inicio de sesión de ese proveedor.",
+  signupHaveAccount: "Ya tengo cuenta — Entrar",
+  signupYahooTitle: "Yahoo",
+  signupYahooBody:
+    "Yahoo no tiene OAuth en Supabase. Te llevamos a Yahoo para crear la contraseña de aplicación; con eso conectamos el buzón en el Paso 2.",
+  signupYahooCta: "Te llevamos a Yahoo para crear la contraseña de aplicación",
+  signupYahooContinue:
+    "Cuando tengas la contraseña de aplicación, continúa: te enviamos un enlace a ese correo Yahoo para entrar a Donexto.",
+  signupHotmailPending:
+    "Te llevamos al inicio de sesión de Microsoft.",
+  signupApplePending:
+    "Te llevamos al inicio de sesión de Apple.",
+  signupOtherPrompt:
+    "Escribe la cuenta de correo que quieres vigilar. Si reconocemos el dominio, te llevamos a ese proveedor.",
+  signupOtherContinue: "Continuar",
+  signupOtherUnrecognized:
+    "No hay un portal OAuth de Donexto para ese dominio. Te enviamos un enlace mágico a ese correo para crear la cuenta; el buzón lo conectamos con IMAP en el Paso 2.",
+  signupOtherMagicLink: "Enviar enlace de acceso",
   brandSub:
     "Prioridades y respuestas, sin el caos de la bandeja. Gmail o Yahoo se conectan en un paso aparte, después de entrar.",
 

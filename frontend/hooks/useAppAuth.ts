@@ -10,6 +10,16 @@ export type SignUpResult =
   | { kind: "confirm_email" }
   | { kind: "already_registered" };
 
+/** Proveedores OAuth de identidad en Supabase Auth (alta / login). */
+export type AuthOAuthProvider = "google" | "azure" | "apple" | "yahoo";
+
+const OAUTH_PROVIDER_LABEL: Record<AuthOAuthProvider, string> = {
+  google: "Google",
+  azure: "Microsoft",
+  apple: "Apple",
+  yahoo: "Yahoo",
+};
+
 type AppSession = {
   id: string;
   email: string;
@@ -43,8 +53,14 @@ function mapSession(session: Session | null): AppSession | null {
   };
 }
 
-function translateAuthError(message: string): string {
+function translateAuthError(
+  message: string,
+  oauthProvider?: AuthOAuthProvider,
+): string {
   const normalized = message.toLowerCase();
+  const oauthLabel = oauthProvider
+    ? OAUTH_PROVIDER_LABEL[oauthProvider]
+    : null;
 
   if (normalized.includes("invalid login credentials")) {
     return (
@@ -85,6 +101,24 @@ function translateAuthError(message: string): string {
     return (
       "La contraseña Donexto debe tener al menos 8 caracteres " +
       "y cumplir los requisitos de seguridad."
+    );
+  }
+
+  if (
+    normalized.includes("provider is not enabled") ||
+    normalized.includes("unsupported provider")
+  ) {
+    return `Falta activar ${oauthLabel ?? "Google"} en Supabase Auth`;
+  }
+
+  if (
+    normalized.includes("unable to exchange") ||
+    normalized.includes("error getting user profile from external provider")
+  ) {
+    return (
+      `No se pudo completar el acceso con ${oauthLabel ?? "Google"}. ` +
+      "Inténtalo de nuevo. Si se repite, revisa el callback de Supabase " +
+      "en el portal de ese proveedor."
     );
   }
 
@@ -149,6 +183,31 @@ export function useAppAuth() {
     },
     [],
   );
+
+  const signInWithProvider = useCallback(
+    async (provider: AuthOAuthProvider) => {
+      // supabase-js no tipa `yahoo` como Provider de Auth.
+      if (provider === "yahoo") {
+        throw new Error("Falta activar Yahoo en Supabase Auth");
+      }
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
+
+      if (error) {
+        throw new Error(translateAuthError(error.message, provider));
+      }
+    },
+    [],
+  );
+
+  const signInWithGoogle = useCallback(async () => {
+    await signInWithProvider("google");
+  }, [signInWithProvider]);
 
   const signUp = useCallback(
     async (
@@ -281,6 +340,8 @@ export function useAppAuth() {
     loading,
     passwordRecovery,
     signIn,
+    signInWithGoogle,
+    signInWithProvider,
     signUp,
     resendSignupEmail,
     signInWithMagicLink,
