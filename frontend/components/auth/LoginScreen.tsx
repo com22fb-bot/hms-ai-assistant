@@ -8,6 +8,7 @@ import {
   KeyRound,
   LoaderCircle,
   Mail,
+  ShieldCheck,
   User,
 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
@@ -17,6 +18,7 @@ import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
 import type { SignUpResult } from "@/hooks/useAppAuth";
 
 import "./hms-gate.css";
+import "./dx-auth-neon.css";
 
 export type GateThemeId =
   | "midnight"
@@ -39,9 +41,8 @@ type LoginScreenProps = {
 };
 
 /**
- * Gate Donexto — una composición vertical:
- * franja de marca (logo chico + nombre) → promesa → form.
- * Sin split vacío, sin avisos duplicados, sin “olvidé” en alta.
+ * Gate Donexto — split en escritorio, columna en celular.
+ * Logo 3D “Do Next To…” (D, no P). Cuenta ≠ buzón.
  */
 export function LoginScreen({
   theme: _theme,
@@ -61,7 +62,6 @@ export function LoginScreen({
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [step, setStep] = useState<"credentials" | "help">("credentials");
-  /** Alta hecha: bloquea reenvíos múltiples del formulario */
   const [signupDone, setSignupDone] = useState(false);
 
   useEffect(() => {
@@ -218,36 +218,45 @@ export function LoginScreen({
     }
   }
 
-  const qualityLine = DONEXTO_QUALITY.quality
-    .map((item) => item.title)
-    .join(" · ");
+  const gateClass = [
+    "dx-auth",
+    mode === "signup" || signupDone ? "dx-auth--signup" : "",
+    step === "help" ? "dx-auth--help" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
-    <main className="dx-auth">
-      <div className="dx-auth__frame">
-        <header className="dx-auth__brandbar">
+    <main className={gateClass}>
+      <aside className="dx-auth__hero">
+        <div className="dx-auth__hero-inner">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            className="dx-auth__mark"
-            src="/brand/donexto-logo-official.png"
-            width={48}
-            height={48}
-            alt=""
+            className="dx-auth__logo"
+            src="/brand/donexto-3d-do-next-to-tile.png"
+            width={512}
+            height={512}
+            alt="Donexto — Do Next To…"
             decoding="async"
           />
-          <div className="dx-auth__wordmark">
-            <p className="dx-auth__brand">Donexto</p>
-            <p className="dx-auth__slogan">{DONEXTO_QUALITY.slogan}</p>
-          </div>
-        </header>
-
-        <div className="dx-auth__mission">
-          <h1 className="dx-auth__promise">{DONEXTO_QUALITY.promise}</h1>
-          <p className="dx-auth__mission-body">{DONEXTO_QUALITY.mission}</p>
-          <p className="dx-auth__pillars">{qualityLine}</p>
+          <p className="dx-auth__brand">Donexto</p>
+          <h1 className="dx-auth__promise">{DONEXTO_QUALITY.whatItDoes}</h1>
         </div>
+      </aside>
 
-        <section className="dx-auth__access" aria-labelledby="dx-auth-title">
+      <section className="dx-auth__panel">
+        <div className="dx-auth__card" aria-labelledby="dx-auth-title">
+          <h2 id="dx-auth-title" className="dx-auth__title">
+            {signupDone
+              ? "Confirma tu correo"
+              : mode === "signup"
+                ? ACCOUNT_VS_MAILBOX.loginTitleSignUp
+                : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
+          </h2>
+          {!signupDone ? (
+            <p className="dx-auth__boundary">{DONEXTO_QUALITY.boundary}</p>
+          ) : null}
+
           <div className="dx-auth__mode" role="tablist" aria-label="Modo de acceso">
             <button
               type="button"
@@ -282,17 +291,6 @@ export function LoginScreen({
               Crear cuenta
             </button>
           </div>
-
-          <h2 id="dx-auth-title" className="dx-auth__title">
-            {signupDone
-              ? "Confirma tu correo"
-              : mode === "signup"
-                ? ACCOUNT_VS_MAILBOX.loginTitleSignUp
-                : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
-          </h2>
-          {!signupDone ? (
-            <p className="dx-auth__boundary">{DONEXTO_QUALITY.boundary}</p>
-          ) : null}
 
           {signupDone ? (
             <div className="dx-auth__done">
@@ -515,7 +513,12 @@ export function LoginScreen({
               </button>
             </div>
           )}
-        </section>
+        </div>
+
+        <p className="dx-auth__secure">
+          <ShieldCheck size={14} aria-hidden />
+          {ACCOUNT_VS_MAILBOX.loginFoot}
+        </p>
 
         <footer className="dx-auth__footer">
           <p className="dx-auth__legal">
@@ -523,7 +526,7 @@ export function LoginScreen({
             <span>Héctor M. Salcido Roacho</span>
           </p>
         </footer>
-      </div>
+      </section>
     </main>
   );
 }

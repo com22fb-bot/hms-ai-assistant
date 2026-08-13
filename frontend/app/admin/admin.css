@@ -1,0 +1,361 @@
+/* Donexto Admin — dark slate + teal, product-aligned */
+
+.dx-admin {
+  --a-bg: #071018;
+  --a-elevated: #0c171e;
+  --a-surface: #101e26;
+  --a-surface-2: #15262f;
+  --a-line: rgba(148, 185, 194, 0.16);
+  --a-text: #edf6f7;
+  --a-muted: #93a8b0;
+  --a-accent: #0f9f94;
+  --a-accent-soft: rgba(15, 159, 148, 0.16);
+  --a-danger: #e46b6b;
+  --a-warn: #d4a017;
+  --a-ok: #3dbb8a;
+  --a-radius: 14px;
+  min-height: 100dvh;
+  padding: 1.25rem clamp(1rem, 3vw, 2rem) 2.5rem;
+  color: var(--a-text);
+  background:
+    radial-gradient(
+      ellipse 70% 45% at 0% 0%,
+      rgba(15, 159, 148, 0.1),
+      transparent 55%
+    ),
+    linear-gradient(180deg, #071018 0%, #08131a 100%);
+  font-family: var(--font-hms-sans), "Segoe UI", system-ui, sans-serif;
+}
+
+.dx-admin--center {
+  display: grid;
+  place-content: center;
+  gap: 0.75rem;
+  text-align: center;
+  color: var(--a-muted);
+}
+
+.dx-admin-login {
+  min-height: 100dvh;
+}
+
+.dx-admin__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.dx-admin__brand {
+  display: flex;
+  gap: 0.85rem;
+  align-items: flex-start;
+}
+
+.dx-admin__brand svg {
+  color: var(--a-accent);
+  margin-top: 0.35rem;
+}
+
+.dx-admin__eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--a-muted);
+}
+
+.dx-admin__brand h1 {
+  margin: 0.15rem 0 0;
+  font-family: var(--font-hms-display), Georgia, serif;
+  font-size: clamp(1.45rem, 2.4vw, 1.9rem);
+  font-weight: 550;
+}
+
+.dx-admin__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.dx-admin__session {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: var(--a-muted);
+}
+
+.dx-admin__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0.55rem 0.9rem;
+  background: var(--a-accent);
+  color: #04201e;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.dx-admin__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.dx-admin__btn--ghost {
+  background: transparent;
+  border-color: var(--a-line);
+  color: var(--a-text);
+}
+
+.dx-admin__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+  padding: 0.35rem;
+  border: 1px solid var(--a-line);
+  border-radius: var(--a-radius);
+  background: rgba(12, 23, 30, 0.72);
+}
+
+.dx-admin__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  border-radius: 10px;
+  padding: 0.55rem 0.85rem;
+  background: transparent;
+  color: var(--a-muted);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.dx-admin__tab:hover {
+  color: var(--a-text);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dx-admin__tab.is-active {
+  color: var(--a-text);
+  background: var(--a-accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(15, 159, 148, 0.35);
+}
+
+.dx-admin__main {
+  max-width: 1100px;
+}
+
+.dx-admin__section {
+  border: 1px solid var(--a-line);
+  border-radius: var(--a-radius);
+  background: rgba(16, 30, 38, 0.78);
+  padding: 1.15rem 1.2rem 1.35rem;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.dx-admin__section-head h2 {
+  margin: 0;
+  font-family: var(--font-hms-display), Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 550;
+}
+
+.dx-admin__section-head p {
+  margin: 0.4rem 0 1rem;
+  color: var(--a-muted);
+  max-width: 58ch;
+  line-height: 1.45;
+}
+
+.dx-admin__subhead {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 1rem;
+}
+
+.dx-admin__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.dx-admin__kpis article {
+  border: 1px solid var(--a-line);
+  border-radius: 12px;
+  padding: 0.85rem 0.95rem;
+  background: var(--a-elevated);
+}
+
+.dx-admin__kpis span {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--a-muted);
+  margin-bottom: 0.35rem;
+}
+
+.dx-admin__kpis strong {
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.dx-admin__table-wrap {
+  overflow-x: auto;
+  margin-top: 1rem;
+  border: 1px solid var(--a-line);
+  border-radius: 12px;
+}
+
+.dx-admin__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.dx-admin__table th,
+.dx-admin__table td {
+  padding: 0.7rem 0.85rem;
+  text-align: left;
+  border-bottom: 1px solid var(--a-line);
+  vertical-align: top;
+}
+
+.dx-admin__table th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--a-muted);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.dx-admin__table tr:last-child td {
+  border-bottom: 0;
+}
+
+.dx-admin__pill {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--a-line);
+  font-size: 0.78rem;
+  color: var(--a-muted);
+}
+
+.dx-admin__pill.is-ok {
+  color: var(--a-ok);
+  border-color: rgba(61, 187, 138, 0.35);
+  background: rgba(61, 187, 138, 0.08);
+}
+
+.dx-admin__form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+  align-items: end;
+  margin-bottom: 0.5rem;
+}
+
+.dx-admin__form label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+  color: var(--a-muted);
+}
+
+.dx-admin__form .dx-admin__full {
+  grid-column: 1 / -1;
+}
+
+.dx-admin__form input,
+.dx-admin__form select,
+.dx-admin__form textarea {
+  width: 100%;
+  border: 1px solid var(--a-line);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  background: var(--a-elevated);
+  color: var(--a-text);
+  font: inherit;
+}
+
+.dx-admin__form textarea {
+  resize: vertical;
+}
+
+.dx-admin__list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--a-muted);
+  line-height: 1.55;
+}
+
+.dx-admin__list strong,
+.dx-admin__list code {
+  color: var(--a-text);
+}
+
+.dx-admin__alert {
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--a-line);
+}
+
+.dx-admin__alert.is-error {
+  border-color: rgba(228, 107, 107, 0.4);
+  background: rgba(228, 107, 107, 0.1);
+  color: #f5c4c4;
+}
+
+.dx-admin__alert.is-warn {
+  border-color: rgba(212, 160, 23, 0.4);
+  background: rgba(212, 160, 23, 0.1);
+  color: #f0e0a8;
+}
+
+.dx-admin__hint,
+.dx-admin__note {
+  margin: 0.85rem 0 0;
+  color: var(--a-muted);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.dx-admin__loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+  color: var(--a-muted);
+}
+
+.dx-admin__spin {
+  animation: dx-admin-spin 0.9s linear infinite;
+}
+
+@keyframes dx-admin-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .dx-admin__header-actions {
+    width: 100%;
+  }
+
+  .dx-admin__session {
+    max-width: 100%;
+  }
+}

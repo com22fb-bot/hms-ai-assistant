@@ -4,6 +4,7 @@
  */
 export const DONEXTO_QUALITY = {
   slogan: "Do Next To…",
+  whatItDoes: "Te muestra lo que requiere acción en tu correo. El resto, silencio.",
   promise: "Lo que requiere atención en tu correo.",
   mission:
     "No somos otra bandeja. Somos la capa de atención: dinero, seguridad, paquetes y familia; silencio para el ruido promocional.",
