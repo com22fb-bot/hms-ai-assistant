@@ -8,16 +8,21 @@
     />
     <meta
       name="description"
-      content="Donexto — Do Next To… Lo que requiere atención en tu correo: dinero, seguridad y logística del hogar. No es otra bandeja."
+      content="Donexto — Do Next To… Capa de atención sobre tu correo personal: el mensaje que importa a tu trabajo, negocio y profesión."
     />
-    <meta name="theme-color" content="#0a1620" />
+    <meta name="theme-color" content="#070b12" />
     <meta property="og:title" content="Donexto — Do Next To…" />
     <meta
       property="og:description"
-      content="Tu capa de atención sobre Gmail o Yahoo. Push solo cuando importa."
+      content="Capa de atención sobre tu correo personal. Entras con Google en el sitio de Google. El mismo Gmail es cuenta y buzón."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://donexto.com/" />
+    <meta
+      property="og:image"
+      content="https://donexto.com/brand-escritorio.jpg"
+    />
+    <meta property="og:image:alt" content="Donexto™ — Do Next To… estación de trabajo" />
     <title>Donexto — Do Next To… · Correo con criterio</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -33,10 +38,16 @@
 
     <header class="top">
       <a class="brand" href="#top" id="top">
-        <span class="mark" aria-hidden="true">D</span>
+        <img
+          class="brand-logo"
+          src="./brand-logo-3d.jpg"
+          width="72"
+          height="72"
+          alt="Donexto — Do Next To…"
+        />
         <span class="brand-text">
           <strong>Donexto</strong>
-          <small>Do Next To…</small>
+          <small><span class="c">Do</span> <span class="m">Next</span> <span class="c">To…</span></small>
         </span>
       </a>
       <nav class="top-nav">
@@ -56,72 +67,126 @@
     </header>
 
     <main>
-      <section class="hero">
-        <p class="kicker" data-i18n="kicker">
-          Inteligencia de correo · EE. UU. y México
-        </p>
-        <h1 data-i18n="hero_title">
-          Lo que requiere atención<br />en tu correo.
-        </h1>
-        <p class="lede" data-i18n="hero_lede">
-          No es otra bandeja. Es tu capa de atención: dinero, seguridad,
-          paquetes y familia — y silencio para el ruido promocional.
-        </p>
-        <div class="hero-actions">
-          <a
-            class="btn primary"
-            href="https://app.donexto.com"
-            data-i18n="cta_app"
-            >Entrar a Donexto</a
-          >
-          <a class="btn ghost" href="#video" data-i18n="cta_video"
-            >Ver video</a
-          >
-        </div>
-        <ul class="trust">
-          <li data-i18n="trust_1">Login Donexto ≠ contraseña de Gmail</li>
-          <li data-i18n="trust_2">Gmail o Yahoo como buzón</li>
-          <li data-i18n="trust_3">Push solo cuando importa (N1)</li>
-        </ul>
-      </section>
+      <div class="hero-split">
+        <section class="hero">
+          <p class="kicker" data-i18n="kicker">
+            Capa de atención · trabajo, negocio y profesión
+          </p>
+          <h1 data-i18n="hero_title">
+            Lo que requiere atención<br />en tu correo.
+          </h1>
+          <p class="lede" data-i18n="hero_lede">
+            Donexto (Do Next To…) es tu capa de atención sobre el correo
+            personal: el mensaje que importa a tu trabajo, negocio y profesión,
+            para que sepas qué hacer ahora.
+          </p>
+          <div class="hero-actions">
+            <a
+              class="btn primary"
+              href="https://app.donexto.com"
+              data-i18n="cta_app"
+              >Entrar a Donexto</a
+            >
+            <a class="btn ghost" href="#video" data-i18n="cta_video"
+              >Ver historia</a
+            >
+          </div>
+          <ul class="trust">
+            <li data-i18n="trust_1">Entras con Google en el sitio de Google</li>
+            <li data-i18n="trust_2">El mismo Gmail es cuenta y buzón</li>
+            <li data-i18n="trust_3">Priorizamos el correo que mueve tu trabajo</li>
+          </ul>
+        </section>
+        <figure class="hero-photos">
+          <img
+            src="./brand-escritorio.jpg"
+            width="1200"
+            height="675"
+            alt="Estación de trabajo Donexto™ — letrero 3D Do Next To…, © 2026 Héctor M. Salcido Roacho"
+          />
+          <img
+            class="hero-banner"
+            src="./brand-youtube.jpg"
+            width="1200"
+            height="400"
+            alt="Donexto™ — bloque 3D Do / Next / To @ …"
+          />
+        </figure>
+      </div>
 
       <section class="video-section" id="video">
         <div class="section-head">
-          <h2 data-i18n="video_title">Mira cómo lo pensamos</h2>
+          <h2 data-i18n="video_title">La historia en 40 segundos</h2>
           <p data-i18n="video_lede">
-            Promesa de producto alineada al plan maestro: no otro Gmail — capa
-            de atención.
+            Qué hace Donexto (se dice Do-NEX-to, nunca “Donextu”). Dale play:
+            capa de atención, Google en el sitio de Google, verificación y
+            priorización del correo que mueve tu trabajo.
           </p>
         </div>
-        <div class="video-frame">
-          <video
-            class="promo"
-            controls
-            playsinline
-            preload="metadata"
-            poster=""
-            aria-label="Video promocional Donexto"
-          >
-            <source src="./promo.mp4" type="video/mp4" />
-            Tu navegador no reproduce video HTML5.
-          </video>
+
+        <div
+          class="story-player"
+          id="storyPlayer"
+          role="region"
+          aria-label="Historia promocional Donexto"
+        >
+          <div class="story-stage">
+            <div class="story-visual" id="storyVisual" data-shot="hook" aria-hidden="true">
+              <!-- filled by JS per shot -->
+            </div>
+            <p class="story-shot" id="storyShotLabel">01 · 0:00</p>
+            <p class="story-line" id="storyLine"></p>
+            <div class="story-progress" aria-hidden="true">
+              <div class="story-progress-bar" id="storyProgress"></div>
+            </div>
+          </div>
+          <div class="story-controls">
+            <button type="button" class="btn primary" id="storyPlay" data-i18n="story_play">
+              Reproducir historia
+            </button>
+            <button type="button" class="btn ghost" id="storyPrev" data-i18n="story_prev">
+              Anterior
+            </button>
+            <button type="button" class="btn ghost" id="storyNext" data-i18n="story_next">
+              Siguiente
+            </button>
+            <span class="story-time" id="storyTime">0:00 / 0:40</span>
+          </div>
+          <ol class="story-chapters" id="storyChapters" aria-label="Capítulos"></ol>
         </div>
-        <p class="video-caption" data-i18n="video_caption">
-          Guion: dinero · paquetes · seguridad · silencio al promo · app.donexto.com
-        </p>
+
+        <details class="story-vo">
+          <summary data-i18n="story_vo_toggle">Leer guion completo (voz en off)</summary>
+          <p id="storyVoText" data-i18n="story_vo_full"></p>
+        </details>
+
+        <div class="brand-stills" aria-label="Fotos oficiales de marca Donexto">
+          <img
+            src="./brand-escritorio.jpg"
+            alt="Donexto™ escritorio: letrero Do Next To…, servidores, cámara y monitor"
+          />
+          <img
+            src="./brand-youtube.jpg"
+            alt="Donexto™ banner: Do / Next / To @ … sobre base Donexto"
+          />
+          <p class="video-caption" data-i18n="video_caption">
+            Fotos oficiales (sin audio). El clip anterior decía “Donextu” — está
+            fuera hasta que Héctor exporte un MP4 de 40 s con voz Donexto.
+          </p>
+        </div>
       </section>
 
       <section class="panel" id="promise">
         <div class="section-head">
           <h2 data-i18n="promise_title">La promesa</h2>
           <p data-i18n="promise_lede">
-            Detectar lo que importa, silenciar el ruido, y que sepas en
-            segundos: ¿pago, paquete, seguridad… o puedo ignorarlo?
+            Ver el correo que mueve tu trabajo, negocio o profesión — y saber
+            qué hacer a continuación.
           </p>
         </div>
         <blockquote class="quote" data-i18n="promise_quote">
-          “Tu asistente de logística y finanzas del hogar — sobre el correo que
-          ya usas.”
+          “Tu capa de atención sobre el correo personal — para trabajo, negocio
+          y profesión.”
         </blockquote>
       </section>
 
@@ -170,25 +235,26 @@
         <div class="cards">
           <article>
             <span class="n">01</span>
-            <h3 data-i18n="how_1_t">Cuenta Donexto</h3>
+            <h3 data-i18n="how_1_t">Entras con Google</h3>
             <p data-i18n="how_1_p">
-              Entras con email y contraseña del producto — no son las de Gmail.
+              El login es en el sitio de Google. Nunca escribes tu contraseña de
+              Gmail en Donexto.
             </p>
           </article>
           <article>
             <span class="n">02</span>
-            <h3 data-i18n="how_2_t">Conectas el buzón</h3>
+            <h3 data-i18n="how_2_t">Mismo Gmail: cuenta y buzón</h3>
             <p data-i18n="how_2_p">
-              Gmail (OAuth) o Yahoo (contraseña de aplicación). Puedes cambiar
-              de buzón después.
+              Ese Gmail es tu cuenta Donexto y el buzón. Te mandamos un correo
+              de verificación; das clic y autorizas la lectura.
             </p>
           </article>
           <article>
             <span class="n">03</span>
-            <h3 data-i18n="how_3_t">Ves “Hoy te necesita”</h3>
+            <h3 data-i18n="how_3_t">Ves qué hacer ahora</h3>
             <p data-i18n="how_3_p">
-              Cola N1 primero. Ruido colapsado. Casos operativos, si los hay,
-              en segundo plano.
+              Clasificamos y priorizamos para que no se te pase el mensaje que
+              mueve tu trabajo, negocio o profesión.
             </p>
           </article>
         </div>
@@ -255,7 +321,7 @@
           <h2 data-i18n="wait_title">¿Listo para entrar?</h2>
           <p data-i18n="wait_lede">
             Abre la app o déjanos un mensaje. Escribimos desde
-            hello@ / hola@donexto.com.
+            support@donexto.com.
           </p>
           <div class="hero-actions">
             <a
@@ -266,9 +332,9 @@
             >
             <a
               class="btn ghost"
-              href="mailto:hola@donexto.com?subject=Donexto%20contacto"
+              href="mailto:support@donexto.com?subject=Donexto%20contacto"
               data-i18n="cta_mail"
-              >hola@donexto.com</a
+              >support@donexto.com</a>
             >
           </div>
 
@@ -310,7 +376,7 @@
               Enviar mensaje
             </button>
             <p class="form-note" data-i18n="form_note">
-              Abre tu app de correo hacia hola@ o hello@donexto.com. No vendemos
+              Abre tu app de correo hacia support@donexto.com. No vendemos
               listas.
             </p>
             <p class="form-status" id="formStatus" role="status" hidden></p>
@@ -350,16 +416,30 @@
     </main>
 
     <footer class="foot">
-      <div>
-        <strong>Donexto</strong>
-        <span data-i18n="foot_tag">Do Next To… lo que requiere atención.</span>
+      <div class="foot-brand">
+        <img
+          class="brand-logo"
+          src="./brand-logo-3d.jpg"
+          width="56"
+          height="56"
+          alt=""
+        />
+        <div>
+          <strong>Donexto</strong>
+          <span data-i18n="foot_tag">Do Next To… lo que requiere atención.</span>
+        </div>
       </div>
       <div class="foot-mail">
-        <a href="mailto:hello@donexto.com">hello@donexto.com</a>
-        <a href="mailto:hola@donexto.com">hola@donexto.com</a>
+        <a href="mailto:support@donexto.com">support@donexto.com</a>
+        <a href="./privacidad.html">Privacidad</a>
+        <a href="./terminos.html">Términos</a>
+        <a href="./cookies.html">Cookies</a>
         <a href="https://app.donexto.com">app.donexto.com</a>
       </div>
-      <p class="copy">© <span id="year"></span> Donexto · donexto.com</p>
+      <p class="copy">
+        © <span id="year"></span> Donexto · donexto.com ·
+        © HMSR · Héctor M. Salcido Roacho · Todos los derechos reservados
+      </p>
     </footer>
 
     <script src="./app.js" defer></script>

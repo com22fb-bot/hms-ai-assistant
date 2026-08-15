@@ -90,6 +90,10 @@
   border-radius: 999px;
 }
 
+.dx-auth__divider {
+  color: #6d7c82;
+}
+
 .dx-auth__p0 {
   margin: 0.85rem 0 0;
   font-size: 0.82rem;
@@ -124,6 +128,10 @@
 
 .dx-auth__secure {
   color: #9aa8ae;
+}
+
+.dx-auth__secure strong {
+  color: #e8eef0;
 }
 
 .dx-auth__legal {

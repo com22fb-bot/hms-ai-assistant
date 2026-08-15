@@ -1,0 +1,38 @@
+﻿APEX donexto.com = LANDING (Cloudflare Pages proyecto "donexto")
+app.donexto.com = APP (Worker). No mover el apex al Worker.
+
+Por que apex no se veia como la landing:
+  https://www.donexto.com  -> Pages "donexto" (hasta Promote, produccion puede ser waitlist EN)
+  https://donexto.com      -> Worker de la app (login), igual que app.donexto.com
+
+Hector quiere el apex igual que la landing con logo y fotos.
+
+PASOS EXACTOS — Pages (landing)
+1. dash.cloudflare.com
+2. Workers & Pages
+3. Pages -> proyecto donexto
+4. Custom domains -> Set up a domain
+5. Escribe donexto.com (apex, SIN www) -> Continue
+6. Si el DNS de donexto.com ya esta en esta cuenta Cloudflare, acepta el registro
+   automatico (CNAME flattening de @ hacia donexto.pages.dev)
+7. Repite para www.donexto.com si no esta
+8. Espera status Active (SSL)
+9. Deployments: el preview nuevo NO es produccion hasta Promote to production
+   (www puede seguir en waitlist ingles hasta que Hector haga Promote)
+
+PASOS EXACTOS — Worker (app, no tocarlo para apex)
+1. Workers & Pages -> Worker de la app (donexto-app / el de OpenNext)
+2. Settings -> Domains & Routes
+3. Debe quedar SOLO app.donexto.com
+4. Si donexto.com (apex) aparece ahi: Remove
+   Si no lo quitas, el apex seguira mostrando el login.
+
+DNS a mano (zona donexto.com -> DNS -> Records), si Pages no lo creo:
+  Tipo CNAME | Nombre @   | Destino donexto.pages.dev | Proxy ON
+  Tipo CNAME | Nombre www | Destino donexto.pages.dev | Proxy ON
+  Tipo CNAME | Nombre app | lo deja el custom domain del Worker | Proxy ON
+
+NO apuntar @ (apex) al Worker.
+Landing en apex Y www esta bien si ambos son custom domains de Pages "donexto".
+No hay redirect apex<->www en el codigo de la landing.
+Contacto: support@donexto.com (oficial; nunca hmcelinfo).

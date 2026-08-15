@@ -21,7 +21,8 @@ const TEXT: Record<HintVariant, string> = {
 };
 
 /**
- * Recordatorio visual: cuenta Donexto ≠ credenciales del buzón.
+ * Recordatorio visual: Donexto no pide la contraseña del buzón;
+ * el correo de la cuenta es el mismo que se autoriza a leer.
  */
 export function AccountVsMailboxHint({
   variant = "compact",

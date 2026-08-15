@@ -1,54 +1,42 @@
-# Landing Donexto → donexto.com (Cloudflare Pages)
+﻿# Landing Donexto -> donexto.com (Cloudflare Pages)
 
-Sitio estático: `landing/donexto/`
+Sitio estatico: landing/donexto/
 
-Archivos a subir:
+## NO subir promo.mp4 viejo
+El clip de ~10s decia "Donextu". Esta fuera de index.html.
+Historia de 40 s = boton "Reproducir historia" (sin audio hasta que Hector grabe).
+Guion: GUION-40S-ES-MX.txt
+DNS apex: CLOUDFLARE-DNS-APEX.txt
+Fotos JPEG: brand-escritorio.jpg, brand-youtube.jpg, brand-logo-3d.jpg (placa 3D header)
+Colores: cian #24c8ca + magenta #d63d8e (logo 3D Do Next To…)
 
-- `index.html`
-- `styles.css`
-- `app.js`
-- `favicon.svg`
-- `promo.mp4` (video promocional)
+## Codespace (deploy, no desde la laptop)
 
-## Ver en tu PC (ya)
+1. Copiar el zip a Codespace y:
+```bash
+cd /workspaces/hms-ai-assistant
+unzip -o donexto-p01c-brand-v3.zip
+rm -f landing/donexto/promo.mp4
+cd landing/donexto
+ls -l brand-escritorio.jpg brand-logo-3d.jpg brand-youtube.jpg
+# Si alguno falta o es 0 bytes: NO desplegar.
+npx wrangler pages deploy . --project-name=donexto --commit-dirty=true
+```
+Verificar https://www.donexto.com/ Y https://donexto.com/ (apex).
+2. En el dashboard: Pages -> donexto -> Deployments -> Promote to production
+   (www home no cambia hasta Promote)
 
+## Apex = landing
+Custom domains en Pages proyecto donexto: donexto.com Y www.donexto.com
+app.donexto.com se queda en el Worker. Quitar apex del Worker si esta ahi.
+Ver CLOUDFLARE-DNS-APEX.txt
+
+## Contacto
+support@donexto.com (oficial). hello@ / hola@ no son el canal primario.
+
+## Ver en PC
 ```powershell
 cd C:\Users\hsalc\hms-ai-assistant\landing\donexto
 python -m http.server 5500
 ```
-
-Abre: http://127.0.0.1:5500
-
-O doble clic en `index.html` (el video puede fallar por file:// en algunos navegadores; el servidor local es más fiable).
-
-## Publicar en donexto.com
-
-1. [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages**
-2. Proyecto Pages de la landing (o **Create** → **Upload assets**)
-3. Sube **toda** la carpeta `landing/donexto/` (incluye `promo.mp4` ~2.6 MB)
-4. **Custom domains**: `donexto.com` y `www.donexto.com`
-
-Alternativa Wrangler (si tienes token):
-
-```bash
-cd landing/donexto
-npx wrangler pages deploy . --project-name=donexto
-```
-
-## Contenido de la página
-
-- Hero plan maestro / promesa hogar
-- Video `promo.mp4`
-- Niveles N1 / N2 / N3 (mercado EE. UU.)
-- Cómo funciona (login ≠ buzón)
-- Qué hay en la app (home atención)
-- CTA → https://app.donexto.com
-- ES/EN, redes, mailto hola@ / hello@
-
-## Checklist post-deploy
-
-- [ ] https://donexto.com carga
-- [ ] Video se reproduce
-- [ ] EN/ES cambia textos
-- [ ] app.donexto.com abre la app
-- [ ] Formulario mailto funciona
+http://127.0.0.1:5500  -> Reproducir historia

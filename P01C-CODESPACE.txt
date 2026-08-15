@@ -1,0 +1,74 @@
+P0.1C v3 — Marca visual Donexto (logo grande + 3 fotos JPEG)
+============================================================
+Nada se publicó desde la laptop. Este zip solo se descomprime y se despliega
+en GitHub Codespace: /workspaces/hms-ai-assistant
+
+Zip: donexto-p01c-brand-v3.zip
+
+Deploy SOLO desde landing/donexto (NO desde frontend).
+Después de Promote, la HOME cambia (placa 3D grande, fotos escritorio + YouTube).
+Las páginas legales conservan las MISMAS palabras; solo chrome (header/footer).
+
+Las 3 fotos son JPEG reales (.jpg). Firmas JFIF. HTML apunta a .jpg — no a .png.
+
+
+1) Copiar el zip al Codespace y descomprimir
+--------------------------------------------
+cd /workspaces/hms-ai-assistant
+unzip -o donexto-p01c-brand-v3.zip
+rm -f landing/donexto/promo.mp4
+
+
+2) ls OBLIGATORIO — las 3 fotos con tamaños ANTES de wrangler
+------------------------------------------------------------
+cd landing/donexto
+ls -l brand-escritorio.jpg brand-logo-3d.jpg brand-youtube.jpg
+
+# Esperado (aprox, bytes reales):
+#   brand-escritorio.jpg   163474   JPEG / JFIF   (escritorio + letrero 3D)
+#   brand-logo-3d.jpg      143661   JPEG / JFIF   (placa WhatsApp — header)
+#   brand-youtube.jpg       57985   JPEG / JFIF   (banner YouTube)
+#
+# Si alguno falta, es 0 bytes, o `file` no dice JPEG: NO desplegar.
+
+file brand-escritorio.jpg brand-logo-3d.jpg brand-youtube.jpg
+# Debe decir JPEG image data.
+
+
+3) Token de Cloudflare (NUNCA OAuth en el browser de Codespace)
+---------------------------------------------------------------
+export CLOUDFLARE_API_TOKEN='PEGAR_TOKEN_AQUI'
+
+npx wrangler whoami
+# Debe mostrar la cuenta. Si pide login OAuth, CANCELAR y usar el token.
+
+
+4) Deploy de la landing (Pages proyecto donexto)
+------------------------------------------------
+# Debes estar en landing/donexto (paso 2). NO desde frontend.
+npx wrangler pages deploy . --project-name=donexto --commit-dirty=true
+
+
+5) Promote to production
+------------------------
+Cloudflare Dashboard → Pages → donexto → Deployments
+→ el deployment nuevo → Promote to production
+(el preview NO es www hasta Promote)
+La home de www NO cambia hasta este paso.
+
+
+6) Verificar www Y apex (pueden ser distintos)
+----------------------------------------------
+Héctor abrió donexto.com (apex), no www. Revisar AMBOS:
+
+  https://www.donexto.com/
+  https://donexto.com/
+  https://www.donexto.com/privacidad.html
+
+Home debe mostrar:
+  - placa 3D WhatsApp GRANDE (~72px) + wordmark Donexto (Do Next To… legible)
+  - foto escritorio ARRIBA + banner YouTube ABAJO (grandes, no cajas grises)
+  - support@donexto.com
+  - footer: Privacidad · Términos · Cookies
+
+/privacidad.html: mismas palabras legales; chrome (header/footer) alineado.

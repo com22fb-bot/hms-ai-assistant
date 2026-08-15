@@ -1,0 +1,68 @@
+﻿DONEXTO — GUION VOZ EN OFF 40 SEGUNDOS (es-MX)
+Para grabar en DaVinci / CapCut. Sustituye landing/donexto/promo.mp4 cuando este listo.
+
+PRONUNCIACION (no negociable)
+  Donexto = Do-NEX-to   (acento en NEX; termina en "to", como "todo" corto)
+  NUNCA: Donextu / Donex-tu / Domextu / Doneto
+  Do Next To... = slogan en ingles; el nombre hablado es Donexto.
+
+MARCA VISUAL
+  Fotos: brand-escritorio.jpg y brand-youtube.jpg
+  Logo placa 3D: brand-logo-3d.jpg
+  Copyright 2026 Hector M. Salcido Roacho. All Rights Reserved. Donexto(TM)
+
+NO INVENTAR FEATURES
+  Capa de atencion sobre correo personal.
+  Trabajo, negocios y profesion.
+  Login con Google EN EL SITIO DE GOOGLE.
+  Nunca se escribe la contrasena de Gmail en Donexto.
+  El mismo Gmail = cuenta Donexto + buzon.
+  Correo de verificacion -> clic -> autorizar lectura de ese Gmail.
+  Clasificar / priorizar para no perder el mensaje que mueve el trabajo.
+
+================================================================================
+VOZ CONTINUA (~40 s)
+================================================================================
+
+Donexto. Do Next To... Somos tu capa de atencion sobre el correo personal:
+para tu trabajo, tu negocio y tu profesion. El mail que importa, para que
+sepas que hacer ahora. Entras con Google, en el sitio de Google — nunca
+escribes tu contrasena de Gmail en Donexto. Ese mismo Gmail es tu cuenta
+y tu buzon. Te mandamos un correo de verificacion; das clic y autorizas
+que leamos ese Gmail. Clasificamos y priorizamos para que no se te pase
+el mensaje que mueve el trabajo. Donexto. app.donexto.com
+
+================================================================================
+BEATS PARA TIMELINE (DaVinci markers)
+================================================================================
+
+SHOT 01  0:00-0:06  (6 s)  Visual: brand-youtube.jpg
+  Donexto. Do Next To... Somos tu capa de atencion sobre el correo personal:
+
+SHOT 02  0:06-0:14  (8 s)  Visual: brand-escritorio.jpg
+  para tu trabajo, tu negocio y tu profesion. El mail que importa, para que
+  sepas que hacer ahora.
+
+SHOT 03  0:14-0:22  (8 s)  Visual: login en el sitio de Google (no en Donexto)
+  Entras con Google, en el sitio de Google — nunca escribes tu contrasena
+  de Gmail en Donexto.
+
+SHOT 04  0:22-0:28  (6 s)  Visual: un solo Gmail = cuenta + buzon
+  Ese mismo Gmail es tu cuenta y tu buzon.
+
+SHOT 05  0:28-0:35  (7 s)  Visual: correo de verificacion + clic + autorizacion
+  Te mandamos un correo de verificacion; das clic y autorizas que leamos
+  ese Gmail.
+
+SHOT 06  0:35-0:40  (5 s)  Visual: brand-youtube.jpg + app.donexto.com
+  Clasificamos y priorizamos para que no se te pase el mensaje que mueve
+  el trabajo. Donexto. app.donexto.com
+
+================================================================================
+EXPORT
+================================================================================
+- MP4 1080p, 40.0 s, audio Donexto (nunca Donextu).
+- Guardar como: landing/donexto/promo.mp4
+- Volver a poner video en index.html SOLO cuando el audio este correcto.
+- Hasta entonces la landing NO reproduce el clip viejo.
+- No hace falta redeploy del Worker. El hero de la app no usa este MP4.

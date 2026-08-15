@@ -33,6 +33,29 @@ class GoogleStartRequest(BaseModel):
     return_to: str | None = None
 
 
+def _donexto_profile_email(profile_id: str) -> str:
+    """Email de la cuenta Donexto (mismo buzón que debe autorizarse)."""
+    if not profile_id.strip():
+        return ""
+
+    try:
+        response = (
+            oauth_storage.client.table("profiles")
+            .select("email")
+            .eq("id", profile_id)
+            .limit(1)
+            .execute()
+        )
+    except Exception:
+        return ""
+
+    rows = getattr(response, "data", None)
+    if not isinstance(rows, list) or not rows:
+        return ""
+
+    return str(rows[0].get("email") or "").strip().lower()
+
+
 def validate_google_environment() -> None:
     """Valida OAuth leyendo el entorno en cada llamada (no solo al import)."""
     import os
@@ -423,12 +446,12 @@ def google_start(
         ) from error
 
     flow = create_google_flow(state=state)
-    # select_account: permite elegir CUALQUIER Gmail, no solo el de login Donexto.
-    # consent: asegura refresh_token en reconexiones.
+    # login_hint + consent: el buzón debe ser el mismo Gmail de la cuenta Donexto.
     authorization_url, returned_state = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
-        prompt="select_account consent",
+        prompt="consent",
+        login_hint=(context.user.email or "").strip().lower(),
         state=state,
     )
 
@@ -614,6 +637,23 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
             },
         )
 
+    expected_email = _donexto_profile_email(profile_id)
+    authorized_email = account_email.strip().lower()
+    if expected_email and authorized_email and authorized_email != expected_email:
+        return HTMLResponse(
+            status_code=400,
+            content=f"""
+            <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Gmail distinto</title></head><body>
+            <h1>Debes autorizar el mismo Gmail</h1>
+            <p>Tu cuenta Donexto es <strong>{escape(expected_email)}</strong>.</p>
+            <p>Google autorizó <strong>{escape(authorized_email)}</strong>, que no coincide.</p>
+            <p>Regresa a Donexto y autoriza la lectura de ese mismo Gmail.</p>
+            </body></html>
+            """,
+        )
+
     try:
         account = oauth_storage.upsert_communication_account(
             provider=GOOGLE_PROVIDER,
@@ -625,8 +665,7 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
             connected_by_profile_id=profile_id,
             status="active",
         )
-        # No se exige que account_email == email de login Donexto:
-        # el buzón Google puede ser cualquiera autorizado por el usuario.
+        # El buzón Google debe ser el mismo correo de la cuenta Donexto.
         oauth_storage.save_credentials(
             account_id=account["id"],
             access_token=credentials.token,

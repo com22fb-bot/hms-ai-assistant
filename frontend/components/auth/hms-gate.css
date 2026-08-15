@@ -80,6 +80,7 @@
   width: 5.25rem;
   height: 5.25rem;
   object-fit: cover;
+  object-position: center 28%;
   border-radius: 1.15rem;
   box-shadow:
     0 10px 24px rgba(0, 0, 0, 0.45),
@@ -98,13 +99,14 @@
 
 .dx-auth__promise {
   margin: 0.45rem 0 0;
-  max-width: 18em;
+  max-width: 22em;
   font-family: var(--dx-display);
   font-size: 0.88rem;
   font-weight: 500;
   letter-spacing: -0.015em;
   line-height: 1.35;
   color: #9aa8ae;
+  white-space: pre-line;
 }
 
 .dx-auth__heading {
@@ -160,6 +162,44 @@
   display: grid;
   gap: 0.7rem;
   margin-top: 0;
+}
+
+.dx-auth__signin {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.dx-auth__divider {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin: 0.05rem 0 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--dx-soft);
+  text-align: center;
+}
+
+.dx-auth__divider::before,
+.dx-auth__divider::after {
+  content: "";
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--dx-line);
+}
+
+.dx-auth__form--backup {
+  gap: 0.48rem;
+}
+
+.dx-auth__form--backup .dx-auth__control {
+  min-height: 2.45rem;
+}
+
+.dx-auth__form--backup .dx-auth__submit {
+  min-height: 2.55rem;
+  font-size: 0.9rem;
 }
 
 .dx-auth--signup .dx-auth__form {
@@ -303,6 +343,19 @@
 }
 
 .dx-auth__p0 strong {
+  color: #e8eef0;
+  font-weight: 700;
+}
+
+.dx-auth__secure {
+  margin: 0.75rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  text-align: left;
+  color: var(--dx-muted);
+}
+
+.dx-auth__secure strong {
   color: #e8eef0;
   font-weight: 700;
 }
@@ -613,6 +666,8 @@
     width: 13.25rem;
     height: 13.25rem;
     border-radius: 2.15rem;
+    object-fit: contain;
+    object-position: center;
   }
 
   .dx-auth__brand {
@@ -621,10 +676,11 @@
   }
 
   .dx-auth__promise {
-    max-width: 20rem;
+    max-width: 28rem;
     font-size: 1.15rem;
     margin-top: 0.85rem;
     color: #9aa8ae;
+    white-space: pre-line;
   }
 
   .dx-auth__heading {
@@ -655,6 +711,8 @@
     width: 13.25rem;
     height: 13.25rem;
     border-radius: 2.15rem;
+    object-fit: contain;
+    object-position: center;
   }
 
   .dx-auth--signup .dx-auth__brand {

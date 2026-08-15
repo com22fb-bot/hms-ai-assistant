@@ -1,12 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
-  <rect width="64" height="64" rx="14" fill="#0a0e10"/>
-  <rect x="8" y="8" width="48" height="48" rx="12" fill="url(#g)"/>
-  <text x="32" y="42" text-anchor="middle" font-family="Georgia, serif" font-size="28" font-weight="700" fill="#1a1208">D</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Donexto monograma">
+  <title>Donexto</title>
   <defs>
-    <linearGradient id="g" x1="12" y1="10" x2="52" y2="54" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#f0c27a"/>
-      <stop offset="0.55" stop-color="#c4782a"/>
-      <stop offset="1" stop-color="#8f5318"/>
+    <linearGradient id="dn" x1="8" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#24c8ca"/>
+      <stop offset="100%" stop-color="#d63d8e"/>
     </linearGradient>
   </defs>
+  <rect width="64" height="64" rx="14" fill="#070b12"/>
+  <g
+    fill="none"
+    stroke="url(#dn)"
+    stroke-width="5.25"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <circle cx="31" cy="30" r="13.5"/>
+    <path d="M44.5 16.5 V44"/>
+    <path d="M44.5 44
+             C50 46.5 53.5 51 53.5 55.5
+             C53.5 55.5 53.2 57 51.5 57
+             C48 57 44 54.5 40.5 51"/>
+  </g>
+  <circle
+    cx="31"
+    cy="30"
+    r="5.5"
+    fill="none"
+    stroke="#d63d8e"
+    stroke-opacity="0.7"
+    stroke-width="2.75"
+  />
 </svg>

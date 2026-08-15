@@ -1,8 +1,10 @@
 /**
  * Ruteo de alta por dominio del buzón que el usuario quiere vigilar.
  * Gmail → Google OAuth. Hotmail/Outlook → Azure. Apple → Apple.
- * Yahoo no está en supabase-js; portal de seguridad + IMAP en Paso 2.
+ * Yahoo no está en supabase-js; portal de seguridad + IMAP del mismo correo.
  */
+
+export type MailboxConnectMode = "gmail" | "yahoo" | "choose";
 
 export type MailboxSignupProvider =
   | "gmail"
@@ -71,4 +73,17 @@ export function resolveMailboxProviderFromEmail(
 export function isValidSignupEmail(email: string): boolean {
   const clean = email.trim().toLowerCase();
   return clean.includes("@") && emailDomain(clean).includes(".");
+}
+
+export function mailboxConnectModeFromEmail(
+  email: string,
+): MailboxConnectMode {
+  const provider = resolveMailboxProviderFromEmail(email);
+  if (provider === "gmail") {
+    return "gmail";
+  }
+  if (provider === "yahoo") {
+    return "yahoo";
+  }
+  return "choose";
 }

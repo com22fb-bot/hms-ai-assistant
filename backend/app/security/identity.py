@@ -219,8 +219,7 @@ def _ensure_profile(user: AuthenticatedUser) -> dict[str, Any]:
 def _ensure_personal_workspace(user: AuthenticatedUser) -> None:
     """Crea workspace personal si el perfil no tiene membresía activa.
 
-    No exige que el buzón de Gmail coincida con el email de la cuenta Donexto:
-    se puede conectar cualquier cuenta de Google al workspace.
+    El buzón a leer es el mismo correo de la cuenta Donexto.
     """
     if _active_memberships(user.id):
         return

@@ -1,7 +1,7 @@
 "use client";
 
-import type { Session } from "@supabase/supabase-js";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Session, User } from "@supabase/supabase-js";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
 
@@ -25,6 +25,69 @@ type AppSession = {
   email: string;
   name: string;
 };
+
+const DONEXTO_VERIFY_QUERY = "donexto_verify";
+
+function userHasOAuthIdentity(user: User | null | undefined): boolean {
+  if (!user) {
+    return false;
+  }
+
+  const identities = user.identities ?? [];
+  if (identities.some((identity) => identity.provider !== "email")) {
+    return true;
+  }
+
+  const provider = String(user.app_metadata?.provider ?? "").toLowerCase();
+  return provider !== "" && provider !== "email";
+}
+
+function isDonextoVerified(user: User | null | undefined): boolean {
+  return user?.user_metadata?.donexto_verified === true;
+}
+
+/**
+ * Sin `user_metadata.donexto_verified === true` no hay app.
+ * Google pone `email_confirmed_at` al instante: eso NO salta el gate.
+ * Identities / provider tampoco. Solo el clic del mail Donexto
+ * (`?donexto_verify=1`) marca el flag.
+ */
+function sessionNeedsDonextoEmailConfirm(session: Session | null): boolean {
+  const user = session?.user;
+  if (!user) {
+    return false;
+  }
+
+  return !isDonextoVerified(user);
+}
+
+function isDonextoVerifyReturn(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const search = new URLSearchParams(window.location.search);
+  return search.get(DONEXTO_VERIFY_QUERY) === "1";
+}
+
+function donextoVerifyRedirectTo(): string {
+  return `${window.location.origin}/?${DONEXTO_VERIFY_QUERY}=1`;
+}
+
+function clearDonextoVerifyQuery() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  if (!url.searchParams.has(DONEXTO_VERIFY_QUERY)) {
+    return;
+  }
+
+  url.searchParams.delete(DONEXTO_VERIFY_QUERY);
+  const next = `${url.pathname}${url.search}${url.hash}`;
+  window.history.replaceState({}, "", next);
+}
 
 function mapSession(session: Session | null): AppSession | null {
   const user = session?.user;
@@ -131,6 +194,7 @@ export function useAppAuth() {
   const [loading, setLoading] = useState(true);
   const [passwordRecovery, setPasswordRecovery] =
     useState(false);
+  const verifyBootstrapLock = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -159,6 +223,15 @@ export function useAppAuth() {
 
       if (event === "SIGNED_OUT") {
         setPasswordRecovery(false);
+        try {
+          for (const key of Object.keys(sessionStorage)) {
+            if (key.startsWith("donexto_verify_sent:")) {
+              sessionStorage.removeItem(key);
+            }
+          }
+        } catch {
+          // sessionStorage puede fallar en modo restringido
+        }
       }
 
       setLoading(false);
@@ -169,6 +242,105 @@ export function useAppAuth() {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    const user = rawSession?.user;
+    const accountEmail = user?.email?.trim().toLowerCase() ?? "";
+    if (!user || !accountEmail) {
+      return;
+    }
+    const currentUser = user;
+
+    let cancelled = false;
+
+    async function bootstrapDonextoVerify() {
+      if (verifyBootstrapLock.current) {
+        return;
+      }
+
+      if (isDonextoVerifyReturn()) {
+        verifyBootstrapLock.current = true;
+        try {
+          if (!isDonextoVerified(currentUser)) {
+            const { error } = await supabase.auth.updateUser({
+              data: { donexto_verified: true },
+            });
+            if (error) {
+              throw error;
+            }
+            const { data: next } = await supabase.auth.getSession();
+            if (!cancelled) {
+              setRawSession(next.session ?? null);
+            }
+          }
+          clearDonextoVerifyQuery();
+        } catch (error) {
+          console.error("No fue posible confirmar Donexto:", error);
+        } finally {
+          verifyBootstrapLock.current = false;
+        }
+        return;
+      }
+
+      if (!userHasOAuthIdentity(currentUser) || isDonextoVerified(currentUser)) {
+        return;
+      }
+
+      verifyBootstrapLock.current = true;
+      try {
+        if (currentUser.user_metadata?.donexto_verified !== false) {
+          const { error } = await supabase.auth.updateUser({
+            data: { donexto_verified: false },
+          });
+          if (error) {
+            console.error(
+              "No fue posible marcar donexto_verified=false:",
+              error,
+            );
+          } else {
+            const { data: next } = await supabase.auth.getSession();
+            if (!cancelled && next.session) {
+              setRawSession(next.session);
+            }
+          }
+        }
+
+        const sentKey = `donexto_verify_sent:${accountEmail}`;
+        try {
+          if (sessionStorage.getItem(sentKey) === "1") {
+            return;
+          }
+          sessionStorage.setItem(sentKey, "1");
+        } catch {
+          // sessionStorage puede fallar en modo restringido
+        }
+
+        const { error } = await supabase.auth.signInWithOtp({
+          email: accountEmail,
+          options: {
+            shouldCreateUser: false,
+            emailRedirectTo: donextoVerifyRedirectTo(),
+          },
+        });
+        if (error) {
+          try {
+            sessionStorage.removeItem(sentKey);
+          } catch {
+            // ignore
+          }
+          console.error("No fue posible enviar el correo Donexto:", error);
+        }
+      } finally {
+        verifyBootstrapLock.current = false;
+      }
+    }
+
+    void bootstrapDonextoVerify();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [rawSession]);
 
   const signIn = useCallback(
     async (email: string, password: string) => {
@@ -195,6 +367,10 @@ export function useAppAuth() {
         provider,
         options: {
           redirectTo: `${window.location.origin}/`,
+          queryParams: {
+            prompt: "consent",
+            access_type: "offline",
+          },
         },
       });
 
@@ -226,7 +402,7 @@ export function useAppAuth() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: donextoVerifyRedirectTo(),
           data: {
             full_name: cleanName,
           },
@@ -259,13 +435,40 @@ export function useAppAuth() {
       type: "signup",
       email: cleanEmail,
       options: {
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: donextoVerifyRedirectTo(),
       },
     });
     if (error) {
       throw new Error(translateAuthError(error.message));
     }
   }, []);
+
+  const sendDonextoVerifyEmail = useCallback(async (email: string) => {
+    const cleanEmail = email.trim().toLowerCase();
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
+
+    if (userHasOAuthIdentity(user)) {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: cleanEmail,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: donextoVerifyRedirectTo(),
+        },
+      });
+      if (error) {
+        throw new Error(translateAuthError(error.message));
+      }
+      try {
+        sessionStorage.setItem(`donexto_verify_sent:${cleanEmail}`, "1");
+      } catch {
+        // ignore
+      }
+      return;
+    }
+
+    await resendSignupEmail(cleanEmail);
+  }, [resendSignupEmail]);
 
   const signInWithMagicLink = useCallback(
     async (email: string) => {
@@ -335,10 +538,39 @@ export function useAppAuth() {
     [rawSession],
   );
 
+  const needsEmailConfirm = useMemo(
+    () => sessionNeedsDonextoEmailConfirm(rawSession),
+    [rawSession],
+  );
+
+  const refreshSession = useCallback(async () => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) {
+      throw new Error(translateAuthError(error.message));
+    }
+
+    const { data: next, error: sessionError } =
+      await supabase.auth.getSession();
+    if (sessionError) {
+      throw new Error(translateAuthError(sessionError.message));
+    }
+
+    setRawSession(next.session ?? null);
+
+    if (sessionNeedsDonextoEmailConfirm(next.session ?? null) && data.user) {
+      throw new Error(
+        "Aún no vemos el clic de confirmación. Abre el correo que te enviamos.",
+      );
+    }
+  }, []);
+
   return {
     session,
     loading,
     passwordRecovery,
+    needsEmailConfirm,
+    refreshSession,
+    sendDonextoVerifyEmail,
     signIn,
     signInWithGoogle,
     signInWithProvider,

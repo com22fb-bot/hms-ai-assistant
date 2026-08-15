@@ -44,6 +44,19 @@ def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
             },
         )
 
+    account_email = (context.user.email or "").strip().lower()
+    if account_email and address != account_email:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "mailbox_mismatch",
+                "message": (
+                    "El buzón Yahoo debe ser el mismo correo de tu cuenta "
+                    f"Donexto ({account_email})."
+                ),
+            },
+        )
+
     try:
         verify_yahoo_login(address, app_password)
     except YahooImapError as error:

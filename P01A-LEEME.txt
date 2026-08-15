@@ -1,0 +1,14 @@
+P0.1A Donexto — Aviso de privacidad + Terminos (14 ago 2026)
+
+NO git/commit/deploy desde la laptop.
+
+En Codespace:
+  cd /workspaces/hms-ai-assistant
+  unzip -o donexto-p01a-legal.zip
+  cd landing/donexto
+  npx wrangler pages deploy . --project-name=donexto --commit-dirty=true
+
+Luego: Cloudflare Pages -> donexto -> Deployments -> Promote to production.
+
+No desplegar el Worker de app.donexto.com en esta tarea.
+P0.1B (video) y P0.1C (landing visual) no van en este zip.

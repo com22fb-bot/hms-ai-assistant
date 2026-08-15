@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
+import { ConfirmEmailGate } from "@/components/auth/ConfirmEmailGate";
 import { LoginScreen } from "@/components/auth/LoginScreen";
 import { useAppAuth } from "@/hooks/useAppAuth";
 import { HmsApiError, hmsJson } from "@/lib/hmsApi";
@@ -164,14 +165,17 @@ export default function AdminPage() {
   const {
     session,
     loading: authLoading,
+    needsEmailConfirm,
     signIn,
     signInWithGoogle,
     signInWithProvider,
     signUp,
     resendSignupEmail,
+    sendDonextoVerifyEmail,
     signInWithMagicLink,
     signOut,
     resetPassword,
+    refreshSession,
   } = useAppAuth();
   const [tab, setTab] = useState<AdminTab>("overview");
   const [loading, setLoading] = useState(false);
@@ -351,6 +355,17 @@ export default function AdminPage() {
           onResetPassword={resetPassword}
         />
       </div>
+    );
+  }
+
+  if (needsEmailConfirm) {
+    return (
+      <ConfirmEmailGate
+        email={session.email}
+        onResend={sendDonextoVerifyEmail}
+        onRefresh={refreshSession}
+        onSignOut={signOut}
+      />
     );
   }
 

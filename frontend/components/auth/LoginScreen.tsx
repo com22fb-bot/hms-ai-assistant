@@ -336,8 +336,8 @@ export function LoginScreen({
     try {
       await onMagicLink(clean);
       setMessage(
-        "Revisa Yahoo: enviamos un enlace para entrar a Donexto. " +
-          "La contraseña de aplicación se usa en el Paso 2 para el buzón.",
+          "Te enviamos un enlace a ese Yahoo para entrar a Donexto. " +
+          "Luego autorizas la lectura de ese mismo correo.",
       );
     } catch (requestError) {
       setError(
@@ -365,8 +365,8 @@ export function LoginScreen({
     try {
       await onMagicLink(clean);
       setMessage(
-        "Revisa tu correo: enviamos un enlace para entrar a Donexto. " +
-          "El buzón lo conectamos con IMAP en el Paso 2.",
+          "Revisa tu correo: enviamos un enlace para entrar a Donexto. " +
+          "Luego autorizamos la lectura de ese mismo buzón.",
       );
     } catch (requestError) {
       setError(
@@ -396,14 +396,16 @@ export function LoginScreen({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             className="dx-auth__logo"
-            src="/brand/donexto-3d-do-next-to-tile.png"
+            src="/brand/donexto-3d-2026.png"
             width={512}
             height={512}
             alt="Donexto — Do Next To…"
             decoding="async"
           />
           <p className="dx-auth__brand">Donexto</p>
-          <h1 className="dx-auth__promise">{DONEXTO_QUALITY.whatItDoes}</h1>
+          <h1 className="dx-auth__promise">
+            {`${DONEXTO_QUALITY.whatItDoes}\n${DONEXTO_QUALITY.promise}`}
+          </h1>
         </div>
       </aside>
 
@@ -720,62 +722,7 @@ export function LoginScreen({
               ) : null}
             </div>
           ) : step === "credentials" ? (
-            <form
-              className="dx-auth__form"
-              onSubmit={submit}
-              noValidate
-              aria-labelledby="dx-auth-title"
-            >
-              <label className="dx-auth__field">
-                <span>{ACCOUNT_VS_MAILBOX.loginEmailLabel}</span>
-                <div className="dx-auth__control">
-                  <Mail size={18} aria-hidden />
-                  <input
-                    type="email"
-                    name="email"
-                    value={email}
-                    inputMode="email"
-                    autoComplete="email"
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    placeholder="tu@nombre.com"
-                    disabled={busy}
-                    onChange={(event) => setEmail(event.target.value)}
-                  />
-                </div>
-              </label>
-
-              <label className="dx-auth__field">
-                <span>{ACCOUNT_VS_MAILBOX.loginPasswordLabel}</span>
-                <div className="dx-auth__control">
-                  <KeyRound size={18} aria-hidden />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={password}
-                    autoComplete="current-password"
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    placeholder="Mínimo 8 caracteres"
-                    disabled={busy}
-                    onChange={(event) => setPassword(event.target.value)}
-                  />
-                  <button
-                    type="button"
-                    className="dx-auth__eye"
-                    aria-label={
-                      showPassword
-                        ? "Ocultar contraseña"
-                        : "Mostrar contraseña"
-                    }
-                    onClick={() => setShowPassword((v) => !v)}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-              </label>
-
+            <div className="dx-auth__signin">
               {error ? (
                 <div className="dx-auth__alert is-error" role="alert">
                   <AlertTriangle size={18} />
@@ -790,33 +737,113 @@ export function LoginScreen({
                 </div>
               ) : null}
 
-              <button
-                type="button"
-                className="dx-auth__link"
-                disabled={busy}
-                onClick={() => {
-                  setStep("help");
-                  setError(null);
-                }}
-              >
-                Olvidé mi contraseña
-              </button>
+              <div className="dx-auth__providers">
+                <button
+                  type="button"
+                  className="dx-auth__provider dx-auth__provider--gmail"
+                  disabled={busy}
+                  onClick={() => void startOAuthSignup("google")}
+                >
+                  {oauthBusy === "google" ? (
+                    <>
+                      <LoaderCircle className="dx-auth__spin" size={18} />
+                      Abriendo Google…
+                    </>
+                  ) : (
+                    <>
+                      <ProviderMark provider="gmail" />
+                      Gmail
+                    </>
+                  )}
+                </button>
+              </div>
 
-              <button
-                type="submit"
-                className="dx-auth__submit"
-                disabled={busy}
+              <p className="dx-auth__divider">o con correo y contraseña</p>
+
+              <form
+                className="dx-auth__form dx-auth__form--backup"
+                onSubmit={submit}
+                noValidate
+                aria-labelledby="dx-auth-title"
               >
-                {busy ? (
-                  <>
-                    <LoaderCircle className="dx-auth__spin" size={18} />
-                    Entrando…
-                  </>
-                ) : (
-                  "Entrar a Donexto"
-                )}
-              </button>
-            </form>
+                <label className="dx-auth__field">
+                  <span>{ACCOUNT_VS_MAILBOX.loginEmailLabel}</span>
+                  <div className="dx-auth__control">
+                    <Mail size={18} aria-hidden />
+                    <input
+                      type="email"
+                      name="email"
+                      value={email}
+                      inputMode="email"
+                      autoComplete="email"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      placeholder="tu@nombre.com"
+                      disabled={busy}
+                      onChange={(event) => setEmail(event.target.value)}
+                    />
+                  </div>
+                </label>
+
+                <label className="dx-auth__field">
+                  <span>{ACCOUNT_VS_MAILBOX.loginPasswordLabel}</span>
+                  <div className="dx-auth__control">
+                    <KeyRound size={18} aria-hidden />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      value={password}
+                      autoComplete="current-password"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      placeholder="Mínimo 8 caracteres"
+                      disabled={busy}
+                      onChange={(event) => setPassword(event.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="dx-auth__eye"
+                      aria-label={
+                        showPassword
+                          ? "Ocultar contraseña"
+                          : "Mostrar contraseña"
+                      }
+                      onClick={() => setShowPassword((v) => !v)}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                </label>
+
+                <button
+                  type="button"
+                  className="dx-auth__link"
+                  disabled={busy}
+                  onClick={() => {
+                    setStep("help");
+                    setError(null);
+                  }}
+                >
+                  Olvidé mi contraseña
+                </button>
+
+                <button
+                  type="submit"
+                  className="dx-auth__submit"
+                  disabled={busy}
+                >
+                  {busy && oauthBusy === null ? (
+                    <>
+                      <LoaderCircle className="dx-auth__spin" size={18} />
+                      Entrando…
+                    </>
+                  ) : (
+                    "Entrar a Donexto"
+                  )}
+                </button>
+              </form>
+            </div>
           ) : (
             <div className="dx-auth__help">
               <button
@@ -888,6 +915,11 @@ export function LoginScreen({
               </button>
             </div>
           ) : null}
+
+          <p className="dx-auth__secure" role="note">
+            <strong>{ACCOUNT_VS_MAILBOX.authSecurityTitle}. </strong>
+            {ACCOUNT_VS_MAILBOX.authSecurityBody}
+          </p>
         </div>
 
         <footer className="dx-auth__footer">

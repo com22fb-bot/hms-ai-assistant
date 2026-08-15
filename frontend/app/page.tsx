@@ -31,6 +31,7 @@ import {
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import { GuidedImportWizard } from "@/components/GuidedImportWizard";
+import { ConfirmEmailGate } from "@/components/auth/ConfirmEmailGate";
 import { LoginScreen } from "@/components/auth/LoginScreen";
 import { LiveMailPanel } from "@/components/LiveMailPanel";
 import { MailboxConnectModal } from "@/components/MailboxConnectModal";
@@ -49,6 +50,7 @@ import { useCases } from "@/hooks/useCases";
 import { useGoogleStatus } from "@/hooks/useGoogleStatus";
 import { useAppAuth } from "@/hooks/useAppAuth";
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
+import { mailboxConnectModeFromEmail } from "@/lib/mailboxSignup";
 import { hmsJson } from "@/lib/hmsApi";
 import type {
   CaseEvent,
@@ -746,7 +748,6 @@ function Dashboard({
   const [evaluationKey, setEvaluationKey] = useState<string | null>(null);
   const [guidedImportOpen, setGuidedImportOpen] = useState(false);
   const [mailboxPickerOpen, setMailboxPickerOpen] = useState(false);
-  const [mailboxPickerDismissed, setMailboxPickerDismissed] = useState(false);
   const [liveMailOpen, setLiveMailOpen] = useState(false);
   const [mailOpen, setMailOpen] = useState(false);
   const [mailInitialMessageId, setMailInitialMessageId] = useState<string | null>(null);
@@ -756,9 +757,9 @@ function Dashboard({
     useState<ImportFlowStatus | null>(null);
   const [initialFlowOpened, setInitialFlowOpened] = useState(false);
 
-  // Tras login Donexto sin buzón: pedir Gmail o Yahoo (Paso 2, no re-login).
+  // Tras verificar Donexto sin buzón: autorizar lectura del mismo correo.
   useEffect(() => {
-    if (loadingConnection || mailboxPickerDismissed) {
+    if (loadingConnection) {
       return;
     }
     if (connection?.connected) {
@@ -766,11 +767,7 @@ function Dashboard({
       return;
     }
     setMailboxPickerOpen(true);
-  }, [
-    connection?.connected,
-    loadingConnection,
-    mailboxPickerDismissed,
-  ]);
+  }, [connection?.connected, loadingConnection]);
 
   useEffect(() => {
     if (
@@ -834,7 +831,6 @@ function Dashboard({
   }
 
   function openMailboxConnect() {
-    setMailboxPickerDismissed(false);
     setMailboxPickerOpen(true);
     setNotice(null);
   }
@@ -1247,6 +1243,7 @@ function Dashboard({
           <section className="app-welcome dx-attention-welcome">
             <AttentionHome
               personName={session.name.split(" ")[0] || ""}
+              accountEmail={session.email}
               mailboxEmail={connection?.email}
               mailboxConnected={Boolean(connection?.connected)}
               mailboxLoading={loadingConnection}
@@ -1556,13 +1553,18 @@ function Dashboard({
             open={mailboxPickerOpen}
             connectingYahoo={connectingYahoo}
             required={!connection?.connected}
+            accountEmail={session.email}
+            mode={mailboxConnectModeFromEmail(session.email)}
             onClose={() => {
-              // P0: cerrar modal; el home sin buzón sigue con CTA Paso 2.
+              if (!connection?.connected) {
+                return;
+              }
               setMailboxPickerOpen(false);
-              setMailboxPickerDismissed(true);
             }}
             onConnectGoogle={async () => {
-              setNotice("Te llevamos a Google para iniciar sesión…");
+              setNotice(
+                `Te llevamos a Google para autorizar la lectura de ${session.email}…`,
+              );
               try {
                 await startGoogleConnection();
               } catch (requestError) {
@@ -1578,7 +1580,7 @@ function Dashboard({
             }}
             onConnectYahoo={async (email, appPassword) => {
               await connectYahoo(email, appPassword);
-              setMailboxPickerDismissed(true);
+              setMailboxPickerOpen(false);
               setNotice(
                 `Yahoo verificado (${email}). Buzón listo.`,
               );
@@ -1644,6 +1646,7 @@ export default function HomePage() {
     session,
     loading,
     passwordRecovery,
+    needsEmailConfirm,
     signIn,
     signInWithGoogle,
     signInWithProvider,
@@ -1654,6 +1657,8 @@ export default function HomePage() {
     resetPassword,
     updatePassword,
     cancelPasswordRecovery,
+    refreshSession,
+    sendDonextoVerifyEmail,
   } = useAppAuth();
 
   useEffect(() => {
@@ -1692,6 +1697,17 @@ export default function HomePage() {
         onResendSignupEmail={resendSignupEmail}
         onMagicLink={signInWithMagicLink}
         onResetPassword={resetPassword}
+      />
+    );
+  }
+
+  if (needsEmailConfirm) {
+    return (
+      <ConfirmEmailGate
+        email={session.email}
+        onResend={sendDonextoVerifyEmail}
+        onRefresh={refreshSession}
+        onSignOut={signOut}
       />
     );
   }

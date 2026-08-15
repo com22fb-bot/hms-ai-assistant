@@ -14,6 +14,12 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { AccountVsMailboxHint } from "@/components/auth/AccountVsMailboxHint";
+import {
+  ACCOUNT_VS_MAILBOX,
+  authorizeGmailTitle,
+} from "@/lib/accountVsMailbox";
+import { mailboxConnectModeFromEmail } from "@/lib/mailboxSignup";
 import { hmsJson } from "@/lib/hmsApi";
 
 import "./attention-home.css";
@@ -119,6 +125,7 @@ function formatWhen(value?: string | null): string {
 }
 
 export function AttentionHome({
+  accountEmail,
   mailboxEmail,
   mailboxConnected,
   mailboxLoading,
@@ -129,6 +136,7 @@ export function AttentionHome({
   onOpenCategory,
   onOpenAllMail,
 }: {
+  accountEmail?: string | null;
   mailboxEmail?: string | null;
   mailboxConnected: boolean;
   mailboxLoading: boolean;
@@ -218,6 +226,46 @@ export function AttentionHome({
   const n3Count = countOf(N3_KEYS);
   const unreviewed = byKey.get("unreviewed")?.count ?? 0;
 
+  if (!mailboxConnected && !mailboxLoading) {
+    const watchEmail = (accountEmail || mailboxEmail || "").trim();
+    const connectMode = mailboxConnectModeFromEmail(watchEmail);
+    const emptyTitle =
+      connectMode === "gmail" && watchEmail
+        ? authorizeGmailTitle(watchEmail)
+        : ACCOUNT_VS_MAILBOX.step2Title;
+    const emptyCta =
+      connectMode === "gmail"
+        ? ACCOUNT_VS_MAILBOX.connectGmailCta
+        : ACCOUNT_VS_MAILBOX.step2Cta;
+
+    return (
+      <section className="dx-attention" aria-label="Autorizar buzón">
+        <header className="dx-attention__hero">
+          <div>
+            <p className="dx-attention__kicker">Cuenta lista · falta autorizar lectura</p>
+            <h1>
+              {personName ? `Hola, ${personName}` : "Hola"}
+            </h1>
+            <p className="dx-attention__lede">
+              {emptyTitle}
+            </p>
+          </div>
+        </header>
+
+        <div className="dx-attention__empty dx-attention__empty--gate">
+          <Mail size={28} />
+          <strong>{emptyTitle}</strong>
+          <p>{ACCOUNT_VS_MAILBOX.step2EmptyLead}</p>
+          <AccountVsMailboxHint variant="step2" />
+          <button type="button" onClick={onConnectMailbox}>
+            <Mail size={16} />
+            {emptyCta}
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="dx-attention" aria-label="Lo que requiere atención">
       <header className="dx-attention__hero">
@@ -246,13 +294,13 @@ export function AttentionHome({
               {mailboxLoading
                 ? "Verificando buzón…"
                 : mailboxConnected
-                  ? "Buzón conectado"
-                  : "Sin buzón"}
+                  ? ACCOUNT_VS_MAILBOX.mailboxConnected
+                  : ACCOUNT_VS_MAILBOX.mailboxMissing}
             </strong>
             <small>
               {mailboxConnected
                 ? mailboxEmail || "Correo activo"
-                : "Conecta Gmail o Yahoo (distinto del login Donexto)"}
+                : ACCOUNT_VS_MAILBOX.mailboxMissingHint}
             </small>
           </div>
         </div>
@@ -261,7 +309,7 @@ export function AttentionHome({
           {mailboxConnected ? (
             <>
               <button type="button" onClick={onChangeMailbox}>
-                Cambiar buzón
+                {ACCOUNT_VS_MAILBOX.changeMailboxLabel}
               </button>
               <button
                 type="button"
@@ -283,24 +331,11 @@ export function AttentionHome({
           ) : (
             <button type="button" onClick={onConnectMailbox}>
               <Mail size={16} />
-              Conectar correo
+              {ACCOUNT_VS_MAILBOX.connectMailboxLabel}
             </button>
           )}
         </div>
       </div>
-
-      {!mailboxConnected ? (
-        <div className="dx-attention__empty">
-          <Mail size={28} />
-          <p>
-            Conecta tu buzón para ver lo que requiere atención. La cuenta Donexto
-            no es la contraseña de Gmail ni Yahoo.
-          </p>
-          <button type="button" onClick={onConnectMailbox}>
-            Conectar Gmail o Yahoo
-          </button>
-        </div>
-      ) : null}
 
       {mailboxConnected && error ? (
         <div className="dx-attention__error" role="alert">
