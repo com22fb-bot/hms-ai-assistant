@@ -400,38 +400,14 @@ export function useAppAuth() {
 
   const signInWithProvider = useCallback(
     async (provider: AuthOAuthProvider, loginHint?: string) => {
-      if (provider === "yahoo") {
-        try {
-          const readyResponse = await fetch("/api/auth/yahoo-ready", {
-            cache: "no-store",
-          });
-          const readyPayload = (await readyResponse.json()) as {
-            ready?: boolean;
-          };
-          if (!readyPayload.ready) {
-            throw new Error(YAHOO_PROVIDER_SETUP_MESSAGE);
-          }
-        } catch (readyError) {
-          if (
-            readyError instanceof Error &&
-            readyError.message === YAHOO_PROVIDER_SETUP_MESSAGE
-          ) {
-            throw readyError;
-          }
-          throw new Error(YAHOO_PROVIDER_SETUP_MESSAGE);
-        }
-      }
-
       const queryParams: Record<string, string> = {};
       const hint = loginHint?.trim().toLowerCase();
-      if (hint) {
+      if (hint && (provider === "google" || provider === "azure")) {
         queryParams.login_hint = hint;
       }
       if (provider === "google") {
         queryParams.access_type = "offline";
         queryParams.prompt = "select_account";
-      } else {
-        queryParams.prompt = "login";
       }
 
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -439,7 +415,8 @@ export function useAppAuth() {
         options: {
           skipBrowserRedirect: true,
           redirectTo: `${window.location.origin}/`,
-          queryParams,
+          ...(Object.keys(queryParams).length > 0 ? { queryParams } : {}),
+          ...(provider === "yahoo" ? { scopes: "openid email profile" } : {}),
         },
       });
 

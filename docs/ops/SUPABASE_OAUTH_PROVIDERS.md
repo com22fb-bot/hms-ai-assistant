@@ -90,7 +90,9 @@ La app llama `signInWithOAuth({ provider: 'custom:yahoo' })`.
 Entrar con Yahoo **no** envía un enlace mágico: te lleva a login.yahoo.com.
 El mail de Donexto es solo al **alta**, una vez.
 
-Si el proveedor no está creado, la UI explica estos pasos (ya no muestra el JSON).
+Si el proveedor no está creado o el identifier no es exactamente `custom:yahoo`,
+`signInWithOAuth` falla y la UI muestra estos pasos (ya no un JSON 400).
+No hay un probe previo a Yahoo: ese fetch colgaba el botón Continuar.
 
 ## Relación con el buzón
 

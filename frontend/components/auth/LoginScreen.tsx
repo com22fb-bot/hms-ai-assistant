@@ -173,12 +173,24 @@ export function LoginScreen({
     setBusy(true);
     setOauthBusy(provider);
     const hint = email.trim().toLowerCase();
+    let timedOut = false;
+    const timeoutId = window.setTimeout(() => {
+      timedOut = true;
+      setError(
+        "El inicio de sesión no abrió. Recarga con Ctrl+F5 e inténtalo otra vez.",
+      );
+      setBusy(false);
+      setOauthBusy(null);
+    }, 12000);
     try {
       await onSignInWithProvider(
         provider,
         isValidSignupEmail(hint) ? hint : undefined,
       );
     } catch (requestError) {
+      if (timedOut) {
+        return;
+      }
       const fallback =
         provider === "azure"
           ? "No fue posible abrir el inicio de sesión de Microsoft."
@@ -192,6 +204,8 @@ export function LoginScreen({
       );
       setBusy(false);
       setOauthBusy(null);
+    } finally {
+      window.clearTimeout(timeoutId);
     }
   }
 
@@ -371,8 +385,17 @@ export function LoginScreen({
               disabled={busy}
               onClick={() => void continueYahoo()}
             >
-              <ProviderMark provider="yahoo" />
-              Continuar con Yahoo
+              {oauthBusy === "yahoo" ? (
+                <>
+                  <LoaderCircle className="dx-auth__spin" size={18} />
+                  Abriendo Yahoo…
+                </>
+              ) : (
+                <>
+                  <ProviderMark provider="yahoo" />
+                  Continuar con Yahoo
+                </>
+              )}
             </button>
           </div>
 
@@ -435,10 +458,18 @@ export function LoginScreen({
             ) : null}
 
             <button type="submit" className="dx-auth__submit" disabled={busy}>
-              {busy && oauthBusy === null ? (
+              {busy ? (
                 <>
                   <LoaderCircle className="dx-auth__spin" size={18} />
-                  Continuando…
+                  {oauthBusy === "yahoo"
+                    ? "Abriendo Yahoo…"
+                    : oauthBusy === "google"
+                      ? "Abriendo Google…"
+                      : oauthBusy === "azure"
+                        ? "Abriendo Microsoft…"
+                        : oauthBusy === "apple"
+                          ? "Abriendo Apple…"
+                          : "Continuando…"}
                 </>
               ) : mode === "signin" && usePassword ? (
                 "Entrar"
