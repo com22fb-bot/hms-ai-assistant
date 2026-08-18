@@ -269,15 +269,15 @@ export function AttentionHome({
   }
 
   return (
-    <section className="dx-attention" aria-label="Lo que requiere atención">
+    <section className="dx-attention" aria-label="Consola de atención">
       <header className="dx-attention__hero">
         <div>
-          <p className="dx-attention__kicker">Hoy en tu bandeja</p>
+          <p className="dx-attention__kicker">Consola</p>
           <h1>
             {personName ? `Hola, ${personName}` : "Hola"}
           </h1>
           <p className="dx-attention__lede">
-            Dinero, seguridad y lo que te espera — sin el ruido promocional.
+            Cargos, seguridad, envíos y familia. El ruido no entra aquí.
           </p>
         </div>
       </header>
@@ -384,8 +384,8 @@ export function AttentionHome({
           <div className="dx-attention__section">
             <header className="dx-attention__section-head">
               <div>
-                <h2>Te necesita ahora</h2>
-                <p>Prioridad alta · candidatos a alerta inmediata</p>
+                <h2>Prioridad</h2>
+                <p>N1 · la inteligencia propone; tú abres</p>
               </div>
               <button
                 type="button"
@@ -409,7 +409,7 @@ export function AttentionHome({
                   <span>
                     {unreviewed > 0
                       ? `${unreviewed.toLocaleString()} mensajes aún por clasificar.`
-                      : "El ruido no aparece aquí. Puedes revisar la bandeja cuando quieras."}
+                      : "Casa en calma. Revisa la bandeja cuando quieras."}
                   </span>
                 </div>
               </div>
@@ -460,9 +460,9 @@ export function AttentionHome({
               onClick={() => setLaterOpen((v) => !v)}
             >
               <span>
-                <strong>Después / utilidad (N2)</strong>
+                <strong>Cuando puedas (N2)</strong>
                 <small>
-                  {n2Count.toLocaleString()} mensajes · resumen, no push inmediato
+                  {n2Count.toLocaleString()} · resumen, sin empujar el celular
                 </small>
               </span>
               <ChevronRight
@@ -494,10 +494,9 @@ export function AttentionHome({
               onClick={() => setNoiseOpen((v) => !v)}
             >
               <span>
-                <strong>Ruido silenciado (N3)</strong>
+                <strong>En silencio (N3)</strong>
                 <small>
-                  {n3Count.toLocaleString()} · promo, social y autos — sin
-                  interrumpir
+                  {n3Count.toLocaleString()} · ofertas y redes, fuera de portada
                 </small>
               </span>
               <ChevronRight
