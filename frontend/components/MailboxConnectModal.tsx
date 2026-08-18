@@ -33,7 +33,7 @@ export function MailboxConnectModal({
   connectingYahoo,
   required = false,
   accountEmail,
-  mode = "choose",
+  mode: _mode = "choose",
   onClose,
   onConnectGoogle,
   onConnectYahoo,

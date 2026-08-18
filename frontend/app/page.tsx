@@ -51,7 +51,11 @@ import "@/components/donexto-app-shell.css";
 import { useCases } from "@/hooks/useCases";
 import { useGoogleStatus } from "@/hooks/useGoogleStatus";
 import { useAppAuth } from "@/hooks/useAppAuth";
-import { ACCOUNT_VS_MAILBOX, mailboxServiceLabel } from "@/lib/accountVsMailbox";
+import {
+  ACCOUNT_VS_MAILBOX,
+  isImapMailboxProvider,
+  mailboxLabelFromConnection,
+} from "@/lib/accountVsMailbox";
 import { hmsJson } from "@/lib/hmsApi";
 import type {
   CaseEvent,
@@ -730,7 +734,7 @@ function Dashboard({
     connection?.connected &&
     (connection.provider == null || connection.provider === "google");
   const isYahooMailbox =
-    connection?.connected && connection.provider === "yahoo";
+    connection?.connected && isImapMailboxProvider(connection.provider);
   const usesGuidedImport = Boolean(isGoogleMailbox || isYahooMailbox);
 
   const {
@@ -1297,8 +1301,9 @@ function Dashboard({
                 <strong>
                   {importFlowStatus?.active
                     ? "Preparando tu correo…"
-                    : `Importa tu buzón ${mailboxServiceLabel(
-                        connection?.provider === "yahoo" ? "yahoo" : "gmail",
+                    : `Importa tu buzón ${mailboxLabelFromConnection(
+                        connection?.provider,
+                        connection?.email,
                       )}`}
                 </strong>
                 <span>
@@ -1551,7 +1556,7 @@ function Dashboard({
                   <span>
                     {connection?.connected
                       ? "Traer mensajes nuevos"
-                      : "Gmail o Yahoo"}
+                      : "Gmail, Outlook, Yahoo o iCloud"}
                   </span>
                 </div>
               </button>
@@ -1563,7 +1568,7 @@ function Dashboard({
                 <Mail size={22} />
                 <div>
                   <strong>{ACCOUNT_VS_MAILBOX.changeMailboxLabel}</strong>
-                  <span>Otro Gmail o Yahoo</span>
+                  <span>Gmail, Outlook, Yahoo o iCloud</span>
                 </div>
               </button>
 

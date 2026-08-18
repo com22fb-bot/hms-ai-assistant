@@ -56,7 +56,7 @@ export const ACCOUNT_VS_MAILBOX = {
   connectBanner: "Esto no pide tu contraseña de Gmail · solo autoriza la lectura",
   connectChooserTitle: "Autoriza la lectura de tu correo",
   connectChooserBody:
-    "El buzón es el mismo correo de tu cuenta Donexto. Gmail autoriza lectura en Google; Yahoo usa contraseña de aplicación IMAP.",
+    "Gmail, Outlook, Yahoo e iCloud. Gmail autoriza lectura en Google; Outlook, Yahoo e iCloud usan contraseña de aplicación IMAP.",
   connectGmailBody:
     "Donexto nunca te pidió la contraseña de Gmail. Esta pantalla de Google es solo para autorizar la lectura de este mismo buzón.",
   connectGmailCta: "Autorizar lectura de este Gmail",
@@ -88,6 +88,8 @@ export function mailboxServiceLabel(
       return "Gmail";
     case "yahoo":
       return "Yahoo";
+    case "imap":
+      return "correo";
     case "hotmail":
     case "microsoft":
       return "Outlook";
@@ -96,6 +98,28 @@ export function mailboxServiceLabel(
     default:
       return "correo";
   }
+}
+
+export function isImapMailboxProvider(provider?: string | null): boolean {
+  const value = (provider || "").trim().toLowerCase();
+  return value === "yahoo" || value === "imap";
+}
+
+export function mailboxLabelFromConnection(
+  provider?: string | null,
+  email?: string | null,
+): string {
+  const value = (provider || "").trim().toLowerCase();
+  if (value === "google" || value === "gmail" || !value) {
+    return "Gmail";
+  }
+  if (value === "yahoo") {
+    return "Yahoo";
+  }
+  if (value === "imap") {
+    return mailboxServiceLabel(resolveMailboxProviderFromEmail(email || ""));
+  }
+  return mailboxServiceLabel(value);
 }
 
 export function mailboxPasswordPhrase(

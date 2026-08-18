@@ -20,7 +20,6 @@ import {
   authorizeMailboxTitle,
   step2EmptyLeadFor,
 } from "@/lib/accountVsMailbox";
-import { mailboxConnectModeFromEmail } from "@/lib/mailboxSignup";
 import { hmsJson } from "@/lib/hmsApi";
 
 import "./attention-home.css";
@@ -229,16 +228,10 @@ export function AttentionHome({
 
   if (!mailboxConnected && !mailboxLoading) {
     const watchEmail = (accountEmail || mailboxEmail || "").trim();
-    const connectMode = mailboxConnectModeFromEmail(watchEmail);
     const emptyTitle = watchEmail
       ? authorizeMailboxTitle(watchEmail)
       : ACCOUNT_VS_MAILBOX.step2Title;
-    const emptyCta =
-      connectMode === "gmail"
-        ? ACCOUNT_VS_MAILBOX.connectGmailCta
-        : connectMode === "yahoo"
-          ? ACCOUNT_VS_MAILBOX.connectYahooTitle
-          : ACCOUNT_VS_MAILBOX.step2Cta;
+    const emptyCta = ACCOUNT_VS_MAILBOX.connectMailboxLabel;
 
     return (
       <section className="dx-attention" aria-label="Autorizar buzón">
@@ -258,6 +251,7 @@ export function AttentionHome({
           <Mail size={28} />
           <strong>{emptyTitle}</strong>
           <p>{step2EmptyLeadFor(watchEmail)}</p>
+          <p>Gmail, Outlook, Yahoo e iCloud. Elige el buzón a vigilar.</p>
           <AccountVsMailboxHint variant="step2" email={watchEmail} />
           <button type="button" onClick={onConnectMailbox}>
             <Mail size={16} />
