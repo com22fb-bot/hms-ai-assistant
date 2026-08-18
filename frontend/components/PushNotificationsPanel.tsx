@@ -7,6 +7,7 @@ import {
   LoaderCircle,
   MonitorSmartphone,
   Send,
+  Settings,
   ShieldCheck,
   Smartphone,
   X,
@@ -14,7 +15,15 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 import { hmsJson } from "@/lib/hmsApi";
-
+import {
+  currentPushEndpoint,
+  deviceLabel,
+  disableThisDevice,
+  donextoPushSupported,
+  enableThisDeviceAndTest,
+  openOsNotificationSettings,
+  sendTestToThisDevice,
+} from "@/lib/donextoPush";
 
 type PushSubscriptionRow = {
   id: string;
@@ -44,35 +53,10 @@ type HmsNotification = {
   read_at: string | null;
 };
 
-function urlBase64ToUint8Array(value: string): Uint8Array {
-  const padding = "=".repeat((4 - (value.length % 4)) % 4);
-  const base64 = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = window.atob(base64);
-  return Uint8Array.from([...raw].map((char) => char.charCodeAt(0)));
-}
-
 function readableError(reason: unknown): string {
   return reason instanceof Error
     ? reason.message
     : "No fue posible configurar las notificaciones.";
-}
-
-function deviceLabel(): string {
-  const ua = navigator.userAgent;
-  if (/Android/i.test(ua)) {
-    const match = ua.match(/Android\s([\d.]+)/i);
-    return match ? `Android ${match[1]}` : "Android";
-  }
-  if (/iPhone|iPad|iPod/i.test(ua)) return "iPhone o iPad";
-  if (/Windows/i.test(ua)) return "PC Windows";
-  if (/Mac/i.test(ua)) return "Mac";
-  return "Navegador web";
-}
-
-async function currentPushEndpoint(): Promise<string | null> {
-  const registration = await navigator.serviceWorker.getRegistration("/");
-  const subscription = await registration?.pushManager.getSubscription();
-  return subscription?.endpoint ?? null;
 }
 
 export function PushNotificationsPanel({ onClose }: { onClose: () => void }) {
@@ -84,10 +68,9 @@ export function PushNotificationsPanel({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [localEndpoint, setLocalEndpoint] = useState<string | null>(null);
 
-  const supported = typeof window !== "undefined"
-    && "serviceWorker" in navigator
-    && "PushManager" in window
-    && "Notification" in window;
+  const supported = donextoPushSupported();
+  const permission =
+    typeof Notification === "undefined" ? "unsupported" : Notification.permission;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,80 +99,32 @@ export function PushNotificationsPanel({ onClose }: { onClose: () => void }) {
     return () => window.clearTimeout(timer);
   }, [load]);
 
-  async function enablePush() {
+  async function retryOsPermission() {
     setWorking(true);
     setError(null);
     setMessage(null);
     try {
-      if (!supported) throw new Error("Este navegador no admite Web Push.");
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        throw new Error("El dispositivo no autorizó las notificaciones.");
+      if (permission === "denied") {
+        openOsNotificationSettings();
+        setMessage(
+          "Abre Ajustes del sistema, permite notificaciones a Donexto y vuelve aquí.",
+        );
+        return;
       }
-
-      const registration = await navigator.serviceWorker.register("/hms-sw.js", {
-        scope: "/",
-      });
-      await navigator.serviceWorker.ready;
-      const keyData = await hmsJson<{ configured: boolean; public_key: string }>(
-        "/api/hms/push/vapid-public-key",
-        { cache: "no-store" },
+      const result = await enableThisDeviceAndTest();
+      if (result.permission === "denied") {
+        openOsNotificationSettings();
+        setMessage(
+          "Este dispositivo bloqueó avisos. Actívalos en Ajustes y recarga Donexto.",
+        );
+        return;
+      }
+      setLocalEndpoint(await currentPushEndpoint());
+      setMessage(
+        result.tested
+          ? `Listo en ${result.device}. Te enviamos un mensaje de prueba.`
+          : `Avisos autorizados en ${result.device}.`,
       );
-      if (!keyData.configured || !keyData.public_key) {
-        throw new Error("El servidor push todavía no tiene llaves VAPID.");
-      }
-
-      // Fuerza re-suscripción limpia en este navegador.
-      const previous = await registration.pushManager.getSubscription();
-      if (previous) {
-        await previous.unsubscribe().catch(() => undefined);
-      }
-
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey:
-          urlBase64ToUint8Array(keyData.public_key).buffer as ArrayBuffer,
-      });
-      const serialized = subscription.toJSON();
-      if (!serialized.endpoint || !serialized.keys?.p256dh || !serialized.keys?.auth) {
-        throw new Error("El navegador devolvió una suscripción incompleta.");
-      }
-      await hmsJson("/api/hms/push/subscriptions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          endpoint: serialized.endpoint,
-          keys: serialized.keys,
-          device_label: deviceLabel(),
-        }),
-      });
-      setLocalEndpoint(serialized.endpoint);
-      setMessage(`Notificaciones activadas en ${deviceLabel()}.`);
-      await load();
-    } catch (reason) {
-      setError(readableError(reason));
-    } finally {
-      setWorking(false);
-    }
-  }
-
-  async function disablePush() {
-    setWorking(true);
-    setError(null);
-    setMessage(null);
-    try {
-      const registration = await navigator.serviceWorker.getRegistration("/");
-      const subscription = await registration?.pushManager.getSubscription();
-      if (subscription) {
-        await hmsJson("/api/hms/push/subscriptions/deactivate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ endpoint: subscription.endpoint }),
-        });
-        await subscription.unsubscribe();
-      }
-      setLocalEndpoint(null);
-      setMessage("Notificaciones desactivadas en este dispositivo.");
       await load();
     } catch (reason) {
       setError(readableError(reason));
@@ -203,34 +138,32 @@ export function PushNotificationsPanel({ onClose }: { onClose: () => void }) {
     setError(null);
     setMessage(null);
     try {
-      const endpoint = (await currentPushEndpoint()) || localEndpoint;
-      if (!endpoint) {
-        throw new Error(
-          "Activa primero las notificaciones en ESTE dispositivo y luego envía la prueba.",
-        );
-      }
-      const result = await hmsJson<{
-        delivery?: { sent?: number; failed?: number; devices?: number };
-      }>("/api/hms/push/test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ endpoint }),
-      });
-      const sent = Number(result.delivery?.sent || 0);
-      const failed = Number(result.delivery?.failed || 0);
-      if (sent > 0) {
+      const delivery = await sendTestToThisDevice();
+      if (delivery.sent > 0) {
+        setMessage(`Prueba enviada a ${deviceLabel()}.`);
+      } else if (delivery.failed > 0) {
         setMessage(
-          `Prueba enviada solo a este dispositivo (${deviceLabel()}).`,
-        );
-      } else if (failed > 0) {
-        setMessage(
-          "El servidor intentó avisar a este dispositivo, pero el envío falló. Revisa permisos del navegador.",
+          "El envío de prueba falló. Revisa permisos de notificaciones del sistema.",
         );
       } else {
-        setMessage(
-          "No hay una suscripción activa para este endpoint. Vuelve a Activar en este dispositivo.",
-        );
+        setMessage("Este dispositivo aún no tiene avisos autorizados.");
       }
+      await load();
+    } catch (reason) {
+      setError(readableError(reason));
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function disablePush() {
+    setWorking(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await disableThisDevice();
+      setLocalEndpoint(null);
+      setMessage("Avisos desactivados en este dispositivo.");
       await load();
     } catch (reason) {
       setError(readableError(reason));
@@ -255,10 +188,11 @@ export function PushNotificationsPanel({ onClose }: { onClose: () => void }) {
       <section className="hms-push-panel">
         <header>
           <div>
-            <span>AVISOS POR DISPOSITIVO</span>
-            <h2>Notificaciones push</h2>
+            <span>CAPA DE ATENCIÓN</span>
+            <h2>Avisos</h2>
             <p>
-              Activa en este celular o PC. La prueba se envía solo al dispositivo actual.
+              Aquí lees lo que Donexto te avisó. El permiso de este Windows,
+              celular o tablet se pide solo, como al instalar una app.
             </p>
           </div>
           <button type="button" onClick={onClose} aria-label="Cerrar">
@@ -268,7 +202,7 @@ export function PushNotificationsPanel({ onClose }: { onClose: () => void }) {
 
         {loading ? (
           <div className="hms-push-loading">
-            <LoaderCircle className="app-spin" size={30} /> Consultando dispositivos...
+            <LoaderCircle className="app-spin" size={30} /> Cargando avisos…
           </div>
         ) : null}
         {error ? <div className="hms-push-error">{error}</div> : null}
@@ -282,99 +216,32 @@ export function PushNotificationsPanel({ onClose }: { onClose: () => void }) {
           <>
             <section className="hms-push-status">
               <div>
-                <MonitorSmartphone size={25} />
-                <span>Dispositivos activos</span>
-                <strong>{status?.devices ?? 0}</strong>
-              </div>
-              <div>
                 <BellRing size={25} />
-                <span>Avisos sin leer</span>
+                <span>Sin leer</span>
                 <strong>{status?.unread ?? 0}</strong>
               </div>
               <div>
+                <MonitorSmartphone size={25} />
+                <span>Equipos con aviso</span>
+                <strong>{status?.devices ?? 0}</strong>
+              </div>
+              <div>
                 <ShieldCheck size={25} />
-                <span>Servidor push</span>
+                <span>Este dispositivo</span>
                 <strong>
-                  {status?.configured && status?.sender_available
-                    ? "Listo"
-                    : "Pendiente"}
+                  {localEndpoint
+                    ? "Autorizado"
+                    : permission === "denied"
+                      ? "Bloqueado"
+                      : "Pendiente"}
                 </strong>
               </div>
             </section>
 
-            <section className="hms-push-devices">
-              <h3>Dispositivos registrados</h3>
-              {activeDevices.length === 0 ? (
-                <p>Ningún dispositivo activo todavía.</p>
-              ) : (
-                <ul>
-                  {activeDevices.map((device) => {
-                    const isThis =
-                      Boolean(localEndpoint)
-                      && Boolean(device.endpoint)
-                      && device.endpoint === localEndpoint;
-                    return (
-                      <li key={device.id} className={isThis ? "is-current" : ""}>
-                        <Smartphone size={18} />
-                        <span>
-                          <strong>
-                            {device.device_label || "Dispositivo"}
-                            {isThis ? " · este equipo" : ""}
-                          </strong>
-                          <small>
-                            {device.last_error
-                              ? `Error: ${device.last_error}`
-                              : device.last_success_at
-                                ? `Último envío OK: ${new Intl.DateTimeFormat("es-MX", {
-                                    dateStyle: "short",
-                                    timeStyle: "short",
-                                  }).format(new Date(device.last_success_at))}`
-                                : "Sin envíos aún"}
-                          </small>
-                        </span>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </section>
-
-            <div className="hms-push-actions">
-              <button
-                type="button"
-                disabled={working || !supported}
-                onClick={() => void enablePush()}
-              >
-                <Smartphone size={19} /> Activar en este dispositivo
-              </button>
-              <button
-                type="button"
-                disabled={working || !supported}
-                onClick={() => void testPush()}
-              >
-                <Send size={19} /> Enviar prueba aquí
-              </button>
-              <button
-                type="button"
-                className="secondary"
-                disabled={working}
-                onClick={() => void disablePush()}
-              >
-                <Bell size={19} /> Desactivar aquí
-              </button>
-            </div>
-
-            {!supported ? (
-              <p className="hms-push-note">
-                Este navegador no ofrece Push API. En iPhone/iPad usa Safari,
-                añade Donexto a la pantalla de inicio y vuelve a activar.
-              </p>
-            ) : null}
-
             <section className="hms-push-feed">
-              <h3>Centro de avisos</h3>
+              <h3>Lo que te avisamos</h3>
               {notifications.length === 0 ? (
-                <p>No hay avisos todavía.</p>
+                <p>Todavía no hay avisos N1. Cuando algo te necesite, llega aquí y al dispositivo.</p>
               ) : (
                 notifications.map((item) => (
                   <button
@@ -398,6 +265,78 @@ export function PushNotificationsPanel({ onClose }: { onClose: () => void }) {
                 ))
               )}
             </section>
+
+            {activeDevices.length > 0 ? (
+              <section className="hms-push-devices">
+                <h3>Dónde te avisamos</h3>
+                <ul>
+                  {activeDevices.map((device) => {
+                    const isThis =
+                      Boolean(localEndpoint) &&
+                      Boolean(device.endpoint) &&
+                      device.endpoint === localEndpoint;
+                    return (
+                      <li key={device.id} className={isThis ? "is-current" : ""}>
+                        <Smartphone size={18} />
+                        <span>
+                          <strong>
+                            {device.device_label || "Dispositivo"}
+                            {isThis ? " · este equipo" : ""}
+                          </strong>
+                          <small>
+                            {device.last_error
+                              ? `Error: ${device.last_error}`
+                              : device.last_success_at
+                                ? `Último envío OK: ${new Intl.DateTimeFormat("es-MX", {
+                                    dateStyle: "short",
+                                    timeStyle: "short",
+                                  }).format(new Date(device.last_success_at))}`
+                                : "Sin envíos aún"}
+                          </small>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            ) : null}
+
+            <div className="hms-push-actions">
+              {permission === "denied" || !localEndpoint ? (
+                <button
+                  type="button"
+                  disabled={working || !supported}
+                  onClick={() => void retryOsPermission()}
+                >
+                  <Settings size={19} /> Abrir ajustes de notificaciones
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled={working || !supported}
+                  onClick={() => void testPush()}
+                >
+                  <Send size={19} /> Enviar prueba a este equipo
+                </button>
+              )}
+              {localEndpoint ? (
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={working}
+                  onClick={() => void disablePush()}
+                >
+                  <Bell size={19} /> Silenciar este equipo
+                </button>
+              ) : null}
+            </div>
+
+            {!supported ? (
+              <p className="hms-push-note">
+                En iPhone o iPad: Safari → Compartir → Añadir a pantalla de inicio.
+                Luego Donexto pide el permiso del sistema solo.
+              </p>
+            ) : null}
           </>
         ) : null}
       </section>

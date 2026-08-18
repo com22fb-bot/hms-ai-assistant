@@ -44,6 +44,8 @@ import { MailCategoriesPanel } from "@/components/MailCategoriesPanel";
 import "@/components/mail-categories.css";
 import { MailInbox } from "@/components/MailInbox";
 import { PushNotificationsPanel } from "@/components/PushNotificationsPanel";
+import { useDonextoPushOnboarding } from "@/hooks/useDonextoPushOnboarding";
+import { openOsNotificationSettings } from "@/lib/donextoPush";
 import "@/components/mail-inbox.css";
 import "@/components/push-notifications.css";
 import "@/components/logistica-responsive.css";
@@ -765,6 +767,16 @@ function Dashboard({
     useState<ImportFlowStatus | null>(null);
   const [initialFlowOpened, setInitialFlowOpened] = useState(false);
 
+  const pushNotice = useDonextoPushOnboarding({
+    ready:
+      Boolean(connection?.connected) &&
+      !mailboxPickerOpen &&
+      !guidedImportOpen &&
+      !mailOpen &&
+      !pushOpen,
+    profileId: session.id,
+  });
+
   // Tras verificar Donexto sin buzón: autorizar lectura del mismo correo.
   useEffect(() => {
     if (loadingConnection) {
@@ -1320,6 +1332,32 @@ function Dashboard({
               <CheckCircle2 size={18} />
               <span>{notice}</span>
               <button type="button" aria-label="Cerrar aviso" onClick={() => setNotice(null)}><X size={17} /></button>
+            </section>
+          ) : null}
+
+          {pushNotice ? (
+            <section
+              className={
+                pushNotice.kind === "ok"
+                  ? "app-navigation-notice"
+                  : "app-navigation-notice"
+              }
+              role="status"
+            >
+              {pushNotice.kind === "ok" ? (
+                <CheckCircle2 size={18} />
+              ) : (
+                <Bell size={18} />
+              )}
+              <span>{pushNotice.text}</span>
+              {pushNotice.kind === "denied" ? (
+                <button
+                  type="button"
+                  onClick={() => openOsNotificationSettings()}
+                >
+                  Abrir ajustes
+                </button>
+              ) : null}
             </section>
           ) : null}
 
