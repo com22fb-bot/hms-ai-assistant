@@ -1,0 +1,230 @@
+.dx-settings-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 220;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(2, 10, 14, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.dx-settings-card {
+  width: min(520px, 100%);
+  max-height: min(92vh, 760px);
+  overflow: auto;
+  padding: 1.15rem 1.2rem 1.25rem;
+  border-radius: 18px;
+  border: 1px solid rgba(36, 200, 202, 0.28);
+  background: #07131c;
+  color: #f5ffff;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+}
+
+.dx-settings-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 1rem;
+}
+
+.dx-settings-header span {
+  display: block;
+  color: #21d8d2;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.dx-settings-header h2 {
+  margin: 0.2rem 0 0;
+  font-size: 1.45rem;
+  letter-spacing: -0.03em;
+}
+
+.dx-settings-icon-btn {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  border: 1px solid rgba(109, 204, 214, 0.22);
+  background: #082b35;
+  color: #eaffff;
+  cursor: pointer;
+}
+
+.dx-settings-account {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 1.1rem;
+  padding: 0.85rem 0.95rem;
+  border-radius: 12px;
+  background: rgba(8, 43, 53, 0.72);
+  border: 1px solid rgba(91, 187, 198, 0.17);
+}
+
+.dx-settings-account svg {
+  color: #21d8d2;
+}
+
+.dx-settings-account strong,
+.dx-settings-account small {
+  display: block;
+}
+
+.dx-settings-account small {
+  margin-top: 0.15rem;
+  color: #a6c2c9;
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
+.dx-settings-language__intro {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  margin-bottom: 0.85rem;
+}
+
+.dx-settings-language__intro svg {
+  margin-top: 2px;
+  color: #21d8d2;
+}
+
+.dx-settings-language h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.dx-settings-language p {
+  margin: 0.25rem 0 0;
+  color: #a6c2c9;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.dx-settings-language__grid {
+  display: grid;
+  gap: 8px;
+}
+
+.dx-settings-lang {
+  width: 100%;
+  min-height: 3.1rem;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 0.55rem 0.75rem;
+  border-radius: 12px;
+  border: 1px solid rgba(109, 204, 214, 0.18);
+  background: #082832;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+
+.dx-settings-lang:hover {
+  border-color: rgba(33, 216, 210, 0.45);
+}
+
+.dx-settings-lang.is-selected {
+  border-color: #21d8d2;
+  background: rgba(33, 216, 210, 0.12);
+}
+
+.dx-settings-lang__code {
+  width: 2.4rem;
+  height: 2.4rem;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(33, 216, 210, 0.16);
+  color: #21d8d2;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.dx-settings-lang__names strong,
+.dx-settings-lang__names small {
+  display: block;
+}
+
+.dx-settings-lang__names small {
+  margin-top: 0.1rem;
+  color: #a6c2c9;
+  font-size: 0.78rem;
+}
+
+.dx-settings-lang__check {
+  color: #21d8d2;
+}
+
+.dx-settings-signout {
+  width: 100%;
+  min-height: 2.8rem;
+  margin-top: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #ff8999;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.dx-settings-signout:hover {
+  background: rgba(255, 137, 153, 0.1);
+}
+
+.dx-lang-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin: 0.75rem 0 0;
+}
+
+.dx-lang-strip__btn {
+  min-height: 2rem;
+  padding: 0 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(109, 204, 214, 0.22);
+  background: transparent;
+  color: #a6c2c9;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.dx-lang-strip__btn.is-selected {
+  border-color: #21d8d2;
+  background: rgba(33, 216, 210, 0.14);
+  color: #f5ffff;
+}
+
+@media (max-width: 680px) {
+  .dx-settings-overlay {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .dx-settings-card {
+    width: 100%;
+    max-height: none;
+    min-height: 100dvh;
+    border-radius: 0;
+    padding: 16px 14px calc(20px + env(safe-area-inset-bottom));
+  }
+}

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
+import { LanguageStrip } from "@/components/UserSettingsPanel";
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
 import type { AuthOAuthProvider } from "@/hooks/useAppAuth";
@@ -508,6 +509,8 @@ export function LoginScreen({
               </button>
             )}
           </div>
+
+          <LanguageStrip />
 
           <p className="dx-auth__legal-agree">
             Al continuar aceptas los{" "}
