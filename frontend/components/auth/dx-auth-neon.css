@@ -138,6 +138,14 @@
   color: #6d7c82;
 }
 
+.dx-auth__legal-agree {
+  color: #6d7c82;
+}
+
+.dx-auth__legal-agree a {
+  color: #2ee6d6;
+}
+
 .dx-auth__provider {
   background: #10161b;
   border-color: rgba(255, 255, 255, 0.12);

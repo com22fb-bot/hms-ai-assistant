@@ -7,12 +7,13 @@ export const ACCOUNT_VS_MAILBOX = {
     "El correo con el que entras a Donexto es el mismo buzón que vigilamos. Nunca te pedimos la contraseña de Gmail aquí.",
 
   loginEyebrow: "Cuenta Donexto",
-  loginTitleSignIn: "Login",
+  loginTitleSignIn: "Entrar a Donexto",
   loginTitleSignUp: "Crear cuenta",
-  loginEmailLabel: "Correo de tu cuenta",
-  loginPasswordLabel: "Contraseña",
+  loginEmailLabel: "Correo",
+  loginPasswordLabel: "Contraseña de Donexto",
   signupFullNameLabel: "Nombre completo",
-  loginHelper: "Esta es tu cuenta de Donexto. El buzón a leer es este mismo correo.",
+  loginHelper:
+    "Identifícate con el correo que vas a vigilar. No pedimos la contraseña de ese buzón.",
   loginFoot: "Esta es tu cuenta de Donexto.",
   signupChooserBody:
     "Elige el correo que vas a vigilar: será el mismo de tu cuenta Donexto. Te llevamos al inicio de sesión de ese proveedor.",

@@ -3,11 +3,7 @@
 import { LoaderCircle, Mail } from "lucide-react";
 import { useState } from "react";
 
-import {
-  ACCOUNT_VS_MAILBOX,
-  authSecurityBodyFor,
-  confirmGateBodyFor,
-} from "@/lib/accountVsMailbox";
+import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 
 import "./hms-gate.css";
 import "./dx-auth-neon.css";
@@ -110,14 +106,13 @@ export function ConfirmEmailGate({
             <h2 id="dx-confirm-title" className="dx-auth__title">
               {ACCOUNT_VS_MAILBOX.confirmGateTitle}
             </h2>
-            <p className="dx-auth__slogan">{confirmGateBodyFor(email)}</p>
+            <p className="dx-auth__slogan">
+              Abre el enlace que enviamos a <strong>{email}</strong>.
+              Eso te identifica; no es la contraseña del buzón.
+            </p>
           </header>
 
           <div className="dx-auth__signin">
-            <p className="dx-auth__signup-copy dx-auth__signup-copy--hint">
-              Enviado a <strong>{email}</strong>
-            </p>
-
             {error ? (
               <div className="dx-auth__alert is-error" role="alert">
                 <span>{error}</span>
@@ -176,8 +171,7 @@ export function ConfirmEmailGate({
           </div>
 
           <p className="dx-auth__secure" role="note">
-            <strong>{ACCOUNT_VS_MAILBOX.authSecurityTitle}. </strong>
-            {authSecurityBodyFor(email)}
+            Al continuar, Donexto solo confirma que ese correo es tuyo.
           </p>
         </div>
       </section>
