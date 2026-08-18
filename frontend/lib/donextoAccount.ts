@@ -3,6 +3,8 @@ import { supabase } from "@/lib/supabase";
 export type DonextoAccountLookup = "exists" | "missing" | "unknown";
 
 const PENDING_FULL_NAME_KEY = "donexto_pending_full_name";
+const INTENDED_EMAIL_KEY = "donexto_intended_email";
+const AUTH_ERROR_KEY = "donexto_auth_error";
 
 export function rememberPendingFullName(name: string) {
   const clean = name.trim().replace(/\s+/g, " ");
@@ -29,6 +31,52 @@ export function clearPendingFullName() {
     sessionStorage.removeItem(PENDING_FULL_NAME_KEY);
   } catch {
     // ignore
+  }
+}
+
+export function rememberIntendedEmail(email: string) {
+  const clean = email.trim().toLowerCase();
+  if (!clean.includes("@")) {
+    return;
+  }
+  try {
+    sessionStorage.setItem(INTENDED_EMAIL_KEY, clean);
+  } catch {
+    // ignore
+  }
+}
+
+export function peekIntendedEmail(): string {
+  try {
+    return (sessionStorage.getItem(INTENDED_EMAIL_KEY) || "").trim().toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+export function clearIntendedEmail() {
+  try {
+    sessionStorage.removeItem(INTENDED_EMAIL_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+export function rememberAuthError(message: string) {
+  try {
+    sessionStorage.setItem(AUTH_ERROR_KEY, message);
+  } catch {
+    // ignore
+  }
+}
+
+export function takeAuthError(): string {
+  try {
+    const value = (sessionStorage.getItem(AUTH_ERROR_KEY) || "").trim();
+    sessionStorage.removeItem(AUTH_ERROR_KEY);
+    return value;
+  } catch {
+    return "";
   }
 }
 

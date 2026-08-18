@@ -5,8 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
 import {
+  clearIntendedEmail,
   clearPendingFullName,
+  peekIntendedEmail,
   peekPendingFullName,
+  rememberAuthError,
+  rememberIntendedEmail,
 } from "@/lib/donextoAccount";
 import {
   YAHOO_CUSTOM_PROVIDER,
@@ -342,6 +346,27 @@ export function useAppAuth() {
         return;
       }
 
+      const intended = peekIntendedEmail();
+      if (intended && accountEmail && intended !== accountEmail) {
+        verifyBootstrapLock.current = true;
+        rememberAuthError(
+          `Entraste con ${accountEmail}, no con ${intended}. ` +
+            `Cierra sesión en ese correo y vuelve a entrar con ${intended}.`,
+        );
+        clearIntendedEmail();
+        try {
+          await supabase.auth.signOut();
+        } catch (error) {
+          console.error("No fue posible cerrar la sesión cruzada:", error);
+        } finally {
+          verifyBootstrapLock.current = false;
+        }
+        return;
+      }
+      if (intended && intended === accountEmail) {
+        clearIntendedEmail();
+      }
+
       if (isDonextoVerifyReturn()) {
         verifyBootstrapLock.current = true;
         try {
@@ -452,12 +477,16 @@ export function useAppAuth() {
     async (provider: AuthOAuthProvider, loginHint?: string) => {
       const queryParams: Record<string, string> = {};
       const hint = loginHint?.trim().toLowerCase();
-      if (hint && (provider === "google" || provider === "azure")) {
+      if (hint) {
+        rememberIntendedEmail(hint);
         queryParams.login_hint = hint;
       }
       if (provider === "google") {
         queryParams.access_type = "offline";
         queryParams.prompt = "select_account";
+      } else if (provider === "yahoo") {
+        queryParams.prompt = "login";
+        queryParams.max_age = "0";
       }
 
       const { data, error } = await supabase.auth.signInWithOAuth({

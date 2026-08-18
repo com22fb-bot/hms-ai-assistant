@@ -16,6 +16,7 @@ import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import {
   lookupDonextoAccount,
   rememberPendingFullName,
+  takeAuthError,
 } from "@/lib/donextoAccount";
 import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
 import type { AuthOAuthProvider } from "@/hooks/useAppAuth";
@@ -138,6 +139,13 @@ export function LoginScreen({
       nameRef.current?.focus();
     }
   }, [mode]);
+
+  useEffect(() => {
+    const stored = takeAuthError();
+    if (stored) {
+      setError(stored);
+    }
+  }, []);
 
   useEffect(() => {
     const html = document.documentElement;
