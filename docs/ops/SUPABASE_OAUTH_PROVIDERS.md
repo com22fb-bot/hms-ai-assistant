@@ -62,21 +62,35 @@ Services ID + Key en Apple Developer. Return URL = el callback de Supabase.
 
 Crear cuenta → **Apple** abre el portal de Apple.
 
-### Yahoo
+### Yahoo (no es nativo)
 
-**Sign In / Providers** → **Yahoo** → **Enable Sign in with Yahoo**.
-App en [Yahoo Developer](https://developer.yahoo.com/) (OAuth 2.0 / OpenID).
-Redirect URI = el callback de Supabase:
+Supabase Auth **no incluye** `provider=yahoo`. Por eso
+`{"msg":"Unsupported provider: Provider yahoo could not be found"}`.
+
+Hay que crear un proveedor **custom**:
+
+1. [Yahoo Developer](https://developer.yahoo.com/) → app OAuth2 / OpenID.
+   Redirect URI = callback de abajo.
+2. Supabase → **Authentication** → **Sign In / Providers** → **New Provider**
+   → **Manual configuration (OAuth2)**.
+3. Identifier: `custom:yahoo`
+4. Client ID y Client Secret de Yahoo.
+5. URLs:
+   - Authorization: `https://api.login.yahoo.com/oauth2/request_auth`
+   - Token: `https://api.login.yahoo.com/oauth2/get_token`
+   - UserInfo: `https://api.login.yahoo.com/openid/v1/userinfo`
+6. Scopes: `openid email profile`
+7. Callback (el de Supabase, no el de la app):
 
 ```text
 https://tgirnpystoydvbxlvlzz.supabase.co/auth/v1/callback
 ```
 
-La app llama `signInWithOAuth({ provider: 'yahoo' })`. Entrar con Yahoo **no** envía
-un enlace mágico: te lleva a login.yahoo.com. El mail de Donexto es solo al **alta**,
-una vez.
+La app llama `signInWithOAuth({ provider: 'custom:yahoo' })`.
+Entrar con Yahoo **no** envía un enlace mágico: te lleva a login.yahoo.com.
+El mail de Donexto es solo al **alta**, una vez.
 
-Si el proveedor no está activo, la UI dice `Falta activar Yahoo en Supabase Auth`.
+Si el proveedor no está creado, la UI explica estos pasos (ya no muestra el JSON).
 
 ## Relación con el buzón
 

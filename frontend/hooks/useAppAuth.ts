@@ -4,6 +4,10 @@ import type { Provider, Session, User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
+import {
+  YAHOO_CUSTOM_PROVIDER,
+  YAHOO_PROVIDER_SETUP_MESSAGE,
+} from "@/lib/yahooAuth";
 
 export type SignUpResult =
   | { kind: "signed_in" }
@@ -24,8 +28,7 @@ const SUPABASE_OAUTH_PROVIDER: Record<AuthOAuthProvider, Provider> = {
   google: "google",
   azure: "azure",
   apple: "apple",
-  // GoTrue sí soporta Yahoo; supabase-js aún no lo tipa.
-  yahoo: "yahoo" as Provider,
+  yahoo: YAHOO_CUSTOM_PROVIDER,
 };
 
 type AppSession = {
@@ -196,8 +199,12 @@ function translateAuthError(
 
   if (
     normalized.includes("provider is not enabled") ||
-    normalized.includes("unsupported provider")
+    normalized.includes("unsupported provider") ||
+    normalized.includes("could not be found")
   ) {
+    if (oauthProvider === "yahoo") {
+      return YAHOO_PROVIDER_SETUP_MESSAGE;
+    }
     return `Falta activar ${oauthLabel ?? "Google"} en Supabase Auth`;
   }
 
@@ -393,6 +400,28 @@ export function useAppAuth() {
 
   const signInWithProvider = useCallback(
     async (provider: AuthOAuthProvider, loginHint?: string) => {
+      if (provider === "yahoo") {
+        try {
+          const readyResponse = await fetch("/api/auth/yahoo-ready", {
+            cache: "no-store",
+          });
+          const readyPayload = (await readyResponse.json()) as {
+            ready?: boolean;
+          };
+          if (!readyPayload.ready) {
+            throw new Error(YAHOO_PROVIDER_SETUP_MESSAGE);
+          }
+        } catch (readyError) {
+          if (
+            readyError instanceof Error &&
+            readyError.message === YAHOO_PROVIDER_SETUP_MESSAGE
+          ) {
+            throw readyError;
+          }
+          throw new Error(YAHOO_PROVIDER_SETUP_MESSAGE);
+        }
+      }
+
       const queryParams: Record<string, string> = {};
       const hint = loginHint?.trim().toLowerCase();
       if (hint) {
@@ -405,9 +434,10 @@ export function useAppAuth() {
         queryParams.prompt = "login";
       }
 
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { data, error } = await supabase.auth.signInWithOAuth({
         provider: SUPABASE_OAUTH_PROVIDER[provider],
         options: {
+          skipBrowserRedirect: true,
           redirectTo: `${window.location.origin}/`,
           queryParams,
         },
@@ -416,6 +446,14 @@ export function useAppAuth() {
       if (error) {
         throw new Error(translateAuthError(error.message, provider));
       }
+      if (!data.url) {
+        throw new Error(
+          provider === "yahoo"
+            ? YAHOO_PROVIDER_SETUP_MESSAGE
+            : `No fue posible abrir el inicio de sesión de ${OAUTH_PROVIDER_LABEL[provider]}.`,
+        );
+      }
+      window.location.assign(data.url);
     },
     [],
   );
