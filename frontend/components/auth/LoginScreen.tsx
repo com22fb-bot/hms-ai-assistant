@@ -44,6 +44,9 @@ function mailboxToOAuth(
   if (provider === "apple") {
     return "apple";
   }
+  if (provider === "yahoo" || provider === "aol") {
+    return "yahoo";
+  }
   return null;
 }
 
@@ -57,9 +60,12 @@ type LoginScreenProps = {
     fullName: string,
   ) => Promise<unknown>;
   onSignInWithGoogle: () => Promise<void>;
-  onSignInWithProvider: (provider: AuthOAuthProvider) => Promise<void>;
+  onSignInWithProvider: (
+    provider: AuthOAuthProvider,
+    loginHint?: string,
+  ) => Promise<void>;
   onResendSignupEmail?: (email: string) => Promise<void>;
-  onMagicLink: (email: string) => Promise<void>;
+  onMagicLink?: (email: string) => Promise<void>;
   onResetPassword: (email: string) => Promise<void>;
 };
 
@@ -105,9 +111,8 @@ export function LoginScreen({
   setTheme: _setTheme,
   onSignIn,
   onSignUp: _onSignUp,
-  onSignInWithGoogle,
+  onSignInWithGoogle: _onSignInWithGoogle,
   onSignInWithProvider,
-  onMagicLink,
   onResetPassword,
 }: LoginScreenProps) {
   const [email, setEmail] = useState("");
@@ -167,43 +172,26 @@ export function LoginScreen({
     resetAlerts();
     setBusy(true);
     setOauthBusy(provider);
+    const hint = email.trim().toLowerCase();
     try {
-      if (provider === "google") {
-        await onSignInWithGoogle();
-      } else {
-        await onSignInWithProvider(provider);
-      }
+      await onSignInWithProvider(
+        provider,
+        isValidSignupEmail(hint) ? hint : undefined,
+      );
     } catch (requestError) {
       const fallback =
         provider === "azure"
           ? "No fue posible abrir el inicio de sesión de Microsoft."
           : provider === "apple"
             ? "No fue posible abrir el inicio de sesión de Apple."
-            : "No fue posible abrir el inicio de sesión de Google.";
+            : provider === "yahoo"
+              ? "No fue posible abrir el inicio de sesión de Yahoo."
+              : "No fue posible abrir el inicio de sesión de Google.";
       setError(
         requestError instanceof Error ? requestError.message : fallback,
       );
       setBusy(false);
       setOauthBusy(null);
-    }
-  }
-
-  async function sendMagicLink(address: string) {
-    setBusy(true);
-    resetAlerts();
-    try {
-      await onMagicLink(address);
-      setMessage(
-        `Revisa ${address}: enviamos un enlace para identificarte. No uses la contraseña del buzón.`,
-      );
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "No fue posible enviar el enlace.",
-      );
-    } finally {
-      setBusy(false);
     }
   }
 
@@ -245,22 +233,13 @@ export function LoginScreen({
       await startOAuthSignup(oauth);
       return;
     }
-    await sendMagicLink(clean);
+    setError(
+      "Correo de empresa: pulsa Continuar con Google (Workspace) o Continuar con Microsoft (Microsoft 365). No enviamos un enlace para entrar.",
+    );
   }
 
   async function continueYahoo() {
-    const clean = email.trim().toLowerCase();
-    if (!isValidSignupEmail(clean)) {
-      setError("Escribe tu correo Yahoo y continúa.");
-      emailRef.current?.focus();
-      return;
-    }
-    if (resolveMailboxProviderFromEmail(clean) !== "yahoo" && resolveMailboxProviderFromEmail(clean) !== "aol") {
-      setError("Usa un correo Yahoo o AOL (@yahoo.com, @ymail.com, @rocketmail.com o @aol.com).");
-      emailRef.current?.focus();
-      return;
-    }
-    await sendMagicLink(clean);
+    await startOAuthSignup("yahoo");
   }
 
   async function recoverPassword() {

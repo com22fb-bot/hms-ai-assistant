@@ -64,8 +64,19 @@ Crear cuenta → **Apple** abre el portal de Apple.
 
 ### Yahoo
 
-`supabase-js` **no** incluye `yahoo` como Provider de Auth.
-La app abre [Seguridad Yahoo](https://login.yahoo.com/account/security) para la contraseña de aplicación; el buzón se conecta con IMAP en el Paso 2. No hay OAuth de identidad Yahoo que activar en el dashboard.
+**Sign In / Providers** → **Yahoo** → **Enable Sign in with Yahoo**.
+App en [Yahoo Developer](https://developer.yahoo.com/) (OAuth 2.0 / OpenID).
+Redirect URI = el callback de Supabase:
+
+```text
+https://tgirnpystoydvbxlvlzz.supabase.co/auth/v1/callback
+```
+
+La app llama `signInWithOAuth({ provider: 'yahoo' })`. Entrar con Yahoo **no** envía
+un enlace mágico: te lleva a login.yahoo.com. El mail de Donexto es solo al **alta**,
+una vez.
+
+Si el proveedor no está activo, la UI dice `Falta activar Yahoo en Supabase Auth`.
 
 ## Relación con el buzón
 

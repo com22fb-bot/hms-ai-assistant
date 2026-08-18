@@ -108,7 +108,8 @@ export function ConfirmEmailGate({
             </h2>
             <p className="dx-auth__slogan">
               Abre el enlace que enviamos a <strong>{email}</strong>.
-              Eso te identifica; no es la contraseña del buzón.
+              Solo esta vez, porque la cuenta es nueva. Después entras por tu
+              proveedor, sin otro correo de Donexto.
             </p>
           </header>
 
