@@ -61,8 +61,8 @@ const LEVEL_LABEL: Record<string, { title: string; why: string }> = {
     why: "Solicitud o respuesta pendiente de ti",
   },
   notice: {
-    title: "Dinero, seguridad o avisos",
-    why: "Bancos, pedidos, reservas, pagos, seguridad o plazos",
+    title: "Cargos, pedidos o seguridad",
+    why: "Bancos, compras, rastreo, reservas, pagos, accesos o plazos",
   },
   review: {
     title: "Revisión humana",
@@ -277,7 +277,7 @@ export function AttentionHome({
             {personName ? `Hola, ${personName}` : "Hola"}
           </h1>
           <p className="dx-attention__lede">
-            Cargos, seguridad, envíos y familia. El ruido no entra aquí.
+            Cargos, pedidos, seguridad y familia. El ruido no entra aquí.
           </p>
         </div>
       </header>
@@ -409,7 +409,7 @@ export function AttentionHome({
                   <span>
                     {unreviewed > 0
                       ? `${unreviewed.toLocaleString()} mensajes aún por clasificar.`
-                      : "Casa en calma. Revisa la bandeja cuando quieras."}
+                      : "Nada urgente. Revisa la bandeja cuando quieras."}
                   </span>
                 </div>
               </div>

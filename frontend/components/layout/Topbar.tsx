@@ -41,7 +41,7 @@ function getInitials(email?: string | null): string {
 
 export default function Topbar({
   title = "Donexto",
-  subtitle = "Prioridades del correo",
+  subtitle = "Cargos, pedidos, seguridad y familia",
   accountEmail,
   connected = false,
   loading = false,

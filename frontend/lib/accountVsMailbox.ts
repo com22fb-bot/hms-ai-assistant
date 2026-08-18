@@ -44,7 +44,7 @@ export const ACCOUNT_VS_MAILBOX = {
     "No hay un portal OAuth de Donexto para ese dominio. Te enviamos un enlace mágico a ese mismo correo para crear la cuenta; luego autorizamos la lectura de ese buzón.",
   signupOtherMagicLink: "Enviar enlace de acceso",
   brandSub:
-    "Prioridades y respuestas, sin el caos de la bandeja. Primero confirmas tu correo; después autorizas la lectura de ese mismo buzón.",
+    "Cargos, pedidos, seguridad y familia, sin el caos de la bandeja. Primero confirmas tu correo; después autorizas la lectura de ese mismo buzón.",
 
   step2Title: "Autoriza la lectura de tu correo",
   step2Body:

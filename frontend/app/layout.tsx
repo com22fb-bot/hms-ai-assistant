@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   title: "Donexto — Do Next To…",
   description:
-    "Do Next To…: prioridades, dinero y respuestas — antes del caos de la bandeja. donexto.com",
+    "Do Next To…: cargos, pedidos, seguridad y familia — antes del caos de la bandeja. donexto.com",
   icons: {
     icon: [
       { url: "/brand/donexto-mark.svg", type: "image/svg+xml" },

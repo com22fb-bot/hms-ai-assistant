@@ -5,12 +5,11 @@
 export const DONEXTO_QUALITY = {
   /** Slogan principal: tarjeta de login, bajo el título Login. */
   slogan: "Do Next To…",
-  /** Síntesis en el hero izquierdo (slot del viejo “Te muestra…”). */
   whatItDoes: "Do Next To…",
   promise:
-    "Consola del correo del hogar: cargos, seguridad, envíos y familia.",
+    "Cargos, pedidos, seguridad y familia. El resto espera.",
   mission:
-    "No somos otra bandeja. Somos la consola del correo del hogar: dinero, seguridad, envíos y familia; silencio para el ruido promocional.",
+    "No somos otra bandeja. Adelante van cargos, pedidos, seguridad y familia; silencio para el ruido promocional.",
   /** Línea de la tarjeta de login (cuenta Donexto). */
   boundary: "Esta es tu cuenta de Donexto.",
   /** Compromisos de calidad visibles en el acceso */

@@ -11,13 +11,13 @@
 3. Bases de bancos MX, US, CA, UE, LATAM.
 4. Idioma en ajustes: ES, EN, FR, IT, PT.
 5. Yahoo: **correo + clave**, sin guía de 16 dígitos ni 2FA en Donexto.
-6. Landing: H1 **Donexto**, correo del hogar (familia e lo personal). Publicar siempre a Pages **Production / `main`**.
+6. Landing y app: H1 **Donexto**. Producto = criterio (qué sí requiere acción). Cuatro frentes al **mismo peso**: Dinero · Seguridad · Pedidos · Familia. Hogar no es titular; pedidos no es “envíos”. Publicar landing siempre a Pages **Production / `main`**.
 
 ## Estado
 
 | Pieza | Dónde | Prod |
 | --- | --- | --- |
-| Landing hogar + consola | Pages `donexto` Production `main` | **En vivo** en donexto.com / www |
+| Landing (criterio + 4 frentes) | Pages `donexto` Production `main` | Este deploy |
 | Yahoo correo + clave | Worker `donexto-app` + backend IMAP | Worker: este deploy. Railway: al mergear a `main` |
 | Idioma ES/EN/FR/IT/PT | Worker ajustes | Este deploy |
 | Clasificador v4 + catálogo bancos | `backend` `logistica1-triage-v4` | **Railway solo tras merge a `main`** |
@@ -60,7 +60,7 @@ Eso usa `--branch main`. Chrome: **Ctrl+Shift+R** si la pestaña es vieja.
 
 ## Definición de hecho
 
-1. donexto.com muestra H1 Donexto y “Correo del hogar” (comprobado en navegador).
-2. App: login con consola del hogar; Yahoo pide correo + clave.
+1. donexto.com: H1 Donexto; kicker **no** es “Correo del hogar”; pilar 03 = **Pedidos**; prototipo A = **Prioridad**.
+2. App login: “Cargos, pedidos, seguridad y familia. El resto espera.” Yahoo pide correo + clave.
 3. Merge a `main` + Railway v4 + reclasificar buzón de Héctor.
 4. Héctor confirma Banamex en Avisos.
