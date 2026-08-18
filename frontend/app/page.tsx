@@ -46,6 +46,7 @@ import { PushNotificationsPanel } from "@/components/PushNotificationsPanel";
 import "@/components/mail-inbox.css";
 import "@/components/push-notifications.css";
 import "@/components/logistica-responsive.css";
+import "@/components/donexto-app-shell.css";
 import { useCases } from "@/hooks/useCases";
 import { useGoogleStatus } from "@/hooks/useGoogleStatus";
 import { useAppAuth } from "@/hooks/useAppAuth";
@@ -274,6 +275,8 @@ const NAV_ITEMS: Array<{
   { id: "metrics", label: "Métricas", icon: BarChart3, state: "active" },
   { id: "settings", label: "Ajustes", icon: Settings, state: "active" },
 ];
+
+const PRIMARY_NAV_IDS = new Set(["home", "mail", "cases", "push", "settings"]);
 
 function priorityLabel(priority: CasePriority): string {
   const labels: Record<CasePriority, string> = {
@@ -989,9 +992,65 @@ function Dashboard({
   const visibleCases = cases;
   const visibleEvents =
     dashboard.recent_events.slice(0, 6);
+  const primaryNav = NAV_ITEMS.filter((item) => PRIMARY_NAV_IDS.has(item.id));
+  const moreNav = NAV_ITEMS.filter((item) => !PRIMARY_NAV_IDS.has(item.id));
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      return;
+    }
+
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    html.classList.add("dx-menu-lock");
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      html.classList.remove("dx-menu-lock");
+    };
+  }, [mobileOpen]);
+
+  function renderNavItem(item: (typeof NAV_ITEMS)[number]) {
+    const Icon = item.icon;
+
+    return (
+      <button
+        key={item.id}
+        type="button"
+        className={
+          activeView === item.id
+            ? "app-nav-item is-active"
+            : "app-nav-item"
+        }
+        aria-current={activeView === item.id ? "page" : undefined}
+        onClick={() => selectView(item.id, item.label)}
+        data-control-state={item.state}
+      >
+        <Icon size={21} />
+        <span>{item.label}</span>
+        {item.id === "cases" && dashboard.metrics.total_open > 0 ? (
+          <span className="app-nav-item-state">
+            <b>{dashboard.metrics.total_open}</b>
+          </span>
+        ) : null}
+      </button>
+    );
+  }
 
   return (
-    <div className="app-shell" data-theme={theme}>
+    <div
+      className={
+        mobileOpen
+          ? "app-shell is-menu-open"
+          : "app-shell"
+      }
+      data-theme={theme}
+    >
       <button
         type="button"
         className={
@@ -999,7 +1058,10 @@ function Dashboard({
             ? "app-mobile-overlay is-visible"
             : "app-mobile-overlay"
         }
-        onClick={() => setMobileOpen(false)}
+        onClick={() => {
+          setMobileOpen(false);
+          setProfileOpen(false);
+        }}
         aria-label="Cerrar menú"
       />
 
@@ -1012,7 +1074,12 @@ function Dashboard({
       >
         <div className="app-brand">
           <span className="app-brand-icon" aria-hidden>
-            D
+            <img
+              src="/brand/donexto-mark.svg"
+              alt=""
+              width={42}
+              height={42}
+            />
           </span>
           <div>
             <strong>Donexto</strong>
@@ -1029,36 +1096,22 @@ function Dashboard({
           </button>
         </div>
 
-        <nav className="app-navigation">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <button
-                key={item.id}
-                type="button"
-                className={
-                  activeView === item.id
-                    ? "app-nav-item is-active"
-                    : "app-nav-item"
-                }
-                aria-current={activeView === item.id ? "page" : undefined}
-                onClick={() => selectView(item.id, item.label)}
-                data-control-state={item.state}
-              >
-                <Icon size={21} />
-                <span>{item.label}</span>
-                {item.id === "cases" && dashboard.metrics.total_open > 0 ? (
-                  <span className="app-nav-item-state">
-                    <b>{dashboard.metrics.total_open}</b>
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
+        <nav className="app-navigation" aria-label="Donexto">
+          {primaryNav.map(renderNavItem)}
+          {moreNav.length > 0 ? (
+            <details className="app-nav-more">
+              <summary>Más módulos</summary>
+              {moreNav.map(renderNavItem)}
+            </details>
+          ) : null}
         </nav>
 
         <div className="app-sidebar-bottom">
+          <p className="app-sidebar-account">
+            <strong>{session.name.split(" ")[0]}</strong>
+            <small>{session.email}</small>
+          </p>
+
           <button
             type="button"
             className="app-sidebar-primary"
@@ -1100,7 +1153,7 @@ function Dashboard({
           {connection?.connected ? (
             <button
               type="button"
-              className="app-logout"
+              className="app-sidebar-secondary"
               onClick={() => openMailboxConnect()}
             >
               <Mail size={18} />
@@ -1125,7 +1178,10 @@ function Dashboard({
             <button
               type="button"
               className="app-mobile-menu"
-              onClick={() => setMobileOpen(true)}
+              onClick={() => {
+                setProfileOpen(false);
+                setMobileOpen(true);
+              }}
               aria-label="Abrir menú"
             >
               <Menu size={22} />
@@ -1168,7 +1224,16 @@ function Dashboard({
               </div>
 
               <div className="app-user-menu">
-                <button type="button" className="app-user" aria-haspopup="menu" aria-expanded={profileOpen} onClick={() => setProfileOpen((current) => !current)}>
+                <button
+                  type="button"
+                  className="app-user"
+                  aria-haspopup="menu"
+                  aria-expanded={profileOpen}
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setProfileOpen((current) => !current);
+                  }}
+                >
                   <span>{initials(session.name)}</span>
                   <div>
                     <strong>{session.name.split(" ")[0]}</strong>
@@ -1176,19 +1241,44 @@ function Dashboard({
                   </div>
                   <ChevronDown size={16} />
                 </button>
-
-                {profileOpen ? (
-                  <div className="app-profile-dropdown" role="menu">
-                    <div className="app-profile-summary">
-                      <span>{initials(session.name)}</span>
-                      <div><strong>{session.name}</strong><small>{session.email}</small></div>
-                    </div>
-                    <button type="button" role="menuitem" className="is-danger" onClick={onLogout}><LogOut size={17} />Cerrar sesión</button>
-                  </div>
-                ) : null}
               </div>
             </div>
+
+            <button
+              type="button"
+              className="app-mobile-account"
+              aria-haspopup="menu"
+              aria-expanded={profileOpen}
+              aria-label="Cuenta y cerrar sesión"
+              onClick={() => {
+                setMobileOpen(false);
+                setProfileOpen((current) => !current);
+              }}
+            >
+              <span>{initials(session.name)}</span>
+            </button>
           </div>
+
+          {profileOpen ? (
+            <div className="app-profile-dropdown" role="menu">
+              <div className="app-profile-summary">
+                <span>{initials(session.name)}</span>
+                <div>
+                  <strong>{session.name}</strong>
+                  <small>{session.email}</small>
+                </div>
+              </div>
+              <button
+                type="button"
+                role="menuitem"
+                className="is-danger"
+                onClick={onLogout}
+              >
+                <LogOut size={17} />
+                Cerrar sesión
+              </button>
+            </div>
+          ) : null}
 
           <div className="app-mobile-status">
             <div
@@ -1537,7 +1627,10 @@ function Dashboard({
             <span>Correos</span>
           </button>
 
-          <button type="button" onClick={() => setMobileOpen(true)}>
+          <button type="button" onClick={() => {
+            setProfileOpen(false);
+            setMobileOpen(true);
+          }}>
             <Menu size={23} />
             <span>Menú</span>
           </button>
