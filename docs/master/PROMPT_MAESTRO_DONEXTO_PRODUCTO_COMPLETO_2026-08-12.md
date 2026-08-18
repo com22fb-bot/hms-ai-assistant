@@ -14,12 +14,13 @@ Eres el agente de desarrollo de **Donexto**. Trabajas en español de México con
 
 1. **Producto B2C hogar/personal** primero (experiencia Family/Hogar), con motor técnico compartido hacia Profesional después.  
 2. **No construir otro Gmail.** Es una **capa de atención** sobre el correo.  
-3. **Cuenta Donexto ≠ buzón** siempre (P0).  
-4. Desarrollo en **Codespace** (el dueño no desarrolla en laptop).  
-5. Deploy frontend con **`CLOUDFLARE_API_TOKEN`** (nunca OAuth browser en Codespace: falla por timeout).  
-6. No inventar logos “gancho” ni split-screen que desperdicie mitad de pantalla en el login; login = tipografía Donexto + misión/calidad + form (una columna).  
-7. No pedir secretos en chat. No force-push a `main`. Commits solo si el dueño lo pide (salvo urgencia explícita de ship).  
-8. Validar en prod: https://app.donexto.com solo cambia tras `git pull` **con el commit correcto** + `npm run deploy` autenticado por token.
+3. **P00 primero** (`docs/ops/P00-pendientes.md`): clasificación (bancos ≠ social), catálogo MX/US, idioma, guía Yahoo.  
+4. **Cuenta Donexto ≠ buzón** siempre (P0).  
+5. Desarrollo en **Codespace** (el dueño no desarrolla en laptop).  
+6. Deploy frontend con **`CLOUDFLARE_API_TOKEN`** (nunca OAuth browser en Codespace: falla por timeout).  
+7. No inventar logos “gancho” ni split-screen que desperdicie mitad de pantalla en el login; login = tipografía Donexto + misión/calidad + form (una columna).  
+8. No pedir secretos en chat. No force-push a `main`. Commits solo si el dueño lo pide (salvo urgencia explícita de ship).  
+9. Validar en prod: https://app.donexto.com solo cambia tras `git pull` **con el commit correcto** + `npm run deploy` autenticado por token.
 
 ---
 
@@ -128,15 +129,18 @@ Doc: `docs/ops/P0-cuenta-donexto-vs-buzon.md`.
 
 ---
 
-## 3. Plan maestro de desarrollo (P0–P12)
+## 3. Plan maestro de desarrollo (P00, luego P0–P12)
 
-Orden acordado (continuidad 2026-08-11):
+**P00 manda ahora** (18 ago 2026): clasificación (Banamex ≠ social), catálogo MX/US, bases de bancos CA/UE/LATAM, idioma ES/EN/FR/IT/PT, guía Yahoo 16 dígitos. Doc: `docs/ops/P00-pendientes.md`.
+
+Orden acordado (continuidad 2026-08-11; **P00 primero**):
 
 | ID | Entrega | Estado |
 |----|---------|--------|
+| **P00** | Clasificar bien + catálogo + bancos + idioma + guía Yahoo | **Activo — validar en prod** |
 | P0 | Cuenta ≠ buzón (UI/copy/signup/gate) | Hecho en código — validar en prod |
 | P1 | Matriz buzones (Gmail, Yahoo, Outlook, Apple, dominio privado) | Pendiente |
-| P2 | Conectar + **verificar** buzón (`mailbox_verified`) | **Siguiente** |
+| P2 | Conectar + **verificar** buzón (`mailbox_verified`) | Después de P00 |
 | P3 | Conteos INBOX / Sent | Pendiente |
 | P4 | Sample ~20 INBOX + ~20 Sent | Pendiente |
 | P5 | Motor hasta 10 “requieren atención” | Pendiente |
@@ -352,14 +356,14 @@ UI de acceso: confiable, una columna, misión/calidad legibles, marca **Donexto*
 
 ## 9. Checklist inmediato para el próximo agente
 
-1. Confirmar en Codespace: `git log -1 --oneline` y presencia de `dx-auth__quality` / `donextoQuality.ts`.  
-2. Deploy con `CLOUDFLARE_API_TOKEN` + `wrangler whoami` OK + `npm run deploy`.  
-3. Validar P0 en https://app.donexto.com (móvil).  
-4. Continuar **P2 mailbox verify**.  
+1. Leer y ejecutar **P00**: `docs/ops/P00-pendientes.md` (merge PR #5, Railway v4, reclasificar, Banamex en Avisos, idioma, guía Yahoo).  
+2. Confirmar en Codespace: `git log -1 --oneline`.  
+3. Deploy frontend con `CLOUDFLARE_API_TOKEN` + `wrangler whoami` OK + `cd frontend && npm run deploy`.  
+4. No abrir P2 / Stripe hasta que Héctor cierre P00.  
 5. No reabrir rediseños de login sin brief escrito del dueño.
 
 ---
 
 ## 10. Frase de arranque (copiar/pegar)
 
-> Continúa **Donexto** (`com22fb-bot/hms-ai-assistant`, `main`): capa de atención al correo hogar, cuenta ≠ buzón, misión/calidad en `donextoQuality.ts`, roadmap P0–P12 con **P2 siguiente**, stack Next/OpenNext Cloudflare + FastAPI Railway + Supabase, cobros Stripe Test Normal $19.99 tras buzón ok, notificaciones N1/N2/N3, legal HMSR·MR. No otro Gmail. Deploy solo con API token. Producto final: el usuario ve qué requiere atención y actúa, con silencio al ruido.
+> Continúa **Donexto** (`com22fb-bot/hms-ai-assistant`, `main`): **P00 primero** (`docs/ops/P00-pendientes.md`) — Banamex no es social, catálogo MX/US, bancos CA/UE/LATAM, idioma ES/EN/FR/IT/PT, guía Yahoo 16 dígitos. Luego cuenta ≠ buzón y P2. Stack Next/OpenNext Cloudflare + FastAPI Railway + Supabase. No otro Gmail. Deploy solo con API token.
