@@ -71,7 +71,7 @@ function ProviderMark({
   const letter =
     provider === "gmail"
       ? "G"
-      : provider === "yahoo"
+      : provider === "yahoo" || provider === "aol"
         ? "Y"
         : provider === "hotmail"
           ? "M"
@@ -255,8 +255,8 @@ export function LoginScreen({
       emailRef.current?.focus();
       return;
     }
-    if (resolveMailboxProviderFromEmail(clean) !== "yahoo") {
-      setError("Usa un correo Yahoo (@yahoo.com, @ymail.com o @rocketmail.com).");
+    if (resolveMailboxProviderFromEmail(clean) !== "yahoo" && resolveMailboxProviderFromEmail(clean) !== "aol") {
+      setError("Usa un correo Yahoo o AOL (@yahoo.com, @ymail.com, @rocketmail.com o @aol.com).");
       emailRef.current?.focus();
       return;
     }
@@ -418,7 +418,7 @@ export function LoginScreen({
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
-                  placeholder="tu@correo.com"
+                  placeholder="tu@empresa.com"
                   disabled={busy}
                   onChange={(event) => setEmail(event.target.value)}
                 />

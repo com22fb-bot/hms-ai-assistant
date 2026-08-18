@@ -21,7 +21,7 @@ export const DONEXTO_QUALITY = {
     },
     {
       title: "Mismo correo",
-      line: "Entras y vigilamos el mismo Gmail, Outlook, Yahoo o iCloud; nunca pedimos la contraseña del buzón aquí.",
+      line: "Entras y vigilamos el mismo Gmail, Outlook, Yahoo, iCloud o correo de empresa; nunca pedimos la contraseña del buzón aquí.",
     },
     {
       title: "Señales, no ruido",

@@ -9,6 +9,10 @@ from app.services.yahoo_imap import (
     extract_rfc822_bodies,
     imap_search_date,
     parse_list_mailbox_name,
+    YahooImapError,
+    assert_address_allowed_for_brand,
+    normalize_imap_brand,
+    safe_imap_host,
 )
 
 
@@ -43,6 +47,36 @@ class YahooImportHelpersTest(unittest.TestCase):
         self.assertIn("Pago pendiente", text)
         self.assertEqual(html, "")
         self.assertFalse(has_attachments)
+
+
+class CompanyDomainImapPolicyTest(unittest.TestCase):
+    def test_outlook_accepts_private_company_domain(self) -> None:
+        assert_address_allowed_for_brand("hector@acme-industria.mx", "outlook")
+
+    def test_apple_accepts_icloud_plus_custom_domain(self) -> None:
+        assert_address_allowed_for_brand("correo@familia.mx", "apple")
+
+    def test_yahoo_rejects_company_domain(self) -> None:
+        with self.assertRaises(YahooImapError):
+            assert_address_allowed_for_brand("hector@acme-industria.mx", "yahoo")
+
+    def test_aol_maps_from_yahoo_brand(self) -> None:
+        self.assertEqual(
+            normalize_imap_brand("yahoo", "hsalcidor@aol.com"),
+            "aol",
+        )
+
+    def test_company_brand_aliases(self) -> None:
+        self.assertEqual(normalize_imap_brand("empresa", "ti@fabrica.com"), "company")
+        self.assertEqual(normalize_imap_brand("m365", "ti@fabrica.com"), "outlook")
+
+    def test_safe_imap_host_rejects_localhost_and_ips(self) -> None:
+        with self.assertRaises(YahooImapError):
+            safe_imap_host("localhost")
+        with self.assertRaises(YahooImapError):
+            safe_imap_host("127.0.0.1")
+        with self.assertRaises(YahooImapError):
+            safe_imap_host("")
 
 
 if __name__ == "__main__":

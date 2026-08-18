@@ -111,6 +111,10 @@
   color: #eef7f8;
 }
 
+.dx-connect-btn--wide {
+  grid-column: 1 / -1;
+}
+
 .dx-connect-hint {
   margin: -0.15rem 0 0.15rem;
   font-size: 0.8rem;

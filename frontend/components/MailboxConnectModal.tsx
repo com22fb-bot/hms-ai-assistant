@@ -11,7 +11,8 @@ import type { MailboxConnectMode } from "@/lib/mailboxSignup";
 
 import "./mailbox-connect.css";
 
-type ProviderChoice = "choose" | "yahoo" | "outlook" | "apple";
+type ImapBrand = "yahoo" | "outlook" | "apple" | "company";
+type ProviderChoice = "choose" | ImapBrand;
 
 type MailboxConnectModalProps = {
   open: boolean;
@@ -24,7 +25,8 @@ type MailboxConnectModalProps = {
   onConnectYahoo: (
     email: string,
     appPassword: string,
-    provider?: "yahoo" | "outlook" | "apple",
+    provider?: "yahoo" | "outlook" | "apple" | "company",
+    host?: string,
   ) => Promise<void>;
 };
 
@@ -41,13 +43,20 @@ export function MailboxConnectModal({
   const [step, setStep] = useState<ProviderChoice>("choose");
   const [yahooEmail, setYahooEmail] = useState(accountEmail);
   const [yahooPassword, setYahooPassword] = useState("");
+  const [imapHost, setImapHost] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
 
-  const imapBrand: "yahoo" | "outlook" | "apple" =
-    step === "outlook" || step === "apple" ? step : "yahoo";
+  const imapBrand: ImapBrand =
+    step === "outlook" || step === "apple" || step === "company"
+      ? step
+      : "yahoo";
   const showChooser = step === "choose";
-  const showImapForm = step === "yahoo" || step === "outlook" || step === "apple";
+  const showImapForm =
+    step === "yahoo" ||
+    step === "outlook" ||
+    step === "apple" ||
+    step === "company";
   const canDismiss = !required;
 
   useEffect(() => {
@@ -57,6 +66,7 @@ export function MailboxConnectModal({
     setStep("choose");
     setYahooEmail(accountEmail);
     setYahooPassword("");
+    setImapHost("");
     setLocalError(null);
     setConnectingGoogle(false);
   }, [open, accountEmail]);
@@ -76,22 +86,31 @@ export function MailboxConnectModal({
       cta: "Verificar y conectar este Yahoo",
     },
     outlook: {
-      title: "Autoriza la lectura de este Outlook",
-      body: "Contraseña de aplicación IMAP de Outlook / Hotmail. No uses la contraseña de Microsoft ni la de Donexto.",
+      title: "Autoriza la lectura de este Outlook / Microsoft 365",
+      body: "Contraseña de aplicación IMAP de Outlook, Hotmail o el correo de tu empresa en Microsoft 365 (tu@empresa.com). No uses la contraseña de Microsoft ni la de Donexto.",
       label: "Contraseña de aplicación Outlook",
-      help: "En Microsoft: Seguridad → Contraseñas de aplicación. Pega el código aquí.",
+      help: "En Microsoft: Seguridad → Contraseñas de aplicación. Si es correo de empresa, TI debe tener IMAP activo.",
       link: "https://account.microsoft.com/security",
       linkLabel: "Seguridad Microsoft",
       cta: "Verificar y conectar este Outlook",
     },
     apple: {
       title: "Autoriza la lectura de este iCloud",
-      body: "Contraseña de aplicación de Apple. No uses la contraseña de iCloud ni la de Donexto.",
+      body: "Contraseña de aplicación de Apple. Sirve para @icloud.com y para un dominio propio de iCloud+. No uses la contraseña de iCloud ni la de Donexto.",
       label: "Contraseña de aplicación Apple",
       help: "En appleid.apple.com: Iniciar sesión y seguridad → Contraseñas de aplicaciones.",
       link: "https://appleid.apple.com",
       linkLabel: "Apple ID",
       cta: "Verificar y conectar este iCloud",
+    },
+    company: {
+      title: "Autoriza la lectura del correo de tu empresa",
+      body: "Dominio privado con IMAP (no Google Workspace ni Microsoft 365). Pide a TI el servidor IMAP y una contraseña de aplicación. No uses la contraseña diaria del buzón ni la de Donexto.",
+      label: "Contraseña de aplicación IMAP",
+      help: "El host suele ser imap.tudominio.com, puerto 993 con TLS.",
+      link: "https://www.donexto.com/privacidad.html#buzon",
+      linkLabel: "Privacidad · buzón",
+      cta: "Verificar y conectar este dominio",
     },
   }[imapBrand];
 
@@ -115,7 +134,12 @@ export function MailboxConnectModal({
     setLocalError(null);
 
     try {
-      await onConnectYahoo(yahooEmail || accountEmail, yahooPassword, imapBrand);
+      await onConnectYahoo(
+        yahooEmail || accountEmail,
+        yahooPassword,
+        imapBrand,
+        imapBrand === "company" ? imapHost : undefined,
+      );
       setYahooPassword("");
       onClose();
     } catch (error) {
@@ -132,7 +156,7 @@ export function MailboxConnectModal({
     : "Autoriza la lectura de tu correo";
   const body = showImapForm
     ? imapCopy.body
-    : "Gmail, Outlook, Yahoo e iCloud. Elige el buzón que vas a vigilar. No pedimos la contraseña de ese correo aquí, salvo la de aplicación IMAP cuando el proveedor la exige.";
+    : "Gmail, Google Workspace, Outlook, Microsoft 365, Yahoo, iCloud y el dominio de tu empresa. No pedimos la contraseña de ese correo aquí, salvo la de aplicación IMAP cuando el proveedor la exige.";
 
   return (
     <div className="dx-connect-overlay" role="dialog" aria-modal="true">
@@ -186,7 +210,7 @@ export function MailboxConnectModal({
                       Abriendo Google…
                     </>
                   ) : (
-                    "Gmail"
+                    "Gmail / Workspace"
                   )}
                 </button>
                 <button
@@ -198,7 +222,7 @@ export function MailboxConnectModal({
                     setStep("outlook");
                   }}
                 >
-                  Outlook
+                  Outlook / 365
                 </button>
                 <button
                   type="button"
@@ -222,10 +246,23 @@ export function MailboxConnectModal({
                 >
                   iCloud
                 </button>
+                <button
+                  type="button"
+                  className="dx-connect-btn dx-connect-btn--secondary dx-connect-btn--wide"
+                  disabled={connectingGoogle || connectingYahoo}
+                  onClick={() => {
+                    setLocalError(null);
+                    setStep("company");
+                  }}
+                >
+                  Empresa / dominio propio
+                </button>
               </div>
               <p className="dx-connect-hint">
-                Gmail autoriza en Google. Outlook, Yahoo e iCloud usan
-                contraseña de aplicación IMAP — nunca la del correo ni la de Donexto.
+                Gmail y Google Workspace autorizan en Google. Outlook y
+                Microsoft 365 (tu@empresa.com) usan IMAP. Yahoo, iCloud y otro
+                IMAP de empresa: contraseña de aplicación — nunca la del correo
+                ni la de Donexto.
               </p>
             </>
           ) : showImapForm ? (
@@ -264,6 +301,7 @@ export function MailboxConnectModal({
                 onClick={() => {
                   setStep("choose");
                   setYahooPassword("");
+                  setImapHost("");
                   setLocalError(null);
                 }}
               >
@@ -290,6 +328,24 @@ export function MailboxConnectModal({
                   onChange={(event) => setYahooEmail(event.target.value)}
                 />
               </label>
+              {imapBrand === "company" ? (
+                <label htmlFor="dx-company-imap-host">
+                  Servidor IMAP de la empresa
+                  <input
+                    id="dx-company-imap-host"
+                    name="dx_company_imap_host"
+                    type="text"
+                    required
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    placeholder="imap.tudominio.com"
+                    value={imapHost}
+                    onChange={(event) => setImapHost(event.target.value)}
+                  />
+                </label>
+              ) : null}
               <label htmlFor="dx-yahoo-app-password">
                 {imapCopy.label}
                 <input

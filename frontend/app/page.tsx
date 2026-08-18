@@ -1556,7 +1556,7 @@ function Dashboard({
                   <span>
                     {connection?.connected
                       ? "Traer mensajes nuevos"
-                      : "Gmail, Outlook, Yahoo o iCloud"}
+                      : "Gmail, Outlook, Yahoo, iCloud o empresa"}
                   </span>
                 </div>
               </button>
@@ -1568,7 +1568,7 @@ function Dashboard({
                 <Mail size={22} />
                 <div>
                   <strong>{ACCOUNT_VS_MAILBOX.changeMailboxLabel}</strong>
-                  <span>Gmail, Outlook, Yahoo o iCloud</span>
+                  <span>Gmail, Outlook, Yahoo, iCloud o empresa</span>
                 </div>
               </button>
 
@@ -1668,8 +1668,8 @@ function Dashboard({
                   : new Error(message);
               }
             }}
-            onConnectYahoo={async (email, appPassword, provider) => {
-              await connectYahoo(email, appPassword, provider);
+            onConnectYahoo={async (email, appPassword, provider, host) => {
+              await connectYahoo(email, appPassword, provider, host);
               setMailboxPickerOpen(false);
               setNotice(
                 `Buzón verificado (${email}). Ahora descarga y clasifica los últimos seis meses.`,

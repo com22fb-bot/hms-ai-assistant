@@ -446,7 +446,8 @@ def google_start(
         ) from error
 
     flow = create_google_flow(state=state)
-    # login_hint + consent: el buzón debe ser el mismo Gmail de la cuenta Donexto.
+    # login_hint + consent: el buzón debe ser el mismo correo de la cuenta Donexto
+    # (Gmail, Google Workspace u otro Google).
     authorization_url, returned_state = flow.authorization_url(
         access_type="offline",
         include_granted_scopes="true",
@@ -645,11 +646,11 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
             content=f"""
             <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Gmail distinto</title></head><body>
-            <h1>Debes autorizar el mismo Gmail</h1>
+            <title>Correo distinto</title></head><body>
+            <h1>Debes autorizar el mismo correo</h1>
             <p>Tu cuenta Donexto es <strong>{escape(expected_email)}</strong>.</p>
             <p>Google autorizó <strong>{escape(authorized_email)}</strong>, que no coincide.</p>
-            <p>Regresa a Donexto y autoriza la lectura de ese mismo Gmail.</p>
+            <p>Regresa a Donexto y autoriza la lectura de ese mismo correo (Gmail o Google Workspace).</p>
             </body></html>
             """,
         )

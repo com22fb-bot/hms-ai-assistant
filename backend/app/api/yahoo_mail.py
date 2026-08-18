@@ -15,6 +15,7 @@ from app.services.oauth_storage import (
 from app.services.yahoo_imap import (
     IMAP_BRANDS,
     YahooImapError,
+    normalize_imap_brand,
     normalize_yahoo_address,
     normalize_yahoo_app_password,
     verify_imap_login,
@@ -28,30 +29,28 @@ class YahooConnectRequest(BaseModel):
     email: str = Field(min_length=5, max_length=320)
     app_password: str = Field(min_length=8, max_length=256)
     provider: str = Field(default="yahoo", max_length=32)
+    host: str | None = Field(default=None, max_length=255)
 
 
 @router.post("/connect")
 def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
-    """Vincula un buzón Yahoo al workspace Donexto actual."""
+    """Vincula un buzón IMAP (Yahoo, Outlook, iCloud o dominio de empresa)."""
     context = require_request_context()
     address = normalize_yahoo_address(payload.email)
     app_password = normalize_yahoo_app_password(payload.app_password)
-    brand = (payload.provider or "yahoo").strip().lower()
-    if brand in {"hotmail", "microsoft", "live"}:
-        brand = "outlook"
-    if brand in {"icloud", "me"}:
-        brand = "apple"
+    brand = normalize_imap_brand(payload.provider or "yahoo", address)
     profile = IMAP_BRANDS.get(brand)
     if not profile:
         raise HTTPException(
             status_code=400,
             detail={
                 "status": "unsupported_mailbox",
-                "message": "Elige Gmail, Outlook, Yahoo o iCloud.",
+                "message": (
+                    "Elige Gmail, Outlook, Yahoo, iCloud o el correo de tu empresa."
+                ),
             },
         )
     label = str(profile["label"])
-    host = str(profile["host"])
     stored_provider = "yahoo" if brand == "yahoo" else "imap"
 
     if "@" not in address:
@@ -64,7 +63,12 @@ def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
         )
 
     try:
-        host = verify_imap_login(address, app_password, brand=brand)
+        host = verify_imap_login(
+            address,
+            app_password,
+            brand=brand,
+            host=payload.host,
+        )
     except YahooImapError as error:
         raise HTTPException(
             status_code=400,

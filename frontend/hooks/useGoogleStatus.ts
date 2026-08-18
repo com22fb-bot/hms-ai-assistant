@@ -142,7 +142,8 @@ export function useGoogleStatus() {
     async (
       email: string,
       appPassword: string,
-      provider: "yahoo" | "outlook" | "apple" = "yahoo",
+      provider: "yahoo" | "outlook" | "apple" | "company" = "yahoo",
+      host?: string,
     ) => {
       setConnectingYahoo(true);
       setConnectionError(null);
@@ -160,6 +161,7 @@ export function useGoogleStatus() {
               email: email.trim(),
               app_password: appPassword.trim(),
               provider,
+              ...(host?.trim() ? { host: host.trim() } : {}),
             }),
           },
         );

@@ -251,7 +251,7 @@ export function AttentionHome({
           <Mail size={28} />
           <strong>{emptyTitle}</strong>
           <p>{step2EmptyLeadFor(watchEmail)}</p>
-          <p>Gmail, Outlook, Yahoo e iCloud. Elige el buzón a vigilar.</p>
+          <p>Gmail, Outlook, Yahoo, iCloud o el correo de tu empresa. Elige el buzón a vigilar.</p>
           <AccountVsMailboxHint variant="step2" email={watchEmail} />
           <button type="button" onClick={onConnectMailbox}>
             <Mail size={16} />

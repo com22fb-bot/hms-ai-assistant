@@ -13,10 +13,10 @@ export const ACCOUNT_VS_MAILBOX = {
   loginPasswordLabel: "Contraseña de Donexto",
   signupFullNameLabel: "Nombre completo",
   loginHelper:
-    "Identifícate con el correo que vas a vigilar. No pedimos la contraseña de ese buzón.",
+    "Identifícate con el correo que vas a vigilar: Gmail, Outlook, Yahoo, iCloud o el de tu empresa. No pedimos la contraseña de ese buzón.",
   loginFoot: "Esta es tu cuenta de Donexto.",
   signupChooserBody:
-    "Elige el correo que vas a vigilar: será el mismo de tu cuenta Donexto. Te llevamos al inicio de sesión de ese proveedor.",
+    "Elige el correo que vas a vigilar — personal o de empresa (Google Workspace, Microsoft 365 o IMAP de tu dominio). Será el mismo de tu cuenta Donexto.",
   authSecurityTitle: "Seguridad y responsabilidad",
   authSecurityBody:
     "Donexto nunca te pide la contraseña de Gmail aquí. Si te das de alta con Gmail, te escribimos a ese mismo correo. Sin clic en ese mail no entras ni leemos el buzón. Las pantallas de Google son de Google; la confirmación de Donexto es el correo que nosotros enviamos.",
@@ -56,7 +56,7 @@ export const ACCOUNT_VS_MAILBOX = {
   connectBanner: "Esto no pide tu contraseña de Gmail · solo autoriza la lectura",
   connectChooserTitle: "Autoriza la lectura de tu correo",
   connectChooserBody:
-    "Gmail, Outlook, Yahoo e iCloud. Gmail autoriza lectura en Google; Outlook, Yahoo e iCloud usan contraseña de aplicación IMAP.",
+    "Gmail y Google Workspace autorizan en Google. Outlook y Microsoft 365 (incluido tu@empresa.com) usan IMAP. Yahoo, iCloud y otro IMAP de empresa: contraseña de aplicación.",
   connectGmailBody:
     "Donexto nunca te pidió la contraseña de Gmail. Esta pantalla de Google es solo para autorizar la lectura de este mismo buzón.",
   connectGmailCta: "Autorizar lectura de este Gmail",
@@ -88,6 +88,8 @@ export function mailboxServiceLabel(
       return "Gmail";
     case "yahoo":
       return "Yahoo";
+    case "aol":
+      return "AOL";
     case "imap":
       return "correo";
     case "hotmail":
@@ -131,6 +133,8 @@ export function mailboxPasswordPhrase(
       return "contraseña de Gmail";
     case "yahoo":
       return "contraseña de mail.yahoo.com";
+    case "aol":
+      return "contraseña de AOL";
     case "hotmail":
     case "microsoft":
       return "contraseña de Outlook";
