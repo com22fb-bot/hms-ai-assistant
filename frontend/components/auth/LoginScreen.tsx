@@ -298,10 +298,10 @@ export function LoginScreen({
             alt="Donexto — Do Next To…"
             decoding="async"
           />
-          <p className="dx-auth__brand">Donexto</p>
-          <h1 className="dx-auth__promise">
+          <h1 className="dx-auth__brand">Donexto</h1>
+          <p className="dx-auth__promise">
             {`${DONEXTO_QUALITY.whatItDoes}\n${DONEXTO_QUALITY.promise}`}
-          </h1>
+          </p>
         </div>
       </aside>
 

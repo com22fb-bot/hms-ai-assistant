@@ -5,7 +5,8 @@ const strings = {
     nav_how: "Cómo",
     nav_app: "Abrir app",
     kicker: "Capa de atención · trabajo, negocio y profesión",
-    hero_title: "Lo que requiere atención<br />en tu correo.",
+    hero_title: "Donexto",
+    hero_tagline: "Lo que requiere atención en tu correo.",
     hero_lede:
       "Donexto (Do Next To…) es tu capa de atención sobre el correo personal: el mensaje que importa a tu trabajo, negocio y profesión, para que sepas qué hacer ahora.",
     cta_app: "Entrar a Donexto",
@@ -104,7 +105,8 @@ const strings = {
     nav_how: "How",
     nav_app: "Open app",
     kicker: "Attention layer · work, business, and profession",
-    hero_title: "What needs attention<br />in your email.",
+    hero_title: "Donexto",
+    hero_tagline: "What needs attention in your email.",
     hero_lede:
       "Donexto (Do Next To…) is your attention layer on personal email: the message that matters to your work, business, and profession—so you know what to do next.",
     cta_app: "Open Donexto",
@@ -474,7 +476,7 @@ function applyLang() {
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     const key = el.getAttribute("data-i18n");
     if (!key || dict[key] == null) return;
-    if (key === "hero_title" || key === "n3_badge") {
+    if (key === "n3_badge") {
       el.innerHTML = dict[key];
     } else {
       el.textContent = dict[key];
