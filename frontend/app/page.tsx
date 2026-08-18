@@ -1336,14 +1336,7 @@ function Dashboard({
           ) : null}
 
           {pushNotice ? (
-            <section
-              className={
-                pushNotice.kind === "ok"
-                  ? "app-navigation-notice"
-                  : "app-navigation-notice"
-              }
-              role="status"
-            >
+            <section className="app-navigation-notice" role="status">
               {pushNotice.kind === "ok" ? (
                 <CheckCircle2 size={18} />
               ) : (
@@ -1544,86 +1537,6 @@ function Dashboard({
               </div>
             </section>
           </details>
-          ) : null}
-
-          {connection?.connected ? (
-          <section className="app-actions-block" aria-label="Acciones rápidas">
-            <div className="app-actions-heading">
-              <h2>Acciones rápidas</h2>
-            </div>
-            <div className="app-quick-actions">
-              <button
-                type="button"
-                onClick={() => openMailView()}
-              >
-                <Mail size={22} />
-                <div>
-                  <strong>Abrir correos</strong>
-                  <span>Bandeja del buzón conectado</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                disabled={
-                  loadingConnection ||
-                  Boolean(connection?.connected && syncing)
-                }
-                onClick={() => {
-                  if (connection?.connected) {
-                    openConnectedMailboxActions();
-                    return;
-                  }
-                  openMailboxConnect();
-                }}
-              >
-                {connection?.connected ? (
-                  <RefreshCw
-                    size={22}
-                    className={syncing ? "app-spin" : undefined}
-                  />
-                ) : (
-                  <Mail size={22} />
-                )}
-                <div>
-                  <strong>
-                    {connection?.connected
-                      ? "Actualizar buzón"
-                      : ACCOUNT_VS_MAILBOX.connectMailboxLabel}
-                  </strong>
-                  <span>
-                    {connection?.connected
-                      ? "Traer mensajes nuevos"
-                      : "Gmail, Outlook, Yahoo, iCloud o empresa"}
-                  </span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => openMailboxConnect()}
-              >
-                <Mail size={22} />
-                <div>
-                  <strong>{ACCOUNT_VS_MAILBOX.changeMailboxLabel}</strong>
-                  <span>Gmail, Outlook, Yahoo, iCloud o empresa</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  void loadDashboard();
-                }}
-              >
-                <RefreshCw size={22} />
-                <div>
-                  <strong>Actualizar panel</strong>
-                  <span>Datos al momento</span>
-                </div>
-              </button>
-            </div>
-          </section>
           ) : null}
         </div>
 
