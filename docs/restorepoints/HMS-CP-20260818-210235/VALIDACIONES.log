@@ -1,0 +1,9 @@
+# Validaciones — HMS-CP-20260818-210235
+
+Fecha: 2026-08-18 21:02:35 UTC
+Rama: cursor/landing-hogar-ia-3d73
+
+- git diff --check: OK (sin conflictos de whitespace en el working tree de registro)
+- python3 -m compileall backend/app: OK
+- Frontend lint: omitido en este restorepoint (el Worker ya compiló y desplegó con `next build` + OpenNext)
+- landing/donexto/.wrangler/ excluido del git

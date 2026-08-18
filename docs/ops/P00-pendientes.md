@@ -62,6 +62,19 @@ cd landing/donexto && bash deploy-production.sh
 
 Eso usa `--branch main`. Chrome: **Ctrl+Shift+R** si la pestaña es vieja.
 
+## Respaldo de esta jornada
+
+Congelado en **HMS-CP-20260818-210235**.
+
+- Tag: `restorepoint-HMS-CP-20260818-210235`
+- Rama freeze: `cursor/backup-p00-20260818-3d73`
+- Doc: `docs/restorepoints/HMS-CP-20260818-210235/RESTOREPOINT.md`
+
+```bash
+git fetch origin
+git checkout restorepoint-HMS-CP-20260818-210235
+```
+
 ## Definición de hecho
 
 1. donexto.com: H1 Donexto; kicker **no** es “Correo del hogar”; pilar 03 = **Pedidos**; prototipo A = **Prioridad**.
