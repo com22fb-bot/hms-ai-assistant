@@ -163,7 +163,7 @@ Visión dual (Family + Profesional, motor común): `docs/master/2026-08-06-PROMP
 | Landing | Cloudflare Pages (`donexto` / donexto.com) |
 | Backend | FastAPI (Python) en Railway |
 | Auth / DB | Supabase (Auth + Postgres + RLS) |
-| Correo | Gmail OAuth · Yahoo IMAP (app password) · ampliar proveedores |
+| Correo | Gmail OAuth · Yahoo IMAP (correo y clave) · ampliar proveedores |
 | Pagos (próximo) | Stripe Test Mode → Live; PayPal secundario |
 | Repo | GitHub `com22fb-bot/hms-ai-assistant` |
 

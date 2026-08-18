@@ -1,4 +1,4 @@
-"""Lectura de Yahoo Mail por IMAP (contraseña de aplicación)."""
+"""Lectura de Yahoo Mail por IMAP (correo y clave de Yahoo)."""
 
 from __future__ import annotations
 
@@ -43,25 +43,16 @@ def normalize_yahoo_address(address: str) -> str:
 
 def normalize_yahoo_app_password(raw: str) -> str:
     """
-    Normaliza contraseña de aplicación Yahoo.
+    Clave IMAP de Yahoo.
 
-    Yahoo genera ~16 caracteres alfanuméricos (a veces con espacios).
-    El gestor de contraseñas a veces pega guiones o textos extra.
+    La clave normal se respeta tal cual (símbolos, guiones, espacios).
+    Solo se quitan espacios si el resto son exactamente 16 letras o
+    números — el formato clásico de un código de aplicación.
     """
-    cleaned = raw.strip()
-    # Quita etiquetas tipo "App password: "
-    cleaned = re.sub(
-        r"(?i)^(?:app\s*password|contrase[nñ]a(?:\s+de\s+aplicaci[oó]n)?)\s*[:=]?\s*",
-        "",
-        cleaned,
-    ).strip()
-    cleaned = cleaned.replace("\u00a0", " ")
-    cleaned = cleaned.replace("-", " ").replace(".", " ")
-    cleaned = re.sub(r"\s+", "", cleaned)
-    # Solo caracteres alfanuméricos típicos de app password
-    alnum = re.sub(r"[^A-Za-z0-9]", "", cleaned)
-    if len(alnum) >= 12:
-        return alnum
+    cleaned = (raw or "").strip().replace("\u00a0", " ")
+    no_spaces = re.sub(r"\s+", "", cleaned)
+    if re.fullmatch(r"[A-Za-z0-9]{16}", no_spaces):
+        return no_spaces
     return cleaned
 
 
@@ -99,30 +90,20 @@ def _open_yahoo_client(
             ssl_context=context,
         )
 
-    status, data = client.login(address, app_password)
+    status, _data = client.login(address, app_password)
     if status != "OK":
         try:
             client.logout()
         except Exception:
             pass
-        detail = ""
-        if data:
-            detail = " ".join(
-                part.decode("utf-8", errors="ignore")
-                if isinstance(part, bytes)
-                else str(part)
-                for part in data
-            )
         raise YahooImapError(
-            "Yahoo rechazó el acceso IMAP"
-            + (f" ({detail.strip()})" if detail.strip() else "")
-            + ". Usa una contraseña de aplicación nueva."
+            "Yahoo no aceptó esa clave. Escríbela igual que cuando entras a Yahoo."
         )
     return client
 
 
 def verify_yahoo_login(address: str, app_password: str) -> None:
-    """Comprueba usuario/contraseña de aplicación contra Yahoo IMAP."""
+    """Comprueba correo y clave de Yahoo contra IMAP."""
     address = normalize_yahoo_address(address)
     app_password = normalize_yahoo_app_password(app_password)
 
@@ -135,11 +116,9 @@ def verify_yahoo_login(address: str, app_password: str) -> None:
             "@rocketmail.com o similar)."
         )
 
-    if len(app_password) < 12:
+    if len(app_password) < 6:
         raise YahooImapError(
-            "La contraseña de aplicación es demasiado corta. "
-            "En Yahoo genera una en Seguridad → Conexiones externas → "
-            "Crear contraseña de aplicación (código de ~16 caracteres)."
+            "Esa clave es demasiado corta. Usa la misma con la que entras a Yahoo."
         )
 
     try:
@@ -162,9 +141,8 @@ def verify_yahoo_login(address: str, app_password: str) -> None:
         err = str(error).lower()
         if "invalid" in err or "login" in err or "auth" in err:
             raise YahooImapError(
-                "Yahoo rechazó usuario o contraseña. "
-                "Genera una contraseña de aplicación nueva (no la de "
-                "mail.yahoo.com ni la de Donexto) y pégala sin espacios."
+                "Yahoo no aceptó el correo o la clave. "
+                "Escríbelos igual que cuando entras a Yahoo."
             ) from error
         raise YahooImapError(
             f"Yahoo IMAP falló al autenticar: {error}"

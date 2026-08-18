@@ -155,7 +155,9 @@ export function MailboxConnectModal({
         </header>
 
         <div className="dx-connect-body">
-          <AccountVsMailboxHint variant="connect" email={accountEmail} />
+          {mode === "gmail" || showChooser ? (
+            <AccountVsMailboxHint variant="connect" email={accountEmail} />
+          ) : null}
 
           {mode === "gmail" ? (
             <>
@@ -233,33 +235,9 @@ export function MailboxConnectModal({
           ) : (
             <form
               className="dx-connect-form"
-              autoComplete="off"
-              data-1p-ignore="true"
-              data-lpignore="true"
-              data-form-type="other"
+              autoComplete="on"
               onSubmit={(event) => void handleYahooSubmit(event)}
             >
-              <input
-                type="text"
-                name="dx_fake_user"
-                autoComplete="username"
-                tabIndex={-1}
-                aria-hidden="true"
-                className="dx-connect-honeypot"
-                value=""
-                readOnly
-              />
-              <input
-                type="password"
-                name="dx_fake_pass"
-                autoComplete="current-password"
-                tabIndex={-1}
-                aria-hidden="true"
-                className="dx-connect-honeypot"
-                value=""
-                readOnly
-              />
-
               {mode === "choose" ? (
                 <button
                   type="button"
@@ -276,21 +254,18 @@ export function MailboxConnectModal({
               ) : null}
 
               <label htmlFor="dx-yahoo-mailbox-email">
-                Correo del buzón Yahoo
+                Correo de Yahoo
                 <input
                   id="dx-yahoo-mailbox-email"
-                  name="dx_yahoo_mailbox_email"
-                  type="text"
+                  name="username"
+                  type="email"
                   inputMode="email"
                   required
                   readOnly={yahooLocked}
-                  autoComplete="off"
+                  autoComplete="username"
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
-                  data-1p-ignore="true"
-                  data-lpignore="true"
-                  data-form-type="other"
                   placeholder="tucorreo@yahoo.com"
                   value={yahooLocked ? accountEmail : yahooEmail}
                   onChange={(event) => {
@@ -300,37 +275,23 @@ export function MailboxConnectModal({
                   }}
                 />
               </label>
-              <label htmlFor="dx-yahoo-app-password">
-                {ACCOUNT_VS_MAILBOX.connectYahooAppPasswordLabel}
+              <label htmlFor="dx-yahoo-password">
+                Contraseña de Yahoo
                 <input
-                  id="dx-yahoo-app-password"
-                  name="dx_yahoo_app_password"
+                  id="dx-yahoo-password"
+                  name="password"
                   type="password"
                   required
-                  minLength={8}
-                  autoComplete="new-password"
-                  data-1p-ignore="true"
-                  data-lpignore="true"
-                  data-form-type="other"
-                  placeholder="xxxx xxxx xxxx xxxx"
+                  minLength={6}
+                  autoComplete="current-password"
+                  placeholder="La misma con la que entras a Yahoo"
                   value={yahooPassword}
                   onChange={(event) => setYahooPassword(event.target.value)}
                 />
               </label>
               <p className="dx-connect-hint">
-                1){" "}
-                <a
-                  href="https://login.yahoo.com/account/security"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: "#0c8a80" }}
-                >
-                  Seguridad Yahoo
-                </a>
-                . 2) Verificación en 2 pasos. 3) Conexiones externas → Crear
-                contraseña de aplicación → nombre <strong>Donexto</strong>. 4)
-                Pega aquí el código de ~16 caracteres (no la contraseña de
-                Yahoo ni la de Donexto).
+                Solo tu correo y tu clave de Yahoo. Sin códigos extra ni
+                verificación en dos pasos en Donexto.
               </p>
               {localError ? (
                 <div className="dx-connect-error" role="alert">
@@ -345,10 +306,10 @@ export function MailboxConnectModal({
                 {connectingYahoo ? (
                   <>
                     <LoaderCircle size={16} className="app-spin" />
-                    Verificando Yahoo…
+                    Conectando Yahoo…
                   </>
                 ) : (
-                  "Verificar y conectar este Yahoo"
+                  "Conectar Yahoo"
                 )}
               </button>
             </form>

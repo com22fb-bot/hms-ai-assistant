@@ -29,10 +29,10 @@ export const ACCOUNT_VS_MAILBOX = {
   signupHaveAccount: "Ya tengo cuenta — Entrar",
   signupYahooTitle: "Yahoo",
   signupYahooBody:
-    "Yahoo no tiene OAuth de correo. Te enviamos un enlace a ese Yahoo para crear la cuenta Donexto. La contraseña de aplicación se pide después, al autorizar la lectura.",
-  signupYahooCta: "Abrir seguridad de Yahoo (lo usarás al conectar el buzón)",
+    "Confirmamos tu correo Yahoo. Luego conectas el buzón con tu correo y tu clave de Yahoo.",
+  signupYahooCta: "Continuar con Yahoo",
   signupYahooContinue:
-    "Revisa ese Yahoo (y spam). Con el enlace entras a Donexto; después autorizas la lectura con la contraseña de aplicación.",
+    "Te enviamos un enlace a ese Yahoo. Después conectas el buzón con tu correo y tu clave.",
   signupHotmailPending:
     "Te llevamos al inicio de sesión de Microsoft.",
   signupApplePending:
@@ -56,18 +56,18 @@ export const ACCOUNT_VS_MAILBOX = {
   connectBanner: "Esto no pide tu contraseña de Gmail · solo autoriza la lectura",
   connectChooserTitle: "Autoriza la lectura de tu correo",
   connectChooserBody:
-    "El buzón es el mismo correo de tu cuenta Donexto. Gmail autoriza lectura en Google; Yahoo usa contraseña de aplicación IMAP.",
+    "El buzón es el mismo correo de tu cuenta Donexto. Gmail autoriza lectura en Google; Yahoo pide tu correo y la misma clave con la que entras a Yahoo.",
   connectGmailBody:
     "Donexto nunca te pidió la contraseña de Gmail. Esta pantalla de Google es solo para autorizar la lectura de este mismo buzón.",
   connectGmailCta: "Autorizar lectura de este Gmail",
-  connectYahooTitle: "Autoriza la lectura de este Yahoo",
+  connectYahooTitle: "Conecta tu correo Yahoo",
   connectYahooBody:
-    "Contraseña de aplicación IMAP de este mismo correo Yahoo. No uses la contraseña de mail.yahoo.com ni la de Donexto.",
-  connectYahooAppPasswordLabel: "Contraseña de aplicación Yahoo",
+    "Escribe tu correo Yahoo y la misma clave con la que entras a Yahoo. Una sola vez.",
+  connectYahooAppPasswordLabel: "Contraseña de Yahoo",
   connectGoogleHint:
     "Te llevamos a la página oficial de Google para autorizar la lectura de este mismo Gmail (no es el login de Donexto y no pedimos tu contraseña).",
   connectYahooChooserHint:
-    "Pedimos la contraseña de aplicación IMAP de este mismo Yahoo (no la de mail.yahoo.com ni la de Donexto).",
+    "Escribes tu correo y la misma clave con la que entras a Yahoo. Sin códigos extra ni verificación en dos pasos.",
 
   changeMailboxLabel: "Volver a autorizar buzón",
   connectMailboxLabel: "Autorizar buzón",
@@ -106,7 +106,7 @@ export function mailboxPasswordPhrase(
     case "google":
       return "contraseña de Gmail";
     case "yahoo":
-      return "contraseña de mail.yahoo.com";
+      return "contraseña de Yahoo";
     case "hotmail":
     case "microsoft":
       return "contraseña de Outlook";
@@ -129,6 +129,12 @@ export function authorizeGmailTitle(email: string): string {
 export function confirmGateBodyFor(email: string): string {
   const provider = resolveMailboxProviderFromEmail(email);
   const label = mailboxServiceLabel(provider);
+  if (provider === "yahoo") {
+    return (
+      "Te escribimos a ese mismo Yahoo. Este correo confirma tu cuenta Donexto. " +
+      "Después conectas el buzón con tu correo y la misma clave de Yahoo."
+    );
+  }
   const password = mailboxPasswordPhrase(provider);
   return (
     `Te escribimos a ese mismo ${label}. Donexto nunca te pidió la ${password}: ` +
@@ -150,6 +156,13 @@ export function authSecurityBodyFor(email?: string): string {
       "La confirmación de Donexto es el correo que nosotros enviamos."
     );
   }
+  if (provider === "yahoo") {
+    return (
+      "Si te das de alta con Yahoo, te escribimos a ese mismo correo. Sin el " +
+      "clic no entras. Para leer el buzón, escribes tu correo y la misma clave " +
+      "de Yahoo. Sin códigos extra ni verificación en dos pasos en Donexto."
+    );
+  }
   return (
     `Donexto nunca te pide la ${password} aquí. Si te das de alta con ${label}, ` +
     "te escribimos a ese mismo correo. Sin clic en ese mail no entras ni leemos " +
@@ -159,9 +172,16 @@ export function authSecurityBodyFor(email?: string): string {
 }
 
 export function oneLinerFor(email?: string): string {
-  const password = mailboxPasswordPhrase(
-    email ? resolveMailboxProviderFromEmail(email) : "other",
-  );
+  const provider = email
+    ? resolveMailboxProviderFromEmail(email)
+    : "other";
+  if (provider === "yahoo") {
+    return (
+      "El correo con el que entras a Donexto es el mismo buzón que vigilamos. " +
+      "Para leer Yahoo, escribes tu correo y la misma clave con la que entras a Yahoo."
+    );
+  }
+  const password = mailboxPasswordPhrase(provider);
   return (
     "El correo con el que entras a Donexto es el mismo buzón que vigilamos. " +
     `Nunca te pedimos la ${password} aquí.`
@@ -173,9 +193,7 @@ export function connectBannerFor(email?: string): string {
     ? resolveMailboxProviderFromEmail(email)
     : "other";
   if (provider === "yahoo") {
-    return (
-      "Esto no pide la contraseña de mail.yahoo.com · usa la contraseña de aplicación Yahoo"
-    );
+    return "Escribe tu correo Yahoo y la misma clave con la que entras a Yahoo. Sin códigos extra ni verificación en dos pasos.";
   }
   if (provider === "gmail") {
     return ACCOUNT_VS_MAILBOX.connectBanner;
@@ -184,9 +202,16 @@ export function connectBannerFor(email?: string): string {
 }
 
 export function step2EmptyLeadFor(email?: string): string {
-  const password = mailboxPasswordPhrase(
-    email ? resolveMailboxProviderFromEmail(email) : "other",
-  );
+  const provider = email
+    ? resolveMailboxProviderFromEmail(email)
+    : "other";
+  if (provider === "yahoo") {
+    return (
+      "Sin conectar el buzón no hay bandeja que clasificar. Escribe tu correo " +
+      "Yahoo y la misma clave con la que entras a Yahoo."
+    );
+  }
+  const password = mailboxPasswordPhrase(provider);
   return (
     `Sin autorizar la lectura no hay bandeja que clasificar. Donexto no pide de nuevo tu ${password}.`
   );
