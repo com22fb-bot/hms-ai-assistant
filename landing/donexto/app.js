@@ -13,8 +13,8 @@ const strings = {
     cta_app2: "Probar en app.donexto.com",
     cta_app3: "Abrir app.donexto.com",
     cta_mail: "support@donexto.com",
-    trust_1: "Entras con Google en el sitio de Google",
-    trust_2: "El mismo Gmail es cuenta y buzón",
+    trust_1: "Entras con Google, Microsoft, Apple o Yahoo",
+    trust_2: "Ese mismo correo es cuenta y buzón",
     trust_3: "Priorizamos el correo que mueve tu trabajo",
     video_title: "La historia en 40 segundos",
     video_lede:
@@ -50,12 +50,12 @@ const strings = {
     n3_p: "Promos, boletines masivos, redes, ruido automático. Nunca en la portada ni como push.",
     n3_hint: "Clasificado y callado.",
     how_title: "Cómo funciona",
-    how_1_t: "Entras con Google",
+    how_1_t: "Entras con tu proveedor",
     how_1_p:
-      "El login es en el sitio de Google. Nunca escribes tu contraseña de Gmail en Donexto.",
-    how_2_t: "Mismo Gmail: cuenta y buzón",
+      "Google, Microsoft, Apple o Yahoo. Nunca escribes la contraseña de ese buzón en Donexto (salvo la de aplicación IMAP, si aplica).",
+    how_2_t: "Mismo correo: cuenta y buzón",
     how_2_p:
-      "Ese Gmail es tu cuenta Donexto y el buzón. Te mandamos un correo de verificación; das clic y autorizas la lectura.",
+      "Ese correo es tu cuenta Donexto y el buzón. Te mandamos un correo de verificación; das clic y autorizas la lectura.",
     how_3_t: "Ves qué hacer ahora",
     how_3_p:
       "Clasificamos y priorizamos para que no se te pase el mensaje que mueve tu trabajo, negocio o profesión.",
@@ -112,8 +112,8 @@ const strings = {
     cta_app2: "Try app.donexto.com",
     cta_app3: "Open app.donexto.com",
     cta_mail: "support@donexto.com",
-    trust_1: "Sign in with Google on Google’s site",
-    trust_2: "The same Gmail is account and mailbox",
+    trust_1: "Sign in with Google, Microsoft, Apple, or Yahoo",
+    trust_2: "That same email is account and mailbox",
     trust_3: "We prioritize the mail that moves your work",
     video_title: "The 40-second story",
     video_lede:
@@ -149,12 +149,12 @@ const strings = {
     n3_p: "Promos, newsletters, social, auto-noise. Never home hero. Never push.",
     n3_hint: "Classified and quiet.",
     how_title: "How it works",
-    how_1_t: "Sign in with Google",
+    how_1_t: "Sign in with your provider",
     how_1_p:
-      "Login happens on Google’s site. You never type your Gmail password on Donexto.",
-    how_2_t: "Same Gmail: account and mailbox",
+      "Google, Microsoft, Apple, or Yahoo. You never type that mailbox password on Donexto (except an app password when IMAP requires it).",
+    how_2_t: "Same email: account and mailbox",
     how_2_p:
-      "That Gmail is your Donexto account and your mailbox. We send a verification email; you click, then authorize reading.",
+      "That email is your Donexto account and your mailbox. We send a verification email; you click, then authorize reading.",
     how_3_t: "See what to do next",
     how_3_p:
       "We classify and prioritize so you don’t miss the message that moves your work, business, or profession.",

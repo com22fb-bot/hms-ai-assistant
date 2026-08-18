@@ -5,7 +5,33 @@
   gap: 1rem;
 }
 
-.dx-attention__hero h1 {
+.dx-attention__hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(140px, 220px);
+  gap: 1rem;
+  align-items: center;
+}
+
+.dx-attention__brand {
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+  object-fit: cover;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(36, 200, 202, 0.28);
+}
+
+@media (max-width: 740px) {
+  .dx-attention__hero {
+    grid-template-columns: 1fr;
+  }
+
+  .dx-attention__brand {
+    max-height: 140px;
+    object-position: center;
+  }
+}
   margin: 0.15rem 0 0;
   font-size: clamp(1.45rem, 2.5vw, 1.9rem);
   font-weight: 650;

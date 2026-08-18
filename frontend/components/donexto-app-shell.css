@@ -71,7 +71,7 @@ html.dx-menu-lock body {
 }
 
 .app-topbar-brand {
-  display: none;
+  display: flex;
 }
 
 .app-loading-screen {

@@ -280,6 +280,14 @@ export function AttentionHome({
             Dinero, seguridad y lo que te espera — sin el ruido promocional.
           </p>
         </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          className="dx-attention__brand"
+          src="/brand/brand-escritorio.jpg"
+          alt="Donexto — Do Next To…"
+          width={480}
+          height={270}
+        />
       </header>
 
       <div className="dx-attention__mailbox">

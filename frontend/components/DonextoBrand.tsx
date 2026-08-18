@@ -10,7 +10,7 @@ export function DonextoBrand({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         className="dx-brand__logo"
-        src="/brand/donexto-3d-2026.png"
+        src="/brand/brand-logo-3d.jpg"
         width={72}
         height={72}
         alt="Donexto — Do Next To…"

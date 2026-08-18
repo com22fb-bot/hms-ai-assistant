@@ -52,7 +52,6 @@ import { useCases } from "@/hooks/useCases";
 import { useGoogleStatus } from "@/hooks/useGoogleStatus";
 import { useAppAuth } from "@/hooks/useAppAuth";
 import { ACCOUNT_VS_MAILBOX, mailboxServiceLabel } from "@/lib/accountVsMailbox";
-import { mailboxConnectModeFromEmail } from "@/lib/mailboxSignup";
 import { hmsJson } from "@/lib/hmsApi";
 import type {
   CaseEvent,
@@ -1640,7 +1639,7 @@ function Dashboard({
             connectingYahoo={connectingYahoo}
             required={!connection?.connected}
             accountEmail={session.email}
-            mode={mailboxConnectModeFromEmail(session.email)}
+            mode="choose"
             onClose={() => {
               if (!connection?.connected) {
                 return;
@@ -1664,11 +1663,11 @@ function Dashboard({
                   : new Error(message);
               }
             }}
-            onConnectYahoo={async (email, appPassword) => {
-              await connectYahoo(email, appPassword);
+            onConnectYahoo={async (email, appPassword, provider) => {
+              await connectYahoo(email, appPassword, provider);
               setMailboxPickerOpen(false);
               setNotice(
-                `Yahoo verificado (${email}). Ahora descarga y clasifica los últimos seis meses.`,
+                `Buzón verificado (${email}). Ahora descarga y clasifica los últimos seis meses.`,
               );
               setInitialFlowOpened(false);
               setGuidedImportOpen(true);
@@ -1757,7 +1756,7 @@ export default function HomePage() {
       <div className="app-loading-screen">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/brand/donexto-3d-2026.png"
+          src="/brand/brand-logo-3d.jpg"
           alt="Donexto"
           width={128}
           height={128}

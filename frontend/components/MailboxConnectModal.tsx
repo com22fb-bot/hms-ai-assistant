@@ -1,18 +1,17 @@
 "use client";
 
-import { LoaderCircle, Mail, X } from "lucide-react";
+import { LoaderCircle, X } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
 import { AccountVsMailboxHint } from "@/components/auth/AccountVsMailboxHint";
 import {
   ACCOUNT_VS_MAILBOX,
-  authorizeMailboxTitle,
 } from "@/lib/accountVsMailbox";
 import type { MailboxConnectMode } from "@/lib/mailboxSignup";
 
 import "./mailbox-connect.css";
 
-type ProviderChoice = "choose" | "yahoo";
+type ProviderChoice = "choose" | "yahoo" | "outlook" | "apple";
 
 type MailboxConnectModalProps = {
   open: boolean;
@@ -22,7 +21,11 @@ type MailboxConnectModalProps = {
   mode?: MailboxConnectMode;
   onClose: () => void;
   onConnectGoogle: () => void | Promise<void>;
-  onConnectYahoo: (email: string, appPassword: string) => Promise<void>;
+  onConnectYahoo: (
+    email: string,
+    appPassword: string,
+    provider?: "yahoo" | "outlook" | "apple",
+  ) => Promise<void>;
 };
 
 export function MailboxConnectModal({
@@ -35,44 +38,62 @@ export function MailboxConnectModal({
   onConnectGoogle,
   onConnectYahoo,
 }: MailboxConnectModalProps) {
-  const [step, setStep] = useState<ProviderChoice>(
-    mode === "yahoo" ? "yahoo" : "choose",
-  );
-  const [yahooEmail, setYahooEmail] = useState(
-    mode === "yahoo" ? accountEmail : "",
-  );
+  const [step, setStep] = useState<ProviderChoice>("choose");
+  const [yahooEmail, setYahooEmail] = useState(accountEmail);
   const [yahooPassword, setYahooPassword] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
 
-  const yahooLocked = mode === "yahoo";
-  const showChooser = mode === "choose" && step === "choose";
-  const showYahooForm = mode === "yahoo" || step === "yahoo";
+  const imapBrand: "yahoo" | "outlook" | "apple" =
+    step === "outlook" || step === "apple" ? step : "yahoo";
+  const showChooser = step === "choose";
+  const showImapForm = step === "yahoo" || step === "outlook" || step === "apple";
   const canDismiss = !required;
 
   useEffect(() => {
     if (!open) {
       return;
     }
-    setStep(mode === "yahoo" ? "yahoo" : "choose");
-    setYahooEmail(mode === "yahoo" ? accountEmail : "");
+    setStep("choose");
+    setYahooEmail(accountEmail);
     setYahooPassword("");
     setLocalError(null);
     setConnectingGoogle(false);
-  }, [open, mode, accountEmail]);
-
-  useEffect(() => {
-    if (step !== "yahoo" || yahooLocked) {
-      return;
-    }
-    setYahooEmail("");
-    setYahooPassword("");
-    setLocalError(null);
-  }, [step, yahooLocked]);
+  }, [open, accountEmail]);
 
   if (!open) {
     return null;
   }
+
+  const imapCopy = {
+    yahoo: {
+      title: ACCOUNT_VS_MAILBOX.connectYahooTitle,
+      body: ACCOUNT_VS_MAILBOX.connectYahooBody,
+      label: ACCOUNT_VS_MAILBOX.connectYahooAppPasswordLabel,
+      help: ACCOUNT_VS_MAILBOX.connectYahooChooserHint,
+      link: "https://login.yahoo.com/account/security",
+      linkLabel: "Seguridad Yahoo",
+      cta: "Verificar y conectar este Yahoo",
+    },
+    outlook: {
+      title: "Autoriza la lectura de este Outlook",
+      body: "Contraseña de aplicación IMAP de Outlook / Hotmail. No uses la contraseña de Microsoft ni la de Donexto.",
+      label: "Contraseña de aplicación Outlook",
+      help: "En Microsoft: Seguridad → Contraseñas de aplicación. Pega el código aquí.",
+      link: "https://account.microsoft.com/security",
+      linkLabel: "Seguridad Microsoft",
+      cta: "Verificar y conectar este Outlook",
+    },
+    apple: {
+      title: "Autoriza la lectura de este iCloud",
+      body: "Contraseña de aplicación de Apple. No uses la contraseña de iCloud ni la de Donexto.",
+      label: "Contraseña de aplicación Apple",
+      help: "En appleid.apple.com: Iniciar sesión y seguridad → Contraseñas de aplicaciones.",
+      link: "https://appleid.apple.com",
+      linkLabel: "Apple ID",
+      cta: "Verificar y conectar este iCloud",
+    },
+  }[imapBrand];
 
   async function handleGoogleClick() {
     setLocalError(null);
@@ -94,34 +115,24 @@ export function MailboxConnectModal({
     setLocalError(null);
 
     try {
-      const mailboxEmail = yahooLocked
-        ? accountEmail
-        : yahooEmail;
-      await onConnectYahoo(mailboxEmail, yahooPassword);
+      await onConnectYahoo(yahooEmail || accountEmail, yahooPassword, imapBrand);
       setYahooPassword("");
       onClose();
     } catch (error) {
       setLocalError(
         error instanceof Error
           ? error.message
-          : "No fue posible conectar Yahoo.",
+          : `No fue posible conectar ${imapBrand}.`,
       );
     }
   }
 
-  const title =
-    mode === "gmail"
-      ? authorizeMailboxTitle(accountEmail)
-      : showYahooForm && !showChooser
-        ? ACCOUNT_VS_MAILBOX.connectYahooTitle
-        : ACCOUNT_VS_MAILBOX.connectChooserTitle;
-
-  const body =
-    mode === "gmail"
-      ? ACCOUNT_VS_MAILBOX.connectGmailBody
-      : showYahooForm && !showChooser
-        ? ACCOUNT_VS_MAILBOX.connectYahooBody
-        : ACCOUNT_VS_MAILBOX.connectChooserBody;
+  const title = showImapForm
+    ? imapCopy.title
+    : "Autoriza la lectura de tu correo";
+  const body = showImapForm
+    ? imapCopy.body
+    : "Gmail, Outlook, Yahoo e iCloud. Elige el buzón que vas a vigilar. No pedimos la contraseña de ese correo aquí, salvo la de aplicación IMAP cuando el proveedor la exige.";
 
   return (
     <div className="dx-connect-overlay" role="dialog" aria-modal="true">
@@ -136,7 +147,7 @@ export function MailboxConnectModal({
               type="button"
               className="dx-connect-icon-btn"
               onClick={() => {
-                if (step === "yahoo" && mode === "choose") {
+                if (showImapForm) {
                   setStep("choose");
                   setLocalError(null);
                   return;
@@ -144,9 +155,7 @@ export function MailboxConnectModal({
                 onClose();
               }}
               aria-label={
-                step === "yahoo" && mode === "choose"
-                  ? "Volver a elegir proveedor"
-                  : "Cerrar"
+                showImapForm ? "Volver a elegir proveedor" : "Cerrar"
               }
             >
               <X size={20} />
@@ -157,80 +166,69 @@ export function MailboxConnectModal({
         <div className="dx-connect-body">
           <AccountVsMailboxHint variant="connect" email={accountEmail} />
 
-          {mode === "gmail" ? (
+          {showChooser ? (
             <>
               {localError ? (
                 <div className="dx-connect-error" role="alert">
                   {localError}
                 </div>
               ) : null}
-              <button
-                type="button"
-                className="dx-connect-btn dx-connect-btn--primary"
-                disabled={connectingGoogle}
-                onClick={() => void handleGoogleClick()}
-              >
-                {connectingGoogle ? (
-                  <>
-                    <LoaderCircle size={18} className="app-spin" />
-                    Abriendo Google…
-                  </>
-                ) : (
-                  <>
-                    <Mail size={18} />
-                    {ACCOUNT_VS_MAILBOX.connectGmailCta}
-                  </>
-                )}
-              </button>
+              <div className="dx-connect-providers">
+                <button
+                  type="button"
+                  className="dx-connect-btn dx-connect-btn--primary"
+                  disabled={connectingGoogle || connectingYahoo}
+                  onClick={() => void handleGoogleClick()}
+                >
+                  {connectingGoogle ? (
+                    <>
+                      <LoaderCircle size={18} className="app-spin" />
+                      Abriendo Google…
+                    </>
+                  ) : (
+                    "Gmail"
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="dx-connect-btn dx-connect-btn--secondary"
+                  disabled={connectingGoogle || connectingYahoo}
+                  onClick={() => {
+                    setLocalError(null);
+                    setStep("outlook");
+                  }}
+                >
+                  Outlook
+                </button>
+                <button
+                  type="button"
+                  className="dx-connect-btn dx-connect-btn--secondary"
+                  disabled={connectingGoogle || connectingYahoo}
+                  onClick={() => {
+                    setLocalError(null);
+                    setStep("yahoo");
+                  }}
+                >
+                  Yahoo
+                </button>
+                <button
+                  type="button"
+                  className="dx-connect-btn dx-connect-btn--secondary"
+                  disabled={connectingGoogle || connectingYahoo}
+                  onClick={() => {
+                    setLocalError(null);
+                    setStep("apple");
+                  }}
+                >
+                  iCloud
+                </button>
+              </div>
               <p className="dx-connect-hint">
-                {ACCOUNT_VS_MAILBOX.connectGoogleHint}
+                Gmail autoriza en Google. Outlook, Yahoo e iCloud usan
+                contraseña de aplicación IMAP — nunca la del correo ni la de Donexto.
               </p>
             </>
-          ) : showChooser ? (
-            <>
-              {localError ? (
-                <div className="dx-connect-error" role="alert">
-                  {localError}
-                </div>
-              ) : null}
-              <button
-                type="button"
-                className="dx-connect-btn dx-connect-btn--primary"
-                disabled={connectingGoogle || connectingYahoo}
-                onClick={() => void handleGoogleClick()}
-              >
-                {connectingGoogle ? (
-                  <>
-                    <LoaderCircle size={18} className="app-spin" />
-                    Abriendo Google…
-                  </>
-                ) : (
-                  <>
-                    <Mail size={18} />
-                    Gmail (Google)
-                  </>
-                )}
-              </button>
-              <p className="dx-connect-hint">
-                {ACCOUNT_VS_MAILBOX.connectGoogleHint}
-              </p>
-
-              <button
-                type="button"
-                className="dx-connect-btn dx-connect-btn--secondary"
-                disabled={connectingGoogle || connectingYahoo}
-                onClick={() => {
-                  setLocalError(null);
-                  setStep("yahoo");
-                }}
-              >
-                Yahoo Mail
-              </button>
-              <p className="dx-connect-hint">
-                {ACCOUNT_VS_MAILBOX.connectYahooChooserHint}
-              </p>
-            </>
-          ) : (
+          ) : showImapForm ? (
             <form
               className="dx-connect-form"
               autoComplete="off"
@@ -260,30 +258,26 @@ export function MailboxConnectModal({
                 readOnly
               />
 
-              {mode === "choose" ? (
-                <button
-                  type="button"
-                  className="dx-connect-back"
-                  onClick={() => {
-                    setStep("choose");
-                    setYahooEmail("");
-                    setYahooPassword("");
-                    setLocalError(null);
-                  }}
-                >
-                  ← Volver
-                </button>
-              ) : null}
+              <button
+                type="button"
+                className="dx-connect-back"
+                onClick={() => {
+                  setStep("choose");
+                  setYahooPassword("");
+                  setLocalError(null);
+                }}
+              >
+                ← Volver
+              </button>
 
               <label htmlFor="dx-yahoo-mailbox-email">
-                Correo del buzón Yahoo
+                Correo del buzón
                 <input
                   id="dx-yahoo-mailbox-email"
                   name="dx_yahoo_mailbox_email"
                   type="text"
                   inputMode="email"
                   required
-                  readOnly={yahooLocked}
                   autoComplete="off"
                   autoCapitalize="none"
                   autoCorrect="off"
@@ -291,17 +285,13 @@ export function MailboxConnectModal({
                   data-1p-ignore="true"
                   data-lpignore="true"
                   data-form-type="other"
-                  placeholder="tucorreo@yahoo.com"
-                  value={yahooLocked ? accountEmail : yahooEmail}
-                  onChange={(event) => {
-                    if (!yahooLocked) {
-                      setYahooEmail(event.target.value);
-                    }
-                  }}
+                  placeholder={accountEmail || "tucorreo@dominio.com"}
+                  value={yahooEmail}
+                  onChange={(event) => setYahooEmail(event.target.value)}
                 />
               </label>
               <label htmlFor="dx-yahoo-app-password">
-                {ACCOUNT_VS_MAILBOX.connectYahooAppPasswordLabel}
+                {imapCopy.label}
                 <input
                   id="dx-yahoo-app-password"
                   name="dx_yahoo_app_password"
@@ -320,16 +310,13 @@ export function MailboxConnectModal({
               <p className="dx-connect-hint">
                 1){" "}
                 <a
-                  href="https://login.yahoo.com/account/security"
+                  href={imapCopy.link}
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Seguridad Yahoo
+                  {imapCopy.linkLabel}
                 </a>
-                . 2) Verificación en 2 pasos. 3) Conexiones externas → Crear
-                contraseña de aplicación → nombre <strong>Donexto</strong>. 4)
-                Pega aquí el código de ~16 caracteres (no la contraseña de
-                Yahoo ni la de Donexto).
+                . {imapCopy.help} Nombre la contraseña <strong>Donexto</strong>.
               </p>
               {localError ? (
                 <div className="dx-connect-error" role="alert">
@@ -344,14 +331,14 @@ export function MailboxConnectModal({
                 {connectingYahoo ? (
                   <>
                     <LoaderCircle size={16} className="app-spin" />
-                    Verificando Yahoo…
+                    Verificando…
                   </>
                 ) : (
-                  "Verificar y conectar este Yahoo"
+                  imapCopy.cta
                 )}
               </button>
             </form>
-          )}
+          ) : null}
         </div>
       </section>
     </div>

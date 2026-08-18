@@ -13,10 +13,11 @@ from app.services.oauth_storage import (
     oauth_storage,
 )
 from app.services.yahoo_imap import (
+    IMAP_BRANDS,
     YahooImapError,
     normalize_yahoo_address,
     normalize_yahoo_app_password,
-    verify_yahoo_login,
+    verify_imap_login,
 )
 
 
@@ -26,6 +27,7 @@ router = APIRouter(prefix="/auth/yahoo", tags=["Yahoo Mail"])
 class YahooConnectRequest(BaseModel):
     email: str = Field(min_length=5, max_length=320)
     app_password: str = Field(min_length=8, max_length=256)
+    provider: str = Field(default="yahoo", max_length=32)
 
 
 @router.post("/connect")
@@ -34,31 +36,35 @@ def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
     context = require_request_context()
     address = normalize_yahoo_address(payload.email)
     app_password = normalize_yahoo_app_password(payload.app_password)
+    brand = (payload.provider or "yahoo").strip().lower()
+    if brand in {"hotmail", "microsoft", "live"}:
+        brand = "outlook"
+    if brand in {"icloud", "me"}:
+        brand = "apple"
+    profile = IMAP_BRANDS.get(brand)
+    if not profile:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "unsupported_mailbox",
+                "message": "Elige Gmail, Outlook, Yahoo o iCloud.",
+            },
+        )
+    label = str(profile["label"])
+    host = str(profile["host"])
+    stored_provider = "yahoo" if brand == "yahoo" else "imap"
 
     if "@" not in address:
         raise HTTPException(
             status_code=400,
             detail={
                 "status": "invalid_email",
-                "message": "Indica un correo de Yahoo válido.",
-            },
-        )
-
-    account_email = (context.user.email or "").strip().lower()
-    if account_email and address != account_email:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "mailbox_mismatch",
-                "message": (
-                    "El buzón Yahoo debe ser el mismo correo de tu cuenta "
-                    f"Donexto ({account_email})."
-                ),
+                "message": f"Indica un correo de {label} válido.",
             },
         )
 
     try:
-        verify_yahoo_login(address, app_password)
+        host = verify_imap_login(address, app_password, brand=brand)
     except YahooImapError as error:
         raise HTTPException(
             status_code=400,
@@ -75,12 +81,12 @@ def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
                 {"status": "inactive"}
             ).eq("workspace_id", context.workspace_id).eq(
                 "status", "active"
-            ).neq("provider", "yahoo").execute()
+            ).neq("provider", stored_provider).execute()
         except Exception:
             pass
 
         account = oauth_storage.upsert_communication_account(
-            provider="yahoo",
+            provider=stored_provider,
             provider_account_id=address,
             email=address,
             display_name=address,
@@ -94,10 +100,11 @@ def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
             refresh_token=None,
             expires_at=None,
             token_uri=None,
-            scopes=["imap.mail.yahoo.com"],
+            scopes=[host],
             metadata={
                 "protocol": "imap",
-                "host": "imap.mail.yahoo.com",
+                "host": host,
+                "brand": brand,
                 "connected_by_profile_id": context.user.id,
                 "workspace_id": context.workspace_id,
             },
@@ -107,7 +114,7 @@ def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
             status_code=500,
             detail={
                 "status": "error",
-                "message": "Yahoo autenticó, pero no se pudo guardar la conexión.",
+                "message": f"{label} autenticó, pero no se pudo guardar la conexión.",
                 "technical_detail": str(error),
             },
         ) from error
@@ -115,11 +122,11 @@ def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
     return GoogleConnectionStatus(
         connected=True,
         email=address,
-        provider="yahoo",
+        provider=stored_provider,
         has_access_token=True,
         has_refresh_token=False,
-        scopes=["imap.mail.yahoo.com"],
-        message="Buzón Yahoo conectado. Siguiente paso: descargar y clasificar los últimos seis meses.",
+        scopes=[host],
+        message=f"Buzón {label} conectado. Siguiente paso: descargar y clasificar los últimos seis meses.",
         login_url=None,
     )
 

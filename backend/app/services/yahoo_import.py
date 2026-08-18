@@ -122,6 +122,7 @@ def yahoo_initial_snapshot(
     app_password: str,
     *,
     cutoff_at: datetime | None = None,
+    host: str | None = None,
 ) -> dict[str, Any]:
     address = normalize_yahoo_address(address)
     app_password = normalize_yahoo_app_password(app_password)
@@ -131,6 +132,7 @@ def yahoo_initial_snapshot(
         address,
         app_password,
         timeout=YAHOO_IMPORT_TIMEOUT,
+        host=host,
     )
     try:
         grouped = _collect_refs(
@@ -190,8 +192,13 @@ def yahoo_initial_snapshot(
     }
 
 
-def yahoo_inventory(address: str, app_password: str) -> dict[str, Any]:
-    snapshot = yahoo_initial_snapshot(address, app_password)
+def yahoo_inventory(
+    address: str,
+    app_password: str,
+    *,
+    host: str | None = None,
+) -> dict[str, Any]:
+    snapshot = yahoo_initial_snapshot(address, app_password, host=host)
     snapshot.pop("yahoo_refs", None)
     breakdown = snapshot.pop("breakdown")
     excluded = snapshot.pop("excluded")
@@ -228,6 +235,7 @@ def yahoo_incremental_refs(
     app_password: str,
     *,
     since: datetime,
+    host: str | None = None,
 ) -> list[str]:
     address = normalize_yahoo_address(address)
     app_password = normalize_yahoo_app_password(app_password)
@@ -235,6 +243,7 @@ def yahoo_incremental_refs(
         address,
         app_password,
         timeout=YAHOO_IMPORT_TIMEOUT,
+        host=host,
     )
     try:
         grouped = _collect_refs(
@@ -349,6 +358,10 @@ def sync_yahoo_page(
         address,
         app_password,
         timeout=YAHOO_IMPORT_TIMEOUT,
+        host=str(
+            ((OAuthStorage().get_credentials(account_id) or {}).get("metadata") or {}).get("host")
+            or ""
+        ) or None,
     )
     selected_folder: str | None = None
     try:
