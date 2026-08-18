@@ -120,6 +120,7 @@ Su propósito es evitar volver a discutir decisiones ya aprobadas y servir como 
 
 ## Alta prioridad
 
+- **P00** — `docs/ops/P00-pendientes.md` (clasificación Banamex, catálogo, bancos, idioma, guía Yahoo).
 - Persistencia de OAuth.
 - Gestión completa de usuarios.
 - Gestión de Workspaces.

@@ -2,7 +2,8 @@
 
 **Estado:** Cerrado en código (2026-08-12) · **validación dueño en prod pendiente**  
 **Respaldo:** `docs/recovery/CONTINUIDAD_DONEXTO_2026-08-11.md`  
-**Siguiente tras validar P0 en app.donexto.com:** **P2** (verificar buzón + conteo + sample).
+**Ahora, antes de P0/P2:** **P00** — `docs/ops/P00-pendientes.md` (clasificación, bancos, idioma, guía Yahoo).  
+**Siguiente tras cerrar P00 y validar P0 en app.donexto.com:** **P2** (verificar buzón + conteo + sample).
 
 **Ámbito:** Solo identidad Donexto vs conexión de buzón. Sin billing, Free plan, sample 20, ni sync 90d.
 

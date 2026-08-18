@@ -123,11 +123,14 @@ Deploy frontend Codespace: `CLOUDFLARE_API_TOKEN` (no OAuth browser).
 
 ---
 
-## 8. P0 — cómo validar hoy
+## 8. P00 — ahora · P0 — cuenta ≠ buzón
 
-Ver `docs/ops/P0-cuenta-donexto-vs-buzon.md`.
+**P00 (activo):** `docs/ops/P00-pendientes.md`  
+Clasificación (Banamex ≠ redes), catálogo MX/US, bases de bancos CA/UE/LATAM, idioma ES/EN/FR/IT/PT, guía Yahoo. Merge PR #5 + Railway + reclasificar antes de seguir.
 
-Siguiente tras P0 OK en prod/local: **P2** (verify buzón).
+P0 cuenta ≠ buzón: `docs/ops/P0-cuenta-donexto-vs-buzon.md`.
+
+Siguiente tras **P00 cerrado por Héctor**: P0 validado en prod, luego **P2** (verify buzón).
 
 ---
 
@@ -144,4 +147,4 @@ Siguiente tras P0 OK en prod/local: **P2** (verify buzón).
 
 ## 10. Frase de continuidad para el próximo agente
 
-> Retomar **P0 validado por Héctor** y continuar **P2 mailbox verify + sample + top 10**. Brand: `donexto-envelopes-glow-icon.png`, cuenta ≠ buzón, Normal $19.99 y 90 días **después** de conexión ok. Respaldo: este archivo.
+> Retomar **P00** (`docs/ops/P00-pendientes.md`): Banamex en Avisos, catálogo, bancos, idioma, guía Yahoo. Después **P0 validado por Héctor** y **P2 mailbox verify**. Brand Donexto, cuenta ≠ buzón. Respaldo: este archivo.
