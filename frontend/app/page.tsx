@@ -38,6 +38,7 @@ import { MailboxConnectModal } from "@/components/MailboxConnectModal";
 import "@/components/hms-mobile-shell.css";
 import "@/components/guided-import.css";
 import { AttentionHome } from "@/components/AttentionHome";
+import { DonextoBrand } from "@/components/DonextoBrand";
 import "@/components/attention-home.css";
 import { MailCategoriesPanel } from "@/components/MailCategoriesPanel";
 import "@/components/mail-categories.css";
@@ -1073,18 +1074,7 @@ function Dashboard({
         }
       >
         <div className="app-brand">
-          <span className="app-brand-icon" aria-hidden>
-            <img
-              src="/brand/donexto-mark.svg"
-              alt=""
-              width={42}
-              height={42}
-            />
-          </span>
-          <div>
-            <strong>Donexto</strong>
-            <small>Do Next To…</small>
-          </div>
+          <DonextoBrand />
 
           <button
             type="button"
@@ -1186,6 +1176,10 @@ function Dashboard({
             >
               <Menu size={22} />
             </button>
+
+            <div className="app-topbar-brand" aria-hidden="false">
+              <DonextoBrand compact />
+            </div>
 
             <label className="app-search">
               <Search size={19} />
@@ -1761,8 +1755,15 @@ export default function HomePage() {
   if (loading) {
     return (
       <div className="app-loading-screen">
-        <Sparkles size={34} />
-        <span>Verificando sesión segura...</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/donexto-3d-2026.png"
+          alt="Donexto"
+          width={128}
+          height={128}
+        />
+        <strong>Donexto</strong>
+        <span>Do Next To…</span>
       </div>
     );
   }

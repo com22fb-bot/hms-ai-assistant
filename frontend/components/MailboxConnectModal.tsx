@@ -323,7 +323,6 @@ export function MailboxConnectModal({
                   href="https://login.yahoo.com/account/security"
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{ color: "#0c8a80" }}
                 >
                   Seguridad Yahoo
                 </a>

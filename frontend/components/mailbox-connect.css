@@ -91,7 +91,7 @@
 
 .dx-connect-btn--primary {
   border: 0;
-  background: #0c8a80;
+  background: #24c8ca;
   color: #fff;
 }
 
@@ -113,7 +113,7 @@
 }
 
 .dx-connect-hint a {
-  color: #0c8a80;
+  color: #24c8ca;
 }
 
 .dx-connect-error {
@@ -161,7 +161,7 @@
   justify-self: start;
   border: 0;
   background: transparent;
-  color: #0c8a80;
+  color: #24c8ca;
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
@@ -208,5 +208,5 @@
 }
 
 .dx-connect-body .dx-avm-hint__icon {
-  color: #0c8a80;
+  color: #24c8ca;
 }

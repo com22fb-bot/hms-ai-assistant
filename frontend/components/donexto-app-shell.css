@@ -9,8 +9,9 @@ html.dx-menu-lock body {
 .app-shell {
   min-height: 100dvh;
   background:
-    radial-gradient(ellipse 80% 42% at 0% -10%, rgba(46, 230, 214, 0.08), transparent 48%),
-    linear-gradient(180deg, #070d12 0%, #08131a 100%) !important;
+    radial-gradient(ellipse 80% 50% at 8% -8%, rgba(36, 200, 202, 0.18), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 100% 6%, rgba(214, 61, 142, 0.14), transparent 50%),
+    linear-gradient(165deg, #070b12 0%, #0a1220 52%, #0b0a14 100%) !important;
 }
 
 .app-sidebar {
@@ -19,23 +20,90 @@ html.dx-menu-lock body {
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
-  background: rgba(10, 18, 24, 0.98) !important;
+  background: rgba(10, 16, 26, 0.96) !important;
   overscroll-behavior: contain;
 }
 
-.app-brand-icon {
-  width: 42px !important;
-  height: 42px !important;
-  padding: 0 !important;
-  overflow: hidden;
-  background: #0a1620 !important;
-  box-shadow: none !important;
+.dx-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
-.app-brand-icon img {
+.dx-brand__logo {
   display: block;
-  width: 100%;
-  height: 100%;
+  width: 4.25rem;
+  height: 4.25rem;
+  flex: 0 0 auto;
+  border-radius: 0.85rem;
+  object-fit: contain;
+  background: #05080e;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(36, 200, 202, 0.28);
+}
+
+.dx-brand__text {
+  display: grid;
+  line-height: 1.1;
+}
+
+.dx-brand__text strong {
+  font-family: var(--font-hms-display), Georgia, serif;
+  font-size: 1.2rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: #eef7f8;
+}
+
+.dx-brand__text small {
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+}
+
+.dx-c {
+  color: #5ad8d5;
+}
+
+.dx-m {
+  color: #e23d96;
+}
+
+.app-topbar-brand {
+  display: none;
+}
+
+.app-loading-screen {
+  background:
+    radial-gradient(ellipse 80% 50% at 8% -8%, rgba(36, 200, 202, 0.18), transparent 55%),
+    radial-gradient(ellipse 55% 45% at 100% 6%, rgba(214, 61, 142, 0.14), transparent 50%),
+    #070b12 !important;
+}
+
+.app-loading-screen img {
+  width: 7.5rem;
+  height: 7.5rem;
+  object-fit: contain;
+  filter: drop-shadow(0 12px 28px rgba(36, 200, 202, 0.22));
+}
+
+.app-loading-screen strong {
+  font-family: var(--font-hms-display), Georgia, serif;
+  font-size: 1.35rem;
+}
+
+.app-loading-screen span {
+  color: #5ad8d5;
+}
+
+.app-brand {
+  align-items: center;
+}
+
+.app-brand .dx-brand {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .app-navigation {
@@ -177,6 +245,20 @@ html.dx-menu-lock body {
   .app-shell.is-menu-open .app-main {
     pointer-events: none;
   }
+
+  .app-topbar-brand {
+    display: flex;
+  }
+
+  .app-topbar-brand .dx-brand__logo {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .dx-brand__logo {
+    width: 3.5rem;
+    height: 3.5rem;
+  }
 }
 
 @media (max-width: 740px) {
@@ -210,7 +292,7 @@ html.dx-menu-lock body {
     display: grid;
     place-items: center;
     border-radius: 999px;
-    background: #0c8a80;
+    background: linear-gradient(90deg, #24c8ca, #d63d8e);
     color: #fff;
     font-size: 0.72rem;
     font-weight: 800;
