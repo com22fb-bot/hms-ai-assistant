@@ -4,7 +4,9 @@ backend/__pycache__/
 *.pyc
 .env
 venv/
+.venv/
 __pycache__/
+.pytest_cache/
 
 # Local backups
 backups/
