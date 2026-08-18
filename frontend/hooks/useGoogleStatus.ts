@@ -166,7 +166,7 @@ export function useGoogleStatus() {
         if (!response.ok) {
           throw new Error(
             detailMessage(payload) ??
-              "No fue posible conectar Yahoo. Usa una contraseña de aplicación.",
+              "No fue posible conectar Yahoo. Pega el código de 16 dígitos que Yahoo te mostró, no tu clave de correo.",
           );
         }
 

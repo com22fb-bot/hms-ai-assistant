@@ -27,6 +27,11 @@
     0 18px 40px rgba(15, 28, 34, 0.12);
 }
 
+.dx-connect-card--guide {
+  width: min(560px, 100%);
+  max-height: min(94vh, 860px);
+}
+
 .dx-connect-header {
   display: flex;
   align-items: flex-start;
@@ -209,4 +214,144 @@
 
 .dx-connect-body .dx-avm-hint__icon {
   color: #0c8a80;
+}
+
+.dx-yahoo-guide {
+  gap: 0.85rem;
+}
+
+.dx-yahoo-mailbox {
+  margin: 0;
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #5a6b72;
+}
+
+.dx-yahoo-mailbox strong {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #0f1c22;
+  word-break: break-all;
+}
+
+.dx-connect-btn--yahoo {
+  border: 0;
+  background: #6001d2;
+  color: #fff;
+  text-decoration: none;
+}
+
+.dx-connect-btn--yahoo:hover {
+  background: #4e00ad;
+}
+
+.dx-yahoo-url {
+  margin: -0.45rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #5a6b72;
+  word-break: break-all;
+}
+
+.dx-yahoo-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.dx-yahoo-steps li {
+  display: grid;
+  grid-template-columns: 1.7rem minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.dx-yahoo-steps__n {
+  width: 1.7rem;
+  height: 1.7rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #0c8a80;
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.dx-yahoo-steps strong {
+  display: block;
+  font-size: 0.9rem;
+  color: #0f1c22;
+}
+
+.dx-yahoo-steps p {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #5a6b72;
+  font-weight: 400;
+}
+
+.dx-yahoo-app-name {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.86rem;
+  color: #0f1c22;
+}
+
+.dx-yahoo-app-name strong {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2rem;
+  padding: 0 0.7rem;
+  border-radius: 8px;
+  border: 1px dashed #0c8a80;
+  background: #f3fbfa;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+
+.dx-yahoo-tip {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: #fff8e8;
+  border: 1px solid #f5d78e;
+  color: #6b4e12;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.dx-yahoo-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  letter-spacing: 0.08em;
+}
+
+.dx-yahoo-code-count {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #5a6b72;
+}
+
+.dx-yahoo-ready {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: #0a6f67;
+}
+
+.dx-connect-help {
+  justify-self: center;
+  color: #0c8a80;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  text-underline-offset: 3px;
 }
