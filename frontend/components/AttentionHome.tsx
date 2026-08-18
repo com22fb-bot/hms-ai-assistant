@@ -7,7 +7,6 @@ import {
   ChevronRight,
   LoaderCircle,
   Mail,
-  Package,
   RefreshCw,
   Shield,
   VolumeX,
@@ -48,7 +47,7 @@ type TriageSummary = {
   categories: TriageCategory[];
 };
 
-/** N1 EE.UU.: dinero/seguridad/logística/acción — push candidate */
+/** N1: dinero, seguridad, pedidos y familia al mismo peso — push candidate */
 const N1_KEYS = ["action_required", "notice", "review"] as const;
 /** N2: digest / opt-in */
 const N2_KEYS = ["waiting_external", "informational"] as const;
@@ -61,8 +60,8 @@ const LEVEL_LABEL: Record<string, { title: string; why: string }> = {
     why: "Solicitud o respuesta pendiente de ti",
   },
   notice: {
-    title: "Cargos, pedidos o seguridad",
-    why: "Bancos, compras, rastreo, reservas, pagos, accesos o plazos",
+    title: "Avisos que sí importan",
+    why: "Bancos, compras, accesos, escuela o salud",
   },
   review: {
     title: "Revisión humana",
@@ -277,7 +276,7 @@ export function AttentionHome({
             {personName ? `Hola, ${personName}` : "Hola"}
           </h1>
           <p className="dx-attention__lede">
-            Cargos, pedidos, seguridad y familia. El ruido no entra aquí.
+            Lo que pide acción, ahora. Lo demás, después o en silencio.
           </p>
         </div>
       </header>
@@ -345,8 +344,8 @@ export function AttentionHome({
           <div>
             <strong>No hay clasificación almacenada aún</strong>
             <span>
-              {error} Completa Descargar y clasificar para ver casos. El buzón
-              original no se modifica.
+              {error} Completa Descargar y clasificar para ver lo que pide
+              acción. El buzón original no se modifica.
             </span>
           </div>
           <button type="button" onClick={onOpenAllMail}>
@@ -426,7 +425,7 @@ export function AttentionHome({
                       >
                         <span className="dx-attention__row-icon">
                           {item.category === "notice" ? (
-                            <Package size={18} />
+                            <BellRing size={18} />
                           ) : item.category === "action_required" ? (
                             <Mail size={18} />
                           ) : (

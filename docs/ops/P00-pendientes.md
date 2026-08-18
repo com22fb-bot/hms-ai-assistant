@@ -65,6 +65,6 @@ Eso usa `--branch main`. Chrome: **Ctrl+Shift+R** si la pestaña es vieja.
 ## Definición de hecho
 
 1. donexto.com: H1 Donexto; kicker **no** es “Correo del hogar”; pilar 03 = **Pedidos**; prototipo A = **Prioridad**.
-2. App login: “Cargos, pedidos, seguridad y familia. El resto espera.” Yahoo pide correo + clave.
+2. App login: “Lo siguiente que sí importa. El resto espera.” Yahoo pide correo + clave. Inicio no lista los cuatro frentes; esos viven en “Qué mira”.
 3. Merge a `main` + Railway v4 + reclasificar buzón de Héctor.
 4. Héctor confirma Banamex en Avisos.

@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   BarChart3,
   Bell,
-  BriefcaseBusiness,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -271,7 +270,7 @@ const NAV_ITEMS: Array<{
   { id: "home", labelKey: "navHome", icon: Home, state: "active" },
   { id: "mail", labelKey: "navMail", icon: Mail, state: "active" },
   { id: "push", labelKey: "navAlerts", icon: Bell, state: "active" },
-  { id: "cases", labelKey: "navCases", icon: BriefcaseBusiness, state: "active" },
+  { id: "cases", labelKey: "navCases", icon: Inbox, state: "active" },
   { id: "tasks", labelKey: "navTasks", icon: CheckCircle2, state: "active" },
   { id: "activity", labelKey: "navActivity", icon: Activity, state: "active" },
   { id: "reports", labelKey: "navReports", icon: FileBarChart, state: "active" },
@@ -1142,7 +1141,7 @@ function Dashboard({
               <input
                 type="search"
                 value={search}
-                placeholder="Buscar casos, correos o remitentes…"
+                placeholder="Buscar correos, personas o avisos…"
                 onChange={(event) =>
                   setSearch(event.target.value)
                 }
@@ -1528,7 +1527,7 @@ function Dashboard({
           </button>
 
           <button type="button" onClick={() => selectView("cases", t("navCases"))}>
-            <BriefcaseBusiness size={23} />
+            <Inbox size={23} />
             <span>{t("navCases")}</span>
           </button>
 

@@ -41,7 +41,7 @@ function getInitials(email?: string | null): string {
 
 export default function Topbar({
   title = "Donexto",
-  subtitle = "Cargos, pedidos, seguridad y familia",
+  subtitle = "Lo siguiente que sí importa",
   accountEmail,
   connected = false,
   loading = false,
@@ -73,7 +73,7 @@ export default function Topbar({
           <input
             type="search"
             value={searchValue}
-            placeholder="Buscar casos, personas o tareas"
+            placeholder="Buscar correos, personas o avisos"
             aria-label="Buscar"
             onChange={(event) =>
               onSearchChange?.(event.target.value)

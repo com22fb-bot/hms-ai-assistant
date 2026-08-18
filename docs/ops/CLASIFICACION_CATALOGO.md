@@ -35,7 +35,7 @@ Nunca por substring. Ese era el bug de Banamex en redes sociales:
 
 | Nivel | Claves | Qué hace Donexto |
 | --- | --- | --- |
-| N1 Ahora | `action_required`, `notice`, `review` | Dinero, seguridad, logística, acción o duda |
+| N1 Ahora | `action_required`, `notice`, `review` | Dinero, seguridad, pedidos y familia — al mismo peso |
 | N2 Después | `waiting_external`, `informational` | Útil, no interrumpe |
 | N3 Silencio | `social`, `promotional`, `automated` | Sin push |
 

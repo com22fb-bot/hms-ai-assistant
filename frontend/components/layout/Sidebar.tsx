@@ -3,9 +3,9 @@
 import {
   Activity,
   BrainCircuit,
-  BriefcaseBusiness,
   ChevronLeft,
   ChevronRight,
+  Inbox,
   LayoutDashboard,
   ListTodo,
   Settings,
@@ -35,13 +35,13 @@ type SidebarProps = {
 const navigation = [
   {
     id: "dashboard" as const,
-    label: "Mission Control",
+    label: "Consola",
     icon: LayoutDashboard,
   },
   {
     id: "cases" as const,
     label: "Casos Inteligentes",
-    icon: BriefcaseBusiness,
+    icon: Inbox,
     badge: "AI",
   },
   {

@@ -13,7 +13,7 @@ export const ACCOUNT_VS_MAILBOX = {
   loginPasswordLabel: "Contraseña de Donexto",
   signupFullNameLabel: "Nombre completo",
   loginHelper:
-    "Identifícate con el correo que vas a vigilar. No pedimos la contraseña de ese buzón.",
+    "Identifícate con el correo que vas a vigilar.",
   loginFoot: "Esta es tu cuenta de Donexto.",
   signupChooserBody:
     "Elige el correo que vas a vigilar: será el mismo de tu cuenta Donexto. Te llevamos al inicio de sesión de ese proveedor.",
@@ -44,7 +44,7 @@ export const ACCOUNT_VS_MAILBOX = {
     "No hay un portal OAuth de Donexto para ese dominio. Te enviamos un enlace mágico a ese mismo correo para crear la cuenta; luego autorizamos la lectura de ese buzón.",
   signupOtherMagicLink: "Enviar enlace de acceso",
   brandSub:
-    "Cargos, pedidos, seguridad y familia, sin el caos de la bandeja. Primero confirmas tu correo; después autorizas la lectura de ese mismo buzón.",
+    "Primero confirmas tu correo de Donexto; después autorizas la lectura de ese mismo buzón. No es otra bandeja: es una capa de atención.",
 
   step2Title: "Autoriza la lectura de tu correo",
   step2Body:
