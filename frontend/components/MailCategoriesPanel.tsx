@@ -71,13 +71,15 @@ const CATEGORY_CONFIG: Record<
   },
   notice: {
     label: "Avisos importantes",
-    description: "Pagos, seguridad, vencimientos y cambios de servicio.",
+    description:
+      "Bancos, pedidos, reservas, pagos, seguridad y plazos. Un Citibanamex no es una red social.",
     icon: BellRing,
     tone: "notice",
   },
   social: {
-    label: "Social",
-    description: "LinkedIn, YouTube y otras redes sociales.",
+    label: "Redes sociales",
+    description:
+      "LinkedIn, Instagram, X, TikTok, YouTube. Likes y resúmenes — no bancos ni compras.",
     icon: Users,
     tone: "social",
   },
