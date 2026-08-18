@@ -2,18 +2,12 @@
 
 ## Cómo conectar
 
-1. Crear cuenta Donexto (enlace al mismo Yahoo).
+1. Crear cuenta Donexto con el mismo correo Yahoo (enlace de confirmación).
 2. Verificar el correo Donexto.
-3. Conectar buzón → **Yahoo** con **contraseña de aplicación** IMAP (no la de mail.yahoo.com).
+3. Conectar buzón → **Yahoo**: correo y **la misma clave con la que entra a Yahoo**.
 4. Pantalla de **seis meses** → **Descargar y clasificar** (mismas barras que Gmail).
 
-### Generar app password
-
-1. https://login.yahoo.com/account/security  
-2. Verificación en 2 pasos (obligatoria en la mayoría).  
-3. Conexiones externas → Crear contraseña de aplicación.  
-4. Nombre: `Donexto` → copiar código (~16 caracteres).  
-5. Pegarlo en Donexto al autorizar el buzón (espacios se ignoran).
+No hay wizard de 16 dígitos, ni portal de Seguridad Yahoo, ni verificación en dos pasos dentro de Donexto.
 
 ## Tras conectar
 
@@ -27,8 +21,8 @@
 
 | Mensaje | Causa |
 |---------|--------|
-| Yahoo rechazó… | Contraseña normal o app password vieja |
-| Demasiado corta | No se pegó el código de aplicación |
+| Yahoo no aceptó esa clave | Correo o clave distintos a los de Yahoo |
+| Demasiado corta | La clave no se escribió completa |
 | Error de red / timeout | Firewall o salida a `imap.mail.yahoo.com:993` bloqueada |
 | Falta OAUTH_ENCRYPTION_KEY | Variable ausente en Railway |
 

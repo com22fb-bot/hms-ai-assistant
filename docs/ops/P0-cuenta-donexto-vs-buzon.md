@@ -11,7 +11,7 @@
 | Concepto | Qué es | Credenciales |
 |----------|--------|--------------|
 | **Cuenta Donexto** | Acceso a la app (Supabase Auth) | Nombre completo + email Donexto + contraseña Donexto |
-| **Buzón** | Fuente de correo a vigilar | Gmail OAuth, Yahoo app password, (futuro Outlook/Apple/IMAP) |
+| **Buzón** | Fuente de correo a vigilar | Gmail OAuth, Yahoo correo+clave IMAP, (futuro Outlook/Apple/IMAP) |
 
 El correo de login **puede ser distinto** del buzón. La contraseña Donexto **nunca** es la de Gmail/Yahoo.
 
