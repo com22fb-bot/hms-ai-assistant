@@ -13,7 +13,13 @@ export const ACCOUNT_VS_MAILBOX = {
   loginPasswordLabel: "Contraseña de Donexto",
   signupFullNameLabel: "Nombre completo",
   loginHelper:
-    "Escribe tu correo. Te llevamos a Google, Microsoft, Apple o Yahoo para entrar. El correo de verificación de Donexto solo llega al crear la cuenta, una vez.",
+    "Escribe tu correo. Si ya hay cuenta Donexto, te llevamos a Google, Microsoft, Apple o Yahoo. Si no existe, pasas al alta. El correo de verificación de Donexto solo llega al crear la cuenta, una vez.",
+  loginHelperSignUp:
+    "Cuenta nueva: tu nombre y este correo. Luego entras en el sitio de Google, Microsoft, Apple o Yahoo. Donexto te escribe una sola vez para confirmar el alta.",
+  signupNeedName:
+    "No hay cuenta Donexto con este correo. Escribe tu nombre para darte de alta.",
+  signupAlreadyExists:
+    "Ese correo ya tiene cuenta. Te llevamos a entrar con tu proveedor.",
   loginFoot: "Esta es tu cuenta de Donexto.",
   signupChooserBody:
     "Elige el correo que vas a vigilar — personal o de empresa (Google Workspace, Microsoft 365 o IMAP de tu dominio). Será el mismo de tu cuenta Donexto.",

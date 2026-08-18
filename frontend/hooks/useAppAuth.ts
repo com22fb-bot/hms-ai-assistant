@@ -5,6 +5,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
 import {
+  clearPendingFullName,
+  peekPendingFullName,
+} from "@/lib/donextoAccount";
+import {
   YAHOO_CUSTOM_PROVIDER,
   YAHOO_PROVIDER_SETUP_MESSAGE,
 } from "@/lib/yahooAuth";
@@ -229,6 +233,7 @@ export function useAppAuth() {
   const [passwordRecovery, setPasswordRecovery] =
     useState(false);
   const verifyBootstrapLock = useRef(false);
+  const pendingNameLock = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -276,6 +281,51 @@ export function useAppAuth() {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    const user = rawSession?.user;
+    if (!user) {
+      return;
+    }
+    const pending = peekPendingFullName();
+    if (pending.length < 2) {
+      return;
+    }
+    const currentName = String(user.user_metadata?.full_name ?? "").trim();
+    if (currentName.length >= 2) {
+      clearPendingFullName();
+      return;
+    }
+    if (pendingNameLock.current) {
+      return;
+    }
+    pendingNameLock.current = true;
+
+    let cancelled = false;
+
+    async function applyPendingName() {
+      const { error } = await supabase.auth.updateUser({
+        data: { full_name: pending },
+      });
+      if (error) {
+        pendingNameLock.current = false;
+        return;
+      }
+      if (cancelled) {
+        return;
+      }
+      clearPendingFullName();
+      const { data: next } = await supabase.auth.getSession();
+      if (!cancelled && next.session) {
+        setRawSession(next.session);
+      }
+    }
+
+    void applyPendingName();
+    return () => {
+      cancelled = true;
+    };
+  }, [rawSession]);
 
   useEffect(() => {
     const user = rawSession?.user;

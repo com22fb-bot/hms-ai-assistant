@@ -94,6 +94,36 @@ Si el proveedor no está creado o el identifier no es exactamente `custom:yahoo`
 `signInWithOAuth` falla y la UI muestra estos pasos (ya no un JSON 400).
 No hay un probe previo a Yahoo: ese fetch colgaba el botón Continuar.
 
+## Email-first (existe o alta)
+
+`Continuar` consulta `donexto_account_exists(lookup_email)`:
+
+- Si el correo **ya tiene** cuenta → Google / Microsoft / Apple / Yahoo.
+- Si **no existe** → pantalla **Crear cuenta** (nombre) y luego el proveedor.
+- El mail de verificación Donexto sigue siendo solo al alta.
+
+Aplicar una vez en SQL Editor del proyecto `tgirnpystoydvbxlvlzz`:
+
+```sql
+create or replace function public.donexto_account_exists(lookup_email text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = auth, public
+as $$
+  select exists (
+    select 1
+    from auth.users u
+    where u.email is not null
+      and lower(u.email) = lower(trim(lookup_email))
+  );
+$$;
+
+revoke all on function public.donexto_account_exists(text) from public;
+grant execute on function public.donexto_account_exists(text) to anon, authenticated;
+```
+
 ## Relación con el buzón
 
 | Capa | Para qué |

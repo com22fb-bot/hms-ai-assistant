@@ -12,6 +12,7 @@ from app.api.auth import (
     router as auth_router,
 )
 from app.api.cases import router as cases_router
+from app.api.donexto_account import router as donexto_account_router
 from app.api.gmail import create_gmail_router
 from app.api.guided_import import router as guided_import_router
 from app.api.identity import router as identity_router
@@ -175,6 +176,7 @@ app.include_router(system_router)
 app.include_router(identity_router)
 app.include_router(ai_router)
 app.include_router(auth_router)
+app.include_router(donexto_account_router)
 app.include_router(yahoo_mail_router)
 app.include_router(gmail_router)
 app.include_router(guided_import_router)

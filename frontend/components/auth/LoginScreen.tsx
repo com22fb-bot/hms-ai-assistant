@@ -8,10 +8,15 @@ import {
   KeyRound,
   LoaderCircle,
   Mail,
+  User,
 } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
+import {
+  lookupDonextoAccount,
+  rememberPendingFullName,
+} from "@/lib/donextoAccount";
 import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
 import type { AuthOAuthProvider } from "@/hooks/useAppAuth";
 import {
@@ -116,6 +121,7 @@ export function LoginScreen({
   onResetPassword,
 }: LoginScreenProps) {
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [usePassword, setUsePassword] = useState(false);
@@ -125,6 +131,13 @@ export function LoginScreen({
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [oauthBusy, setOauthBusy] = useState<AuthOAuthProvider | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (mode === "signup") {
+      nameRef.current?.focus();
+    }
+  }, [mode]);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -165,12 +178,17 @@ export function LoginScreen({
     setPassword("");
   }
 
-  async function startOAuthSignup(provider: AuthOAuthProvider) {
-    if (busy) {
-      return;
+  function companyMailboxHint() {
+    return "Correo de empresa: pulsa Continuar con Google (Workspace) o Continuar con Microsoft (Microsoft 365). No enviamos un enlace para entrar.";
+  }
+
+  async function openProvider(provider: AuthOAuthProvider) {
+    if (mode === "signup") {
+      const name = fullName.trim().replace(/\s+/g, " ");
+      if (name.length >= 2) {
+        rememberPendingFullName(name);
+      }
     }
-    resetAlerts();
-    setBusy(true);
     setOauthBusy(provider);
     const hint = email.trim().toLowerCase();
     let timedOut = false;
@@ -209,6 +227,27 @@ export function LoginScreen({
     }
   }
 
+  async function startOAuthSignup(provider: AuthOAuthProvider) {
+    if (busy) {
+      return;
+    }
+    resetAlerts();
+    setBusy(true);
+    await openProvider(provider);
+  }
+
+  async function continueKnownAccount(clean: string) {
+    const provider = resolveMailboxProviderFromEmail(clean);
+    const oauth = mailboxToOAuth(provider);
+    if (oauth) {
+      await openProvider(oauth);
+      return;
+    }
+    setError(companyMailboxHint());
+    setBusy(false);
+    setOauthBusy(null);
+  }
+
   async function continueWithEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) {
@@ -241,15 +280,51 @@ export function LoginScreen({
       return;
     }
 
-    const provider = resolveMailboxProviderFromEmail(clean);
-    const oauth = mailboxToOAuth(provider);
-    if (oauth) {
-      await startOAuthSignup(oauth);
-      return;
+    const name = fullName.trim().replace(/\s+/g, " ");
+    setBusy(true);
+    resetAlerts();
+    try {
+      const status = await lookupDonextoAccount(clean);
+
+      if (status === "exists") {
+        if (mode === "signup") {
+          setMode("signin");
+          setMessage(ACCOUNT_VS_MAILBOX.signupAlreadyExists);
+        }
+        await continueKnownAccount(clean);
+        return;
+      }
+
+      if (status === "missing") {
+        setMode("signup");
+        if (name.length < 2) {
+          setMessage(ACCOUNT_VS_MAILBOX.signupNeedName);
+          setBusy(false);
+          return;
+        }
+        rememberPendingFullName(name);
+        await continueKnownAccount(clean);
+        return;
+      }
+
+      if (mode === "signup") {
+        if (name.length < 2) {
+          setMessage(ACCOUNT_VS_MAILBOX.signupNeedName);
+          setBusy(false);
+          return;
+        }
+        rememberPendingFullName(name);
+      }
+      await continueKnownAccount(clean);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "No fue posible continuar con ese correo.",
+      );
+      setBusy(false);
+      setOauthBusy(null);
     }
-    setError(
-      "Correo de empresa: pulsa Continuar con Google (Workspace) o Continuar con Microsoft (Microsoft 365). No enviamos un enlace para entrar.",
-    );
   }
 
   async function continueYahoo() {
@@ -307,7 +382,9 @@ export function LoginScreen({
                 : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
             </h2>
             <p className="dx-auth__slogan">
-              {ACCOUNT_VS_MAILBOX.loginHelper}
+              {mode === "signup"
+                ? ACCOUNT_VS_MAILBOX.loginHelperSignUp
+                : ACCOUNT_VS_MAILBOX.loginHelper}
             </p>
           </header>
 
@@ -427,6 +504,26 @@ export function LoginScreen({
               </div>
             </label>
 
+            {mode === "signup" ? (
+              <label className="dx-auth__field">
+                <span>{ACCOUNT_VS_MAILBOX.signupFullNameLabel}</span>
+                <div className="dx-auth__control">
+                  <User size={18} aria-hidden />
+                  <input
+                    ref={nameRef}
+                    type="text"
+                    name="full_name"
+                    value={fullName}
+                    autoComplete="name"
+                    autoCapitalize="words"
+                    placeholder="Tu nombre"
+                    disabled={busy}
+                    onChange={(event) => setFullName(event.target.value)}
+                  />
+                </div>
+              </label>
+            ) : null}
+
             {mode === "signin" && usePassword ? (
               <label className="dx-auth__field">
                 <span>Contraseña de Donexto</span>
@@ -469,10 +566,12 @@ export function LoginScreen({
                         ? "Abriendo Microsoft…"
                         : oauthBusy === "apple"
                           ? "Abriendo Apple…"
-                          : "Continuando…"}
+                          : "Revisando cuenta…"}
                 </>
               ) : mode === "signin" && usePassword ? (
                 "Entrar"
+              ) : mode === "signup" ? (
+                "Crear cuenta"
               ) : (
                 "Continuar"
               )}
