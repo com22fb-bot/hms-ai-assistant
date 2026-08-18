@@ -29,10 +29,10 @@ export const ACCOUNT_VS_MAILBOX = {
   signupHaveAccount: "Ya tengo cuenta — Entrar",
   signupYahooTitle: "Yahoo",
   signupYahooBody:
-    "Yahoo no tiene OAuth de correo. Te enviamos un enlace a ese Yahoo para crear la cuenta Donexto. La contraseña de aplicación se pide después, al autorizar la lectura.",
-  signupYahooCta: "Abrir seguridad de Yahoo (lo usarás al conectar el buzón)",
+    "Te llevamos a Yahoo para entrar con tu clave. Después, al conectar el buzón, Yahoo te da un código de 16 dígitos para Donexto.",
+  signupYahooCta: "Continuar con Yahoo",
   signupYahooContinue:
-    "Revisa ese Yahoo (y spam). Con el enlace entras a Donexto; después autorizas la lectura con la contraseña de aplicación.",
+    "Entras en el sitio de Yahoo. Luego te guiamos para conectar este mismo correo.",
   signupHotmailPending:
     "Te llevamos al inicio de sesión de Microsoft.",
   signupApplePending:
@@ -56,18 +56,18 @@ export const ACCOUNT_VS_MAILBOX = {
   connectBanner: "Esto no pide tu contraseña de Gmail · solo autoriza la lectura",
   connectChooserTitle: "Autoriza la lectura de tu correo",
   connectChooserBody:
-    "El buzón es el mismo correo de tu cuenta Donexto. Gmail autoriza lectura en Google; Yahoo usa contraseña de aplicación IMAP.",
+    "El buzón es el mismo correo de tu cuenta Donexto. Gmail autoriza en Google. Yahoo: te llevamos a su página para iniciar sesión y obtener un código de 16 dígitos.",
   connectGmailBody:
     "Donexto nunca te pidió la contraseña de Gmail. Esta pantalla de Google es solo para autorizar la lectura de este mismo buzón.",
   connectGmailCta: "Autorizar lectura de este Gmail",
-  connectYahooTitle: "Autoriza la lectura de este Yahoo",
+  connectYahooTitle: "Conecta tu correo Yahoo",
   connectYahooBody:
-    "Contraseña de aplicación IMAP de este mismo correo Yahoo. No uses la contraseña de mail.yahoo.com ni la de Donexto.",
-  connectYahooAppPasswordLabel: "Contraseña de aplicación Yahoo",
+    "Te llevamos a Yahoo para que inicies sesión con tu clave. Yahoo te da un código de 16 dígitos para Donexto. Solo una vez.",
+  connectYahooAppPasswordLabel: "Código de 16 dígitos de Yahoo",
   connectGoogleHint:
     "Te llevamos a la página oficial de Google para autorizar la lectura de este mismo Gmail (no es el login de Donexto y no pedimos tu contraseña).",
   connectYahooChooserHint:
-    "Pedimos la contraseña de aplicación IMAP de este mismo Yahoo (no la de mail.yahoo.com ni la de Donexto).",
+    "Te llevamos a Yahoo. Ahí inicias sesión y Yahoo te da un código de 16 dígitos para Donexto.",
 
   changeMailboxLabel: "Volver a autorizar buzón",
   connectMailboxLabel: "Autorizar buzón",
@@ -173,9 +173,7 @@ export function connectBannerFor(email?: string): string {
     ? resolveMailboxProviderFromEmail(email)
     : "other";
   if (provider === "yahoo") {
-    return (
-      "Esto no pide la contraseña de mail.yahoo.com · usa la contraseña de aplicación Yahoo"
-    );
+    return "Te llevamos a Yahoo. Ahí inicias sesión y Yahoo te da un código de 16 dígitos.";
   }
   if (provider === "gmail") {
     return ACCOUNT_VS_MAILBOX.connectBanner;
@@ -184,9 +182,13 @@ export function connectBannerFor(email?: string): string {
 }
 
 export function step2EmptyLeadFor(email?: string): string {
-  const password = mailboxPasswordPhrase(
-    email ? resolveMailboxProviderFromEmail(email) : "other",
-  );
+  const provider = email
+    ? resolveMailboxProviderFromEmail(email)
+    : "other";
+  if (provider === "yahoo") {
+    return ACCOUNT_VS_MAILBOX.connectYahooBody;
+  }
+  const password = mailboxPasswordPhrase(provider);
   return (
     `Sin autorizar la lectura no hay bandeja que clasificar. Donexto no pide de nuevo tu ${password}.`
   );

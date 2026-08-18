@@ -1,7 +1,7 @@
 "use client";
 
-import { LoaderCircle, Mail, X } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { ExternalLink, LoaderCircle, Mail, X } from "lucide-react";
+import { FormEvent, useState } from "react";
 
 import { AccountVsMailboxHint } from "@/components/auth/AccountVsMailboxHint";
 import {
@@ -9,6 +9,22 @@ import {
   authorizeMailboxTitle,
 } from "@/lib/accountVsMailbox";
 import type { MailboxConnectMode } from "@/lib/mailboxSignup";
+import {
+  formatYahooAppPassword,
+  YAHOO_ACCOUNT_SECURITY_URL,
+  YAHOO_APP_PASSWORD_HELP_URL,
+  YAHOO_APP_PASSWORD_NAME,
+  YAHOO_CODE_TOO_LONG,
+  YAHOO_CODE_TOO_SHORT,
+  YAHOO_CONNECT_CTA,
+  YAHOO_CONNECT_LEAD,
+  YAHOO_CONNECT_TITLE,
+  YAHOO_OPEN_SECURITY_CTA,
+  YAHOO_PASTE_LABEL,
+  YAHOO_STEPS,
+  YAHOO_TWO_STEP_TIP,
+  yahooAppPasswordCharCount,
+} from "@/lib/yahooAppPasswordGuide";
 
 import "./mailbox-connect.css";
 
@@ -44,31 +60,14 @@ export function MailboxConnectModal({
   const [yahooPassword, setYahooPassword] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
+  const [yahooTabOpened, setYahooTabOpened] = useState(false);
 
   const yahooLocked = mode === "yahoo";
   const showChooser = mode === "choose" && step === "choose";
   const showYahooForm = mode === "yahoo" || step === "yahoo";
   const canDismiss = !required;
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    setStep(mode === "yahoo" ? "yahoo" : "choose");
-    setYahooEmail(mode === "yahoo" ? accountEmail : "");
-    setYahooPassword("");
-    setLocalError(null);
-    setConnectingGoogle(false);
-  }, [open, mode, accountEmail]);
-
-  useEffect(() => {
-    if (step !== "yahoo" || yahooLocked) {
-      return;
-    }
-    setYahooEmail("");
-    setYahooPassword("");
-    setLocalError(null);
-  }, [step, yahooLocked]);
+  const mailboxEmail = yahooLocked ? accountEmail : yahooEmail;
+  const codeChars = yahooAppPasswordCharCount(yahooPassword);
 
   if (!open) {
     return null;
@@ -93,10 +92,17 @@ export function MailboxConnectModal({
     event.preventDefault();
     setLocalError(null);
 
+    const chars = yahooAppPasswordCharCount(yahooPassword);
+    if (chars > 16) {
+      setLocalError(YAHOO_CODE_TOO_LONG);
+      return;
+    }
+    if (chars !== 16) {
+      setLocalError(YAHOO_CODE_TOO_SHORT);
+      return;
+    }
+
     try {
-      const mailboxEmail = yahooLocked
-        ? accountEmail
-        : yahooEmail;
       await onConnectYahoo(mailboxEmail, yahooPassword);
       setYahooPassword("");
       onClose();
@@ -109,23 +115,31 @@ export function MailboxConnectModal({
     }
   }
 
+  const showingYahooGuide = showYahooForm && !showChooser && mode !== "gmail";
+
   const title =
     mode === "gmail"
       ? authorizeMailboxTitle(accountEmail)
-      : showYahooForm && !showChooser
-        ? ACCOUNT_VS_MAILBOX.connectYahooTitle
+      : showingYahooGuide
+        ? YAHOO_CONNECT_TITLE
         : ACCOUNT_VS_MAILBOX.connectChooserTitle;
 
   const body =
     mode === "gmail"
       ? ACCOUNT_VS_MAILBOX.connectGmailBody
-      : showYahooForm && !showChooser
-        ? ACCOUNT_VS_MAILBOX.connectYahooBody
+      : showingYahooGuide
+        ? YAHOO_CONNECT_LEAD
         : ACCOUNT_VS_MAILBOX.connectChooserBody;
 
   return (
     <div className="dx-connect-overlay" role="dialog" aria-modal="true">
-      <section className="dx-connect-card">
+      <section
+        className={
+          showingYahooGuide
+            ? "dx-connect-card dx-connect-card--guide"
+            : "dx-connect-card"
+        }
+      >
         <header className="dx-connect-header">
           <div>
             <strong>{title}</strong>
@@ -155,10 +169,9 @@ export function MailboxConnectModal({
         </header>
 
         <div className="dx-connect-body">
-          <AccountVsMailboxHint variant="connect" email={accountEmail} />
-
           {mode === "gmail" ? (
             <>
+              <AccountVsMailboxHint variant="connect" email={accountEmail} />
               {localError ? (
                 <div className="dx-connect-error" role="alert">
                   {localError}
@@ -188,6 +201,7 @@ export function MailboxConnectModal({
             </>
           ) : showChooser ? (
             <>
+              <AccountVsMailboxHint variant="connect" email={accountEmail} />
               {localError ? (
                 <div className="dx-connect-error" role="alert">
                   {localError}
@@ -221,18 +235,22 @@ export function MailboxConnectModal({
                 disabled={connectingGoogle || connectingYahoo}
                 onClick={() => {
                   setLocalError(null);
+                  setYahooEmail("");
+                  setYahooPassword("");
+                  setYahooTabOpened(false);
                   setStep("yahoo");
                 }}
               >
                 Yahoo Mail
               </button>
               <p className="dx-connect-hint">
-                {ACCOUNT_VS_MAILBOX.connectYahooChooserHint}
+                Te llevamos a Yahoo. Ahí inicias sesión y Yahoo te da un código
+                de 16 dígitos para Donexto.
               </p>
             </>
           ) : (
             <form
-              className="dx-connect-form"
+              className="dx-connect-form dx-yahoo-guide"
               autoComplete="off"
               data-1p-ignore="true"
               data-lpignore="true"
@@ -269,21 +287,82 @@ export function MailboxConnectModal({
                     setYahooEmail("");
                     setYahooPassword("");
                     setLocalError(null);
+                    setYahooTabOpened(false);
                   }}
                 >
                   ← Volver
                 </button>
               ) : null}
 
-              <label htmlFor="dx-yahoo-mailbox-email">
-                Correo del buzón Yahoo
+              {yahooLocked ? (
+                <p className="dx-yahoo-mailbox">
+                  Correo a conectar
+                  <strong>{accountEmail}</strong>
+                </p>
+              ) : (
+                <label htmlFor="dx-yahoo-mailbox-email">
+                  Correo del buzón Yahoo
+                  <input
+                    id="dx-yahoo-mailbox-email"
+                    name="dx_yahoo_mailbox_email"
+                    type="text"
+                    inputMode="email"
+                    required
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    data-1p-ignore="true"
+                    data-lpignore="true"
+                    data-form-type="other"
+                    placeholder="tucorreo@yahoo.com"
+                    value={yahooEmail}
+                    onChange={(event) => setYahooEmail(event.target.value)}
+                  />
+                </label>
+              )}
+
+              <a
+                className="dx-connect-btn dx-connect-btn--yahoo"
+                href={YAHOO_ACCOUNT_SECURITY_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setYahooTabOpened(true)}
+              >
+                <ExternalLink size={18} aria-hidden />
+                {YAHOO_OPEN_SECURITY_CTA}
+              </a>
+              <p className="dx-yahoo-url">{YAHOO_ACCOUNT_SECURITY_URL}</p>
+
+              <ol className="dx-yahoo-steps">
+                {YAHOO_STEPS.map((item, index) => (
+                  <li key={item.title}>
+                    <span className="dx-yahoo-steps__n" aria-hidden>
+                      {index + 1}
+                    </span>
+                    <div>
+                      <strong>{item.title}</strong>
+                      <p>{item.detail}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+
+              <p className="dx-yahoo-app-name">
+                En Yahoo, el nombre de la aplicación debe ser
+                <strong>{YAHOO_APP_PASSWORD_NAME}</strong>
+              </p>
+
+              <p className="dx-yahoo-tip">{YAHOO_TWO_STEP_TIP}</p>
+
+              <label htmlFor="dx-yahoo-app-password">
+                {YAHOO_PASTE_LABEL}
                 <input
-                  id="dx-yahoo-mailbox-email"
-                  name="dx_yahoo_mailbox_email"
+                  id="dx-yahoo-app-password"
+                  name="dx_yahoo_app_password"
                   type="text"
-                  inputMode="email"
+                  inputMode="text"
                   required
-                  readOnly={yahooLocked}
                   autoComplete="off"
                   autoCapitalize="none"
                   autoCorrect="off"
@@ -291,56 +370,33 @@ export function MailboxConnectModal({
                   data-1p-ignore="true"
                   data-lpignore="true"
                   data-form-type="other"
-                  placeholder="tucorreo@yahoo.com"
-                  value={yahooLocked ? accountEmail : yahooEmail}
-                  onChange={(event) => {
-                    if (!yahooLocked) {
-                      setYahooEmail(event.target.value);
-                    }
-                  }}
-                />
-              </label>
-              <label htmlFor="dx-yahoo-app-password">
-                {ACCOUNT_VS_MAILBOX.connectYahooAppPasswordLabel}
-                <input
-                  id="dx-yahoo-app-password"
-                  name="dx_yahoo_app_password"
-                  type="password"
-                  required
-                  minLength={8}
-                  autoComplete="new-password"
-                  data-1p-ignore="true"
-                  data-lpignore="true"
-                  data-form-type="other"
                   placeholder="xxxx xxxx xxxx xxxx"
+                  className="dx-yahoo-code"
                   value={yahooPassword}
-                  onChange={(event) => setYahooPassword(event.target.value)}
+                  onChange={(event) =>
+                    setYahooPassword(formatYahooAppPassword(event.target.value))
+                  }
                 />
+                <span className="dx-yahoo-code-count">
+                  {codeChars} / 16
+                </span>
               </label>
-              <p className="dx-connect-hint">
-                1){" "}
-                <a
-                  href="https://login.yahoo.com/account/security"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ color: "#0c8a80" }}
-                >
-                  Seguridad Yahoo
-                </a>
-                . 2) Verificación en 2 pasos. 3) Conexiones externas → Crear
-                contraseña de aplicación → nombre <strong>Donexto</strong>. 4)
-                Pega aquí el código de ~16 caracteres (no la contraseña de
-                Yahoo ni la de Donexto).
-              </p>
+
               {localError ? (
                 <div className="dx-connect-error" role="alert">
                   {localError}
                 </div>
+              ) : yahooTabOpened ? (
+                <p className="dx-yahoo-ready">
+                  Cuando Yahoo te muestre el código, pégalo arriba y pulsa
+                  conectar. Esta ventana de Donexto se queda abierta.
+                </p>
               ) : null}
+
               <button
                 type="submit"
                 className="dx-connect-btn dx-connect-btn--primary"
-                disabled={connectingYahoo}
+                disabled={connectingYahoo || codeChars !== 16}
               >
                 {connectingYahoo ? (
                   <>
@@ -348,9 +404,18 @@ export function MailboxConnectModal({
                     Verificando Yahoo…
                   </>
                 ) : (
-                  "Verificar y conectar este Yahoo"
+                  YAHOO_CONNECT_CTA
                 )}
               </button>
+
+              <a
+                className="dx-connect-help"
+                href={YAHOO_APP_PASSWORD_HELP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Ayuda oficial de Yahoo · contraseñas de aplicación
+              </a>
             </form>
           )}
         </div>

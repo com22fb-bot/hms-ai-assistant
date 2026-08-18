@@ -230,35 +230,52 @@ export function AttentionHome({
   if (!mailboxConnected && !mailboxLoading) {
     const watchEmail = (accountEmail || mailboxEmail || "").trim();
     const connectMode = mailboxConnectModeFromEmail(watchEmail);
-    const emptyTitle = watchEmail
-      ? authorizeMailboxTitle(watchEmail)
-      : ACCOUNT_VS_MAILBOX.step2Title;
+    const isYahoo = connectMode === "yahoo";
+    const emptyTitle = isYahoo
+      ? ACCOUNT_VS_MAILBOX.connectYahooTitle
+      : watchEmail
+        ? authorizeMailboxTitle(watchEmail)
+        : ACCOUNT_VS_MAILBOX.step2Title;
+    const emptyLede = isYahoo
+      ? watchEmail
+      : emptyTitle;
     const emptyCta =
       connectMode === "gmail"
         ? ACCOUNT_VS_MAILBOX.connectGmailCta
-        : connectMode === "yahoo"
-          ? ACCOUNT_VS_MAILBOX.connectYahooTitle
+        : isYahoo
+          ? "Conectar Yahoo"
           : ACCOUNT_VS_MAILBOX.step2Cta;
 
     return (
       <section className="dx-attention" aria-label="Autorizar buzón">
         <header className="dx-attention__hero">
           <div>
-            <p className="dx-attention__kicker">Cuenta lista · falta autorizar lectura</p>
+            <p className="dx-attention__kicker">
+              {isYahoo
+                ? "Cuenta lista · ahora conecta tu Yahoo"
+                : "Cuenta lista · falta autorizar lectura"}
+            </p>
             <h1>
               {personName ? `Hola, ${personName}` : "Hola"}
             </h1>
-            <p className="dx-attention__lede">
-              {emptyTitle}
-            </p>
+            <p className="dx-attention__lede">{emptyLede}</p>
           </div>
         </header>
 
         <div className="dx-attention__empty dx-attention__empty--gate">
           <Mail size={28} />
           <strong>{emptyTitle}</strong>
-          <p>{step2EmptyLeadFor(watchEmail)}</p>
-          <AccountVsMailboxHint variant="step2" email={watchEmail} />
+          {isYahoo ? (
+            <p>
+              Un botón te abre Yahoo. Entras con tu clave. Yahoo te muestra un
+              código de 16 dígitos y lo pegas aquí.
+            </p>
+          ) : (
+            <>
+              <p>{step2EmptyLeadFor(watchEmail)}</p>
+              <AccountVsMailboxHint variant="step2" email={watchEmail} />
+            </>
+          )}
           <button type="button" onClick={onConnectMailbox}>
             <Mail size={16} />
             {emptyCta}
