@@ -2,30 +2,17 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime, timezone
-from email.utils import getaddresses
 from typing import Any
 
-from app.services.case_engine import (
-    _find_case_for_message,
-    _message_direction,
-    _rows,
-    normalize_subject,
-    process_message,
+from app.services.classification_catalog import (
+    identify_sender,
+    is_marketing_local_part,
+    SECURITY_NOTICE_TERMS,
 )
-from app.services.oauth_storage import OAuthStorage
+from app.services.classification_catalog.matching import sender_email as _sender_email
 
 
-CLASSIFIER_VERSION = "logistica1-triage-v3"
-
-SOCIAL_DOMAINS = (
-    "linkedin.com",
-    "youtube.com",
-    "facebookmail.com",
-    "instagram.com",
-    "x.com",
-    "twitter.com",
-    "tiktok.com",
-)
+CLASSIFIER_VERSION = "logistica1-triage-v4"
 
 PROMOTIONAL_MARKERS = (
     "newsletter",
@@ -89,6 +76,31 @@ NOTICE_TERMS = (
     "acción requerida",
     "service interruption",
     "interrupción del servicio",
+    "estado de cuenta",
+    "statement is ready",
+    "account statement",
+    "cargo aprobado",
+    "compra aprobada",
+    "purchase approved",
+    "pedido enviado",
+    "order shipped",
+    "order delivered",
+    "paquete entregado",
+    "out for delivery",
+    "tracking number",
+    "número de guía",
+    "reservación confirmada",
+    "reservation confirmed",
+    "booking confirmed",
+    "boarding pass",
+    "pase de embarque",
+    "check-in is open",
+    "check in is open",
+    "disponible el check-in",
+    "spei",
+    "wire transfer",
+    "depósito recibido",
+    "deposit received",
 )
 
 DIRECT_ACTION_TERMS = (
@@ -160,16 +172,19 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _sender_email(sender: str | None) -> str:
-    values = getaddresses([sender or ""])
-    if not values:
-        return ""
-    return values[0][1].strip().lower()
+def _message_direction(message: dict[str, Any]) -> str:
+    labels = {str(item).upper() for item in (message.get("labels") or [])}
+    if "DRAFT" in labels:
+        return "draft"
+    if "SENT" in labels and "INBOX" not in labels:
+        return "outbound"
+    if "INBOX" in labels:
+        return "inbound"
+    return str(message.get("direction") or "inbound")
 
 
-def _sender_is_social(sender: str) -> bool:
-    email = _sender_email(sender)
-    return any(domain in email for domain in SOCIAL_DOMAINS)
+def _text_has_any(text: str, terms: tuple[str, ...]) -> bool:
+    return any(term in text for term in terms)
 
 
 def _sender_is_promotional(sender: str) -> bool:
@@ -180,6 +195,76 @@ def _sender_is_promotional(sender: str) -> bool:
 def _sender_is_automated(sender: str) -> bool:
     normalized = sender.lower()
     return any(marker in normalized for marker in AUTOMATED_MARKERS)
+
+
+def _classify_known_vertical(
+    sender: str,
+    short_text: str,
+    existing_case: dict[str, Any] | None,
+) -> tuple[str, int, str, bool] | None:
+    identity = identify_sender(sender)
+    if not identity:
+        return None
+
+    vertical = str(identity.get("vertical") or "")
+    name = str(identity.get("name") or "remitente conocido")
+    region = str(identity.get("region") or "")
+    region_bit = f" ({region})" if region else ""
+
+    if vertical == "social":
+        if _text_has_any(short_text, SECURITY_NOTICE_TERMS):
+            return (
+                "notice",
+                80,
+                f"Seguridad de cuenta en {name}.",
+                False,
+            )
+        return (
+            "social",
+            5,
+            f"Red social: {name}. No genera un caso operativo.",
+            False,
+        )
+
+    if vertical not in {"bank", "commerce", "travel"}:
+        return None
+
+    labels = {
+        "bank": "banco",
+        "commerce": "pedido o compra",
+        "travel": "reservación o viaje",
+    }
+    kind = labels[vertical]
+    marketing = is_marketing_local_part(sender)
+    needs_action = _text_has_any(
+        short_text,
+        DIRECT_ACTION_TERMS + PAYMENT_ACTION_TERMS,
+    )
+    security_or_notice = _text_has_any(
+        short_text,
+        NOTICE_TERMS + SECURITY_NOTICE_TERMS,
+    )
+
+    if marketing and not needs_action and not security_or_notice:
+        return (
+            "promotional",
+            5,
+            f"Campaña comercial de {name}.",
+            False,
+        )
+    if needs_action or existing_case is not None:
+        return (
+            "action_required",
+            85,
+            f"Hay un pago o trámite pendiente con {name}.",
+            True,
+        )
+    return (
+        "notice",
+        70,
+        f"Aviso de {kind}: {name}{region_bit}.",
+        False,
+    )
 
 
 def classify_message(
@@ -203,11 +288,23 @@ def classify_message(
         if existing_case is not None:
             return ("waiting_external", 75, "Respuesta enviada dentro de un caso existente.", True)
         return ("informational", 15, "Mensaje enviado sin un caso abierto previo.", False)
-    if "CATEGORY_SOCIAL" in labels or _sender_is_social(sender):
+
+    known = _classify_known_vertical(sender, short_text, existing_case)
+    if known is not None:
+        return known
+
+    if _text_has_any(short_text, SECURITY_NOTICE_TERMS):
+        return (
+            "notice",
+            80,
+            "Aviso de seguridad o verificación de cuenta.",
+            False,
+        )
+    if "CATEGORY_SOCIAL" in labels:
         return ("social", 5, "Mensaje de red social; no genera un caso operativo.", False)
     if "CATEGORY_PROMOTIONS" in labels or _sender_is_promotional(sender):
         return ("promotional", 5, "Publicidad, campaña, vacante masiva o boletín comercial.", False)
-    if any(term in short_text for term in NOTICE_TERMS):
+    if _text_has_any(short_text, NOTICE_TERMS):
         return ("notice", 70, "Aviso importante para revisión, sin convertirlo automáticamente en caso.", False)
     if "CATEGORY_FORUMS" in labels:
         return ("informational", 10, "Mensaje de foro o lista informativa.", False)
@@ -253,6 +350,8 @@ def _mark_without_case(
     score: int,
     reason: str,
 ) -> None:
+    from app.services.case_engine import normalize_subject
+
     subject = str(message.get("subject") or "")
     direction = _message_direction(message)
     now = _now_iso()
@@ -284,6 +383,14 @@ def classify_pending_messages(
     message_ids: list[str] | None = None,
     received_after: str | None = None,
 ) -> dict[str, Any]:
+    from app.services.case_engine import (
+        _find_case_for_message,
+        _rows,
+        normalize_subject,
+        process_message,
+    )
+    from app.services.oauth_storage import OAuthStorage
+
     storage = OAuthStorage()
     account = storage.get_account(account_id)
 

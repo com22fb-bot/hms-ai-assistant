@@ -62,7 +62,7 @@ const LEVEL_LABEL: Record<string, { title: string; why: string }> = {
   },
   notice: {
     title: "Dinero, seguridad o avisos",
-    why: "Pagos, seguridad, plazos o cambios de servicio",
+    why: "Bancos, pedidos, reservas, pagos, seguridad o plazos",
   },
   review: {
     title: "Revisión humana",
@@ -77,8 +77,8 @@ const LEVEL_LABEL: Record<string, { title: string; why: string }> = {
     why: "Útiles, sin urgencia inmediata",
   },
   social: {
-    title: "Social",
-    why: "Redes y menciones masivas",
+    title: "Redes sociales",
+    why: "Likes, follows y resúmenes — no bancos",
   },
   promotional: {
     title: "Publicidad",
