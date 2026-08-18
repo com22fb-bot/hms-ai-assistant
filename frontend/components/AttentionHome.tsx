@@ -17,7 +17,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AccountVsMailboxHint } from "@/components/auth/AccountVsMailboxHint";
 import {
   ACCOUNT_VS_MAILBOX,
-  authorizeGmailTitle,
+  authorizeMailboxTitle,
+  step2EmptyLeadFor,
 } from "@/lib/accountVsMailbox";
 import { mailboxConnectModeFromEmail } from "@/lib/mailboxSignup";
 import { hmsJson } from "@/lib/hmsApi";
@@ -229,14 +230,15 @@ export function AttentionHome({
   if (!mailboxConnected && !mailboxLoading) {
     const watchEmail = (accountEmail || mailboxEmail || "").trim();
     const connectMode = mailboxConnectModeFromEmail(watchEmail);
-    const emptyTitle =
-      connectMode === "gmail" && watchEmail
-        ? authorizeGmailTitle(watchEmail)
-        : ACCOUNT_VS_MAILBOX.step2Title;
+    const emptyTitle = watchEmail
+      ? authorizeMailboxTitle(watchEmail)
+      : ACCOUNT_VS_MAILBOX.step2Title;
     const emptyCta =
       connectMode === "gmail"
         ? ACCOUNT_VS_MAILBOX.connectGmailCta
-        : ACCOUNT_VS_MAILBOX.step2Cta;
+        : connectMode === "yahoo"
+          ? ACCOUNT_VS_MAILBOX.connectYahooTitle
+          : ACCOUNT_VS_MAILBOX.step2Cta;
 
     return (
       <section className="dx-attention" aria-label="Autorizar buzón">
@@ -255,8 +257,8 @@ export function AttentionHome({
         <div className="dx-attention__empty dx-attention__empty--gate">
           <Mail size={28} />
           <strong>{emptyTitle}</strong>
-          <p>{ACCOUNT_VS_MAILBOX.step2EmptyLead}</p>
-          <AccountVsMailboxHint variant="step2" />
+          <p>{step2EmptyLeadFor(watchEmail)}</p>
+          <AccountVsMailboxHint variant="step2" email={watchEmail} />
           <button type="button" onClick={onConnectMailbox}>
             <Mail size={16} />
             {emptyCta}
@@ -343,8 +345,8 @@ export function AttentionHome({
           <div>
             <strong>No hay clasificación almacenada aún</strong>
             <span>
-              {error} Si usas Yahoo en vivo, abre la bandeja. Con Gmail, completa
-              la importación guiada.
+              {error} Completa Descargar y clasificar para ver casos. El buzón
+              original no se modifica.
             </span>
           </div>
           <button type="button" onClick={onOpenAllMail}>

@@ -7,12 +7,13 @@ export const ACCOUNT_VS_MAILBOX = {
     "El correo con el que entras a Donexto es el mismo buzón que vigilamos. Nunca te pedimos la contraseña de Gmail aquí.",
 
   loginEyebrow: "Cuenta Donexto",
-  loginTitleSignIn: "Login",
+  loginTitleSignIn: "Entrar a Donexto",
   loginTitleSignUp: "Crear cuenta",
-  loginEmailLabel: "Correo de tu cuenta",
-  loginPasswordLabel: "Contraseña",
+  loginEmailLabel: "Correo",
+  loginPasswordLabel: "Contraseña de Donexto",
   signupFullNameLabel: "Nombre completo",
-  loginHelper: "Esta es tu cuenta de Donexto. El buzón a leer es este mismo correo.",
+  loginHelper:
+    "Identifícate con el correo que vas a vigilar. No pedimos la contraseña de ese buzón.",
   loginFoot: "Esta es tu cuenta de Donexto.",
   signupChooserBody:
     "Elige el correo que vas a vigilar: será el mismo de tu cuenta Donexto. Te llevamos al inicio de sesión de ese proveedor.",
@@ -28,10 +29,10 @@ export const ACCOUNT_VS_MAILBOX = {
   signupHaveAccount: "Ya tengo cuenta — Entrar",
   signupYahooTitle: "Yahoo",
   signupYahooBody:
-    "Yahoo no tiene OAuth en Supabase. Te llevamos a Yahoo para crear la contraseña de aplicación; con eso autorizamos la lectura de ese mismo correo Yahoo.",
-  signupYahooCta: "Te llevamos a Yahoo para crear la contraseña de aplicación",
+    "Yahoo no tiene OAuth de correo. Te enviamos un enlace a ese Yahoo para crear la cuenta Donexto. La contraseña de aplicación se pide después, al autorizar la lectura.",
+  signupYahooCta: "Abrir seguridad de Yahoo (lo usarás al conectar el buzón)",
   signupYahooContinue:
-    "Cuando tengas la contraseña de aplicación, continúa: te enviamos un enlace a ese correo Yahoo para entrar a Donexto.",
+    "Revisa ese Yahoo (y spam). Con el enlace entras a Donexto; después autorizas la lectura con la contraseña de aplicación.",
   signupHotmailPending:
     "Te llevamos al inicio de sesión de Microsoft.",
   signupApplePending:
@@ -75,6 +76,128 @@ export const ACCOUNT_VS_MAILBOX = {
   mailboxMissingHint: "Autoriza la lectura de este mismo correo",
 } as const;
 
+import type { MailboxSignupProvider } from "@/lib/mailboxSignup";
+import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
+
+export function mailboxServiceLabel(
+  provider: MailboxSignupProvider | string,
+): string {
+  switch (provider) {
+    case "gmail":
+    case "google":
+      return "Gmail";
+    case "yahoo":
+      return "Yahoo";
+    case "hotmail":
+    case "microsoft":
+      return "Outlook";
+    case "apple":
+      return "iCloud";
+    default:
+      return "correo";
+  }
+}
+
+export function mailboxPasswordPhrase(
+  provider: MailboxSignupProvider | string,
+): string {
+  switch (provider) {
+    case "gmail":
+    case "google":
+      return "contraseña de Gmail";
+    case "yahoo":
+      return "contraseña de mail.yahoo.com";
+    case "hotmail":
+    case "microsoft":
+      return "contraseña de Outlook";
+    case "apple":
+      return "contraseña de iCloud";
+    default:
+      return "contraseña de ese correo";
+  }
+}
+
+export function authorizeMailboxTitle(email: string): string {
+  const label = mailboxServiceLabel(resolveMailboxProviderFromEmail(email));
+  return `Autoriza a Donexto a leer este ${label}: ${email}`;
+}
+
 export function authorizeGmailTitle(email: string): string {
-  return `Autoriza a Donexto a leer este Gmail: ${email}`;
+  return authorizeMailboxTitle(email);
+}
+
+export function confirmGateBodyFor(email: string): string {
+  const provider = resolveMailboxProviderFromEmail(email);
+  const label = mailboxServiceLabel(provider);
+  const password = mailboxPasswordPhrase(provider);
+  return (
+    `Te escribimos a ese mismo ${label}. Donexto nunca te pidió la ${password}: ` +
+    "este correo confirma que autorizas a Donexto a, después, leer ese buzón. " +
+    "Sin el clic no entras."
+  );
+}
+
+export function authSecurityBodyFor(email?: string): string {
+  const provider = email
+    ? resolveMailboxProviderFromEmail(email)
+    : "other";
+  const label = mailboxServiceLabel(provider);
+  const password = mailboxPasswordPhrase(provider);
+  if (!email || provider === "other") {
+    return (
+      "Donexto nunca te pide aquí la contraseña de tu buzón. Te escribimos " +
+      "a ese mismo correo. Sin clic en ese mail no entras ni leemos el buzón. " +
+      "La confirmación de Donexto es el correo que nosotros enviamos."
+    );
+  }
+  return (
+    `Donexto nunca te pide la ${password} aquí. Si te das de alta con ${label}, ` +
+    "te escribimos a ese mismo correo. Sin clic en ese mail no entras ni leemos " +
+    "el buzón. Las pantallas del proveedor son suyas; la confirmación de " +
+    "Donexto es el correo que nosotros enviamos."
+  );
+}
+
+export function oneLinerFor(email?: string): string {
+  const password = mailboxPasswordPhrase(
+    email ? resolveMailboxProviderFromEmail(email) : "other",
+  );
+  return (
+    "El correo con el que entras a Donexto es el mismo buzón que vigilamos. " +
+    `Nunca te pedimos la ${password} aquí.`
+  );
+}
+
+export function connectBannerFor(email?: string): string {
+  const provider = email
+    ? resolveMailboxProviderFromEmail(email)
+    : "other";
+  if (provider === "yahoo") {
+    return (
+      "Esto no pide la contraseña de mail.yahoo.com · usa la contraseña de aplicación Yahoo"
+    );
+  }
+  if (provider === "gmail") {
+    return ACCOUNT_VS_MAILBOX.connectBanner;
+  }
+  return "Esto no pide la contraseña de tu buzón · solo autoriza la lectura";
+}
+
+export function step2EmptyLeadFor(email?: string): string {
+  const password = mailboxPasswordPhrase(
+    email ? resolveMailboxProviderFromEmail(email) : "other",
+  );
+  return (
+    `Sin autorizar la lectura no hay bandeja que clasificar. Donexto no pide de nuevo tu ${password}.`
+  );
+}
+
+export function loginHelperFor(email?: string): string {
+  if (!email) {
+    return ACCOUNT_VS_MAILBOX.loginHelper;
+  }
+  const label = mailboxServiceLabel(resolveMailboxProviderFromEmail(email));
+  return (
+    `Esta es tu cuenta de Donexto. El buzón a leer es este mismo ${label}.`
+  );
 }

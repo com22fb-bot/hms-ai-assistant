@@ -7,6 +7,7 @@ import imaplib
 import re
 import socket
 import ssl
+from datetime import datetime, timezone
 from email.header import decode_header, make_header
 from email.utils import parseaddr, parsedate_to_datetime
 from typing import Any
@@ -74,18 +75,24 @@ def _is_yahoo_like_address(address: str) -> bool:
     )
 
 
-def _open_yahoo_client(address: str, app_password: str) -> imaplib.IMAP4_SSL:
+def _open_yahoo_client(
+    address: str,
+    app_password: str,
+    *,
+    timeout: int = 45,
+) -> imaplib.IMAP4_SSL:
     context = ssl.create_default_context()
+    safe_timeout = max(15, int(timeout))
     try:
         client = imaplib.IMAP4_SSL(
             YAHOO_IMAP_HOST,
             YAHOO_IMAP_PORT,
             ssl_context=context,
-            timeout=45,
+            timeout=safe_timeout,
         )
     except TypeError:
         # Python sin soporte timeout en este build
-        socket.setdefaulttimeout(45)
+        socket.setdefaulttimeout(safe_timeout)
         client = imaplib.IMAP4_SSL(
             YAHOO_IMAP_HOST,
             YAHOO_IMAP_PORT,
@@ -272,3 +279,117 @@ def list_yahoo_messages(
         ) from error
 
     return messages
+
+
+IMAP_MONTHS = (
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+)
+
+INBOX_ALIASES = {"inbox"}
+SENT_ALIASES = {"sent", "sent mail", "sent messages", "sent items", "enviados"}
+DRAFT_ALIASES = {"draft", "drafts", "borradores"}
+SPAM_ALIASES = {"bulk mail", "junk", "spam", "correo no deseado"}
+TRASH_ALIASES = {"trash", "deleted", "deleted items", "papelera"}
+
+
+def imap_search_date(value: datetime) -> str:
+    current = value.astimezone(timezone.utc) if value.tzinfo else value.replace(
+        tzinfo=timezone.utc
+    )
+    return f"{current.day:02d}-{IMAP_MONTHS[current.month - 1]}-{current.year}"
+
+
+def classify_yahoo_folder(name: str) -> str:
+    lowered = name.strip().lower().strip('"')
+    leaf = lowered.rsplit("/", 1)[-1].rsplit(".", 1)[-1]
+    if leaf in INBOX_ALIASES or lowered in INBOX_ALIASES:
+        return "inbox"
+    if leaf in SENT_ALIASES or lowered in SENT_ALIASES:
+        return "sent"
+    if leaf in DRAFT_ALIASES or lowered in DRAFT_ALIASES:
+        return "draft"
+    if leaf in SPAM_ALIASES or lowered in SPAM_ALIASES:
+        return "spam"
+    if leaf in TRASH_ALIASES or lowered in TRASH_ALIASES:
+        return "trash"
+    return "other"
+
+
+def parse_list_mailbox_name(raw: bytes | str) -> str | None:
+    text = (
+        raw.decode("utf-8", errors="ignore")
+        if isinstance(raw, bytes)
+        else str(raw)
+    ).strip()
+    if not text:
+        return None
+    quoted = re.findall(r'"((?:\\.|[^"\\])*)"', text)
+    if quoted:
+        return quoted[-1].replace('\\"', '"')
+    parts = text.split()
+    return parts[-1] if parts else None
+
+
+def encode_yahoo_ref(folder: str, uid: str) -> str:
+    return f"{folder}\x1f{uid}"
+
+
+def decode_yahoo_ref(ref: str) -> tuple[str, str]:
+    if "\x1f" in ref:
+        folder, uid = ref.split("\x1f", 1)
+        return folder, uid
+    if ":" in ref:
+        folder, uid = ref.split(":", 1)
+        return folder, uid
+    return "INBOX", ref
+
+
+def extract_rfc822_bodies(parsed: email.message.Message) -> tuple[str, str, bool]:
+    text = ""
+    html = ""
+    has_attachments = False
+
+    if parsed.is_multipart():
+        for part in parsed.walk():
+            disposition = str(part.get("Content-Disposition") or "").lower()
+            content_type = part.get_content_type()
+            if "attachment" in disposition:
+                has_attachments = True
+                continue
+            payload = part.get_payload(decode=True)
+            if not isinstance(payload, (bytes, bytearray)):
+                continue
+            charset = part.get_content_charset() or "utf-8"
+            try:
+                decoded = payload.decode(charset, errors="replace")
+            except LookupError:
+                decoded = payload.decode("utf-8", errors="replace")
+            if content_type == "text/plain" and not text:
+                text = decoded
+            elif content_type == "text/html" and not html:
+                html = decoded
+        return text, html, has_attachments
+
+    payload = parsed.get_payload(decode=True)
+    charset = parsed.get_content_charset() or "utf-8"
+    if isinstance(payload, (bytes, bytearray)):
+        try:
+            decoded = payload.decode(charset, errors="replace")
+        except LookupError:
+            decoded = payload.decode("utf-8", errors="replace")
+        if parsed.get_content_type() == "text/html":
+            html = decoded
+        else:
+            text = decoded
+    return text, html, has_attachments

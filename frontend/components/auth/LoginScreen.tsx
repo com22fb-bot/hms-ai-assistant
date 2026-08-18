@@ -3,18 +3,17 @@
 import {
   AlertTriangle,
   CheckCircle2,
-  ChevronLeft,
   Eye,
   EyeOff,
   KeyRound,
   LoaderCircle,
   Mail,
 } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
-import type { AuthOAuthProvider, SignUpResult } from "@/hooks/useAppAuth";
+import type { AuthOAuthProvider } from "@/hooks/useAppAuth";
 import {
   isValidSignupEmail,
   resolveMailboxProviderFromEmail,
@@ -30,9 +29,8 @@ export type GateThemeId =
   | "accessible"
   | "graphite";
 
-type SignUpPane = "choose" | "yahoo" | "other" | "other-unrecognized";
-
-const YAHOO_APP_PASSWORD_URL = "https://login.yahoo.com/account/security";
+const TERMS_URL = "https://www.donexto.com/terminos.html";
+const PRIVACY_URL = "https://www.donexto.com/privacidad.html";
 
 function mailboxToOAuth(
   provider: MailboxSignupProvider,
@@ -57,7 +55,7 @@ type LoginScreenProps = {
     email: string,
     password: string,
     fullName: string,
-  ) => Promise<SignUpResult>;
+  ) => Promise<unknown>;
   onSignInWithGoogle: () => Promise<void>;
   onSignInWithProvider: (provider: AuthOAuthProvider) => Promise<void>;
   onResendSignupEmail?: (email: string) => Promise<void>;
@@ -98,8 +96,9 @@ function ProviderMark({
 }
 
 /**
- * Gate Donexto — split en escritorio, columna en celular.
- * Logo 3D “Do Next To…” (D, no P). Login vs Crear cuenta (buzón).
+ * Acceso Donexto — misma distribución que Cloudflare/GitHub/Supabase:
+ * identidad a la izquierda, proveedores + correo a la derecha.
+ * La contraseña del buzón no se pide aquí; el correo es la identificación.
  */
 export function LoginScreen({
   theme: _theme,
@@ -114,16 +113,13 @@ export function LoginScreen({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [usePassword, setUsePassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [step, setStep] = useState<"credentials" | "help">("credentials");
-  const [signUpPane, setSignUpPane] = useState<SignUpPane>("choose");
-  const [otherEmail, setOtherEmail] = useState("");
-  const [yahooEmail, setYahooEmail] = useState("");
-  const [yahooPassword, setYahooPassword] = useState("");
   const [oauthBusy, setOauthBusy] = useState<AuthOAuthProvider | null>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -142,40 +138,33 @@ export function LoginScreen({
     };
   }, []);
 
+  function resetAlerts() {
+    setError(null);
+    setMessage(null);
+  }
+
   function goSignIn() {
     setMode("signin");
-    setStep("credentials");
-    setSignUpPane("choose");
-    setError(null);
+    resetAlerts();
     setBusy(false);
     setOauthBusy(null);
+    setUsePassword(false);
   }
 
   function goSignUp() {
     setMode("signup");
-    setStep("credentials");
-    setSignUpPane("choose");
-    setError(null);
-    setMessage(null);
-    setOtherEmail("");
-    setYahooEmail("");
-    setYahooPassword("");
+    resetAlerts();
     setBusy(false);
     setOauthBusy(null);
-  }
-
-  function openSignUpPane(pane: SignUpPane) {
-    setSignUpPane(pane);
-    setError(null);
-    setMessage(null);
+    setUsePassword(false);
+    setPassword("");
   }
 
   async function startOAuthSignup(provider: AuthOAuthProvider) {
     if (busy) {
       return;
     }
-    setError(null);
-    setMessage(null);
+    resetAlerts();
     setBusy(true);
     setOauthBusy(provider);
     try {
@@ -199,70 +188,13 @@ export function LoginScreen({
     }
   }
 
-  function applyMailboxRoute(provider: MailboxSignupProvider) {
-    const oauth = mailboxToOAuth(provider);
-    if (oauth) {
-      void startOAuthSignup(oauth);
-      return;
-    }
-    if (provider === "yahoo") {
-      const fromOther = otherEmail.trim().toLowerCase();
-      if (fromOther) {
-        setYahooEmail(fromOther);
-      }
-      openSignUpPane("yahoo");
-      return;
-    }
-    openSignUpPane("other-unrecognized");
-  }
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (busy) {
-      return;
-    }
-    setError(null);
-    setMessage(null);
-
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail.includes("@")) {
-      setError("Escribe el correo de tu cuenta Donexto.");
-      return;
-    }
-    if (password.length < 8) {
-      setError(
-        "La contraseña de tu cuenta Donexto usa al menos 8 caracteres.",
-      );
-      return;
-    }
-
+  async function sendMagicLink(address: string) {
     setBusy(true);
+    resetAlerts();
     try {
-      await onSignIn(cleanEmail, password);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "No fue posible iniciar sesión en Donexto.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function magicLink() {
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail.includes("@")) {
-      setError("Escribe primero el correo de tu cuenta Donexto.");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    setMessage(null);
-    try {
-      await onMagicLink(cleanEmail);
+      await onMagicLink(address);
       setMessage(
-        "Revisa tu correo: enviamos un enlace para entrar a Donexto sin contraseña.",
+        `Revisa ${address}: enviamos un enlace para identificarte. No uses la contraseña del buzón.`,
       );
     } catch (requestError) {
       setError(
@@ -275,20 +207,73 @@ export function LoginScreen({
     }
   }
 
-  async function recover() {
-    const cleanEmail = email.trim().toLowerCase();
-    if (!cleanEmail.includes("@")) {
+  async function continueWithEmail(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) {
+      return;
+    }
+    const clean = email.trim().toLowerCase();
+    if (!isValidSignupEmail(clean)) {
+      setError("Escribe el correo con el que te identificas.");
+      return;
+    }
+
+    if (mode === "signin" && usePassword) {
+      if (password.length < 8) {
+        setError("La contraseña de Donexto usa al menos 8 caracteres.");
+        return;
+      }
+      setBusy(true);
+      resetAlerts();
+      try {
+        await onSignIn(clean, password);
+      } catch (requestError) {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "No fue posible iniciar sesión en Donexto.",
+        );
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    const provider = resolveMailboxProviderFromEmail(clean);
+    const oauth = mailboxToOAuth(provider);
+    if (oauth) {
+      await startOAuthSignup(oauth);
+      return;
+    }
+    await sendMagicLink(clean);
+  }
+
+  async function continueYahoo() {
+    const clean = email.trim().toLowerCase();
+    if (!isValidSignupEmail(clean)) {
+      setError("Escribe tu correo Yahoo y continúa.");
+      emailRef.current?.focus();
+      return;
+    }
+    if (resolveMailboxProviderFromEmail(clean) !== "yahoo") {
+      setError("Usa un correo Yahoo (@yahoo.com, @ymail.com o @rocketmail.com).");
+      emailRef.current?.focus();
+      return;
+    }
+    await sendMagicLink(clean);
+  }
+
+  async function recoverPassword() {
+    const clean = email.trim().toLowerCase();
+    if (!isValidSignupEmail(clean)) {
       setError("Escribe primero el correo de tu cuenta Donexto.");
       return;
     }
     setBusy(true);
-    setError(null);
-    setMessage(null);
+    resetAlerts();
     try {
-      await onResetPassword(cleanEmail);
-      setMessage(
-        "Enviamos un enlace para restablecer la contraseña de tu cuenta Donexto.",
-      );
+      await onResetPassword(clean);
+      setMessage("Enviamos un enlace para restablecer la contraseña de Donexto.");
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -300,97 +285,8 @@ export function LoginScreen({
     }
   }
 
-  function continueOtherEmail() {
-    if (busy) {
-      return;
-    }
-    setError(null);
-    setMessage(null);
-    const clean = otherEmail.trim().toLowerCase();
-    if (!isValidSignupEmail(clean)) {
-      setError("Escribe un correo válido, por ejemplo nombre@dominio.com.");
-      return;
-    }
-    applyMailboxRoute(resolveMailboxProviderFromEmail(clean));
-  }
-
-  async function continueYahooPrep(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (busy) {
-      return;
-    }
-    setError(null);
-    setMessage(null);
-    const clean = yahooEmail.trim().toLowerCase();
-    if (!isValidSignupEmail(clean)) {
-      setError("Escribe un correo Yahoo válido, por ejemplo tucorreo@yahoo.com.");
-      return;
-    }
-    if (resolveMailboxProviderFromEmail(clean) !== "yahoo") {
-      setError(
-        "Usa un correo Yahoo (@yahoo.com, @ymail.com o @rocketmail.com).",
-      );
-      return;
-    }
-    setBusy(true);
-    try {
-      await onMagicLink(clean);
-      setMessage(
-          "Te enviamos un enlace a ese Yahoo para entrar a Donexto. " +
-          "Luego autorizas la lectura de ese mismo correo.",
-      );
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "No fue posible enviar el enlace a Yahoo.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function continueUnrecognizedMagicLink() {
-    if (busy) {
-      return;
-    }
-    const clean = otherEmail.trim().toLowerCase();
-    if (!isValidSignupEmail(clean)) {
-      setError("Escribe un correo válido, por ejemplo nombre@dominio.com.");
-      return;
-    }
-    setBusy(true);
-    setError(null);
-    setMessage(null);
-    try {
-      await onMagicLink(clean);
-      setMessage(
-          "Revisa tu correo: enviamos un enlace para entrar a Donexto. " +
-          "Luego autorizamos la lectura de ese mismo buzón.",
-      );
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "No fue posible enviar el enlace.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const gateClass = [
-    "dx-auth",
-    mode === "signup" ? "dx-auth--signup" : "",
-    step === "help" ? "dx-auth--help" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  const showAlerts = Boolean(error || message);
-
   return (
-    <main className={gateClass}>
+    <main className="dx-auth">
       <aside className="dx-auth__hero">
         <div className="dx-auth__hero-inner">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -417,508 +313,212 @@ export function LoginScreen({
                 ? ACCOUNT_VS_MAILBOX.loginTitleSignUp
                 : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
             </h2>
-            {mode === "signin" && step === "credentials" ? (
-              <p className="dx-auth__slogan">{DONEXTO_QUALITY.slogan}</p>
-            ) : null}
-            {mode === "signup" && signUpPane === "choose" ? (
-              <p className="dx-auth__slogan">
-                {ACCOUNT_VS_MAILBOX.signupChooserBody}
-              </p>
-            ) : null}
+            <p className="dx-auth__slogan">
+              {ACCOUNT_VS_MAILBOX.loginHelper}
+            </p>
           </header>
 
-          {mode === "signup" ? (
-            <div className="dx-auth__signup">
-              {showAlerts ? (
-                <>
-                  {error ? (
-                    <div className="dx-auth__alert is-error" role="alert">
-                      <AlertTriangle size={18} />
-                      <span>{error}</span>
-                    </div>
-                  ) : null}
-                  {message ? (
-                    <div className="dx-auth__alert is-ok" role="status">
-                      <CheckCircle2 size={18} />
-                      <span>{message}</span>
-                    </div>
-                  ) : null}
-                </>
-              ) : null}
-
-              {signUpPane === "choose" ? (
-                <div className="dx-auth__providers">
-                  <button
-                    type="button"
-                    className="dx-auth__provider dx-auth__provider--gmail"
-                    disabled={busy}
-                    onClick={() => void startOAuthSignup("google")}
-                  >
-                    {oauthBusy === "google" ? (
-                      <>
-                        <LoaderCircle className="dx-auth__spin" size={18} />
-                        Abriendo Google…
-                      </>
-                    ) : (
-                      <>
-                        <ProviderMark provider="gmail" />
-                        Gmail
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="dx-auth__provider"
-                    disabled={busy}
-                    onClick={() => openSignUpPane("yahoo")}
-                  >
-                    <ProviderMark provider="yahoo" />
-                    Yahoo
-                  </button>
-                  <button
-                    type="button"
-                    className="dx-auth__provider"
-                    disabled={busy}
-                    onClick={() => void startOAuthSignup("azure")}
-                  >
-                    {oauthBusy === "azure" ? (
-                      <>
-                        <LoaderCircle className="dx-auth__spin" size={18} />
-                        Abriendo Microsoft…
-                      </>
-                    ) : (
-                      <>
-                        <ProviderMark provider="hotmail" />
-                        Hotmail
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="dx-auth__provider"
-                    disabled={busy}
-                    onClick={() => void startOAuthSignup("apple")}
-                  >
-                    {oauthBusy === "apple" ? (
-                      <>
-                        <LoaderCircle className="dx-auth__spin" size={18} />
-                        Abriendo Apple…
-                      </>
-                    ) : (
-                      <>
-                        <ProviderMark provider="apple" />
-                        Apple
-                      </>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    className="dx-auth__provider"
-                    disabled={busy}
-                    onClick={() => openSignUpPane("other")}
-                  >
-                    <ProviderMark provider="other" />
-                    Otro
-                  </button>
-                </div>
-              ) : null}
-
-              {signUpPane === "yahoo" ? (
-                <form
-                  className="dx-auth__form dx-auth__yahoo"
-                  autoComplete="off"
-                  data-1p-ignore="true"
-                  data-lpignore="true"
-                  data-form-type="other"
-                  onSubmit={continueYahooPrep}
-                >
-                  <button
-                    type="button"
-                    className="dx-auth__back"
-                    disabled={busy}
-                    onClick={() => openSignUpPane("choose")}
-                  >
-                    <ChevronLeft size={16} />
-                    Volver
-                  </button>
-                  <p className="dx-auth__signup-copy">
-                    {ACCOUNT_VS_MAILBOX.signupYahooBody}
-                  </p>
-                  <input
-                    type="text"
-                    name="dx_fake_user"
-                    autoComplete="username"
-                    tabIndex={-1}
-                    aria-hidden="true"
-                    className="dx-auth__honeypot"
-                    value=""
-                    readOnly
-                  />
-                  <input
-                    type="password"
-                    name="dx_fake_pass"
-                    autoComplete="current-password"
-                    tabIndex={-1}
-                    aria-hidden="true"
-                    className="dx-auth__honeypot"
-                    value=""
-                    readOnly
-                  />
-                  <label className="dx-auth__field">
-                    <span>Correo Yahoo</span>
-                    <div className="dx-auth__control">
-                      <Mail size={18} aria-hidden />
-                      <input
-                        type="text"
-                        name="dx_yahoo_mailbox_email"
-                        inputMode="email"
-                        autoComplete="off"
-                        autoCapitalize="none"
-                        autoCorrect="off"
-                        spellCheck={false}
-                        data-1p-ignore="true"
-                        placeholder="tucorreo@yahoo.com"
-                        value={yahooEmail}
-                        disabled={busy}
-                        onChange={(event) => setYahooEmail(event.target.value)}
-                      />
-                    </div>
-                  </label>
-                  <label className="dx-auth__field">
-                    <span>
-                      {ACCOUNT_VS_MAILBOX.connectYahooAppPasswordLabel}
-                    </span>
-                    <div className="dx-auth__control">
-                      <KeyRound size={18} aria-hidden />
-                      <input
-                        type="password"
-                        name="dx_yahoo_app_password"
-                        autoComplete="new-password"
-                        data-1p-ignore="true"
-                        placeholder="xxxx xxxx xxxx xxxx"
-                        value={yahooPassword}
-                        disabled={busy}
-                        onChange={(event) =>
-                          setYahooPassword(event.target.value)
-                        }
-                      />
-                    </div>
-                  </label>
-                  <p className="dx-auth__signup-copy dx-auth__signup-copy--hint">
-                    {ACCOUNT_VS_MAILBOX.signupYahooContinue}
-                  </p>
-                  <a
-                    className="dx-auth__submit"
-                    href={YAHOO_APP_PASSWORD_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {ACCOUNT_VS_MAILBOX.signupYahooCta}
-                  </a>
-                  <button type="submit" className="dx-auth__submit" disabled={busy}>
-                    {busy ? (
-                      <>
-                        <LoaderCircle className="dx-auth__spin" size={18} />
-                        Enviando enlace…
-                      </>
-                    ) : (
-                      "Continuar con enlace a Yahoo"
-                    )}
-                  </button>
-                </form>
-              ) : null}
-
-              {signUpPane === "other" ? (
-                <div className="dx-auth__other">
-                  <button
-                    type="button"
-                    className="dx-auth__back"
-                    disabled={busy}
-                    onClick={() => openSignUpPane("choose")}
-                  >
-                    <ChevronLeft size={16} />
-                    Volver
-                  </button>
-                  <p className="dx-auth__signup-copy">
-                    {ACCOUNT_VS_MAILBOX.signupOtherPrompt}
-                  </p>
-                  <label className="dx-auth__field">
-                    <span>Correo a vigilar</span>
-                    <div className="dx-auth__control">
-                      <Mail size={18} aria-hidden />
-                      <input
-                        type="email"
-                        name="dx_other_mailbox_email"
-                        value={otherEmail}
-                        inputMode="email"
-                        autoComplete="email"
-                        autoCapitalize="none"
-                        autoCorrect="off"
-                        spellCheck={false}
-                        placeholder="tu@correo.com"
-                        disabled={busy}
-                        onChange={(event) => setOtherEmail(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter") {
-                            event.preventDefault();
-                            continueOtherEmail();
-                          }
-                        }}
-                      />
-                    </div>
-                  </label>
-                  <button
-                    type="button"
-                    className="dx-auth__submit"
-                    disabled={busy}
-                    onClick={() => continueOtherEmail()}
-                  >
-                    {busy ? (
-                      <>
-                        <LoaderCircle className="dx-auth__spin" size={18} />
-                        Continuando…
-                      </>
-                    ) : (
-                      ACCOUNT_VS_MAILBOX.signupOtherContinue
-                    )}
-                  </button>
-                </div>
-              ) : null}
-
-              {signUpPane === "other-unrecognized" ? (
-                <div className="dx-auth__pending">
-                  <button
-                    type="button"
-                    className="dx-auth__back"
-                    onClick={() => openSignUpPane("other")}
-                  >
-                    <ChevronLeft size={16} />
-                    Volver
-                  </button>
-                  <p className="dx-auth__signup-copy">
-                    {ACCOUNT_VS_MAILBOX.signupOtherUnrecognized}
-                  </p>
-                  {otherEmail.trim() ? (
-                    <p className="dx-auth__signup-copy dx-auth__signup-copy--hint">
-                      Cuenta: {otherEmail.trim().toLowerCase()}
-                    </p>
-                  ) : null}
-                  <button
-                    type="button"
-                    className="dx-auth__submit"
-                    disabled={busy}
-                    onClick={() => void continueUnrecognizedMagicLink()}
-                  >
-                    {busy ? (
-                      <>
-                        <LoaderCircle className="dx-auth__spin" size={18} />
-                        Enviando enlace…
-                      </>
-                    ) : (
-                      ACCOUNT_VS_MAILBOX.signupOtherMagicLink
-                    )}
-                  </button>
-                </div>
-              ) : null}
+          {error ? (
+            <div className="dx-auth__alert is-error" role="alert">
+              <AlertTriangle size={18} />
+              <span>{error}</span>
             </div>
-          ) : step === "credentials" ? (
-            <div className="dx-auth__signin">
-              {error ? (
-                <div className="dx-auth__alert is-error" role="alert">
-                  <AlertTriangle size={18} />
-                  <span>{error}</span>
-                </div>
-              ) : null}
+          ) : null}
+          {message ? (
+            <div className="dx-auth__alert is-ok" role="status">
+              <CheckCircle2 size={18} />
+              <span>{message}</span>
+            </div>
+          ) : null}
 
-              {message ? (
-                <div className="dx-auth__alert is-ok" role="status">
-                  <CheckCircle2 size={18} />
-                  <span>{message}</span>
-                </div>
-              ) : null}
+          <div className="dx-auth__providers">
+            <button
+              type="button"
+              className="dx-auth__provider dx-auth__provider--gmail"
+              disabled={busy}
+              onClick={() => void startOAuthSignup("google")}
+            >
+              {oauthBusy === "google" ? (
+                <>
+                  <LoaderCircle className="dx-auth__spin" size={18} />
+                  Abriendo Google…
+                </>
+              ) : (
+                <>
+                  <ProviderMark provider="gmail" />
+                  Continuar con Google
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              className="dx-auth__provider"
+              disabled={busy}
+              onClick={() => void startOAuthSignup("azure")}
+            >
+              {oauthBusy === "azure" ? (
+                <>
+                  <LoaderCircle className="dx-auth__spin" size={18} />
+                  Abriendo Microsoft…
+                </>
+              ) : (
+                <>
+                  <ProviderMark provider="hotmail" />
+                  Continuar con Microsoft
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              className="dx-auth__provider"
+              disabled={busy}
+              onClick={() => void startOAuthSignup("apple")}
+            >
+              {oauthBusy === "apple" ? (
+                <>
+                  <LoaderCircle className="dx-auth__spin" size={18} />
+                  Abriendo Apple…
+                </>
+              ) : (
+                <>
+                  <ProviderMark provider="apple" />
+                  Continuar con Apple
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              className="dx-auth__provider"
+              disabled={busy}
+              onClick={() => void continueYahoo()}
+            >
+              <ProviderMark provider="yahoo" />
+              Continuar con Yahoo
+            </button>
+          </div>
 
-              <div className="dx-auth__providers">
-                <button
-                  type="button"
-                  className="dx-auth__provider dx-auth__provider--gmail"
+          <p className="dx-auth__divider">o</p>
+
+          <form
+            className="dx-auth__form"
+            onSubmit={(event) => void continueWithEmail(event)}
+            noValidate
+          >
+            <label className="dx-auth__field">
+              <span>Correo</span>
+              <div className="dx-auth__control">
+                <Mail size={18} aria-hidden />
+                <input
+                  ref={emailRef}
+                  type="email"
+                  name="email"
+                  value={email}
+                  inputMode="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  placeholder="tu@correo.com"
                   disabled={busy}
-                  onClick={() => void startOAuthSignup("google")}
-                >
-                  {oauthBusy === "google" ? (
-                    <>
-                      <LoaderCircle className="dx-auth__spin" size={18} />
-                      Abriendo Google…
-                    </>
-                  ) : (
-                    <>
-                      <ProviderMark provider="gmail" />
-                      Gmail
-                    </>
-                  )}
-                </button>
+                  onChange={(event) => setEmail(event.target.value)}
+                />
               </div>
+            </label>
 
-              <p className="dx-auth__divider">o con correo y contraseña</p>
+            {mode === "signin" && usePassword ? (
+              <label className="dx-auth__field">
+                <span>Contraseña de Donexto</span>
+                <div className="dx-auth__control">
+                  <KeyRound size={18} aria-hidden />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={password}
+                    autoComplete="current-password"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    placeholder="Solo si ya la definiste aquí"
+                    disabled={busy}
+                    onChange={(event) => setPassword(event.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="dx-auth__eye"
+                    aria-label={
+                      showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+                    }
+                    onClick={() => setShowPassword((value) => !value)}
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+              </label>
+            ) : null}
 
-              <form
-                className="dx-auth__form dx-auth__form--backup"
-                onSubmit={submit}
-                noValidate
-                aria-labelledby="dx-auth-title"
+            <button type="submit" className="dx-auth__submit" disabled={busy}>
+              {busy && oauthBusy === null ? (
+                <>
+                  <LoaderCircle className="dx-auth__spin" size={18} />
+                  Continuando…
+                </>
+              ) : mode === "signin" && usePassword ? (
+                "Entrar"
+              ) : (
+                "Continuar"
+              )}
+            </button>
+          </form>
+
+          {mode === "signin" ? (
+            <div className="dx-auth__alt">
+              <button
+                type="button"
+                className="dx-auth__link"
+                disabled={busy}
+                onClick={() => {
+                  setUsePassword((value) => !value);
+                  resetAlerts();
+                }}
               >
-                <label className="dx-auth__field">
-                  <span>{ACCOUNT_VS_MAILBOX.loginEmailLabel}</span>
-                  <div className="dx-auth__control">
-                    <Mail size={18} aria-hidden />
-                    <input
-                      type="email"
-                      name="email"
-                      value={email}
-                      inputMode="email"
-                      autoComplete="email"
-                      autoCapitalize="none"
-                      autoCorrect="off"
-                      spellCheck={false}
-                      placeholder="tu@nombre.com"
-                      disabled={busy}
-                      onChange={(event) => setEmail(event.target.value)}
-                    />
-                  </div>
-                </label>
-
-                <label className="dx-auth__field">
-                  <span>{ACCOUNT_VS_MAILBOX.loginPasswordLabel}</span>
-                  <div className="dx-auth__control">
-                    <KeyRound size={18} aria-hidden />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      value={password}
-                      autoComplete="current-password"
-                      autoCapitalize="none"
-                      spellCheck={false}
-                      placeholder="Mínimo 8 caracteres"
-                      disabled={busy}
-                      onChange={(event) => setPassword(event.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className="dx-auth__eye"
-                      aria-label={
-                        showPassword
-                          ? "Ocultar contraseña"
-                          : "Mostrar contraseña"
-                      }
-                      onClick={() => setShowPassword((v) => !v)}
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </label>
-
+                {usePassword
+                  ? "Entrar con enlace al correo"
+                  : "Tengo contraseña de Donexto"}
+              </button>
+              {usePassword ? (
                 <button
                   type="button"
                   className="dx-auth__link"
                   disabled={busy}
-                  onClick={() => {
-                    setStep("help");
-                    setError(null);
-                  }}
+                  onClick={() => void recoverPassword()}
                 >
                   Olvidé mi contraseña
                 </button>
-
-                <button
-                  type="submit"
-                  className="dx-auth__submit"
-                  disabled={busy}
-                >
-                  {busy && oauthBusy === null ? (
-                    <>
-                      <LoaderCircle className="dx-auth__spin" size={18} />
-                      Entrando…
-                    </>
-                  ) : (
-                    "Entrar a Donexto"
-                  )}
-                </button>
-              </form>
-            </div>
-          ) : (
-            <div className="dx-auth__help">
-              <button
-                type="button"
-                className="dx-auth__link"
-                onClick={() => {
-                  setStep("credentials");
-                  setError(null);
-                }}
-              >
-                ← Volver al acceso
-              </button>
-
-              <p className="dx-auth__help-text">
-                Usa el correo de tu cuenta Donexto.
-              </p>
-
-              {error ? (
-                <div className="dx-auth__alert is-error" role="alert">
-                  <AlertTriangle size={18} />
-                  <span>{error}</span>
-                </div>
               ) : null}
-              {message ? (
-                <div className="dx-auth__alert is-ok" role="status">
-                  <CheckCircle2 size={18} />
-                  <span>{message}</span>
-                </div>
-              ) : null}
-
-              <button
-                type="button"
-                className="dx-auth__secondary"
-                disabled={busy}
-                onClick={() => void magicLink()}
-              >
-                <Mail size={18} />
-                Enviarme enlace de acceso
-              </button>
-
-              <button
-                type="button"
-                className="dx-auth__secondary is-ghost"
-                disabled={busy}
-                onClick={() => void recover()}
-              >
-                Restablecer contraseña Donexto
-              </button>
             </div>
-          )}
-
-          {mode === "signin" ? (
-            <>
-              <p className="dx-auth__p0">
-                <strong>{DONEXTO_QUALITY.boundary}</strong>
-              </p>
-              <div className="dx-auth__bottom-mode">
-                <button type="button" disabled={busy} onClick={goSignUp}>
-                  Crear cuenta
-                </button>
-              </div>
-            </>
           ) : null}
 
-          {mode === "signup" ? (
-            <div className="dx-auth__bottom-mode">
+          <div className="dx-auth__bottom-mode">
+            {mode === "signin" ? (
+              <button type="button" disabled={busy} onClick={goSignUp}>
+                ¿No tienes cuenta? Crear cuenta
+              </button>
+            ) : (
               <button type="button" disabled={busy} onClick={goSignIn}>
-                {ACCOUNT_VS_MAILBOX.signupHaveAccount}
+                ¿Ya tienes cuenta? Entrar
               </button>
-            </div>
-          ) : null}
+            )}
+          </div>
 
-          <p className="dx-auth__secure" role="note">
-            <strong>{ACCOUNT_VS_MAILBOX.authSecurityTitle}. </strong>
-            {ACCOUNT_VS_MAILBOX.authSecurityBody}
+          <p className="dx-auth__legal-agree">
+            Al continuar aceptas los{" "}
+            <a href={TERMS_URL} target="_blank" rel="noopener noreferrer">
+              Términos
+            </a>{" "}
+            y la{" "}
+            <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer">
+              Privacidad
+            </a>{" "}
+            de Donexto.
           </p>
         </div>
 

@@ -6,7 +6,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { AccountVsMailboxHint } from "@/components/auth/AccountVsMailboxHint";
 import {
   ACCOUNT_VS_MAILBOX,
-  authorizeGmailTitle,
+  authorizeMailboxTitle,
 } from "@/lib/accountVsMailbox";
 import type { MailboxConnectMode } from "@/lib/mailboxSignup";
 
@@ -111,7 +111,7 @@ export function MailboxConnectModal({
 
   const title =
     mode === "gmail"
-      ? authorizeGmailTitle(accountEmail)
+      ? authorizeMailboxTitle(accountEmail)
       : showYahooForm && !showChooser
         ? ACCOUNT_VS_MAILBOX.connectYahooTitle
         : ACCOUNT_VS_MAILBOX.connectChooserTitle;
@@ -155,7 +155,7 @@ export function MailboxConnectModal({
         </header>
 
         <div className="dx-connect-body">
-          <AccountVsMailboxHint variant="connect" />
+          <AccountVsMailboxHint variant="connect" email={accountEmail} />
 
           {mode === "gmail" ? (
             <>

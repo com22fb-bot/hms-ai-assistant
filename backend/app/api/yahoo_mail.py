@@ -119,7 +119,7 @@ def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
         has_access_token=True,
         has_refresh_token=False,
         scopes=["imap.mail.yahoo.com"],
-        message="Buzón Yahoo conectado. Puedes cargar correos en vivo.",
+        message="Buzón Yahoo conectado. Siguiente paso: descargar y clasificar los últimos seis meses.",
         login_url=None,
     )
 

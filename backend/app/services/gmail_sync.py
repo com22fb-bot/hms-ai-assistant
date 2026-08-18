@@ -338,6 +338,7 @@ def _get_or_create_thread(
     subject: str,
     participants: str,
     last_message_at: str,
+    provider: str = "google",
 ) -> dict[str, Any]:
     response = (
         client.table("communication_threads")
@@ -355,7 +356,7 @@ def _get_or_create_thread(
 
     payload = {
         "account_id": account_id,
-        "provider": "google",
+        "provider": provider or "google",
         "external_thread_id": external_thread_id,
         "subject": subject,
         "participants": participants,

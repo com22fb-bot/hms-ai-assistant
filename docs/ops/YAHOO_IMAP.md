@@ -2,10 +2,10 @@
 
 ## Cómo conectar
 
-1. Login Donexto (no es la contraseña de Yahoo).
-2. Conectar buzón → **Yahoo**.
-3. Correo: `tucorreo@yahoo.com` / `@ymail.com` / `@rocketmail.com`.
-4. Contraseña: **contraseña de aplicación** (IMAP), no la de mail.yahoo.com.
+1. Crear cuenta Donexto (enlace al mismo Yahoo).
+2. Verificar el correo Donexto.
+3. Conectar buzón → **Yahoo** con **contraseña de aplicación** IMAP (no la de mail.yahoo.com).
+4. Pantalla de **seis meses** → **Descargar y clasificar** (mismas barras que Gmail).
 
 ### Generar app password
 
@@ -13,14 +13,15 @@
 2. Verificación en 2 pasos (obligatoria en la mayoría).  
 3. Conexiones externas → Crear contraseña de aplicación.  
 4. Nombre: `Donexto` → copiar código (~16 caracteres).  
-5. Pegarlo en Donexto (espacios se ignoran).
+5. Pegarlo en Donexto al autorizar el buzón (espacios se ignoran).
 
 ## Tras conectar
 
-- Se guardan credenciales cifradas (`OAUTH_ENCRYPTION_KEY` en Railway).  
-- Otros buzones del workspace pasan a inactivo.  
-- “Cargar correos” abre la bandeja **en vivo** (IMAP).  
-- Los cuadros de **casos** pueden seguir en 0 hasta que exista import/clasificación (hoy es fuerte en Gmail).
+- Se guardan credenciales cifradas (`OAUTH_ENCRYPTION_KEY` en Railway).
+- Otros buzones del workspace pasan a inactivo.
+- Donexto cuenta el INBOX y Enviados de los últimos **183 días** (seis meses).
+- **Descargar y clasificar** importa esos mensajes y usa el mismo motor de casos que Gmail.
+- Spam, Papelera y Borradores no se importan. El buzón de Yahoo no se modifica.
 
 ## Errores frecuentes
 
@@ -33,6 +34,7 @@
 
 ## Servidor
 
-- Host: `imap.mail.yahoo.com`  
-- Puerto: `993` SSL  
-- Backend: `POST /auth/yahoo/connect`, lectura vía `GET /gmail/messages` si provider=yahoo
+- Host: `imap.mail.yahoo.com`
+- Puerto: `993` SSL
+- Backend: `POST /auth/yahoo/connect`
+- Importación: `GET/POST /gmail/import/*` (misma API que Gmail; rama IMAP si `provider=yahoo`)

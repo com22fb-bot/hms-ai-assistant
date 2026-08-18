@@ -476,7 +476,7 @@ export function useAppAuth() {
         email,
         options: {
           shouldCreateUser: true,
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: donextoVerifyRedirectTo(),
         },
       });
 

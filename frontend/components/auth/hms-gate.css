@@ -430,6 +430,27 @@
   line-height: 1.3;
 }
 
+.dx-auth__legal-agree {
+  margin: 0.85rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--dx-soft);
+  text-align: center;
+}
+
+.dx-auth__legal-agree a {
+  color: var(--dx-teal);
+  text-underline-offset: 2px;
+}
+
+.dx-auth__alt {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.35rem 0.8rem;
+  margin-top: 0.2rem;
+}
+
 .dx-auth__signup,
 .dx-auth__providers,
 .dx-auth__pending,
