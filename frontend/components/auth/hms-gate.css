@@ -10,8 +10,8 @@
   --dx-line: rgba(255, 255, 255, 0.1);
   --dx-surface: #161c22;
   --dx-field: #10161b;
-  --dx-teal: #2ee6d6;
-  --dx-magenta: #c44dff;
+  --dx-teal: #24c8ca;
+  --dx-magenta: #d63d8e;
   --dx-sky: #070d12;
   --dx-font: var(--font-hms-sans), "Segoe UI", system-ui, sans-serif;
   --dx-display: var(--font-hms-display), Georgia, "Times New Roman", serif;
@@ -51,12 +51,12 @@
   background:
     radial-gradient(
       ellipse 80% 70% at 20% 0%,
-      rgba(46, 230, 214, 0.16),
+      rgba(36, 200, 202, 0.18),
       transparent 55%
     ),
     radial-gradient(
       ellipse 70% 60% at 100% 80%,
-      rgba(196, 77, 255, 0.14),
+      rgba(214, 61, 142, 0.16),
       transparent 50%
     ),
     var(--dx-sky);
@@ -288,7 +288,7 @@
   min-height: 3rem;
   border: 0;
   border-radius: 999px;
-  background: linear-gradient(90deg, #2ee6d6 0%, #c44dff 100%);
+  background: linear-gradient(90deg, #24c8ca 0%, #d63d8e 100%);
   color: #0a0a0a;
   font: inherit;
   font-size: 0.98rem;
@@ -498,14 +498,14 @@
 
 .dx-auth__provider--gmail {
   border: 0;
-  background: linear-gradient(90deg, #2ee6d6 0%, #c44dff 100%);
+  background: linear-gradient(90deg, #24c8ca 0%, #d63d8e 100%);
   color: #0a0a0a;
   font-weight: 800;
 }
 
 .dx-auth__provider--gmail:hover:not(:disabled) {
   filter: brightness(1.06);
-  background: linear-gradient(90deg, #2ee6d6 0%, #c44dff 100%);
+  background: linear-gradient(90deg, #24c8ca 0%, #d63d8e 100%);
 }
 
 .dx-auth__mark {
@@ -524,7 +524,7 @@
 
 .dx-auth__mark--gmail {
   background: #0a0a0a;
-  color: #2ee6d6;
+  color: #24c8ca;
 }
 
 .dx-auth__mark--yahoo {
@@ -544,7 +544,7 @@
 
 .dx-auth__mark--other {
   background: rgba(46, 230, 214, 0.16);
-  color: #2ee6d6;
+  color: #24c8ca;
 }
 
 .dx-auth__signup-copy {

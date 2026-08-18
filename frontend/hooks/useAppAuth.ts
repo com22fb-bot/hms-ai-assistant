@@ -1,9 +1,21 @@
 "use client";
 
-import type { Session, User } from "@supabase/supabase-js";
+import type { Provider, Session, User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
+import {
+  clearIntendedEmail,
+  clearPendingFullName,
+  peekIntendedEmail,
+  peekPendingFullName,
+  rememberAuthError,
+  rememberIntendedEmail,
+} from "@/lib/donextoAccount";
+import {
+  YAHOO_CUSTOM_PROVIDER,
+  YAHOO_PROVIDER_SETUP_MESSAGE,
+} from "@/lib/yahooAuth";
 
 export type SignUpResult =
   | { kind: "signed_in" }
@@ -18,6 +30,13 @@ const OAUTH_PROVIDER_LABEL: Record<AuthOAuthProvider, string> = {
   azure: "Microsoft",
   apple: "Apple",
   yahoo: "Yahoo",
+};
+
+const SUPABASE_OAUTH_PROVIDER: Record<AuthOAuthProvider, Provider> = {
+  google: "google",
+  azure: "azure",
+  apple: "apple",
+  yahoo: YAHOO_CUSTOM_PROVIDER,
 };
 
 type AppSession = {
@@ -46,19 +65,38 @@ function isDonextoVerified(user: User | null | undefined): boolean {
   return user?.user_metadata?.donexto_verified === true;
 }
 
+const FIRST_SESSION_MS = 15 * 60 * 1000;
+
+/** Alta reciente: el mail de Donexto es una vez. Reentradas no. */
+function isFirstDonextoSession(user: User | null | undefined): boolean {
+  if (!user?.created_at) {
+    return true;
+  }
+  const created = Date.parse(user.created_at);
+  if (!Number.isFinite(created)) {
+    return true;
+  }
+  const last = Date.parse(user.last_sign_in_at || user.created_at);
+  if (!Number.isFinite(last)) {
+    return true;
+  }
+  return last - created < FIRST_SESSION_MS;
+}
+
 /**
- * Sin `user_metadata.donexto_verified === true` no hay app.
- * Google pone `email_confirmed_at` al instante: eso NO salta el gate.
- * Identities / provider tampoco. Solo el clic del mail Donexto
- * (`?donexto_verify=1`) marca el flag.
+ * Sin `user_metadata.donexto_verified === true` no hay app en el alta.
+ * Quien ya tiene cuenta (sesión posterior al alta) entra por el proveedor,
+ * sin otro correo de Donexto.
  */
 function sessionNeedsDonextoEmailConfirm(session: Session | null): boolean {
   const user = session?.user;
   if (!user) {
     return false;
   }
-
-  return !isDonextoVerified(user);
+  if (isDonextoVerified(user)) {
+    return false;
+  }
+  return isFirstDonextoSession(user);
 }
 
 function isDonextoVerifyReturn(): boolean {
@@ -169,8 +207,12 @@ function translateAuthError(
 
   if (
     normalized.includes("provider is not enabled") ||
-    normalized.includes("unsupported provider")
+    normalized.includes("unsupported provider") ||
+    normalized.includes("could not be found")
   ) {
+    if (oauthProvider === "yahoo") {
+      return YAHOO_PROVIDER_SETUP_MESSAGE;
+    }
     return `Falta activar ${oauthLabel ?? "Google"} en Supabase Auth`;
   }
 
@@ -195,6 +237,7 @@ export function useAppAuth() {
   const [passwordRecovery, setPasswordRecovery] =
     useState(false);
   const verifyBootstrapLock = useRef(false);
+  const pendingNameLock = useRef(false);
 
   useEffect(() => {
     let mounted = true;
@@ -245,6 +288,51 @@ export function useAppAuth() {
 
   useEffect(() => {
     const user = rawSession?.user;
+    if (!user) {
+      return;
+    }
+    const pending = peekPendingFullName();
+    if (pending.length < 2) {
+      return;
+    }
+    const currentName = String(user.user_metadata?.full_name ?? "").trim();
+    if (currentName.length >= 2) {
+      clearPendingFullName();
+      return;
+    }
+    if (pendingNameLock.current) {
+      return;
+    }
+    pendingNameLock.current = true;
+
+    let cancelled = false;
+
+    async function applyPendingName() {
+      const { error } = await supabase.auth.updateUser({
+        data: { full_name: pending },
+      });
+      if (error) {
+        pendingNameLock.current = false;
+        return;
+      }
+      if (cancelled) {
+        return;
+      }
+      clearPendingFullName();
+      const { data: next } = await supabase.auth.getSession();
+      if (!cancelled && next.session) {
+        setRawSession(next.session);
+      }
+    }
+
+    void applyPendingName();
+    return () => {
+      cancelled = true;
+    };
+  }, [rawSession]);
+
+  useEffect(() => {
+    const user = rawSession?.user;
     const accountEmail = user?.email?.trim().toLowerCase() ?? "";
     if (!user || !accountEmail) {
       return;
@@ -256,6 +344,27 @@ export function useAppAuth() {
     async function bootstrapDonextoVerify() {
       if (verifyBootstrapLock.current) {
         return;
+      }
+
+      const intended = peekIntendedEmail();
+      if (intended && accountEmail && intended !== accountEmail) {
+        verifyBootstrapLock.current = true;
+        rememberAuthError(
+          `Entraste con ${accountEmail}, no con ${intended}. ` +
+            `Cierra sesión en ese correo y vuelve a entrar con ${intended}.`,
+        );
+        clearIntendedEmail();
+        try {
+          await supabase.auth.signOut();
+        } catch (error) {
+          console.error("No fue posible cerrar la sesión cruzada:", error);
+        } finally {
+          verifyBootstrapLock.current = false;
+        }
+        return;
+      }
+      if (intended && intended === accountEmail) {
+        clearIntendedEmail();
       }
 
       if (isDonextoVerifyReturn()) {
@@ -282,29 +391,37 @@ export function useAppAuth() {
         return;
       }
 
-      if (!userHasOAuthIdentity(currentUser) || isDonextoVerified(currentUser)) {
+      if (isDonextoVerified(currentUser)) {
         return;
       }
 
-      verifyBootstrapLock.current = true;
-      try {
-        if (currentUser.user_metadata?.donexto_verified !== false) {
+      // Cuenta que ya existía: no mandar otro correo para entrar.
+      if (!isFirstDonextoSession(currentUser)) {
+        verifyBootstrapLock.current = true;
+        try {
           const { error } = await supabase.auth.updateUser({
-            data: { donexto_verified: false },
+            data: { donexto_verified: true },
           });
-          if (error) {
-            console.error(
-              "No fue posible marcar donexto_verified=false:",
-              error,
-            );
-          } else {
+          if (!error) {
             const { data: next } = await supabase.auth.getSession();
             if (!cancelled && next.session) {
               setRawSession(next.session);
             }
           }
+        } catch (error) {
+          console.error("No fue posible sellar la verificación Donexto:", error);
+        } finally {
+          verifyBootstrapLock.current = false;
         }
+        return;
+      }
 
+      if (!userHasOAuthIdentity(currentUser)) {
+        return;
+      }
+
+      verifyBootstrapLock.current = true;
+      try {
         const sentKey = `donexto_verify_sent:${accountEmail}`;
         try {
           if (sessionStorage.getItem(sentKey) === "1") {
@@ -357,26 +474,42 @@ export function useAppAuth() {
   );
 
   const signInWithProvider = useCallback(
-    async (provider: AuthOAuthProvider) => {
-      // supabase-js no tipa `yahoo` como Provider de Auth.
-      if (provider === "yahoo") {
-        throw new Error("Falta activar Yahoo en Supabase Auth");
+    async (provider: AuthOAuthProvider, loginHint?: string) => {
+      const queryParams: Record<string, string> = {};
+      const hint = loginHint?.trim().toLowerCase();
+      if (hint) {
+        rememberIntendedEmail(hint);
+        queryParams.login_hint = hint;
+      }
+      if (provider === "google") {
+        queryParams.access_type = "offline";
+        queryParams.prompt = "select_account";
+      } else if (provider === "yahoo") {
+        queryParams.prompt = "login";
+        queryParams.max_age = "0";
       }
 
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider,
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: SUPABASE_OAUTH_PROVIDER[provider],
         options: {
+          skipBrowserRedirect: true,
           redirectTo: `${window.location.origin}/`,
-          queryParams: {
-            prompt: "consent",
-            access_type: "offline",
-          },
+          ...(Object.keys(queryParams).length > 0 ? { queryParams } : {}),
+          ...(provider === "yahoo" ? { scopes: "openid email profile" } : {}),
         },
       });
 
       if (error) {
         throw new Error(translateAuthError(error.message, provider));
       }
+      if (!data.url) {
+        throw new Error(
+          provider === "yahoo"
+            ? YAHOO_PROVIDER_SETUP_MESSAGE
+            : `No fue posible abrir el inicio de sesión de ${OAUTH_PROVIDER_LABEL[provider]}.`,
+        );
+      }
+      window.location.assign(data.url);
     },
     [],
   );
@@ -475,7 +608,7 @@ export function useAppAuth() {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          shouldCreateUser: true,
+          shouldCreateUser: false,
           emailRedirectTo: donextoVerifyRedirectTo(),
         },
       });

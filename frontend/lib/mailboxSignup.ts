@@ -1,7 +1,11 @@
 /**
  * Ruteo de alta por dominio del buzón que el usuario quiere vigilar.
- * Gmail → Google OAuth. Hotmail/Outlook → Azure. Apple → Apple.
- * Yahoo no está en supabase-js; portal de seguridad + IMAP del mismo correo.
+ * Gmail / Google Workspace → Google OAuth.
+ * Hotmail/Outlook / Microsoft 365 (también tu@empresa.com) → Azure o IMAP.
+ * Apple / iCloud+ con dominio propio → Apple.
+ * Yahoo / AOL → enlace mágico + IMAP.
+ * Otro dominio de empresa → enlace mágico; al conectar el buzón se elige
+ * Workspace, Microsoft 365 o IMAP propio.
  */
 
 export type MailboxConnectMode = "gmail" | "yahoo" | "choose";
@@ -9,6 +13,7 @@ export type MailboxConnectMode = "gmail" | "yahoo" | "choose";
 export type MailboxSignupProvider =
   | "gmail"
   | "yahoo"
+  | "aol"
   | "hotmail"
   | "apple"
   | "other";
@@ -22,6 +27,8 @@ const YAHOO_DOMAINS = [
   "ymail.com",
   "rocketmail.com",
 ];
+
+const AOL_DOMAINS = ["aol.com", "aim.com"];
 
 const HOTMAIL_DOMAINS = [
   "hotmail.com",
@@ -61,6 +68,9 @@ export function resolveMailboxProviderFromEmail(
   if (matchesDomain(domain, YAHOO_DOMAINS)) {
     return "yahoo";
   }
+  if (matchesDomain(domain, AOL_DOMAINS)) {
+    return "aol";
+  }
   if (matchesDomain(domain, HOTMAIL_DOMAINS)) {
     return "hotmail";
   }
@@ -82,7 +92,7 @@ export function mailboxConnectModeFromEmail(
   if (provider === "gmail") {
     return "gmail";
   }
-  if (provider === "yahoo") {
+  if (provider === "yahoo" || provider === "aol") {
     return "yahoo";
   }
   return "choose";

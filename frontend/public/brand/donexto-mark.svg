@@ -1,36 +1,33 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Donexto monograma do@nexto">
-  <title>Donexto — d de do + o de nexto = @</title>
-  <rect width="64" height="64" rx="14" fill="#0a1620"/>
-  <!--
-    Concepto:
-    - El anillo = o de "nexto" y panza de la d de "do"
-    - El fuste derecho = d minúscula
-    - La cola inferior = cierre de arroba (@)
-  -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Donexto monograma">
+  <title>Donexto</title>
+  <defs>
+    <linearGradient id="dn" x1="8" y1="6" x2="58" y2="58" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#24c8ca"/>
+      <stop offset="100%" stop-color="#d63d8e"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="#070b12"/>
   <g
     fill="none"
-    stroke="#0c8a80"
+    stroke="url(#dn)"
     stroke-width="5.25"
     stroke-linecap="round"
     stroke-linejoin="round"
   >
-    <!-- Panza d / o -->
     <circle cx="31" cy="30" r="13.5"/>
-    <!-- Fuste d (desde arriba de la o hasta debajo) -->
     <path d="M44.5 16.5 V44"/>
-    <!-- Cola @ desde pie de la d, rodea abajo a la derecha -->
     <path d="M44.5 44
              C50 46.5 53.5 51 53.5 55.5
              C53.5 55.5 53.2 57 51.5 57
              C48 57 44 54.5 40.5 51"/>
   </g>
-  <!-- Acento interior: refuerza la “o” de nexto -->
   <circle
     cx="31"
     cy="30"
     r="5.5"
     fill="none"
-    stroke="#5ecfc4"
+    stroke="#d63d8e"
+    stroke-opacity="0.7"
     stroke-width="2.75"
   />
 </svg>

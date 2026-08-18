@@ -62,10 +62,67 @@ Services ID + Key en Apple Developer. Return URL = el callback de Supabase.
 
 Crear cuenta → **Apple** abre el portal de Apple.
 
-### Yahoo
+### Yahoo (no es nativo)
 
-`supabase-js` **no** incluye `yahoo` como Provider de Auth.
-La app abre [Seguridad Yahoo](https://login.yahoo.com/account/security) para la contraseña de aplicación; el buzón se conecta con IMAP en el Paso 2. No hay OAuth de identidad Yahoo que activar en el dashboard.
+Supabase Auth **no incluye** `provider=yahoo`. Por eso
+`{"msg":"Unsupported provider: Provider yahoo could not be found"}`.
+
+Hay que crear un proveedor **custom**:
+
+1. [Yahoo Developer](https://developer.yahoo.com/) → app OAuth2 / OpenID.
+   Redirect URI = callback de abajo.
+2. Supabase → **Authentication** → **Sign In / Providers** → **New Provider**
+   → **Manual configuration (OAuth2)**.
+3. Identifier: `custom:yahoo`
+4. Client ID y Client Secret de Yahoo.
+5. URLs:
+   - Authorization: `https://api.login.yahoo.com/oauth2/request_auth`
+   - Token: `https://api.login.yahoo.com/oauth2/get_token`
+   - UserInfo: `https://api.login.yahoo.com/openid/v1/userinfo`
+6. Scopes: `openid email profile`
+7. Callback (el de Supabase, no el de la app):
+
+```text
+https://tgirnpystoydvbxlvlzz.supabase.co/auth/v1/callback
+```
+
+La app llama `signInWithOAuth({ provider: 'custom:yahoo' })`.
+Entrar con Yahoo **no** envía un enlace mágico: te lleva a login.yahoo.com.
+El mail de Donexto es solo al **alta**, una vez.
+
+Si el proveedor no está creado o el identifier no es exactamente `custom:yahoo`,
+`signInWithOAuth` falla y la UI muestra estos pasos (ya no un JSON 400).
+No hay un probe previo a Yahoo: ese fetch colgaba el botón Continuar.
+
+## Email-first (existe o alta)
+
+`Continuar` consulta `donexto_account_exists(lookup_email)`:
+
+- Si el correo **ya tiene** cuenta → Google / Microsoft / Apple / Yahoo.
+- Si **no existe** → pantalla **Crear cuenta** (nombre) y luego el proveedor.
+- El mail de verificación Donexto sigue siendo solo al alta.
+
+Aplicar una vez en SQL Editor del proyecto `tgirnpystoydvbxlvlzz`:
+
+```sql
+create or replace function public.donexto_account_exists(lookup_email text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = auth, public
+as $$
+  select exists (
+    select 1
+    from auth.users u
+    where u.email is not null
+      and lower(u.email) = lower(trim(lookup_email))
+  );
+$$;
+
+revoke all on function public.donexto_account_exists(text) from public;
+grant execute on function public.donexto_account_exists(text) to anon, authenticated;
+```
 
 ## Relación con el buzón
 

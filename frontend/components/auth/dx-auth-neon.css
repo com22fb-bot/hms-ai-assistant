@@ -7,7 +7,7 @@
   --dx-line: rgba(255, 255, 255, 0.1);
   --dx-surface: #161c22;
   --dx-field: #10161b;
-  --dx-teal: #2ee6d6;
+  --dx-teal: #24c8ca;
   --dx-sky: #070d12;
   color: #f2f6f7;
   background: #070d12;
@@ -73,13 +73,13 @@
 
 .dx-auth__submit {
   border-radius: 999px;
-  background: linear-gradient(90deg, #2ee6d6 0%, #c44dff 100%);
+  background: linear-gradient(90deg, #24c8ca 0%, #d63d8e 100%);
   color: #0a0a0a;
   font-weight: 800;
 }
 
 .dx-auth__submit:hover:not(:disabled) {
-  background: linear-gradient(90deg, #2ee6d6 0%, #c44dff 100%);
+  background: linear-gradient(90deg, #24c8ca 0%, #d63d8e 100%);
   filter: brightness(1.06);
 }
 
@@ -111,7 +111,7 @@
 }
 
 .dx-auth__bottom-mode button:hover:not(:disabled) {
-  color: #2ee6d6;
+  color: #24c8ca;
 }
 
 .dx-auth__alert.is-error {
@@ -143,7 +143,7 @@
 }
 
 .dx-auth__legal-agree a {
-  color: #2ee6d6;
+  color: #24c8ca;
 }
 
 .dx-auth__provider {
@@ -153,7 +153,7 @@
 }
 
 .dx-auth__provider--gmail {
-  background: linear-gradient(90deg, #2ee6d6 0%, #c44dff 100%);
+  background: linear-gradient(90deg, #24c8ca 0%, #d63d8e 100%);
   color: #0a0a0a;
 }
 
@@ -164,5 +164,5 @@
 
 .dx-auth__signup-copy a,
 .dx-auth__back:hover:not(:disabled) {
-  color: #2ee6d6;
+  color: #24c8ca;
 }

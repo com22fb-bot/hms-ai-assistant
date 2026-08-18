@@ -13,26 +13,32 @@ export const ACCOUNT_VS_MAILBOX = {
   loginPasswordLabel: "Contraseña de Donexto",
   signupFullNameLabel: "Nombre completo",
   loginHelper:
-    "Identifícate con el correo que vas a vigilar. No pedimos la contraseña de ese buzón.",
+    "Escribe tu correo. Si ya hay cuenta Donexto, te llevamos a Google, Microsoft, Apple o Yahoo. Si no existe, pasas al alta. El correo de verificación de Donexto solo llega al crear la cuenta, una vez.",
+  loginHelperSignUp:
+    "Cuenta nueva: tu nombre y este correo. Luego entras en el sitio de Google, Microsoft, Apple o Yahoo. Donexto te escribe una sola vez para confirmar el alta.",
+  signupNeedName:
+    "No hay cuenta Donexto con este correo. Escribe tu nombre para darte de alta.",
+  signupAlreadyExists:
+    "Ese correo ya tiene cuenta. Te llevamos a entrar con tu proveedor.",
   loginFoot: "Esta es tu cuenta de Donexto.",
   signupChooserBody:
-    "Elige el correo que vas a vigilar: será el mismo de tu cuenta Donexto. Te llevamos al inicio de sesión de ese proveedor.",
+    "Elige el correo que vas a vigilar — personal o de empresa (Google Workspace, Microsoft 365 o IMAP de tu dominio). Será el mismo de tu cuenta Donexto.",
   authSecurityTitle: "Seguridad y responsabilidad",
   authSecurityBody:
     "Donexto nunca te pide la contraseña de Gmail aquí. Si te das de alta con Gmail, te escribimos a ese mismo correo. Sin clic en ese mail no entras ni leemos el buzón. Las pantallas de Google son de Google; la confirmación de Donexto es el correo que nosotros enviamos.",
-  confirmGateTitle: "Revisa tu correo",
+  confirmGateTitle: "Confirma tu cuenta nueva",
   confirmGateBody:
-    "Te escribimos a ese mismo Gmail. Donexto nunca te pidió la contraseña de Gmail: este correo confirma que autorizas a Donexto a, después, leer ese buzón. Sin el clic no entras.",
+    "Te escribimos una sola vez, al crear la cuenta. Da clic en ese correo. Las siguientes veces entras por Google, Microsoft, Apple o Yahoo — sin otro mail de Donexto.",
   confirmGateResend: "Reenviar correo de confirmación",
   confirmGateRefresh: "Ya hice clic — continuar",
   confirmGateSignOut: "Cerrar sesión",
   signupHaveAccount: "Ya tengo cuenta — Entrar",
   signupYahooTitle: "Yahoo",
   signupYahooBody:
-    "Yahoo no tiene OAuth de correo. Te enviamos un enlace a ese Yahoo para crear la cuenta Donexto. La contraseña de aplicación se pide después, al autorizar la lectura.",
-  signupYahooCta: "Abrir seguridad de Yahoo (lo usarás al conectar el buzón)",
+    "Te llevamos al inicio de sesión de Yahoo. La contraseña de aplicación IMAP se pide después, al autorizar la lectura del buzón.",
+  signupYahooCta: "Continuar con Yahoo",
   signupYahooContinue:
-    "Revisa ese Yahoo (y spam). Con el enlace entras a Donexto; después autorizas la lectura con la contraseña de aplicación.",
+    "Entras en el sitio de Yahoo. El correo de verificación de Donexto solo se envía si la cuenta es nueva.",
   signupHotmailPending:
     "Te llevamos al inicio de sesión de Microsoft.",
   signupApplePending:
@@ -56,7 +62,7 @@ export const ACCOUNT_VS_MAILBOX = {
   connectBanner: "Esto no pide tu contraseña de Gmail · solo autoriza la lectura",
   connectChooserTitle: "Autoriza la lectura de tu correo",
   connectChooserBody:
-    "El buzón es el mismo correo de tu cuenta Donexto. Gmail autoriza lectura en Google; Yahoo usa contraseña de aplicación IMAP.",
+    "Gmail y Google Workspace autorizan en Google. Outlook y Microsoft 365 (incluido tu@empresa.com) usan IMAP. Yahoo, iCloud y otro IMAP de empresa: contraseña de aplicación.",
   connectGmailBody:
     "Donexto nunca te pidió la contraseña de Gmail. Esta pantalla de Google es solo para autorizar la lectura de este mismo buzón.",
   connectGmailCta: "Autorizar lectura de este Gmail",
@@ -88,6 +94,10 @@ export function mailboxServiceLabel(
       return "Gmail";
     case "yahoo":
       return "Yahoo";
+    case "aol":
+      return "AOL";
+    case "imap":
+      return "correo";
     case "hotmail":
     case "microsoft":
       return "Outlook";
@@ -96,6 +106,28 @@ export function mailboxServiceLabel(
     default:
       return "correo";
   }
+}
+
+export function isImapMailboxProvider(provider?: string | null): boolean {
+  const value = (provider || "").trim().toLowerCase();
+  return value === "yahoo" || value === "imap";
+}
+
+export function mailboxLabelFromConnection(
+  provider?: string | null,
+  email?: string | null,
+): string {
+  const value = (provider || "").trim().toLowerCase();
+  if (value === "google" || value === "gmail" || !value) {
+    return "Gmail";
+  }
+  if (value === "yahoo") {
+    return "Yahoo";
+  }
+  if (value === "imap") {
+    return mailboxServiceLabel(resolveMailboxProviderFromEmail(email || ""));
+  }
+  return mailboxServiceLabel(value);
 }
 
 export function mailboxPasswordPhrase(
@@ -107,6 +139,8 @@ export function mailboxPasswordPhrase(
       return "contraseña de Gmail";
     case "yahoo":
       return "contraseña de mail.yahoo.com";
+    case "aol":
+      return "contraseña de AOL";
     case "hotmail":
     case "microsoft":
       return "contraseña de Outlook";

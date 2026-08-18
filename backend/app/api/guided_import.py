@@ -42,31 +42,32 @@ def _google_credentials(account: dict[str, Any]) -> Any:
     )
 
 
-def _yahoo_secret(account: dict[str, Any]) -> tuple[str, str]:
+def _yahoo_secret(account: dict[str, Any]) -> tuple[str, str, str | None]:
     credentials = oauth_storage.get_credentials(str(account["id"]))
     token = str((credentials or {}).get("access_token") or "")
     email = str(account.get("email") or "")
+    host = str(((credentials or {}).get("metadata") or {}).get("host") or "") or None
     if not token or not email:
         raise HTTPException(
             status_code=401,
             detail={
                 "status": "yahoo_required",
                 "message": (
-                    "Vuelve a conectar Yahoo: falta la contraseña "
+                    "Vuelve a conectar el buzón: falta la contraseña "
                     "de aplicación."
                 ),
             },
         )
-    return email, token
+    return email, token, host
 
 
 @router.get("/inventory")
 def import_inventory() -> dict[str, Any]:
     account = _mailbox_account()
     if is_yahoo_provider(account):
-        email, app_password = _yahoo_secret(account)
+        email, app_password, host = _yahoo_secret(account)
         try:
-            return yahoo_inventory(email, app_password)
+            return yahoo_inventory(email, app_password, host=host)
         except YahooImapError as error:
             raise HTTPException(
                 status_code=400,

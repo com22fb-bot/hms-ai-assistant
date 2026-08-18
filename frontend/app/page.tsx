@@ -38,19 +38,26 @@ import { MailboxConnectModal } from "@/components/MailboxConnectModal";
 import "@/components/hms-mobile-shell.css";
 import "@/components/guided-import.css";
 import { AttentionHome } from "@/components/AttentionHome";
+import { DonextoBrand } from "@/components/DonextoBrand";
 import "@/components/attention-home.css";
 import { MailCategoriesPanel } from "@/components/MailCategoriesPanel";
 import "@/components/mail-categories.css";
 import { MailInbox } from "@/components/MailInbox";
 import { PushNotificationsPanel } from "@/components/PushNotificationsPanel";
+import { useDonextoPushOnboarding } from "@/hooks/useDonextoPushOnboarding";
+import { openOsNotificationSettings } from "@/lib/donextoPush";
 import "@/components/mail-inbox.css";
 import "@/components/push-notifications.css";
 import "@/components/logistica-responsive.css";
+import "@/components/donexto-app-shell.css";
 import { useCases } from "@/hooks/useCases";
 import { useGoogleStatus } from "@/hooks/useGoogleStatus";
 import { useAppAuth } from "@/hooks/useAppAuth";
-import { ACCOUNT_VS_MAILBOX, mailboxServiceLabel } from "@/lib/accountVsMailbox";
-import { mailboxConnectModeFromEmail } from "@/lib/mailboxSignup";
+import {
+  ACCOUNT_VS_MAILBOX,
+  isImapMailboxProvider,
+  mailboxLabelFromConnection,
+} from "@/lib/accountVsMailbox";
 import { hmsJson } from "@/lib/hmsApi";
 import type {
   CaseEvent,
@@ -274,6 +281,8 @@ const NAV_ITEMS: Array<{
   { id: "metrics", label: "Métricas", icon: BarChart3, state: "active" },
   { id: "settings", label: "Ajustes", icon: Settings, state: "active" },
 ];
+
+const PRIMARY_NAV_IDS = new Set(["home", "mail", "cases", "push", "settings"]);
 
 function priorityLabel(priority: CasePriority): string {
   const labels: Record<CasePriority, string> = {
@@ -727,7 +736,7 @@ function Dashboard({
     connection?.connected &&
     (connection.provider == null || connection.provider === "google");
   const isYahooMailbox =
-    connection?.connected && connection.provider === "yahoo";
+    connection?.connected && isImapMailboxProvider(connection.provider);
   const usesGuidedImport = Boolean(isGoogleMailbox || isYahooMailbox);
 
   const {
@@ -757,6 +766,16 @@ function Dashboard({
   const [importFlowStatus, setImportFlowStatus] =
     useState<ImportFlowStatus | null>(null);
   const [initialFlowOpened, setInitialFlowOpened] = useState(false);
+
+  const pushNotice = useDonextoPushOnboarding({
+    ready:
+      Boolean(connection?.connected) &&
+      !mailboxPickerOpen &&
+      !guidedImportOpen &&
+      !mailOpen &&
+      !pushOpen,
+    profileId: session.id,
+  });
 
   // Tras verificar Donexto sin buzón: autorizar lectura del mismo correo.
   useEffect(() => {
@@ -989,9 +1008,65 @@ function Dashboard({
   const visibleCases = cases;
   const visibleEvents =
     dashboard.recent_events.slice(0, 6);
+  const primaryNav = NAV_ITEMS.filter((item) => PRIMARY_NAV_IDS.has(item.id));
+  const moreNav = NAV_ITEMS.filter((item) => !PRIMARY_NAV_IDS.has(item.id));
+
+  useEffect(() => {
+    if (!mobileOpen) {
+      return;
+    }
+
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtmlOverflow = html.style.overflow;
+    const prevBodyOverflow = body.style.overflow;
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    html.classList.add("dx-menu-lock");
+
+    return () => {
+      html.style.overflow = prevHtmlOverflow;
+      body.style.overflow = prevBodyOverflow;
+      html.classList.remove("dx-menu-lock");
+    };
+  }, [mobileOpen]);
+
+  function renderNavItem(item: (typeof NAV_ITEMS)[number]) {
+    const Icon = item.icon;
+
+    return (
+      <button
+        key={item.id}
+        type="button"
+        className={
+          activeView === item.id
+            ? "app-nav-item is-active"
+            : "app-nav-item"
+        }
+        aria-current={activeView === item.id ? "page" : undefined}
+        onClick={() => selectView(item.id, item.label)}
+        data-control-state={item.state}
+      >
+        <Icon size={21} />
+        <span>{item.label}</span>
+        {item.id === "cases" && dashboard.metrics.total_open > 0 ? (
+          <span className="app-nav-item-state">
+            <b>{dashboard.metrics.total_open}</b>
+          </span>
+        ) : null}
+      </button>
+    );
+  }
 
   return (
-    <div className="app-shell" data-theme={theme}>
+    <div
+      className={
+        mobileOpen
+          ? "app-shell is-menu-open"
+          : "app-shell"
+      }
+      data-theme={theme}
+    >
       <button
         type="button"
         className={
@@ -999,7 +1074,10 @@ function Dashboard({
             ? "app-mobile-overlay is-visible"
             : "app-mobile-overlay"
         }
-        onClick={() => setMobileOpen(false)}
+        onClick={() => {
+          setMobileOpen(false);
+          setProfileOpen(false);
+        }}
         aria-label="Cerrar menú"
       />
 
@@ -1011,13 +1089,7 @@ function Dashboard({
         }
       >
         <div className="app-brand">
-          <span className="app-brand-icon" aria-hidden>
-            D
-          </span>
-          <div>
-            <strong>Donexto</strong>
-            <small>Do Next To…</small>
-          </div>
+          <DonextoBrand />
 
           <button
             type="button"
@@ -1029,36 +1101,22 @@ function Dashboard({
           </button>
         </div>
 
-        <nav className="app-navigation">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <button
-                key={item.id}
-                type="button"
-                className={
-                  activeView === item.id
-                    ? "app-nav-item is-active"
-                    : "app-nav-item"
-                }
-                aria-current={activeView === item.id ? "page" : undefined}
-                onClick={() => selectView(item.id, item.label)}
-                data-control-state={item.state}
-              >
-                <Icon size={21} />
-                <span>{item.label}</span>
-                {item.id === "cases" && dashboard.metrics.total_open > 0 ? (
-                  <span className="app-nav-item-state">
-                    <b>{dashboard.metrics.total_open}</b>
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
+        <nav className="app-navigation" aria-label="Donexto">
+          {primaryNav.map(renderNavItem)}
+          {moreNav.length > 0 ? (
+            <details className="app-nav-more">
+              <summary>Más módulos</summary>
+              {moreNav.map(renderNavItem)}
+            </details>
+          ) : null}
         </nav>
 
         <div className="app-sidebar-bottom">
+          <p className="app-sidebar-account">
+            <strong>{session.name.split(" ")[0]}</strong>
+            <small>{session.email}</small>
+          </p>
+
           <button
             type="button"
             className="app-sidebar-primary"
@@ -1100,7 +1158,7 @@ function Dashboard({
           {connection?.connected ? (
             <button
               type="button"
-              className="app-logout"
+              className="app-sidebar-secondary"
               onClick={() => openMailboxConnect()}
             >
               <Mail size={18} />
@@ -1125,11 +1183,18 @@ function Dashboard({
             <button
               type="button"
               className="app-mobile-menu"
-              onClick={() => setMobileOpen(true)}
+              onClick={() => {
+                setProfileOpen(false);
+                setMobileOpen(true);
+              }}
               aria-label="Abrir menú"
             >
               <Menu size={22} />
             </button>
+
+            <div className="app-topbar-brand" aria-hidden="false">
+              <DonextoBrand compact />
+            </div>
 
             <label className="app-search">
               <Search size={19} />
@@ -1168,7 +1233,16 @@ function Dashboard({
               </div>
 
               <div className="app-user-menu">
-                <button type="button" className="app-user" aria-haspopup="menu" aria-expanded={profileOpen} onClick={() => setProfileOpen((current) => !current)}>
+                <button
+                  type="button"
+                  className="app-user"
+                  aria-haspopup="menu"
+                  aria-expanded={profileOpen}
+                  onClick={() => {
+                    setMobileOpen(false);
+                    setProfileOpen((current) => !current);
+                  }}
+                >
                   <span>{initials(session.name)}</span>
                   <div>
                     <strong>{session.name.split(" ")[0]}</strong>
@@ -1176,19 +1250,44 @@ function Dashboard({
                   </div>
                   <ChevronDown size={16} />
                 </button>
-
-                {profileOpen ? (
-                  <div className="app-profile-dropdown" role="menu">
-                    <div className="app-profile-summary">
-                      <span>{initials(session.name)}</span>
-                      <div><strong>{session.name}</strong><small>{session.email}</small></div>
-                    </div>
-                    <button type="button" role="menuitem" className="is-danger" onClick={onLogout}><LogOut size={17} />Cerrar sesión</button>
-                  </div>
-                ) : null}
               </div>
             </div>
+
+            <button
+              type="button"
+              className="app-mobile-account"
+              aria-haspopup="menu"
+              aria-expanded={profileOpen}
+              aria-label="Cuenta y cerrar sesión"
+              onClick={() => {
+                setMobileOpen(false);
+                setProfileOpen((current) => !current);
+              }}
+            >
+              <span>{initials(session.name)}</span>
+            </button>
           </div>
+
+          {profileOpen ? (
+            <div className="app-profile-dropdown" role="menu">
+              <div className="app-profile-summary">
+                <span>{initials(session.name)}</span>
+                <div>
+                  <strong>{session.name}</strong>
+                  <small>{session.email}</small>
+                </div>
+              </div>
+              <button
+                type="button"
+                role="menuitem"
+                className="is-danger"
+                onClick={onLogout}
+              >
+                <LogOut size={17} />
+                Cerrar sesión
+              </button>
+            </div>
+          ) : null}
 
           <div className="app-mobile-status">
             <div
@@ -1214,8 +1313,9 @@ function Dashboard({
                 <strong>
                   {importFlowStatus?.active
                     ? "Preparando tu correo…"
-                    : `Importa tu buzón ${mailboxServiceLabel(
-                        connection?.provider === "yahoo" ? "yahoo" : "gmail",
+                    : `Importa tu buzón ${mailboxLabelFromConnection(
+                        connection?.provider,
+                        connection?.email,
                       )}`}
                 </strong>
                 <span>
@@ -1232,6 +1332,25 @@ function Dashboard({
               <CheckCircle2 size={18} />
               <span>{notice}</span>
               <button type="button" aria-label="Cerrar aviso" onClick={() => setNotice(null)}><X size={17} /></button>
+            </section>
+          ) : null}
+
+          {pushNotice ? (
+            <section className="app-navigation-notice" role="status">
+              {pushNotice.kind === "ok" ? (
+                <CheckCircle2 size={18} />
+              ) : (
+                <Bell size={18} />
+              )}
+              <span>{pushNotice.text}</span>
+              {pushNotice.kind === "denied" ? (
+                <button
+                  type="button"
+                  onClick={() => openOsNotificationSettings()}
+                >
+                  Abrir ajustes
+                </button>
+              ) : null}
             </section>
           ) : null}
 
@@ -1419,86 +1538,6 @@ function Dashboard({
             </section>
           </details>
           ) : null}
-
-          {connection?.connected ? (
-          <section className="app-actions-block" aria-label="Acciones rápidas">
-            <div className="app-actions-heading">
-              <h2>Acciones rápidas</h2>
-            </div>
-            <div className="app-quick-actions">
-              <button
-                type="button"
-                onClick={() => openMailView()}
-              >
-                <Mail size={22} />
-                <div>
-                  <strong>Abrir correos</strong>
-                  <span>Bandeja del buzón conectado</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                disabled={
-                  loadingConnection ||
-                  Boolean(connection?.connected && syncing)
-                }
-                onClick={() => {
-                  if (connection?.connected) {
-                    openConnectedMailboxActions();
-                    return;
-                  }
-                  openMailboxConnect();
-                }}
-              >
-                {connection?.connected ? (
-                  <RefreshCw
-                    size={22}
-                    className={syncing ? "app-spin" : undefined}
-                  />
-                ) : (
-                  <Mail size={22} />
-                )}
-                <div>
-                  <strong>
-                    {connection?.connected
-                      ? "Actualizar buzón"
-                      : ACCOUNT_VS_MAILBOX.connectMailboxLabel}
-                  </strong>
-                  <span>
-                    {connection?.connected
-                      ? "Traer mensajes nuevos"
-                      : "Gmail o Yahoo"}
-                  </span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => openMailboxConnect()}
-              >
-                <Mail size={22} />
-                <div>
-                  <strong>{ACCOUNT_VS_MAILBOX.changeMailboxLabel}</strong>
-                  <span>Otro Gmail o Yahoo</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  void loadDashboard();
-                }}
-              >
-                <RefreshCw size={22} />
-                <div>
-                  <strong>Actualizar panel</strong>
-                  <span>Datos al momento</span>
-                </div>
-              </button>
-            </div>
-          </section>
-          ) : null}
         </div>
 
         <nav className="app-mobile-nav" aria-label="Navegación móvil">
@@ -1537,7 +1576,10 @@ function Dashboard({
             <span>Correos</span>
           </button>
 
-          <button type="button" onClick={() => setMobileOpen(true)}>
+          <button type="button" onClick={() => {
+            setProfileOpen(false);
+            setMobileOpen(true);
+          }}>
             <Menu size={23} />
             <span>Menú</span>
           </button>
@@ -1553,7 +1595,7 @@ function Dashboard({
             connectingYahoo={connectingYahoo}
             required={!connection?.connected}
             accountEmail={session.email}
-            mode={mailboxConnectModeFromEmail(session.email)}
+            mode="choose"
             onClose={() => {
               if (!connection?.connected) {
                 return;
@@ -1577,11 +1619,11 @@ function Dashboard({
                   : new Error(message);
               }
             }}
-            onConnectYahoo={async (email, appPassword) => {
-              await connectYahoo(email, appPassword);
+            onConnectYahoo={async (email, appPassword, provider, host) => {
+              await connectYahoo(email, appPassword, provider, host);
               setMailboxPickerOpen(false);
               setNotice(
-                `Yahoo verificado (${email}). Ahora descarga y clasifica los últimos seis meses.`,
+                `Buzón verificado (${email}). Ahora descarga y clasifica los últimos seis meses.`,
               );
               setInitialFlowOpened(false);
               setGuidedImportOpen(true);
@@ -1668,8 +1710,15 @@ export default function HomePage() {
   if (loading) {
     return (
       <div className="app-loading-screen">
-        <Sparkles size={34} />
-        <span>Verificando sesión segura...</span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/brand/brand-logo-3d.jpg"
+          alt="Donexto"
+          width={128}
+          height={128}
+        />
+        <strong>Donexto</strong>
+        <span>Do Next To…</span>
       </div>
     );
   }

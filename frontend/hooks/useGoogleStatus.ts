@@ -139,7 +139,12 @@ export function useGoogleStatus() {
   }, []);
 
   const connectYahoo = useCallback(
-    async (email: string, appPassword: string) => {
+    async (
+      email: string,
+      appPassword: string,
+      provider: "yahoo" | "outlook" | "apple" | "company" = "yahoo",
+      host?: string,
+    ) => {
       setConnectingYahoo(true);
       setConnectionError(null);
 
@@ -155,6 +160,8 @@ export function useGoogleStatus() {
             body: JSON.stringify({
               email: email.trim(),
               app_password: appPassword.trim(),
+              provider,
+              ...(host?.trim() ? { host: host.trim() } : {}),
             }),
           },
         );
@@ -166,7 +173,7 @@ export function useGoogleStatus() {
         if (!response.ok) {
           throw new Error(
             detailMessage(payload) ??
-              "No fue posible conectar Yahoo. Usa una contraseña de aplicación.",
+              "No fue posible conectar el buzón. Usa una contraseña de aplicación.",
           );
         }
 

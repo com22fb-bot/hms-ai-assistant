@@ -70,15 +70,16 @@ def _storage() -> OAuthStorage:
     return OAuthStorage()
 
 
-def _yahoo_secret(account: dict[str, Any]) -> tuple[str, str]:
+def _yahoo_secret(account: dict[str, Any]) -> tuple[str, str, str | None]:
     email = str(account.get("email") or "").strip()
     stored = _storage().get_credentials(str(account["id"])) or {}
     app_password = str(stored.get("access_token") or "")
+    host = str((stored.get("metadata") or {}).get("host") or "") or None
     if not email or not app_password:
         raise YahooImapError(
-            "Vuelve a conectar Yahoo: falta la contraseña de aplicación."
+            "Vuelve a conectar el buzón: falta la contraseña de aplicación."
         )
-    return email, app_password
+    return email, app_password, host
 
 
 def _job(job_id: str) -> dict[str, Any]:
@@ -517,11 +518,12 @@ def start_guided_import(
             )
 
         if is_yahoo_provider(account):
-            email, app_password = _yahoo_secret(account)
+            email, app_password, host = _yahoo_secret(account)
             snapshot = yahoo_initial_snapshot(
                 email,
                 app_password,
                 cutoff_at=now,
+                host=host,
             )
             query = str(snapshot["query"])
             expected = int(snapshot["eligible_messages"])
@@ -572,7 +574,7 @@ def start_guided_import(
             )
 
         if is_yahoo_provider(account):
-            email, app_password = _yahoo_secret(account)
+            email, app_password, host = _yahoo_secret(account)
             since = now - timedelta(days=7)
             last_sync_at = account.get("last_sync_at")
             if last_sync_at:
@@ -586,6 +588,7 @@ def start_guided_import(
                 email,
                 app_password,
                 since=since,
+                host=host,
             )
             query = f"yahoo:since:{since.date().isoformat()}"
             expected = len(refs)

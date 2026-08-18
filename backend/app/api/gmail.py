@@ -49,13 +49,16 @@ def create_gmail_router(
             app_password = normalize_yahoo_app_password(
                 str((credentials or {}).get("access_token") or "")
             )
+            imap_host = str(
+                ((credentials or {}).get("metadata") or {}).get("host") or ""
+            ) or None
             if not address or not app_password:
                 raise HTTPException(
                     status_code=401,
                     detail={
                         "status": "yahoo_credentials_missing",
                         "message": (
-                            "El buzón Yahoo no tiene credenciales válidas. "
+                            "El buzón no tiene credenciales válidas. "
                             "Vuelve a conectar el correo."
                         ),
                     },
@@ -65,6 +68,7 @@ def create_gmail_router(
                     address,
                     app_password,
                     max_results=limit,
+                    host=imap_host,
                 )
             except YahooImapError as error:
                 raise HTTPException(

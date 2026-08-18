@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import email
 import imaplib
+import ipaddress
 import re
 import socket
 import ssl
@@ -22,6 +23,57 @@ YAHOO_DOMAINS = (
     "ymail.com",
     "rocketmail.com",
 )
+AOL_DOMAINS = (
+    "aol.com",
+    "aim.com",
+)
+OUTLOOK_DOMAINS = (
+    "outlook.com",
+    "outlook.es",
+    "hotmail.com",
+    "hotmail.es",
+    "live.com",
+    "msn.com",
+)
+APPLE_DOMAINS = (
+    "icloud.com",
+    "me.com",
+    "mac.com",
+)
+IMAP_BRANDS = {
+    "yahoo": {
+        "host": "imap.mail.yahoo.com",
+        "label": "Yahoo",
+        "domains": YAHOO_DOMAINS,
+        "allow_any_domain": False,
+    },
+    "aol": {
+        "host": "imap.aol.com",
+        "label": "AOL",
+        "domains": AOL_DOMAINS,
+        "allow_any_domain": False,
+    },
+    "outlook": {
+        "host": "outlook.office365.com",
+        "label": "Outlook / Microsoft 365",
+        "domains": OUTLOOK_DOMAINS,
+        # Hotmail/Outlook.com y también tu@empresa.com en Microsoft 365.
+        "allow_any_domain": True,
+    },
+    "apple": {
+        "host": "imap.mail.me.com",
+        "label": "iCloud",
+        "domains": APPLE_DOMAINS,
+        # iCloud+ con dominio propio.
+        "allow_any_domain": True,
+    },
+    "company": {
+        "host": "",
+        "label": "Empresa",
+        "domains": (),
+        "allow_any_domain": True,
+    },
+}
 
 
 class YahooImapError(RuntimeError):
@@ -65,14 +117,112 @@ def normalize_yahoo_app_password(raw: str) -> str:
     return cleaned
 
 
-def _is_yahoo_like_address(address: str) -> bool:
+def _domain_matches(address: str, roots: tuple[str, ...]) -> bool:
     if "@" not in address:
         return False
     domain = address.rsplit("@", 1)[-1]
     return any(
         domain == item or domain.endswith("." + item)
-        for item in YAHOO_DOMAINS
+        for item in roots
     )
+
+
+def _is_yahoo_like_address(address: str) -> bool:
+    return _domain_matches(address, YAHOO_DOMAINS) or _domain_matches(
+        address, AOL_DOMAINS
+    )
+
+
+def normalize_imap_brand(brand: str, address: str = "") -> str:
+    value = (brand or "yahoo").strip().lower()
+    if value in {"hotmail", "microsoft", "live", "office", "o365", "m365"}:
+        value = "outlook"
+    if value in {"icloud", "me", "mac"}:
+        value = "apple"
+    if value in {"empresa", "work", "custom", "imap", "domain"}:
+        value = "company"
+    if value == "yahoo" and address and _domain_matches(address, AOL_DOMAINS):
+        return "aol"
+    if value == "aol":
+        return "aol"
+    return value if value in IMAP_BRANDS else ""
+
+
+def safe_imap_host(raw: str | None) -> str:
+    """Host IMAP público en 993. Rechaza IPs privadas y localhost."""
+    cleaned = (raw or "").strip().lower()
+    cleaned = cleaned.replace("imap://", "").replace("imaps://", "")
+    cleaned = cleaned.replace("https://", "").replace("http://", "")
+    cleaned = cleaned.split("/")[0].strip().rstrip(".")
+    if not cleaned:
+        raise YahooImapError(
+            "Indica el servidor IMAP de tu empresa (por ejemplo imap.tudominio.com)."
+        )
+    if cleaned.startswith("[") and "]" in cleaned:
+        raise YahooImapError("Usa el nombre del servidor IMAP, no una dirección IP.")
+    if ":" in cleaned:
+        name, port = cleaned.rsplit(":", 1)
+        if port.isdigit():
+            if int(port) != YAHOO_IMAP_PORT:
+                raise YahooImapError("Solo IMAP con TLS en el puerto 993.")
+            cleaned = name
+    if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}", cleaned):
+        raise YahooImapError("Usa el nombre del servidor IMAP, no una dirección IP.")
+    if not re.fullmatch(
+        r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+",
+        cleaned,
+    ):
+        raise YahooImapError("El servidor IMAP no es un nombre de host válido.")
+    if cleaned in {"localhost", "localhost.localdomain"} or cleaned.endswith(".local"):
+        raise YahooImapError("Ese servidor IMAP no está permitido.")
+    try:
+        infos = socket.getaddrinfo(cleaned, YAHOO_IMAP_PORT, type=socket.SOCK_STREAM)
+    except socket.gaierror as error:
+        raise YahooImapError(
+            f"No se resolvió el servidor IMAP {cleaned}."
+        ) from error
+    for info in infos:
+        ip_text = str(info[4][0])
+        try:
+            parsed = ipaddress.ip_address(ip_text)
+        except ValueError:
+            continue
+        if (
+            parsed.is_private
+            or parsed.is_loopback
+            or parsed.is_link_local
+            or parsed.is_multicast
+            or parsed.is_reserved
+            or parsed.is_unspecified
+        ):
+            raise YahooImapError(
+                "El servidor IMAP de la empresa debe ser un host público."
+            )
+    return cleaned
+
+
+def assert_address_allowed_for_brand(address: str, brand: str) -> None:
+    profile = IMAP_BRANDS.get(brand)
+    if not profile:
+        raise YahooImapError("Ese proveedor de correo no está activo.")
+    label = str(profile["label"])
+    if not address or "@" not in address:
+        raise YahooImapError(f"El correo de {label} no es válido.")
+    if profile.get("allow_any_domain"):
+        return
+    domains = tuple(profile.get("domains") or ())
+    if not _domain_matches(address, domains):
+        examples = ", ".join("@" + item for item in domains[:4])
+        raise YahooImapError(f"Indica un correo de {label} ({examples}).")
+
+
+def imap_host_for(brand: str, stored: dict[str, Any] | None = None) -> str:
+    meta = (stored or {}).get("metadata") or {}
+    host = str(meta.get("host") or "").strip()
+    if host:
+        return host
+    profile = IMAP_BRANDS.get(brand) or IMAP_BRANDS["yahoo"]
+    return str(profile["host"])
 
 
 def _open_yahoo_client(
@@ -80,12 +230,14 @@ def _open_yahoo_client(
     app_password: str,
     *,
     timeout: int = 45,
+    host: str | None = None,
 ) -> imaplib.IMAP4_SSL:
     context = ssl.create_default_context()
     safe_timeout = max(15, int(timeout))
+    imap_host = (host or YAHOO_IMAP_HOST).strip() or YAHOO_IMAP_HOST
     try:
         client = imaplib.IMAP4_SSL(
-            YAHOO_IMAP_HOST,
+            imap_host,
             YAHOO_IMAP_PORT,
             ssl_context=context,
             timeout=safe_timeout,
@@ -94,7 +246,7 @@ def _open_yahoo_client(
         # Python sin soporte timeout en este build
         socket.setdefaulttimeout(safe_timeout)
         client = imaplib.IMAP4_SSL(
-            YAHOO_IMAP_HOST,
+            imap_host,
             YAHOO_IMAP_PORT,
             ssl_context=context,
         )
@@ -114,7 +266,7 @@ def _open_yahoo_client(
                 for part in data
             )
         raise YahooImapError(
-            "Yahoo rechazó el acceso IMAP"
+            "El servidor rechazó el acceso IMAP"
             + (f" ({detail.strip()})" if detail.strip() else "")
             + ". Usa una contraseña de aplicación nueva."
         )
@@ -123,60 +275,71 @@ def _open_yahoo_client(
 
 def verify_yahoo_login(address: str, app_password: str) -> None:
     """Comprueba usuario/contraseña de aplicación contra Yahoo IMAP."""
+    verify_imap_login(address, app_password, brand="yahoo")
+
+
+def verify_imap_login(
+    address: str,
+    app_password: str,
+    *,
+    brand: str = "yahoo",
+    host: str | None = None,
+) -> str:
+    """Comprueba IMAP del proveedor y devuelve el host usado."""
     address = normalize_yahoo_address(address)
     app_password = normalize_yahoo_app_password(app_password)
+    brand = normalize_imap_brand(brand, address)
+    profile = IMAP_BRANDS.get(brand)
+    if not profile:
+        raise YahooImapError("Ese proveedor de correo no está activo.")
+    label = str(profile["label"])
+    assert_address_allowed_for_brand(address, brand)
+    if brand == "company":
+        host = safe_imap_host(host)
+    else:
+        host = str(profile["host"] or "").strip()
+        if not host:
+            raise YahooImapError(f"No hay servidor IMAP para {label}.")
 
-    if not address or "@" not in address:
-        raise YahooImapError("El correo de Yahoo no es válido.")
-
-    if not _is_yahoo_like_address(address):
+    if len(app_password) < 8:
         raise YahooImapError(
-            "Indica un correo de Yahoo (@yahoo.com, @ymail.com, "
-            "@rocketmail.com o similar)."
-        )
-
-    if len(app_password) < 12:
-        raise YahooImapError(
-            "La contraseña de aplicación es demasiado corta. "
-            "En Yahoo genera una en Seguridad → Conexiones externas → "
-            "Crear contraseña de aplicación (código de ~16 caracteres)."
+            f"La contraseña de aplicación de {label} es demasiado corta."
         )
 
     try:
-        client = _open_yahoo_client(address, app_password)
+        client = _open_yahoo_client(address, app_password, host=host)
         try:
             status, _ = client.select("INBOX", readonly=True)
             if status != "OK":
                 raise YahooImapError(
-                    "La contraseña es válida, pero no se pudo abrir el INBOX. "
-                    "Revisa la cuenta Yahoo e inténtalo de nuevo."
+                    f"La contraseña es válida, pero no se pudo abrir el INBOX de {label}."
                 )
         finally:
             try:
                 client.logout()
             except Exception:
                 pass
+        return host
     except YahooImapError:
         raise
     except imaplib.IMAP4.error as error:
         err = str(error).lower()
         if "invalid" in err or "login" in err or "auth" in err:
             raise YahooImapError(
-                "Yahoo rechazó usuario o contraseña. "
-                "Genera una contraseña de aplicación nueva (no la de "
-                "mail.yahoo.com ni la de Donexto) y pégala sin espacios."
+                f"{label} rechazó usuario o contraseña. "
+                "Usa una contraseña de aplicación (no la del correo ni la de Donexto)."
             ) from error
         raise YahooImapError(
-            f"Yahoo IMAP falló al autenticar: {error}"
+            f"{label} IMAP falló al autenticar: {error}"
         ) from error
     except (TimeoutError, socket.timeout, OSError) as error:
         raise YahooImapError(
-            "No hubo respuesta de los servidores IMAP de Yahoo "
-            f"(imap.mail.yahoo.com:993). Detalle de red: {error}"
+            f"No hubo respuesta de los servidores IMAP de {label} "
+            f"({host}:993). Detalle de red: {error}"
         ) from error
     except Exception as error:
         raise YahooImapError(
-            f"Error al conectar con Yahoo IMAP: {error}"
+            f"Error al conectar con {label} IMAP: {error}"
         ) from error
 
 
@@ -185,15 +348,16 @@ def list_yahoo_messages(
     app_password: str,
     *,
     max_results: int = 20,
+    host: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Lista mensajes recientes del INBOX de Yahoo."""
+    """Lista mensajes recientes del INBOX IMAP."""
     address = normalize_yahoo_address(address)
     app_password = normalize_yahoo_app_password(app_password)
     max_results = max(1, min(int(max_results), 100))
     messages: list[dict[str, Any]] = []
 
     try:
-        client = _open_yahoo_client(address, app_password)
+        client = _open_yahoo_client(address, app_password, host=host)
         try:
             status, _ = client.select("INBOX", readonly=True)
             if status != "OK":

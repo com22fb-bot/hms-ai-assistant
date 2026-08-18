@@ -20,7 +20,6 @@ import {
   authorizeMailboxTitle,
   step2EmptyLeadFor,
 } from "@/lib/accountVsMailbox";
-import { mailboxConnectModeFromEmail } from "@/lib/mailboxSignup";
 import { hmsJson } from "@/lib/hmsApi";
 
 import "./attention-home.css";
@@ -151,8 +150,7 @@ export function AttentionHome({
   const [summary, setSummary] = useState<TriageSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [noiseOpen, setNoiseOpen] = useState(false);
-  const [laterOpen, setLaterOpen] = useState(false);
+  const [activeLevel, setActiveLevel] = useState<"n1" | "n2" | "n3">("n1");
 
   const loadSummary = useCallback(async () => {
     if (!mailboxConnected) {
@@ -166,7 +164,7 @@ export function AttentionHome({
     setError(null);
     try {
       const data = await hmsJson<TriageSummary>(
-        "/api/hms/messages/triage-summary?limit_per_category=6",
+        "/api/hms/messages/triage-summary?limit_per_category=8",
         { cache: "no-store" },
       );
       setSummary(data);
@@ -205,40 +203,55 @@ export function AttentionHome({
   const countOf = (keys: readonly string[]) =>
     keys.reduce((sum, key) => sum + (byKey.get(key)?.count ?? 0), 0);
 
-  const n1Items = useMemo(() => {
-    const items: Array<TriageMessage & { category: string }> = [];
-    for (const key of N1_KEYS) {
-      const cat = byKey.get(key);
-      for (const message of cat?.messages ?? []) {
-        items.push({ ...message, category: key });
+  const itemsFor = useCallback(
+    (keys: readonly string[]) => {
+      const items: Array<TriageMessage & { category: string }> = [];
+      for (const key of keys) {
+        const cat = byKey.get(key);
+        for (const message of cat?.messages ?? []) {
+          items.push({ ...message, category: key });
+        }
       }
-    }
-    return items
-      .sort((a, b) => {
-        const ta = a.received_at ? Date.parse(a.received_at) : 0;
-        const tb = b.received_at ? Date.parse(b.received_at) : 0;
-        return tb - ta;
-      })
-      .slice(0, 12);
-  }, [byKey]);
+      return items
+        .sort((a, b) => {
+          const ta = a.received_at ? Date.parse(a.received_at) : 0;
+          const tb = b.received_at ? Date.parse(b.received_at) : 0;
+          return tb - ta;
+        })
+        .slice(0, 12);
+    },
+    [byKey],
+  );
 
   const n1Count = countOf(N1_KEYS);
   const n2Count = countOf(N2_KEYS);
   const n3Count = countOf(N3_KEYS);
   const unreviewed = byKey.get("unreviewed")?.count ?? 0;
+  const levelKeys = activeLevel === "n1" ? N1_KEYS : activeLevel === "n2" ? N2_KEYS : N3_KEYS;
+  const levelItems = itemsFor(levelKeys);
+  const levelCount = countOf(levelKeys);
+  const levelCopy =
+    activeLevel === "n1"
+      ? {
+          title: "Te necesita ahora",
+          hint: "Dinero, seguridad, plazos y lo que espera tu respuesta.",
+        }
+      : activeLevel === "n2"
+        ? {
+            title: "Después",
+            hint: "Útil, sin urgencia. Donexto no te interrumpe por esto.",
+          }
+        : {
+            title: "Silencio",
+            hint: "Publicidad, redes y automáticos. Aquí no hay alerta.",
+          };
 
   if (!mailboxConnected && !mailboxLoading) {
     const watchEmail = (accountEmail || mailboxEmail || "").trim();
-    const connectMode = mailboxConnectModeFromEmail(watchEmail);
     const emptyTitle = watchEmail
       ? authorizeMailboxTitle(watchEmail)
       : ACCOUNT_VS_MAILBOX.step2Title;
-    const emptyCta =
-      connectMode === "gmail"
-        ? ACCOUNT_VS_MAILBOX.connectGmailCta
-        : connectMode === "yahoo"
-          ? ACCOUNT_VS_MAILBOX.connectYahooTitle
-          : ACCOUNT_VS_MAILBOX.step2Cta;
+    const emptyCta = ACCOUNT_VS_MAILBOX.connectMailboxLabel;
 
     return (
       <section className="dx-attention" aria-label="Autorizar buzón">
@@ -258,6 +271,7 @@ export function AttentionHome({
           <Mail size={28} />
           <strong>{emptyTitle}</strong>
           <p>{step2EmptyLeadFor(watchEmail)}</p>
+          <p>Gmail, Outlook, Yahoo, iCloud o el correo de tu empresa. Elige el buzón a vigilar.</p>
           <AccountVsMailboxHint variant="step2" email={watchEmail} />
           <button type="button" onClick={onConnectMailbox}>
             <Mail size={16} />
@@ -272,14 +286,22 @@ export function AttentionHome({
     <section className="dx-attention" aria-label="Lo que requiere atención">
       <header className="dx-attention__hero">
         <div>
-          <p className="dx-attention__kicker">Hoy en tu bandeja</p>
+          <p className="dx-attention__kicker">Capa de atención</p>
           <h1>
             {personName ? `Hola, ${personName}` : "Hola"}
           </h1>
           <p className="dx-attention__lede">
-            Dinero, seguridad y lo que te espera — sin el ruido promocional.
+            Lo que te necesita ahora. El resto queda en silencio o para después.
           </p>
         </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          className="dx-attention__brand"
+          src="/brand/brand-escritorio.jpg"
+          alt="Donexto — Do Next To…"
+          width={480}
+          height={270}
+        />
       </header>
 
       <div className="dx-attention__mailbox">
@@ -357,65 +379,92 @@ export function AttentionHome({
 
       {mailboxConnected && !error ? (
         <>
-          <div className="dx-attention__levels" aria-hidden>
-            <article>
+          <div className="dx-attention__levels" role="tablist" aria-label="Nivel de atención">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeLevel === "n1"}
+              className={activeLevel === "n1" ? "is-active" : undefined}
+              onClick={() => setActiveLevel("n1")}
+            >
               <Shield size={18} />
               <div>
-                <strong>{n1Count}</strong>
+                <strong>{n1Count.toLocaleString()}</strong>
                 <span>Ahora (N1)</span>
               </div>
-            </article>
-            <article>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeLevel === "n2"}
+              className={activeLevel === "n2" ? "is-active" : undefined}
+              onClick={() => setActiveLevel("n2")}
+            >
               <BellRing size={18} />
               <div>
-                <strong>{n2Count}</strong>
+                <strong>{n2Count.toLocaleString()}</strong>
                 <span>Después (N2)</span>
               </div>
-            </article>
-            <article>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeLevel === "n3"}
+              className={activeLevel === "n3" ? "is-active" : undefined}
+              onClick={() => setActiveLevel("n3")}
+            >
               <VolumeX size={18} />
               <div>
-                <strong>{n3Count}</strong>
+                <strong>{n3Count.toLocaleString()}</strong>
                 <span>Silencio (N3)</span>
               </div>
-            </article>
+            </button>
           </div>
 
-          <div className="dx-attention__section">
+          <div
+            className={
+              activeLevel === "n3"
+                ? "dx-attention__section is-muted"
+                : "dx-attention__section"
+            }
+          >
             <header className="dx-attention__section-head">
               <div>
-                <h2>Te necesita ahora</h2>
-                <p>Prioridad alta · candidatos a alerta inmediata</p>
+                <h2>{levelCopy.title}</h2>
+                <p>
+                  {levelCount.toLocaleString()} en este nivel · {levelCopy.hint}
+                </p>
               </div>
-              <button
-                type="button"
-                className="dx-attention__text-btn"
-                onClick={() => onOpenCategory("action_required")}
-              >
-                Ver en correos
-              </button>
             </header>
 
-            {loading && n1Items.length === 0 ? (
+            {loading && levelItems.length === 0 ? (
               <div className="dx-attention__loading">
                 <LoaderCircle className="app-spin" size={22} />
                 Cargando…
               </div>
-            ) : n1Items.length === 0 ? (
+            ) : levelItems.length === 0 ? (
               <div className="dx-attention__peace">
                 <CheckCircle2 size={22} />
                 <div>
-                  <strong>Nada urgente en N1</strong>
+                  <strong>
+                    {activeLevel === "n1"
+                      ? "Nada urgente en N1"
+                      : activeLevel === "n2"
+                        ? "Nada pendiente para después"
+                        : "Sin ruido clasificado aún"}
+                  </strong>
                   <span>
                     {unreviewed > 0
                       ? `${unreviewed.toLocaleString()} mensajes aún por clasificar.`
-                      : "El ruido no aparece aquí. Puedes revisar la bandeja cuando quieras."}
+                      : activeLevel === "n1"
+                        ? "El ruido no aparece aquí."
+                        : "Cuando clasifiquemos más, se verán en este nivel."}
                   </span>
                 </div>
               </div>
             ) : (
               <ul className="dx-attention__list">
-                {n1Items.map((item) => {
+                {levelItems.map((item) => {
                   const meta = LEVEL_LABEL[item.category] ?? LEVEL_LABEL.review;
                   return (
                     <li key={`${item.category}-${item.id}`}>
@@ -429,6 +478,8 @@ export function AttentionHome({
                             <Package size={18} />
                           ) : item.category === "action_required" ? (
                             <Mail size={18} />
+                          ) : activeLevel === "n3" ? (
+                            <VolumeX size={18} />
                           ) : (
                             <Shield size={18} />
                           )}
@@ -452,82 +503,15 @@ export function AttentionHome({
             )}
           </div>
 
-          <div className="dx-attention__section is-muted">
-            <button
-              type="button"
-              className="dx-attention__collapse"
-              aria-expanded={laterOpen}
-              onClick={() => setLaterOpen((v) => !v)}
-            >
-              <span>
-                <strong>Después / utilidad (N2)</strong>
-                <small>
-                  {n2Count.toLocaleString()} mensajes · resumen, no push inmediato
-                </small>
-              </span>
-              <ChevronRight
-                size={18}
-                className={laterOpen ? "is-open" : undefined}
-              />
-            </button>
-            {laterOpen ? (
-              <div className="dx-attention__chips">
-                {N2_KEYS.map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => onOpenCategory(key)}
-                  >
-                    {LEVEL_LABEL[key]?.title ?? key}
-                    <b>{(byKey.get(key)?.count ?? 0).toLocaleString()}</b>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="dx-attention__section is-muted">
-            <button
-              type="button"
-              className="dx-attention__collapse"
-              aria-expanded={noiseOpen}
-              onClick={() => setNoiseOpen((v) => !v)}
-            >
-              <span>
-                <strong>Ruido silenciado (N3)</strong>
-                <small>
-                  {n3Count.toLocaleString()} · promo, social y autos — sin
-                  interrumpir
-                </small>
-              </span>
-              <ChevronRight
-                size={18}
-                className={noiseOpen ? "is-open" : undefined}
-              />
-            </button>
-            {noiseOpen ? (
-              <div className="dx-attention__chips">
-                {N3_KEYS.map((key) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => onOpenCategory(key)}
-                  >
-                    {LEVEL_LABEL[key]?.title ?? key}
-                    <b>{(byKey.get(key)?.count ?? 0).toLocaleString()}</b>
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </div>
-
           <footer className="dx-attention__foot">
             <span>
-              Total clasificado en buzón:{" "}
-              {(summary?.total ?? 0).toLocaleString()} mensajes
+              {unreviewed > 0
+                ? `${unreviewed.toLocaleString()} por clasificar · `
+                : null}
+              {(summary?.total ?? 0).toLocaleString()} en el buzón vigilado
             </span>
-            <button type="button" onClick={onOpenAllMail}>
-              Ver todos los correos
+            <button type="button" className="dx-attention__text-btn" onClick={onOpenAllMail}>
+              Inventario del buzón
             </button>
           </footer>
         </>

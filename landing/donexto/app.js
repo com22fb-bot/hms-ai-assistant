@@ -7,18 +7,18 @@ const strings = {
     kicker: "Capa de atención · trabajo, negocio y profesión",
     hero_title: "Lo que requiere atención<br />en tu correo.",
     hero_lede:
-      "Donexto (Do Next To…) es tu capa de atención sobre el correo personal: el mensaje que importa a tu trabajo, negocio y profesión, para que sepas qué hacer ahora.",
+      "Donexto (Do Next To…) es tu capa de atención sobre el correo personal — Gmail, Outlook, Yahoo, iCloud y el correo de tu empresa: el mensaje que importa a tu trabajo, negocio y profesión, para que sepas qué hacer ahora.",
     cta_app: "Entrar a Donexto",
     cta_video: "Ver historia",
     cta_app2: "Probar en app.donexto.com",
     cta_app3: "Abrir app.donexto.com",
     cta_mail: "support@donexto.com",
-    trust_1: "Entras con Google en el sitio de Google",
-    trust_2: "El mismo Gmail es cuenta y buzón",
+    trust_1: "Gmail, Outlook, Yahoo, iCloud y dominio de empresa",
+    trust_2: "Ese mismo correo es cuenta y buzón",
     trust_3: "Priorizamos el correo que mueve tu trabajo",
     video_title: "La historia en 40 segundos",
     video_lede:
-      "Qué hace Donexto (se dice Do-NEX-to, nunca “Donextu”). Dale play: capa de atención, Google en el sitio de Google, verificación y priorización del correo que mueve tu trabajo.",
+      "Qué hace Donexto (se dice Do-NEX-to, nunca “Donextu”). Dale play: capa de atención, Gmail, Outlook, Yahoo, iCloud y correo de empresa, verificación y priorización del correo que mueve tu trabajo.",
     video_caption:
       "Fotos oficiales (sin audio). El clip anterior decía “Donextu” — está fuera hasta que Héctor exporte un MP4 de 40 s con voz Donexto.",
     story_play: "Reproducir historia",
@@ -27,7 +27,7 @@ const strings = {
     story_next: "Siguiente",
     story_vo_toggle: "Leer guion completo (voz en off)",
     story_vo_full:
-      "Donexto. Do Next To… Somos tu capa de atención sobre el correo personal: para tu trabajo, tu negocio y tu profesión. El mail que importa, para que sepas qué hacer ahora. Entras con Google, en el sitio de Google — nunca escribes tu contraseña de Gmail en Donexto. Ese mismo Gmail es tu cuenta y tu buzón. Te mandamos un correo de verificación; das clic y autorizas que leamos ese Gmail. Clasificamos y priorizamos para que no se te pase el mensaje que mueve el trabajo. Donexto. app.donexto.com",
+      "Donexto. Do Next To… Somos tu capa de atención sobre el correo personal: para tu trabajo, tu negocio y tu profesión. El mail que importa, para que sepas qué hacer ahora. Entras con Google, Microsoft, Apple o Yahoo. Gmail, Outlook, Yahoo, iCloud o el correo de tu empresa: ese mismo correo es tu cuenta y tu buzón. Te mandamos un correo de verificación; das clic y autorizas la lectura. Clasificamos y priorizamos para que no se te pase el mensaje que mueve el trabajo. Donexto. app.donexto.com",
     teaser_toggle: "Fotos oficiales de marca (sin audio)",
     promise_title: "La promesa",
     promise_lede:
@@ -50,12 +50,12 @@ const strings = {
     n3_p: "Promos, boletines masivos, redes, ruido automático. Nunca en la portada ni como push.",
     n3_hint: "Clasificado y callado.",
     how_title: "Cómo funciona",
-    how_1_t: "Entras con Google",
+    how_1_t: "Entras con tu proveedor",
     how_1_p:
-      "El login es en el sitio de Google. Nunca escribes tu contraseña de Gmail en Donexto.",
-    how_2_t: "Mismo Gmail: cuenta y buzón",
+      "Google, Microsoft, Apple o Yahoo — y también Google Workspace, Microsoft 365 o el IMAP de tu dominio. Nunca escribes la contraseña de ese buzón en Donexto (salvo la de aplicación IMAP, si aplica).",
+    how_2_t: "Mismo correo: cuenta y buzón",
     how_2_p:
-      "Ese Gmail es tu cuenta Donexto y el buzón. Te mandamos un correo de verificación; das clic y autorizas la lectura.",
+      "Ese correo es tu cuenta Donexto y el buzón. Te mandamos un correo de verificación; das clic y autorizas la lectura.",
     how_3_t: "Ves qué hacer ahora",
     how_3_p:
       "Clasificamos y priorizamos para que no se te pase el mensaje que mueve tu trabajo, negocio o profesión.",
@@ -106,18 +106,18 @@ const strings = {
     kicker: "Attention layer · work, business, and profession",
     hero_title: "What needs attention<br />in your email.",
     hero_lede:
-      "Donexto (Do Next To…) is your attention layer on personal email: the message that matters to your work, business, and profession—so you know what to do next.",
+      "Donexto (Do Next To…) is your attention layer on personal email — Gmail, Outlook, Yahoo, iCloud, and your company domain: the message that matters to your work, business, and profession—so you know what to do next.",
     cta_app: "Open Donexto",
     cta_video: "Watch story",
     cta_app2: "Try app.donexto.com",
     cta_app3: "Open app.donexto.com",
     cta_mail: "support@donexto.com",
-    trust_1: "Sign in with Google on Google’s site",
-    trust_2: "The same Gmail is account and mailbox",
+    trust_1: "Gmail, Outlook, Yahoo, iCloud, and company domain",
+    trust_2: "That same email is account and mailbox",
     trust_3: "We prioritize the mail that moves your work",
     video_title: "The 40-second story",
     video_lede:
-      "What Donexto does (say Do-NEX-to, never “Donextu”). Play: attention layer, Google on Google’s site, verification, and prioritizing the mail that moves your work.",
+      "What Donexto does (say Do-NEX-to, never “Donextu”). Play: attention layer, Gmail, Outlook, Yahoo, iCloud, and company mail, verification, and prioritizing the mail that moves your work.",
     video_caption:
       "Official stills (no audio). The old clip said “Donextu”—removed until a 40s MP4 with Donexto voiceover is exported.",
     story_play: "Play story",
@@ -126,7 +126,7 @@ const strings = {
     story_next: "Next",
     story_vo_toggle: "Read full voiceover script",
     story_vo_full:
-      "Donexto. Do Next To… We’re your attention layer on personal email—for your work, business, and profession. The mail that matters, so you know what to do next. You sign in with Google, on Google’s site—you never type your Gmail password on Donexto. That same Gmail is your Donexto account and your mailbox. We send a verification email; you click, then authorize reading that Gmail. We classify and prioritize so you don’t miss the message that moves the work. Donexto. app.donexto.com",
+      "Donexto. Do Next To… We’re your attention layer on personal email—for your work, business, and profession. The mail that matters, so you know what to do next. You sign in with Google, Microsoft, Apple, or Yahoo. Gmail, Outlook, Yahoo, iCloud, or your company email: that same email is your Donexto account and your mailbox. We send a verification email; you click, then authorize reading. We classify and prioritize so you don’t miss the message that moves the work. Donexto. app.donexto.com",
     teaser_toggle: "Official brand photos (no audio)",
     promise_title: "The promise",
     promise_lede:
@@ -149,12 +149,12 @@ const strings = {
     n3_p: "Promos, newsletters, social, auto-noise. Never home hero. Never push.",
     n3_hint: "Classified and quiet.",
     how_title: "How it works",
-    how_1_t: "Sign in with Google",
+    how_1_t: "Sign in with your provider",
     how_1_p:
-      "Login happens on Google’s site. You never type your Gmail password on Donexto.",
-    how_2_t: "Same Gmail: account and mailbox",
+      "Google, Microsoft, Apple, or Yahoo—and Google Workspace, Microsoft 365, or IMAP on your own domain. You never type that mailbox password on Donexto (except an app password when IMAP requires it).",
+    how_2_t: "Same email: account and mailbox",
     how_2_p:
-      "That Gmail is your Donexto account and your mailbox. We send a verification email; you click, then authorize reading.",
+      "That email is your Donexto account and your mailbox. We send a verification email; you click, then authorize reading.",
     how_3_t: "See what to do next",
     how_3_p:
       "We classify and prioritize so you don’t miss the message that moves your work, business, or profession.",
@@ -220,12 +220,12 @@ const storyShots = {
       id: "google",
       duration: 8,
       label: "03 · 0:14–0:22",
-      chapter: "Google",
-      line: "Entras con Google, en el sitio de Google. Nunca escribes tu contraseña de Gmail en Donexto.",
+      chapter: "Buzón",
+      line: "Gmail, Outlook, Yahoo, iCloud y el correo de tu empresa. Nunca escribes la contraseña de ese buzón en Donexto (salvo la de aplicación IMAP).",
       html: `
         <div class="vis-steps">
-          <div class="vis-step"><span>1</span><strong>Sitio de Google</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">login ahí, no aquí</p></div>
-          <div class="vis-step"><span>2</span><strong>Sin password Gmail</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">nunca en Donexto</p></div>
+          <div class="vis-step"><span>1</span><strong>Gmail · Outlook</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">Yahoo · iCloud · empresa</p></div>
+          <div class="vis-step"><span>2</span><strong>Sin password del buzón</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">salvo app IMAP</p></div>
         </div>`,
     },
     {
@@ -233,12 +233,12 @@ const storyShots = {
       duration: 6,
       label: "04 · 0:22–0:28",
       chapter: "Cuenta",
-      line: "Ese mismo Gmail es tu cuenta Donexto y tu buzón.",
+      line: "Ese mismo correo es tu cuenta Donexto y tu buzón.",
       html: `
         <div class="vis-phone">
-          <span class="vis-chip">tú@gmail.com</span>
+          <span class="vis-chip">tú@correo.com</span>
           <div class="vis-row good"><strong>Cuenta Donexto</strong><span class="tag">mismo</span></div>
-          <div class="vis-row good"><strong>Buzón Gmail</strong><span class="tag">mismo</span></div>
+          <div class="vis-row good"><strong>Buzón vigilado</strong><span class="tag">mismo</span></div>
         </div>`,
     },
     {
@@ -246,12 +246,12 @@ const storyShots = {
       duration: 7,
       label: "05 · 0:28–0:35",
       chapter: "Verificar",
-      line: "Te mandamos un correo de verificación. Das clic y autorizas que leamos ese Gmail.",
+      line: "Te mandamos un correo de verificación. Das clic y autorizas la lectura de ese buzón.",
       html: `
         <div class="vis-stack">
           <div class="vis-row"><strong>Correo de Donexto</strong><em>verificar</em></div>
           <div class="vis-row good"><strong>Clic en el enlace</strong><span class="tag">OK</span></div>
-          <div class="vis-row good"><strong>Autorizas lectura de ese Gmail</strong><span class="tag">OAuth</span></div>
+          <div class="vis-row good"><strong>Autorizas lectura del buzón</strong><span class="tag">OK</span></div>
         </div>`,
     },
     {
@@ -289,12 +289,12 @@ const storyShots = {
       id: "google",
       duration: 8,
       label: "03 · 0:14–0:22",
-      chapter: "Google",
-      line: "You sign in with Google, on Google’s site. You never type your Gmail password on Donexto.",
+      chapter: "Mailbox",
+      line: "Gmail, Outlook, Yahoo, iCloud, and your company domain. You never type that mailbox password on Donexto (except an app password when IMAP requires it).",
       html: `
         <div class="vis-steps">
-          <div class="vis-step"><span>1</span><strong>Google’s site</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">login there, not here</p></div>
-          <div class="vis-step"><span>2</span><strong>No Gmail password</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">never on Donexto</p></div>
+          <div class="vis-step"><span>1</span><strong>Gmail · Outlook</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">Yahoo · iCloud · company</p></div>
+          <div class="vis-step"><span>2</span><strong>No mailbox password</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">except IMAP app password</p></div>
         </div>`,
     },
     {
@@ -302,12 +302,12 @@ const storyShots = {
       duration: 6,
       label: "04 · 0:22–0:28",
       chapter: "Account",
-      line: "That same Gmail is your Donexto account and your mailbox.",
+      line: "That same email is your Donexto account and your mailbox.",
       html: `
         <div class="vis-phone">
-          <span class="vis-chip">you@gmail.com</span>
+          <span class="vis-chip">you@email.com</span>
           <div class="vis-row good"><strong>Donexto account</strong><span class="tag">same</span></div>
-          <div class="vis-row good"><strong>Gmail mailbox</strong><span class="tag">same</span></div>
+          <div class="vis-row good"><strong>Watched mailbox</strong><span class="tag">same</span></div>
         </div>`,
     },
     {
@@ -315,12 +315,12 @@ const storyShots = {
       duration: 7,
       label: "05 · 0:28–0:35",
       chapter: "Verify",
-      line: "We send a verification email. You click, then authorize reading that Gmail.",
+      line: "We send a verification email. You click, then authorize reading that mailbox.",
       html: `
         <div class="vis-stack">
           <div class="vis-row"><strong>Email from Donexto</strong><em>verify</em></div>
           <div class="vis-row good"><strong>Click the link</strong><span class="tag">OK</span></div>
-          <div class="vis-row good"><strong>Authorize reading that Gmail</strong><span class="tag">OAuth</span></div>
+          <div class="vis-row good"><strong>Authorize mailbox reading</strong><span class="tag">OK</span></div>
         </div>`,
     },
     {
