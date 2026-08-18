@@ -3,7 +3,11 @@
 import { LoaderCircle, Mail } from "lucide-react";
 import { useState } from "react";
 
-import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
+import {
+  ACCOUNT_VS_MAILBOX,
+  authSecurityBodyFor,
+  confirmGateBodyFor,
+} from "@/lib/accountVsMailbox";
 
 import "./hms-gate.css";
 import "./dx-auth-neon.css";
@@ -106,7 +110,7 @@ export function ConfirmEmailGate({
             <h2 id="dx-confirm-title" className="dx-auth__title">
               {ACCOUNT_VS_MAILBOX.confirmGateTitle}
             </h2>
-            <p className="dx-auth__slogan">{ACCOUNT_VS_MAILBOX.confirmGateBody}</p>
+            <p className="dx-auth__slogan">{confirmGateBodyFor(email)}</p>
           </header>
 
           <div className="dx-auth__signin">
@@ -173,7 +177,7 @@ export function ConfirmEmailGate({
 
           <p className="dx-auth__secure" role="note">
             <strong>{ACCOUNT_VS_MAILBOX.authSecurityTitle}. </strong>
-            {ACCOUNT_VS_MAILBOX.authSecurityBody}
+            {authSecurityBodyFor(email)}
           </p>
         </div>
       </section>

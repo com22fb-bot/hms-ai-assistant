@@ -12,7 +12,10 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 
-import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
+import {
+  ACCOUNT_VS_MAILBOX,
+  authSecurityBodyFor,
+} from "@/lib/accountVsMailbox";
 import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
 import type { AuthOAuthProvider, SignUpResult } from "@/hooks/useAppAuth";
 import {
@@ -31,8 +34,6 @@ export type GateThemeId =
   | "graphite";
 
 type SignUpPane = "choose" | "yahoo" | "other" | "other-unrecognized";
-
-const YAHOO_APP_PASSWORD_URL = "https://login.yahoo.com/account/security";
 
 function mailboxToOAuth(
   provider: MailboxSignupProvider,
@@ -122,7 +123,6 @@ export function LoginScreen({
   const [signUpPane, setSignUpPane] = useState<SignUpPane>("choose");
   const [otherEmail, setOtherEmail] = useState("");
   const [yahooEmail, setYahooEmail] = useState("");
-  const [yahooPassword, setYahooPassword] = useState("");
   const [oauthBusy, setOauthBusy] = useState<AuthOAuthProvider | null>(null);
 
   useEffect(() => {
@@ -159,7 +159,6 @@ export function LoginScreen({
     setMessage(null);
     setOtherEmail("");
     setYahooEmail("");
-    setYahooPassword("");
     setBusy(false);
     setOauthBusy(null);
   }
@@ -584,37 +583,9 @@ export function LoginScreen({
                       />
                     </div>
                   </label>
-                  <label className="dx-auth__field">
-                    <span>
-                      {ACCOUNT_VS_MAILBOX.connectYahooAppPasswordLabel}
-                    </span>
-                    <div className="dx-auth__control">
-                      <KeyRound size={18} aria-hidden />
-                      <input
-                        type="password"
-                        name="dx_yahoo_app_password"
-                        autoComplete="new-password"
-                        data-1p-ignore="true"
-                        placeholder="xxxx xxxx xxxx xxxx"
-                        value={yahooPassword}
-                        disabled={busy}
-                        onChange={(event) =>
-                          setYahooPassword(event.target.value)
-                        }
-                      />
-                    </div>
-                  </label>
                   <p className="dx-auth__signup-copy dx-auth__signup-copy--hint">
                     {ACCOUNT_VS_MAILBOX.signupYahooContinue}
                   </p>
-                  <a
-                    className="dx-auth__submit"
-                    href={YAHOO_APP_PASSWORD_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {ACCOUNT_VS_MAILBOX.signupYahooCta}
-                  </a>
                   <button type="submit" className="dx-auth__submit" disabled={busy}>
                     {busy ? (
                       <>
@@ -918,7 +889,9 @@ export function LoginScreen({
 
           <p className="dx-auth__secure" role="note">
             <strong>{ACCOUNT_VS_MAILBOX.authSecurityTitle}. </strong>
-            {ACCOUNT_VS_MAILBOX.authSecurityBody}
+            {authSecurityBodyFor(
+              yahooEmail || otherEmail || email,
+            )}
           </p>
         </div>
 

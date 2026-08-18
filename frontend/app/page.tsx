@@ -49,7 +49,7 @@ import "@/components/logistica-responsive.css";
 import { useCases } from "@/hooks/useCases";
 import { useGoogleStatus } from "@/hooks/useGoogleStatus";
 import { useAppAuth } from "@/hooks/useAppAuth";
-import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
+import { ACCOUNT_VS_MAILBOX, mailboxServiceLabel } from "@/lib/accountVsMailbox";
 import { mailboxConnectModeFromEmail } from "@/lib/mailboxSignup";
 import { hmsJson } from "@/lib/hmsApi";
 import type {
@@ -728,6 +728,7 @@ function Dashboard({
     (connection.provider == null || connection.provider === "google");
   const isYahooMailbox =
     connection?.connected && connection.provider === "yahoo";
+  const usesGuidedImport = Boolean(isGoogleMailbox || isYahooMailbox);
 
   const {
     dashboard,
@@ -772,7 +773,7 @@ function Dashboard({
   useEffect(() => {
     if (
       loadingConnection
-      || !isGoogleMailbox
+      || !usesGuidedImport
       || initialFlowOpened
     ) {
       return;
@@ -815,7 +816,7 @@ function Dashboard({
       cancelled = true;
     };
   }, [
-    isGoogleMailbox,
+    usesGuidedImport,
     initialFlowOpened,
     loadingConnection,
   ]);
@@ -836,22 +837,18 @@ function Dashboard({
   }
 
   function openConnectedMailboxActions() {
-    if (isYahooMailbox) {
-      setLiveMailOpen(true);
-      return;
-    }
     setGuidedImportOpen(true);
   }
 
   function openMailView() {
     setMailCategory(null);
     setMailInitialMessageId(null);
-    if (isYahooMailbox || !isGoogleMailbox) {
-      if (connection?.connected) {
-        setLiveMailOpen(true);
-      } else {
-        openMailboxConnect();
-      }
+    if (!connection?.connected) {
+      openMailboxConnect();
+      return;
+    }
+    if (usesGuidedImport && !importFlowStatus?.initial_import_complete) {
+      setGuidedImportOpen(true);
       return;
     }
     setMailOpen(true);
@@ -916,9 +913,7 @@ function Dashboard({
   const metrics = useMemo(
     () => {
       const emptyHint = connection?.connected
-        ? isYahooMailbox
-          ? "Yahoo en vivo · casos al clasificar"
-          : "Aparecen al clasificar el correo"
+        ? "Aparecen al clasificar el correo"
         : ACCOUNT_VS_MAILBOX.step2Title;
 
       return [
@@ -1098,9 +1093,7 @@ function Dashboard({
               : syncing
                 ? `Lote ${syncProgress.currentBatch}…`
                 : connection?.connected
-                  ? isYahooMailbox
-                    ? "Cargar Yahoo"
-                    : "Actualizar correo"
+                  ? "Actualizar correo"
                   : ACCOUNT_VS_MAILBOX.connectMailboxLabel}
           </button>
 
@@ -1214,19 +1207,21 @@ function Dashboard({
         </header>
 
         <div className="app-content">
-          {isGoogleMailbox && !importFlowStatus?.initial_import_complete ? (
+          {usesGuidedImport && !importFlowStatus?.initial_import_complete ? (
             <section className="app-alert app-historical-alert" role="status">
               <Sparkles size={20} />
               <div>
                 <strong>
                   {importFlowStatus?.active
                     ? "Preparando tu correo…"
-                    : "Importa tu buzón Gmail"}
+                    : `Importa tu buzón ${mailboxServiceLabel(
+                        connection?.provider === "yahoo" ? "yahoo" : "gmail",
+                      )}`}
                 </strong>
                 <span>
                   {importFlowStatus?.active
                     ? "Clasificamos mensajes útiles y separamos el ruido. Esto puede tomar unos minutos."
-                    : "Tu cuenta Donexto ya está lista. Completa la importación del buzón Gmail que conectaste."}
+                    : "Tu cuenta Donexto ya está lista. Completa la importación de los últimos seis meses."}
                 </span>
               </div>
             </section>
@@ -1258,8 +1253,12 @@ function Dashboard({
               }}
               onOpenAllMail={() => openMailView()}
               onOpenCategory={(category) => {
-                if (isYahooMailbox || !isGoogleMailbox) {
+                if (!usesGuidedImport) {
                   openMailView();
+                  return;
+                }
+                if (!importFlowStatus?.initial_import_complete) {
+                  setGuidedImportOpen(true);
                   return;
                 }
                 setMailCategory(category);
@@ -1310,7 +1309,7 @@ function Dashboard({
             </section>
           ) : null}
 
-          {connection?.connected && isGoogleMailbox ? (
+          {connection?.connected && usesGuidedImport ? (
             <details className="dx-home-more">
               <summary>Clasificación completa del correo</summary>
               <MailCategoriesPanel
@@ -1582,9 +1581,10 @@ function Dashboard({
               await connectYahoo(email, appPassword);
               setMailboxPickerOpen(false);
               setNotice(
-                `Yahoo verificado (${email}). Buzón listo.`,
+                `Yahoo verificado (${email}). Ahora descarga y clasifica los últimos seis meses.`,
               );
-              setLiveMailOpen(true);
+              setInitialFlowOpened(false);
+              setGuidedImportOpen(true);
             }}
           />
         ) : null}

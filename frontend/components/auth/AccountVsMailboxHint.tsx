@@ -2,7 +2,12 @@
 
 import { Info } from "lucide-react";
 
-import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
+import {
+  ACCOUNT_VS_MAILBOX,
+  connectBannerFor,
+  loginHelperFor,
+  oneLinerFor,
+} from "@/lib/accountVsMailbox";
 
 import "./account-vs-mailbox-hint.css";
 
@@ -11,13 +16,7 @@ type HintVariant = "login" | "connect" | "step2" | "compact";
 type AccountVsMailboxHintProps = {
   variant?: HintVariant;
   className?: string;
-};
-
-const TEXT: Record<HintVariant, string> = {
-  login: ACCOUNT_VS_MAILBOX.loginHelper,
-  connect: ACCOUNT_VS_MAILBOX.connectBanner,
-  step2: ACCOUNT_VS_MAILBOX.step2Body,
-  compact: ACCOUNT_VS_MAILBOX.oneLiner,
+  email?: string;
 };
 
 /**
@@ -27,6 +26,7 @@ const TEXT: Record<HintVariant, string> = {
 export function AccountVsMailboxHint({
   variant = "compact",
   className,
+  email,
 }: AccountVsMailboxHintProps) {
   const classes = [
     "dx-avm-hint",
@@ -36,10 +36,19 @@ export function AccountVsMailboxHint({
     .filter(Boolean)
     .join(" ");
 
+  const text =
+    variant === "login"
+      ? loginHelperFor(email)
+      : variant === "connect"
+        ? connectBannerFor(email)
+        : variant === "step2"
+          ? ACCOUNT_VS_MAILBOX.step2Body
+          : oneLinerFor(email);
+
   return (
     <p className={classes} role="note">
       <Info size={16} aria-hidden className="dx-avm-hint__icon" />
-      <span>{TEXT[variant]}</span>
+      <span>{text}</span>
     </p>
   );
 }
