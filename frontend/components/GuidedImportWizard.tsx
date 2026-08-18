@@ -275,79 +275,94 @@ export function GuidedImportWizard({
         && status?.needs_initial_import
         && !status.active
         && inventory ? (
-          <>
-            <div className="hms-import-hero">
-              <Image
-                src="/hms-import-robot.png"
-                alt="Robot Donexto organizando correo hacia una laptop"
-                width={1536}
-                height={1024}
-                priority
-                sizes="(max-width: 760px) 100vw, 430px"
-              />
+          <div className="hms-import-review">
+            <div className="hms-import-review-scroll">
+              <div className="hms-import-hero">
+                <Image
+                  src="/hms-import-robot.png"
+                  alt="Robot Donexto organizando correo hacia una laptop"
+                  width={1536}
+                  height={1024}
+                  priority
+                  sizes="(max-width: 760px) 100vw, 430px"
+                />
 
-              <div>
-                <span className="hms-import-kicker">Donexto · Do Next To…</span>
-                <h2 id="hms-import-title">
-                  Tu historial de seis meses está listo.
-                </h2>
+                <div>
+                  <span className="hms-import-kicker">Donexto · Do Next To…</span>
+                  <h2 id="hms-import-title">
+                    Tu historial de seis meses está listo.
+                  </h2>
+                  <p>
+                    Donexto descargará los mensajes elegibles de los últimos
+                    6 meses, incluidos en tu cuenta, y después los clasificará
+                    automáticamente.
+                  </p>
+                </div>
+              </div>
+
+              <section className="hms-import-summary">
+                <div>
+                  <Mail size={22} />
+                  <span>Cuenta conectada</span>
+                  <strong>{inventory.email}</strong>
+                </div>
+                <div>
+                  <Clock3 size={22} />
+                  <span>Periodo incluido</span>
+                  <strong>
+                    {formatLocalDate(inventory.period_start_local)}
+                    {" – "}
+                    {formatLocalDate(inventory.period_end_local)}
+                  </strong>
+                </div>
+                <div className="is-primary">
+                  <Inbox size={22} />
+                  <span>Mensajes que se descargarán ahora</span>
+                  <strong>
+                    {inventory.eligible_messages.toLocaleString()}
+                  </strong>
+                </div>
+              </section>
+
+              <div className="hms-import-breakdown">
+                {inventory.breakdown.map((item) => (
+                  <article key={item.key}>
+                    <span>{LABELS[item.key] ?? item.key}</span>
+                    <strong>{item.count.toLocaleString()}</strong>
+                  </article>
+                ))}
+              </div>
+
+              <section className="hms-import-exclusions">
+                <ShieldCheck size={22} />
+                <div>
+                  <strong>Exclusiones automáticas</strong>
+                  <span>
+                    Borradores {inventory.excluded.drafts.toLocaleString()}
+                    {" · "}Spam {inventory.excluded.spam.toLocaleString()}
+                    {" · "}Papelera {inventory.excluded.trash.toLocaleString()}
+                  </span>
+                  <small>
+                    Donexto no borrará, archivará, marcará ni modificará
+                    mensajes en el proveedor.
+                  </small>
+                </div>
+              </section>
+
+              <aside className="hms-import-plan-note">
+                <strong>Qué incluye tu cuenta</strong>
                 <p>
-                  Donexto descargará todos los mensajes elegibles y después
-                  los clasificará automáticamente.
+                  Cualquier usuario descarga y clasifica <b>6 meses</b> de
+                  correo. Si más adelante quieres <b>12 meses</b>, lo cobramos
+                  aparte; el precio lo definiremos cuando cerremos el costo
+                  real de esa descarga. Si quieres <b>todo tu archivo</b>,
+                  aplicamos una tarifa distinta según cuántos correos tengas
+                  en total.
                 </p>
-              </div>
+              </aside>
             </div>
 
-            <section className="hms-import-summary">
-              <div>
-                <Mail size={22} />
-                <span>Cuenta conectada</span>
-                <strong>{inventory.email}</strong>
-              </div>
-              <div>
-                <Clock3 size={22} />
-                <span>Periodo</span>
-                <strong>
-                  {formatLocalDate(inventory.period_start_local)}
-                  {" – "}
-                  {formatLocalDate(inventory.period_end_local)}
-                </strong>
-              </div>
-              <div className="is-primary">
-                <Inbox size={22} />
-                <span>Mensajes que se descargarán</span>
-                <strong>
-                  {inventory.eligible_messages.toLocaleString()}
-                </strong>
-              </div>
-            </section>
-
-            <div className="hms-import-breakdown">
-              {inventory.breakdown.map((item) => (
-                <article key={item.key}>
-                  <span>{LABELS[item.key] ?? item.key}</span>
-                  <strong>{item.count.toLocaleString()}</strong>
-                </article>
-              ))}
-            </div>
-
-            <section className="hms-import-exclusions">
-              <ShieldCheck size={22} />
-              <div>
-                <strong>Exclusiones automáticas</strong>
-                <span>
-                  Borradores {inventory.excluded.drafts.toLocaleString()}
-                  {" · "}Spam {inventory.excluded.spam.toLocaleString()}
-                  {" · "}Papelera {inventory.excluded.trash.toLocaleString()}
-                </span>
-                <small>
-                  Donexto no borrará, archivará, marcará ni modificará
-                  mensajes en el proveedor.
-                </small>
-              </div>
-            </section>
-
-            <div className="hms-import-actions">
+            <div className="hms-import-actions hms-import-actions--sticky">
               <button
                 type="button"
                 className="secondary"
@@ -370,7 +385,7 @@ export function GuidedImportWizard({
                   : `Descargar y clasificar ${inventory.eligible_messages.toLocaleString()} mensajes`}
               </button>
             </div>
-          </>
+          </div>
         ) : null}
 
         {!loading && status?.active && progress ? (
