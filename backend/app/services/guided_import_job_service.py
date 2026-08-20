@@ -76,7 +76,7 @@ def _yahoo_secret(account: dict[str, Any]) -> tuple[str, str]:
     app_password = str(stored.get("access_token") or "")
     if not email or not app_password:
         raise YahooImapError(
-            "Vuelve a conectar Yahoo: falta la contraseña de aplicación."
+            "Vuelve a conectar Yahoo: falta el correo o la clave."
         )
     return email, app_password
 

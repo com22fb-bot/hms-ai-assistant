@@ -47,7 +47,7 @@ Esperado:
 ## Flujo app
 
 1. **Paso 1 — Cuenta Donexto** en https://app.donexto.com (nombre + email + contraseña Donexto; no es Gmail/Yahoo).  
-2. **Paso 2 — Buzón a vigilar:** Gmail (OAuth) o Yahoo (app password IMAP). Puede ser otro correo que el de login.  
+2. **Paso 2 — Buzón a vigilar:** Gmail (OAuth) o Yahoo (correo y clave IMAP). Puede ser otro correo que el de login.  
 3. Con buzón activo: home / clasificación. Ver [P0 Cuenta Donexto ≠ buzón](./P0-cuenta-donexto-vs-buzon.md).
 
 ## Marca

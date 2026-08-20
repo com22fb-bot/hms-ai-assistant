@@ -36,3 +36,6 @@ hms-ai-assistant-*.zip
 /MANIFEST.sha256
 
 .hms-secrets/
+
+# Cloudflare Wrangler local cache (landing deploys)
+landing/donexto/.wrangler/

@@ -65,7 +65,7 @@ Crear cuenta → **Apple** abre el portal de Apple.
 ### Yahoo
 
 `supabase-js` **no** incluye `yahoo` como Provider de Auth.
-La app abre [Seguridad Yahoo](https://login.yahoo.com/account/security) para la contraseña de aplicación; el buzón se conecta con IMAP en el Paso 2. No hay OAuth de identidad Yahoo que activar en el dashboard.
+La cuenta Donexto se confirma con un enlace a ese Yahoo. El buzón se conecta en el Paso 2 con el mismo correo y la misma clave de Yahoo (IMAP). No hay OAuth de identidad Yahoo que activar en el dashboard, ni portal de Seguridad / 2FA dentro de Donexto.
 
 ## Relación con el buzón
 

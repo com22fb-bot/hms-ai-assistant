@@ -154,12 +154,16 @@ La clasificación es automática. No es dictamen legal, médico ni bancario.
 al 14 ago 2026. El legal habla de **propósito de organización de la atención**, no de un
 tablero de 50 etiquetas.
 
+Código canónico del catálogo y de los directorios de bancos / pedidos / reservas:
+`docs/ops/CLASIFICACION_CATALOGO.md` y `backend/app/services/classification_catalog/`.
+Clasificador `logistica1-triage-v4`.
+
 ### Triage actual (`triage_category`)
 
 | Clave | Copy en app | Encaje |
 | --- | --- | --- |
 | `action_required` | Requieren atención / Te necesitan | Oficio o cualquier sombrero + acción |
-| `notice` | Avisos importantes | Capa de acción (pagos, seguridad, plazos) |
+| `notice` | Avisos importantes | Bancos, pedidos, reservas, pagos, seguridad, plazos |
 | `review` | Revisión humana | Ambiguo; no decidir solo |
 | `waiting_external` | Esperando respuesta | Ya actuó el usuario |
 | `informational` | Informativos | Urgencia informativa |

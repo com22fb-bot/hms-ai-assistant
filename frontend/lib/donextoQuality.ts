@@ -4,13 +4,11 @@
  */
 export const DONEXTO_QUALITY = {
   /** Slogan principal: tarjeta de login, bajo el título Login. */
-  slogan: "Do Next To... The email that Matters",
-  /** Síntesis en el hero izquierdo (slot del viejo “Te muestra…”). */
-  whatItDoes: "Do next to... your next critical email.",
-  promise:
-    "The one that truly needs you. Leaving behind zero unread clutter, entirely without the noise.",
+  slogan: "Do Next To…",
+  whatItDoes: "Do Next To…",
+  promise: "Lo siguiente que sí importa. El resto espera.",
   mission:
-    "No somos otra bandeja. Somos la capa de atención: dinero, seguridad, paquetes y familia; silencio para el ruido promocional.",
+    "No somos otra bandeja. Primero lo que pide acción en el correo personal; silencio para el ruido promocional.",
   /** Línea de la tarjeta de login (cuenta Donexto). */
   boundary: "Esta es tu cuenta de Donexto.",
   /** Compromisos de calidad visibles en el acceso */
@@ -21,7 +19,7 @@ export const DONEXTO_QUALITY = {
     },
     {
       title: "Mismo correo",
-      line: "Entras y vigilamos el mismo Gmail o Yahoo; nunca pedimos la contraseña del buzón aquí.",
+      line: "Gmail con Google. Yahoo con el correo y la clave de esa cuenta. No mezclamos tu cuenta Donexto con el buzón.",
     },
     {
       title: "Señales, no ruido",
@@ -29,5 +27,5 @@ export const DONEXTO_QUALITY = {
     },
   ],
   standard:
-    "Política de calidad: claridad primero · confianza operativa · sin pedirte la contraseña del buzón aquí.",
+    "Política de calidad: claridad primero · confianza operativa · cuenta Donexto distinta del buzón.",
 } as const;

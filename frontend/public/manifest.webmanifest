@@ -1,7 +1,7 @@
 {
   "name": "Donexto",
   "short_name": "Donexto",
-  "description": "Do Next To… — lo que requiere atención en tu correo.",
+  "description": "Do Next To…: cargos, pedidos, seguridad y familia en tu correo.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#02070b",

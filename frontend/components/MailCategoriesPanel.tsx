@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   BellRing,
   Bot,
-  BriefcaseBusiness,
   CircleHelp,
   Info,
   LoaderCircle,
@@ -53,8 +52,8 @@ const CATEGORY_CONFIG: Record<
 > = {
   action_required: {
     label: "Requieren atención",
-    description: "Solicitudes humanas que sí pueden convertirse en casos.",
-    icon: BriefcaseBusiness,
+    description: "Mensajes que te piden hacer algo ahora.",
+    icon: Mail,
     tone: "action",
   },
   waiting_external: {
@@ -71,13 +70,15 @@ const CATEGORY_CONFIG: Record<
   },
   notice: {
     label: "Avisos importantes",
-    description: "Pagos, seguridad, vencimientos y cambios de servicio.",
+    description:
+      "Bancos, compras, accesos, escuela y salud. Un Citibanamex no es una red social.",
     icon: BellRing,
     tone: "notice",
   },
   social: {
-    label: "Social",
-    description: "LinkedIn, YouTube y otras redes sociales.",
+    label: "Redes sociales",
+    description:
+      "LinkedIn, Instagram, X, TikTok, YouTube. Likes y resúmenes — no bancos ni compras.",
     icon: Users,
     tone: "social",
   },

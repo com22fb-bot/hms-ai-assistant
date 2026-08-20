@@ -1,87 +1,95 @@
 const strings = {
   es: {
     nav_video: "Historia",
-    nav_levels: "Alertas",
+    nav_levels: "Criterio",
+    nav_console: "Consola",
     nav_how: "Cómo",
     nav_app: "Abrir app",
-    kicker: "Capa de atención · trabajo, negocio y profesión",
-    hero_title: "Lo que requiere atención<br />en tu correo.",
+    kicker: "Atención sobre tu correo",
+    hero_title: "Donexto",
+    hero_tagline: "Do Next To… lo siguiente que sí importa.",
     hero_lede:
-      "Donexto (Do Next To…) es tu capa de atención sobre el correo personal: el mensaje que importa a tu trabajo, negocio y profesión, para que sepas qué hacer ahora.",
+      "Lee Gmail o Yahoo y sube lo que pide acción. El ruido promocional no ocupa la portada. No es otra bandeja.",
     cta_app: "Entrar a Donexto",
-    cta_video: "Ver historia",
-    cta_app2: "Probar en app.donexto.com",
-    cta_app3: "Abrir app.donexto.com",
+    cta_video: "Ver la consola",
+    cta_app2: "Probar la app",
+    cta_app3: "Abrir la app",
     cta_mail: "support@donexto.com",
-    trust_1: "Entras con Google en el sitio de Google",
-    trust_2: "El mismo Gmail es cuenta y buzón",
-    trust_3: "Priorizamos el correo que mueve tu trabajo",
-    video_title: "La historia en 40 segundos",
-    video_lede:
-      "Qué hace Donexto (se dice Do-NEX-to, nunca “Donextu”). Dale play: capa de atención, Google en el sitio de Google, verificación y priorización del correo que mueve tu trabajo.",
-    video_caption:
-      "Fotos oficiales (sin audio). El clip anterior decía “Donextu” — está fuera hasta que Héctor exporte un MP4 de 40 s con voz Donexto.",
-    story_play: "Reproducir historia",
+    trust_1: "Google autentica en su propio sitio",
+    trust_2: "Yahoo con tu correo y tu clave",
+    trust_3: "Correo personal, no de oficina",
+    video_title: "El criterio, en 40 segundos",
+    video_lede: "Se dice Do-NEX-to. Marca, criterio y tablero.",
+    video_caption: "Imágenes de marca. El clip con voz se publica cuando esté listo.",
+    story_play: "Reproducir",
     story_pause: "Pausar",
     story_prev: "Anterior",
     story_next: "Siguiente",
-    story_vo_toggle: "Leer guion completo (voz en off)",
+    story_vo_toggle: "Guion (voz en off)",
     story_vo_full:
-      "Donexto. Do Next To… Somos tu capa de atención sobre el correo personal: para tu trabajo, tu negocio y tu profesión. El mail que importa, para que sepas qué hacer ahora. Entras con Google, en el sitio de Google — nunca escribes tu contraseña de Gmail en Donexto. Ese mismo Gmail es tu cuenta y tu buzón. Te mandamos un correo de verificación; das clic y autorizas que leamos ese Gmail. Clasificamos y priorizamos para que no se te pase el mensaje que mueve el trabajo. Donexto. app.donexto.com",
-    teaser_toggle: "Fotos oficiales de marca (sin audio)",
-    promise_title: "La promesa",
-    promise_lede:
-      "Ver el correo que mueve tu trabajo, negocio o profesión — y saber qué hacer a continuación.",
-    promise_quote:
-      "“Tu capa de atención sobre el correo personal — para trabajo, negocio y profesión.”",
-    levels_title: "Tres niveles de alerta (EE. UU.)",
+      "Donexto. Do Next To… Atención sobre tu correo personal. Lo que pide acción sube; la oferta espera. Google autentica en su sitio; Yahoo, con tu correo y tu clave. Confirmas, autorizas la lectura y ves qué sigue. app.donexto.com",
+    scope_title: "Qué mira",
+    scope_lede:
+      "Correo personal. Cuatro frentes, el mismo peso. Pedidos no gana a familia; familia no gana a un cargo.",
+    scope_1_t: "Dinero",
+    scope_1_p:
+      "Cargos, bancos, facturas y plazos. Lo que no puede esperar a “cuando pueda”.",
+    scope_2_t: "Seguridad",
+    scope_2_p: "Accesos, códigos y avisos de cuenta. Si alguien entra, aparece aquí.",
+    scope_3_t: "Pedidos",
+    scope_3_p:
+      "Compras, rastreo, entregas. Amazon, Mercado Libre, DHL: el paquete, no la oferta.",
+    scope_4_t: "Familia",
+    scope_4_p:
+      "Escuela, salud y lo personal. Mismo criterio que un cargo o un pedido: si pide acción, sube.",
+    levels_title: "Tres ritmos",
     levels_lede:
-      "Diseño pensado en fatiga de notificaciones: solo interrumpir lo que la gente realmente quiere.",
-    n1_badge: "N1 · Ahora ~80–90%",
-    n1_title: "Inmediato",
-    n1_p: "Finanzas y pagos, 2FA y seguridad, paquetes y envíos, viajes, escuela y familia.",
-    n1_hint: "Candidato a push al celular.",
-    n2_badge: "N2 · Después ~40–60%",
-    n2_title: "Resumen / configurado",
-    n2_p: "Agenda y citas, VIP, alertas de precio o stock que tú pediste.",
-    n2_hint: "Digest o solo si lo activas.",
-    n3_badge: "N3 · Silencio <20%",
-    n3_title: "Sin interrumpir",
-    n3_p: "Promos, boletines masivos, redes, ruido automático. Nunca en la portada ni como push.",
-    n3_hint: "Clasificado y callado.",
-    how_title: "Cómo funciona",
-    how_1_t: "Entras con Google",
+      "No cada mensaje merece un aviso. El sistema decide cuándo interrumpir y cuándo callar.",
+    n1_badge: "N1 · Ahora",
+    n1_title: "Interrumpe",
+    n1_p: "Si pide acción ahora — un pago, un paquete, un acceso, la escuela — puede sonar en el celular.",
+    n1_hint: "",
+    n2_badge: "N2 · Cuando puedas",
+    n2_title: "Resume",
+    n2_p: "Agenda, contactos VIP y avisos que tú pediste. Entra en un resumen, no en un empujón.",
+    n2_hint: "",
+    n3_badge: "N3 · En silencio",
+    n3_title: "Clasifica y guarda",
+    n3_p: "Ofertas, redes y boletines masivos. Quedan archivados. Nunca ocupan la portada.",
+    n3_hint: "",
+    how_title: "Cómo se conecta",
+    how_1_t: "Identidad",
     how_1_p:
-      "El login es en el sitio de Google. Nunca escribes tu contraseña de Gmail en Donexto.",
-    how_2_t: "Mismo Gmail: cuenta y buzón",
+      "Creas la cuenta Donexto y confirmas el correo. Eso es el acceso a la app, no la clave del buzón de Gmail.",
+    how_2_t: "Lectura",
     how_2_p:
-      "Ese Gmail es tu cuenta Donexto y el buzón. Te mandamos un correo de verificación; das clic y autorizas la lectura.",
-    how_3_t: "Ves qué hacer ahora",
+      "Gmail se autoriza en el sitio de Google. Yahoo, con el mismo correo y la misma clave con la que entras a Yahoo.",
+    how_3_t: "Consola",
     how_3_p:
-      "Clasificamos y priorizamos para que no se te pase el mensaje que mueve tu trabajo, negocio o profesión.",
-    home_title: "Lo que ves en la app",
-    home_lede:
-      "El inicio no es un tablero de ceros. Es atención personal organizada.",
-    home_f1: "Chip del buzón conectado y acción “Cambiar buzón”",
-    home_f2:
-      "“Te necesita ahora” — dinero, seguridad, acción, revisión humana",
-    home_f3: "N2 y N3 plegados (después / silencio)",
-    home_f4: "Impulso a abrirse en el celular (web + PWA)",
-    market_title: "Por qué así (mercado personal EE. UU.)",
+      "Ves prioridad clasificada. El buzón original no se borra ni se reescribe.",
+    console_title: "Consola",
+    console_lede:
+      "Tres prototipos del mismo tablero. Mismo criterio; distinto acento. El que entra a la app es el ejecutivo.",
+    proto_a_k: "Prototipo A",
+    proto_a_t: "Prioridad",
+    proto_b_k: "Prototipo B · en la app",
+    proto_b_t: "Ejecutivo",
+    proto_c_k: "Prototipo C",
+    proto_c_t: "Operación",
+    market_title: "Por qué no otra bandeja",
     market_lede:
-      "En el correo del hogar, la bandeja es control logístico y financiero — no un chat. Más de la mitad del volumen es ruido; solo una fracción se percibe útil. Por eso Donexto prioriza lo que la gente sí acepta en notificaciones: cargos, paquetes, seguridad y familia.",
-    stat1_v: "N1 80–90%+",
-    stat1_l: "Aceptación de alertas útiles",
+      "La mayor parte del volumen es oferta. Donexto es para el correo personal: sube lo que pide acción y calla el resto.",
+    stat1_v: "N1 alto",
+    stat1_l: "Aceptación de avisos útiles",
     stat2_v: ">60%",
-    stat2_l: "Volumen personal = ofertas y boletines",
-    stat3_v: "75–85%",
-    stat3_l: "Aperturas de correo personal en el móvil",
-    market_note:
-      "Cifras de trabajo de producto (hipótesis documentadas); no son claims publicitarios certificados.",
-    wait_title: "¿Listo para entrar?",
+    stat2_l: "Volumen = ofertas y boletines",
+    stat3_v: "Móvil",
+    stat3_l: "Ahí se abre el correo personal",
+    market_note: "Hipótesis de producto, no claims publicitarios certificados.",
+    wait_title: "Empieza con tu correo",
     wait_lede:
-      "Abre la app o déjanos un mensaje. Escribimos desde support@donexto.com.",
-    or_wait: "O pide acceso por correo",
+      "La app está en app.donexto.com. Escribimos desde support@donexto.com.",
+    or_wait: "O déjanos un mensaje",
     label_name: "Nombre",
     label_email: "Correo",
     label_country: "País",
@@ -90,95 +98,100 @@ const strings = {
     opt_us: "Estados Unidos",
     opt_mx: "México",
     opt_other: "Otro",
-    btn_join: "Enviar mensaje",
+    btn_join: "Enviar",
     form_note:
-      "Abre tu app de correo hacia support@donexto.com. No vendemos listas.",
-    form_ok: "Casi listo—envía el correo que se abrió.",
+      "Abre tu cliente de correo hacia support@donexto.com. No vendemos listas.",
+    form_ok: "Casi listo: envía el correo que se abrió.",
     form_err: "Escribe un correo válido.",
-    social_title: "Sigue el avance",
-    foot_tag: "Do Next To… lo que requiere atención.",
+    social_title: "Canal",
+    foot_tag: "Do Next To…",
   },
   en: {
     nav_video: "Story",
-    nav_levels: "Alerts",
+    nav_levels: "Signal",
+    nav_console: "Console",
     nav_how: "How",
     nav_app: "Open app",
-    kicker: "Attention layer · work, business, and profession",
-    hero_title: "What needs attention<br />in your email.",
+    kicker: "Attention on your email",
+    hero_title: "Donexto",
+    hero_tagline: "Do Next To… the next thing that actually matters.",
     hero_lede:
-      "Donexto (Do Next To…) is your attention layer on personal email: the message that matters to your work, business, and profession—so you know what to do next.",
-    cta_app: "Open Donexto",
-    cta_video: "Watch story",
-    cta_app2: "Try app.donexto.com",
-    cta_app3: "Open app.donexto.com",
+      "It reads Gmail or Yahoo and raises what needs action. Promotional noise stays off the cover. Not another inbox.",
+    cta_app: "Enter Donexto",
+    cta_video: "See the console",
+    cta_app2: "Try the app",
+    cta_app3: "Open the app",
     cta_mail: "support@donexto.com",
-    trust_1: "Sign in with Google on Google’s site",
-    trust_2: "The same Gmail is account and mailbox",
-    trust_3: "We prioritize the mail that moves your work",
-    video_title: "The 40-second story",
-    video_lede:
-      "What Donexto does (say Do-NEX-to, never “Donextu”). Play: attention layer, Google on Google’s site, verification, and prioritizing the mail that moves your work.",
-    video_caption:
-      "Official stills (no audio). The old clip said “Donextu”—removed until a 40s MP4 with Donexto voiceover is exported.",
-    story_play: "Play story",
+    trust_1: "Google authenticates on Google’s site",
+    trust_2: "Yahoo with your email and password",
+    trust_3: "Personal email, not the office",
+    video_title: "The signal, in 40 seconds",
+    video_lede: "Say Do-NEX-to. Brand, standard, board.",
+    video_caption: "Brand stills. Voiceover clip publishes when ready.",
+    story_play: "Play",
     story_pause: "Pause",
-    story_prev: "Previous",
+    story_prev: "Back",
     story_next: "Next",
-    story_vo_toggle: "Read full voiceover script",
+    story_vo_toggle: "Voiceover script",
     story_vo_full:
-      "Donexto. Do Next To… We’re your attention layer on personal email—for your work, business, and profession. The mail that matters, so you know what to do next. You sign in with Google, on Google’s site—you never type your Gmail password on Donexto. That same Gmail is your Donexto account and your mailbox. We send a verification email; you click, then authorize reading that Gmail. We classify and prioritize so you don’t miss the message that moves the work. Donexto. app.donexto.com",
-    teaser_toggle: "Official brand photos (no audio)",
-    promise_title: "The promise",
-    promise_lede:
-      "See the email that moves your work, business, or profession—and know what to do next.",
-    promise_quote:
-      "“Your attention layer on personal email—for work, business, and profession.”",
-    levels_title: "Three alert levels (US market)",
+      "Donexto. Do Next To… Attention on personal email. What needs action rises; the offer waits. Google signs in on Google’s site; Yahoo with your email and password. You confirm, authorize reading, and you see what to do next. app.donexto.com",
+    scope_title: "What it watches",
+    scope_lede:
+      "Personal email. Four fronts, equal weight. Orders do not outrank family; family does not outrank a charge.",
+    scope_1_t: "Money",
+    scope_1_p: "Charges, banks, bills, and deadlines that cannot wait.",
+    scope_2_t: "Security",
+    scope_2_p: "Sign-ins, codes, and account alerts. If someone gets in, it shows here.",
+    scope_3_t: "Orders",
+    scope_3_p: "Purchases, tracking, delivery. Amazon, Mercado Libre, DHL: the package, not the offer.",
+    scope_4_t: "Family",
+    scope_4_p: "School, health, and personal mail. Same standard as a charge or an order: if it needs action, it rises.",
+    levels_title: "Three tempos",
     levels_lede:
-      "Built around notification fatigue: interrupt only what people actually want.",
-    n1_badge: "N1 · Now ~80–90%",
-    n1_title: "Immediate",
-    n1_p: "Finance & payments, 2FA/security, packages, travel, school & family.",
-    n1_hint: "Push candidate for mobile.",
-    n2_badge: "N2 · Later ~40–60%",
-    n2_title: "Digest / configured",
-    n2_p: "Calendar, VIP, price/stock alerts you asked for.",
-    n2_hint: "Digest—or only if enabled.",
-    n3_badge: "N3 · Silent <20%",
-    n3_title: "Do not interrupt",
-    n3_p: "Promos, newsletters, social, auto-noise. Never home hero. Never push.",
-    n3_hint: "Classified and quiet.",
-    how_title: "How it works",
-    how_1_t: "Sign in with Google",
+      "Not every message earns an alert. The system chooses when to interrupt and when to stay quiet.",
+    n1_badge: "N1 · Now",
+    n1_title: "Interrupts",
+    n1_p: "If it needs action now — a payment, a package, a sign-in, school — it can reach the phone.",
+    n1_hint: "",
+    n2_badge: "N2 · When you can",
+    n2_title: "Summarizes",
+    n2_p: "Calendar, VIP contacts, and alerts you asked for. Digest—not a nudge.",
+    n2_hint: "",
+    n3_badge: "N3 · Silent",
+    n3_title: "Files away",
+    n3_p: "Offers, social, and bulk newsletters. Archived. Never on the cover.",
+    n3_hint: "",
+    how_title: "How it connects",
+    how_1_t: "Identity",
     how_1_p:
-      "Login happens on Google’s site. You never type your Gmail password on Donexto.",
-    how_2_t: "Same Gmail: account and mailbox",
+      "You create a Donexto account and confirm the email. That is app access—not your Gmail mailbox password.",
+    how_2_t: "Reading",
     how_2_p:
-      "That Gmail is your Donexto account and your mailbox. We send a verification email; you click, then authorize reading.",
-    how_3_t: "See what to do next",
-    how_3_p:
-      "We classify and prioritize so you don’t miss the message that moves your work, business, or profession.",
-    home_title: "What you see in the app",
-    home_lede: "Home is not empty KPI theater. It’s personal attention.",
-    home_f1: "Connected mailbox chip + Change mailbox",
-    home_f2: "“Needs you now” — money, security, action, human review",
-    home_f3: "N2 / N3 collapsed (later / silent)",
-    home_f4: "Built for phone-first use (web + PWA)",
-    market_title: "Why this design (US personal email)",
+      "Gmail is authorized on Google’s site. Yahoo uses the same email and password you use to sign in to Yahoo.",
+    how_3_t: "Console",
+    how_3_p: "You see classified priority. The original mailbox is not deleted or rewritten.",
+    console_title: "Console",
+    console_lede:
+      "Three prototypes of the same board. Same standard; different accent. The app ships the executive view.",
+    proto_a_k: "Prototype A",
+    proto_a_t: "Priority",
+    proto_b_k: "Prototype B · in the app",
+    proto_b_t: "Executive",
+    proto_c_k: "Prototype C",
+    proto_c_t: "Operations",
+    market_title: "Why not another inbox",
     market_lede:
-      "At home, email is logistical and financial control—not chat. Most volume is noise; only part feels useful. Donexto prioritizes charges, packages, security, and family.",
-    stat1_v: "N1 80–90%+",
+      "Most volume is offers. Donexto is for personal email: it raises what needs action and quiets the rest.",
+    stat1_v: "High N1",
     stat1_l: "Acceptance of useful alerts",
     stat2_v: ">60%",
-    stat2_l: "Personal volume = offers & newsletters",
-    stat3_v: "75–85%",
-    stat3_l: "Personal email opens on mobile",
-    market_note:
-      "Working product hypotheses from our research notes—not certified ad claims.",
-    wait_title: "Ready to go in?",
-    wait_lede:
-      "Open the app or message us. We write from support@donexto.com.",
-    or_wait: "Or request access by email",
+    stat2_l: "Volume = offers & newsletters",
+    stat3_v: "Mobile",
+    stat3_l: "Where personal email is opened",
+    market_note: "Product hypotheses—not certified advertising claims.",
+    wait_title: "Start with your email",
+    wait_lede: "The app is at app.donexto.com. We write from support@donexto.com.",
+    or_wait: "Or leave a message",
     label_name: "Name",
     label_email: "Email",
     label_country: "Country",
@@ -187,17 +200,15 @@ const strings = {
     opt_us: "United States",
     opt_mx: "Mexico",
     opt_other: "Other",
-    btn_join: "Send message",
-    form_note:
-      "Opens your mail app to support@donexto.com. We don’t sell lists.",
+    btn_join: "Send",
+    form_note: "Opens your mail client to support@donexto.com. We don’t sell lists.",
     form_ok: "Almost done—send the email that just opened.",
     form_err: "Enter a valid email.",
-    social_title: "Follow the build",
-    foot_tag: "Do Next To… what needs attention.",
+    social_title: "Channel",
+    foot_tag: "Do Next To…",
   },
 };
 
-/** Historia 40 s — explica el producto (no sting). VO: Donexto = Do-NEX-to. */
 const storyShots = {
   es: [
     {
@@ -205,27 +216,27 @@ const storyShots = {
       duration: 6,
       label: "01 · 0:00–0:06",
       chapter: "Marca",
-      line: "Donexto. Do Next To… Somos tu capa de atención sobre el correo personal.",
+      line: "Donexto. Do Next To… Atención sobre tu correo personal.",
       html: `<img class="vis-photo" src="./brand-youtube.jpg" alt="" />`,
     },
     {
       id: "para-quien",
       duration: 8,
       label: "02 · 0:06–0:14",
-      chapter: "Qué hace",
-      line: "Para tu trabajo, tu negocio y tu profesión. El mail que importa, para que sepas qué hacer ahora.",
+      chapter: "Criterio",
+      line: "Lo que pide acción. El resto espera.",
       html: `<img class="vis-photo wide" src="./brand-escritorio.jpg" alt="" />`,
     },
     {
       id: "google",
       duration: 8,
       label: "03 · 0:14–0:22",
-      chapter: "Google",
-      line: "Entras con Google, en el sitio de Google. Nunca escribes tu contraseña de Gmail en Donexto.",
+      chapter: "Acceso",
+      line: "Google autentica en su sitio. Yahoo, con tu correo y tu clave.",
       html: `
         <div class="vis-steps">
-          <div class="vis-step"><span>1</span><strong>Sitio de Google</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">login ahí, no aquí</p></div>
-          <div class="vis-step"><span>2</span><strong>Sin password Gmail</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">nunca en Donexto</p></div>
+          <div class="vis-step"><span>1</span><strong>Google</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">en su sitio</p></div>
+          <div class="vis-step"><span>2</span><strong>Yahoo</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">correo y clave</p></div>
         </div>`,
     },
     {
@@ -233,33 +244,32 @@ const storyShots = {
       duration: 6,
       label: "04 · 0:22–0:28",
       chapter: "Cuenta",
-      line: "Ese mismo Gmail es tu cuenta Donexto y tu buzón.",
+      line: "El mismo correo es cuenta Donexto y buzón vigilado.",
       html: `
         <div class="vis-phone">
-          <span class="vis-chip">tú@gmail.com</span>
+          <span class="vis-chip">tú@correo.com</span>
           <div class="vis-row good"><strong>Cuenta Donexto</strong><span class="tag">mismo</span></div>
-          <div class="vis-row good"><strong>Buzón Gmail</strong><span class="tag">mismo</span></div>
+          <div class="vis-row good"><strong>Buzón</strong><span class="tag">mismo</span></div>
         </div>`,
     },
     {
       id: "verificar",
       duration: 7,
       label: "05 · 0:28–0:35",
-      chapter: "Verificar",
-      line: "Te mandamos un correo de verificación. Das clic y autorizas que leamos ese Gmail.",
+      chapter: "Lectura",
+      line: "Confirmas el mail y autorizas la lectura. El buzón no se reescribe.",
       html: `
         <div class="vis-stack">
-          <div class="vis-row"><strong>Correo de Donexto</strong><em>verificar</em></div>
-          <div class="vis-row good"><strong>Clic en el enlace</strong><span class="tag">OK</span></div>
-          <div class="vis-row good"><strong>Autorizas lectura de ese Gmail</strong><span class="tag">OAuth</span></div>
+          <div class="vis-row"><strong>Correo de Donexto</strong><em>confirmar</em></div>
+          <div class="vis-row good"><strong>Autorizas lectura</strong><span class="tag">OK</span></div>
         </div>`,
     },
     {
       id: "priorizar",
       duration: 5,
       label: "06 · 0:35–0:40",
-      chapter: "Ahora",
-      line: "Clasificamos para que no se te pase el mensaje que mueve el trabajo. app.donexto.com",
+      chapter: "Consola",
+      line: "La consola muestra qué sigue. app.donexto.com",
       html: `
         <div class="vis-cta">
           <img class="vis-photo" src="./brand-youtube.jpg" alt="" />
@@ -274,27 +284,27 @@ const storyShots = {
       duration: 6,
       label: "01 · 0:00–0:06",
       chapter: "Brand",
-      line: "Donexto. Do Next To… We’re your attention layer on personal email.",
+      line: "Donexto. Do Next To… Attention on personal email.",
       html: `<img class="vis-photo" src="./brand-youtube.jpg" alt="" />`,
     },
     {
       id: "para-quien",
       duration: 8,
       label: "02 · 0:06–0:14",
-      chapter: "What we do",
-      line: "For your work, business, and profession. The mail that matters—so you know what to do next.",
+      chapter: "Standard",
+      line: "What needs action. Everything else waits.",
       html: `<img class="vis-photo wide" src="./brand-escritorio.jpg" alt="" />`,
     },
     {
       id: "google",
       duration: 8,
       label: "03 · 0:14–0:22",
-      chapter: "Google",
-      line: "You sign in with Google, on Google’s site. You never type your Gmail password on Donexto.",
+      chapter: "Access",
+      line: "Google authenticates on its site. Yahoo, with your email and password.",
       html: `
         <div class="vis-steps">
-          <div class="vis-step"><span>1</span><strong>Google’s site</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">login there, not here</p></div>
-          <div class="vis-step"><span>2</span><strong>No Gmail password</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">never on Donexto</p></div>
+          <div class="vis-step"><span>1</span><strong>Google</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">on its site</p></div>
+          <div class="vis-step"><span>2</span><strong>Yahoo</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">email and password</p></div>
         </div>`,
     },
     {
@@ -302,33 +312,32 @@ const storyShots = {
       duration: 6,
       label: "04 · 0:22–0:28",
       chapter: "Account",
-      line: "That same Gmail is your Donexto account and your mailbox.",
+      line: "The same address is Donexto account and watched mailbox.",
       html: `
         <div class="vis-phone">
-          <span class="vis-chip">you@gmail.com</span>
+          <span class="vis-chip">you@email.com</span>
           <div class="vis-row good"><strong>Donexto account</strong><span class="tag">same</span></div>
-          <div class="vis-row good"><strong>Gmail mailbox</strong><span class="tag">same</span></div>
+          <div class="vis-row good"><strong>Mailbox</strong><span class="tag">same</span></div>
         </div>`,
     },
     {
       id: "verificar",
       duration: 7,
       label: "05 · 0:28–0:35",
-      chapter: "Verify",
-      line: "We send a verification email. You click, then authorize reading that Gmail.",
+      chapter: "Reading",
+      line: "You confirm the email and authorize reading. The mailbox is not rewritten.",
       html: `
         <div class="vis-stack">
-          <div class="vis-row"><strong>Email from Donexto</strong><em>verify</em></div>
-          <div class="vis-row good"><strong>Click the link</strong><span class="tag">OK</span></div>
-          <div class="vis-row good"><strong>Authorize reading that Gmail</strong><span class="tag">OAuth</span></div>
+          <div class="vis-row"><strong>Email from Donexto</strong><em>confirm</em></div>
+          <div class="vis-row good"><strong>Authorize reading</strong><span class="tag">OK</span></div>
         </div>`,
     },
     {
       id: "priorizar",
       duration: 5,
       label: "06 · 0:35–0:40",
-      chapter: "Now",
-      line: "We classify so you don’t miss the message that moves the work. app.donexto.com",
+      chapter: "Console",
+      line: "The console shows what to do next. app.donexto.com",
       html: `
         <div class="vis-cta">
           <img class="vis-photo" src="./brand-youtube.jpg" alt="" />
@@ -474,11 +483,7 @@ function applyLang() {
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     const key = el.getAttribute("data-i18n");
     if (!key || dict[key] == null) return;
-    if (key === "hero_title" || key === "n3_badge") {
-      el.innerHTML = dict[key];
-    } else {
-      el.textContent = dict[key];
-    }
+    el.textContent = dict[key];
   });
 
   document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {

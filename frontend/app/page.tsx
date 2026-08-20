@@ -5,7 +5,6 @@ import {
   AlertTriangle,
   BarChart3,
   Bell,
-  BriefcaseBusiness,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
@@ -16,6 +15,7 @@ import {
   Home,
   Inbox,
   KeyRound,
+  Languages,
   LogOut,
   Mail,
   Menu,
@@ -43,6 +43,9 @@ import { MailCategoriesPanel } from "@/components/MailCategoriesPanel";
 import "@/components/mail-categories.css";
 import { MailInbox } from "@/components/MailInbox";
 import { PushNotificationsPanel } from "@/components/PushNotificationsPanel";
+import { UserSettingsPanel } from "@/components/UserSettingsPanel";
+import { LanguageProvider, useLanguage } from "@/lib/i18n/LanguageProvider";
+import type { MessageKey } from "@/lib/i18n/messages";
 import "@/components/mail-inbox.css";
 import "@/components/push-notifications.css";
 import "@/components/logistica-responsive.css";
@@ -260,19 +263,19 @@ const THEMES: Array<{
 
 const NAV_ITEMS: Array<{
   id: string;
-  label: string;
+  labelKey: MessageKey;
   icon: typeof Home;
   state: ControlState;
 }> = [
-  { id: "home", label: "Inicio", icon: Home, state: "active" },
-  { id: "mail", label: "Correos", icon: Mail, state: "active" },
-  { id: "push", label: "Avisos", icon: Bell, state: "active" },
-  { id: "cases", label: "Casos", icon: BriefcaseBusiness, state: "active" },
-  { id: "tasks", label: "Tareas", icon: CheckCircle2, state: "active" },
-  { id: "activity", label: "Actividad", icon: Activity, state: "active" },
-  { id: "reports", label: "Reportes", icon: FileBarChart, state: "active" },
-  { id: "metrics", label: "Métricas", icon: BarChart3, state: "active" },
-  { id: "settings", label: "Ajustes", icon: Settings, state: "active" },
+  { id: "home", labelKey: "navHome", icon: Home, state: "active" },
+  { id: "mail", labelKey: "navMail", icon: Mail, state: "active" },
+  { id: "push", labelKey: "navAlerts", icon: Bell, state: "active" },
+  { id: "cases", labelKey: "navCases", icon: Inbox, state: "active" },
+  { id: "tasks", labelKey: "navTasks", icon: CheckCircle2, state: "active" },
+  { id: "activity", labelKey: "navActivity", icon: Activity, state: "active" },
+  { id: "reports", labelKey: "navReports", icon: FileBarChart, state: "active" },
+  { id: "metrics", labelKey: "navMetrics", icon: BarChart3, state: "active" },
+  { id: "settings", labelKey: "navSettings", icon: Settings, state: "active" },
 ];
 
 function priorityLabel(priority: CasePriority): string {
@@ -713,6 +716,7 @@ function Dashboard({
   session: AppSession;
   onLogout: () => void;
 }) {
+  const { t } = useLanguage();
   const {
     connection,
     loadingConnection,
@@ -745,6 +749,7 @@ function Dashboard({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeView, setActiveView] = useState("home");
   const [profileOpen, setProfileOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [evaluationKey, setEvaluationKey] = useState<string | null>(null);
   const [guidedImportOpen, setGuidedImportOpen] = useState(false);
@@ -897,9 +902,8 @@ function Dashboard({
     }
 
     if (view === "settings") {
-      setActiveView("home");
-      setProfileOpen(true);
-      setNotice("Ajustes: perfil y cuenta Donexto.");
+      setSettingsOpen(true);
+      setNotice(null);
       return;
     }
 
@@ -1000,7 +1004,7 @@ function Dashboard({
             : "app-mobile-overlay"
         }
         onClick={() => setMobileOpen(false)}
-        aria-label="Cerrar menú"
+        aria-label={t("closeMenu")}
       />
 
       <aside
@@ -1023,7 +1027,7 @@ function Dashboard({
             type="button"
             className="app-sidebar-close"
             onClick={() => setMobileOpen(false)}
-            aria-label="Cerrar menú"
+            aria-label={t("closeMenu")}
           >
             <X size={21} />
           </button>
@@ -1032,6 +1036,7 @@ function Dashboard({
         <nav className="app-navigation">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
+            const label = t(item.labelKey);
 
             return (
               <button
@@ -1043,11 +1048,11 @@ function Dashboard({
                     : "app-nav-item"
                 }
                 aria-current={activeView === item.id ? "page" : undefined}
-                onClick={() => selectView(item.id, item.label)}
+                onClick={() => selectView(item.id, label)}
                 data-control-state={item.state}
               >
                 <Icon size={21} />
-                <span>{item.label}</span>
+                <span>{label}</span>
                 {item.id === "cases" && dashboard.metrics.total_open > 0 ? (
                   <span className="app-nav-item-state">
                     <b>{dashboard.metrics.total_open}</b>
@@ -1136,7 +1141,7 @@ function Dashboard({
               <input
                 type="search"
                 value={search}
-                placeholder="Buscar casos, correos o remitentes…"
+                placeholder="Buscar correos, personas o avisos…"
                 onChange={(event) =>
                   setSearch(event.target.value)
                 }
@@ -1183,7 +1188,21 @@ function Dashboard({
                       <span>{initials(session.name)}</span>
                       <div><strong>{session.name}</strong><small>{session.email}</small></div>
                     </div>
-                    <button type="button" role="menuitem" className="is-danger" onClick={onLogout}><LogOut size={17} />Cerrar sesión</button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setProfileOpen(false);
+                        setSettingsOpen(true);
+                      }}
+                    >
+                      <Languages size={17} />
+                      {t("profileSettings")}
+                    </button>
+                    <button type="button" role="menuitem" className="is-danger" onClick={onLogout}>
+                      <LogOut size={17} />
+                      {t("profileSignOut")}
+                    </button>
                   </div>
                 ) : null}
               </div>
@@ -1501,15 +1520,15 @@ function Dashboard({
           ) : null}
         </div>
 
-        <nav className="app-mobile-nav" aria-label="Navegación móvil">
-          <button type="button" className="is-active" onClick={() => selectView("home", "Inicio")}>
+        <nav className="app-mobile-nav" aria-label={t("navMenu")}>
+          <button type="button" className="is-active" onClick={() => selectView("home", t("navHome"))}>
             <Home size={23} />
-            <span>Inicio</span>
+            <span>{t("navHome")}</span>
           </button>
 
-          <button type="button" onClick={() => selectView("cases", "Casos")}>
-            <BriefcaseBusiness size={23} />
-            <span>Casos</span>
+          <button type="button" onClick={() => selectView("cases", t("navCases"))}>
+            <Inbox size={23} />
+            <span>{t("navCases")}</span>
           </button>
 
           <button
@@ -1534,14 +1553,23 @@ function Dashboard({
             }}
           >
             <Mail size={23} />
-            <span>Correos</span>
+            <span>{t("navMail")}</span>
           </button>
 
           <button type="button" onClick={() => setMobileOpen(true)}>
             <Menu size={23} />
-            <span>Menú</span>
+            <span>{t("navMenu")}</span>
           </button>
         </nav>
+
+        {settingsOpen ? (
+          <UserSettingsPanel
+            email={session.email}
+            name={session.name}
+            onClose={() => setSettingsOpen(false)}
+            onSignOut={onLogout}
+          />
+        ) : null}
 
         {pushOpen ? (
           <PushNotificationsPanel onClose={() => setPushOpen(false)} />
@@ -1665,61 +1693,49 @@ export default function HomePage() {
     window.localStorage.setItem("hms-approved-theme", theme);
   }, [theme]);
 
-  if (loading) {
-    return (
-      <div className="app-loading-screen">
-        <Sparkles size={34} />
-        <span>Verificando sesión segura...</span>
-      </div>
-    );
-  }
-
-  if (passwordRecovery) {
-    return (
-      <PasswordRecoveryScreen
-        theme={theme}
-        setTheme={setTheme}
-        onUpdatePassword={updatePassword}
-        onCancel={cancelPasswordRecovery}
-      />
-    );
-  }
-
-  if (!session) {
-    return (
-      <LoginScreen
-        theme={theme}
-        setTheme={setTheme}
-        onSignIn={signIn}
-        onSignUp={signUp}
-        onSignInWithGoogle={signInWithGoogle}
-        onSignInWithProvider={signInWithProvider}
-        onResendSignupEmail={resendSignupEmail}
-        onMagicLink={signInWithMagicLink}
-        onResetPassword={resetPassword}
-      />
-    );
-  }
-
-  if (needsEmailConfirm) {
-    return (
-      <ConfirmEmailGate
-        email={session.email}
-        onResend={sendDonextoVerifyEmail}
-        onRefresh={refreshSession}
-        onSignOut={signOut}
-      />
-    );
-  }
-
   return (
-    <Dashboard
-      theme={theme}
-      setTheme={setTheme}
-      session={session}
-      onLogout={() => {
-        void signOut();
-      }}
-    />
+    <LanguageProvider userId={session?.id ?? null}>
+      {loading ? (
+        <div className="app-loading-screen">
+          <Sparkles size={34} />
+          <span>Verificando sesión segura...</span>
+        </div>
+      ) : passwordRecovery ? (
+        <PasswordRecoveryScreen
+          theme={theme}
+          setTheme={setTheme}
+          onUpdatePassword={updatePassword}
+          onCancel={cancelPasswordRecovery}
+        />
+      ) : !session ? (
+        <LoginScreen
+          theme={theme}
+          setTheme={setTheme}
+          onSignIn={signIn}
+          onSignUp={signUp}
+          onSignInWithGoogle={signInWithGoogle}
+          onSignInWithProvider={signInWithProvider}
+          onResendSignupEmail={resendSignupEmail}
+          onMagicLink={signInWithMagicLink}
+          onResetPassword={resetPassword}
+        />
+      ) : needsEmailConfirm ? (
+        <ConfirmEmailGate
+          email={session.email}
+          onResend={sendDonextoVerifyEmail}
+          onRefresh={refreshSession}
+          onSignOut={signOut}
+        />
+      ) : (
+        <Dashboard
+          theme={theme}
+          setTheme={setTheme}
+          session={session}
+          onLogout={() => {
+            void signOut();
+          }}
+        />
+      )}
+    </LanguageProvider>
   );
 }

@@ -7,7 +7,6 @@ import {
   ChevronRight,
   LoaderCircle,
   Mail,
-  Package,
   RefreshCw,
   Shield,
   VolumeX,
@@ -48,7 +47,7 @@ type TriageSummary = {
   categories: TriageCategory[];
 };
 
-/** N1 EE.UU.: dinero/seguridad/logística/acción — push candidate */
+/** N1: dinero, seguridad, pedidos y familia al mismo peso — push candidate */
 const N1_KEYS = ["action_required", "notice", "review"] as const;
 /** N2: digest / opt-in */
 const N2_KEYS = ["waiting_external", "informational"] as const;
@@ -61,8 +60,8 @@ const LEVEL_LABEL: Record<string, { title: string; why: string }> = {
     why: "Solicitud o respuesta pendiente de ti",
   },
   notice: {
-    title: "Dinero, seguridad o avisos",
-    why: "Pagos, seguridad, plazos o cambios de servicio",
+    title: "Avisos que sí importan",
+    why: "Bancos, compras, accesos, escuela o salud",
   },
   review: {
     title: "Revisión humana",
@@ -77,8 +76,8 @@ const LEVEL_LABEL: Record<string, { title: string; why: string }> = {
     why: "Útiles, sin urgencia inmediata",
   },
   social: {
-    title: "Social",
-    why: "Redes y menciones masivas",
+    title: "Redes sociales",
+    why: "Likes, follows y resúmenes — no bancos",
   },
   promotional: {
     title: "Publicidad",
@@ -269,15 +268,15 @@ export function AttentionHome({
   }
 
   return (
-    <section className="dx-attention" aria-label="Lo que requiere atención">
+    <section className="dx-attention" aria-label="Consola de atención">
       <header className="dx-attention__hero">
         <div>
-          <p className="dx-attention__kicker">Hoy en tu bandeja</p>
+          <p className="dx-attention__kicker">Consola</p>
           <h1>
             {personName ? `Hola, ${personName}` : "Hola"}
           </h1>
           <p className="dx-attention__lede">
-            Dinero, seguridad y lo que te espera — sin el ruido promocional.
+            Lo que pide acción, ahora. Lo demás, después o en silencio.
           </p>
         </div>
       </header>
@@ -345,8 +344,8 @@ export function AttentionHome({
           <div>
             <strong>No hay clasificación almacenada aún</strong>
             <span>
-              {error} Completa Descargar y clasificar para ver casos. El buzón
-              original no se modifica.
+              {error} Completa Descargar y clasificar para ver lo que pide
+              acción. El buzón original no se modifica.
             </span>
           </div>
           <button type="button" onClick={onOpenAllMail}>
@@ -384,8 +383,8 @@ export function AttentionHome({
           <div className="dx-attention__section">
             <header className="dx-attention__section-head">
               <div>
-                <h2>Te necesita ahora</h2>
-                <p>Prioridad alta · candidatos a alerta inmediata</p>
+                <h2>Prioridad</h2>
+                <p>N1 · la inteligencia propone; tú abres</p>
               </div>
               <button
                 type="button"
@@ -409,7 +408,7 @@ export function AttentionHome({
                   <span>
                     {unreviewed > 0
                       ? `${unreviewed.toLocaleString()} mensajes aún por clasificar.`
-                      : "El ruido no aparece aquí. Puedes revisar la bandeja cuando quieras."}
+                      : "Nada urgente. Revisa la bandeja cuando quieras."}
                   </span>
                 </div>
               </div>
@@ -426,7 +425,7 @@ export function AttentionHome({
                       >
                         <span className="dx-attention__row-icon">
                           {item.category === "notice" ? (
-                            <Package size={18} />
+                            <BellRing size={18} />
                           ) : item.category === "action_required" ? (
                             <Mail size={18} />
                           ) : (
@@ -460,9 +459,9 @@ export function AttentionHome({
               onClick={() => setLaterOpen((v) => !v)}
             >
               <span>
-                <strong>Después / utilidad (N2)</strong>
+                <strong>Cuando puedas (N2)</strong>
                 <small>
-                  {n2Count.toLocaleString()} mensajes · resumen, no push inmediato
+                  {n2Count.toLocaleString()} · resumen, sin empujar el celular
                 </small>
               </span>
               <ChevronRight
@@ -494,10 +493,9 @@ export function AttentionHome({
               onClick={() => setNoiseOpen((v) => !v)}
             >
               <span>
-                <strong>Ruido silenciado (N3)</strong>
+                <strong>En silencio (N3)</strong>
                 <small>
-                  {n3Count.toLocaleString()} · promo, social y autos — sin
-                  interrumpir
+                  {n3Count.toLocaleString()} · ofertas y redes, fuera de portada
                 </small>
               </span>
               <ChevronRight

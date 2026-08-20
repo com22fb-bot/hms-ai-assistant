@@ -1,32 +1,46 @@
-/* Home N1 — atención personal (plan maestro + mercado EE.UU.) */
+/* Home N1 — consola ejecutiva */
 
 .dx-attention {
   display: grid;
   gap: 1rem;
+  position: relative;
+}
+
+.dx-attention::before {
+  content: "";
+  position: absolute;
+  inset: -1.5rem -0.75rem auto;
+  height: 8rem;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 70% 90% at 8% 0%,
+    rgba(46, 230, 214, 0.1),
+    transparent 70%
+  );
 }
 
 .dx-attention__hero h1 {
   margin: 0.15rem 0 0;
-  font-size: clamp(1.45rem, 2.5vw, 1.9rem);
+  font-size: clamp(1.55rem, 2.6vw, 2.05rem);
   font-weight: 650;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
   color: var(--ui-text, #edf6f7);
 }
 
 .dx-attention__kicker {
   margin: 0;
-  color: #0f9f94;
-  font-size: 0.72rem;
+  color: #2ee6d6;
+  font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
 }
 
 .dx-attention__lede {
   margin: 0.4rem 0 0;
-  max-width: 38ch;
+  max-width: 42ch;
   color: var(--ui-muted, #93a8b0);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   line-height: 1.45;
 }
 
@@ -159,11 +173,13 @@
   display: flex;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.75rem 0.85rem;
-  border: 1px solid var(--ui-border, rgba(148, 185, 194, 0.12));
-  border-radius: 10px;
-  background: rgba(14, 26, 34, 0.75);
-  color: #0f9f94;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(46, 230, 214, 0.12);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(18, 32, 42, 0.92), rgba(10, 18, 24, 0.88));
+  color: #2ee6d6;
+  box-shadow: inset 0 1px 0 rgba(46, 230, 214, 0.08);
 }
 
 .dx-attention__levels strong {
@@ -180,10 +196,12 @@
 }
 
 .dx-attention__section {
-  border: 1px solid var(--ui-border, rgba(148, 185, 194, 0.12));
-  border-radius: 12px;
-  background: rgba(14, 26, 34, 0.8);
-  padding: 0.85rem 0.95rem 0.95rem;
+  border: 1px solid rgba(148, 185, 194, 0.12);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(16, 28, 36, 0.92), rgba(10, 18, 24, 0.88));
+  padding: 0.95rem 1rem 1.05rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
 }
 
 .dx-attention__section.is-muted {
@@ -236,7 +254,8 @@
 }
 
 .dx-attention__row:hover {
-  border-color: rgba(15, 159, 148, 0.35);
+  border-color: rgba(46, 230, 214, 0.38);
+  box-shadow: 0 0 0 1px rgba(46, 230, 214, 0.12);
 }
 
 .dx-attention__row-icon {
@@ -245,8 +264,8 @@
   width: 2.1rem;
   height: 2.1rem;
   border-radius: 8px;
-  background: rgba(15, 159, 148, 0.12);
-  color: #0f9f94;
+  background: rgba(46, 230, 214, 0.12);
+  color: #2ee6d6;
 }
 
 .dx-attention__row-top {
@@ -349,7 +368,7 @@
 }
 
 .dx-attention__chips b {
-  color: #0f9f94;
+  color: #2ee6d6;
   font-weight: 700;
 }
 

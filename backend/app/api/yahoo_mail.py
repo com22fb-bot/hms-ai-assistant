@@ -1,4 +1,4 @@
-"""Conexión de Yahoo Mail (IMAP + contraseña de aplicación)."""
+"""Conexión de Yahoo Mail (IMAP con correo y clave de Yahoo)."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/auth/yahoo", tags=["Yahoo Mail"])
 
 class YahooConnectRequest(BaseModel):
     email: str = Field(min_length=5, max_length=320)
-    app_password: str = Field(min_length=8, max_length=256)
+    app_password: str = Field(min_length=6, max_length=256)
 
 
 @router.post("/connect")

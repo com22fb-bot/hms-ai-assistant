@@ -8,6 +8,7 @@ from app.services.yahoo_imap import (
     encode_yahoo_ref,
     extract_rfc822_bodies,
     imap_search_date,
+    normalize_yahoo_app_password,
     parse_list_mailbox_name,
 )
 
@@ -43,6 +44,26 @@ class YahooImportHelpersTest(unittest.TestCase):
         self.assertIn("Pago pendiente", text)
         self.assertEqual(html, "")
         self.assertFalse(has_attachments)
+
+    def test_normalize_keeps_yahoo_password_symbols(self) -> None:
+        self.assertEqual(
+            normalize_yahoo_app_password("  Clave!Yahoo#2026  "),
+            "Clave!Yahoo#2026",
+        )
+        self.assertEqual(
+            normalize_yahoo_app_password("hola-mundo-12"),
+            "hola-mundo-12",
+        )
+
+    def test_normalize_compacts_sixteen_char_app_code(self) -> None:
+        self.assertEqual(
+            normalize_yahoo_app_password("abcd efgh ijkl mnop"),
+            "abcdefghijklmnop",
+        )
+        self.assertEqual(
+            normalize_yahoo_app_password("abcdefghijklmnop"),
+            "abcdefghijklmnop",
+        )
 
 
 if __name__ == "__main__":

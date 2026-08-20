@@ -1,7 +1,8 @@
 /**
  * Ruteo de alta por dominio del buzón que el usuario quiere vigilar.
  * Gmail → Google OAuth. Hotmail/Outlook → Azure. Apple → Apple.
- * Yahoo no está en supabase-js; portal de seguridad + IMAP del mismo correo.
+ * Yahoo no está en supabase-js; cuenta Donexto por enlace y buzón IMAP
+ * con el mismo correo y la misma clave de Yahoo.
  */
 
 export type MailboxConnectMode = "gmail" | "yahoo" | "choose";
