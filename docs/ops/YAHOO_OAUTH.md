@@ -35,8 +35,12 @@ No hay alta de usuario Donexto a mano ni enlace de confirmación.
 YAHOO_CLIENT_ID=
 YAHOO_CLIENT_SECRET=
 YAHOO_REDIRECT_URI=https://hms-ai-assistant-production.up.railway.app/auth/yahoo/callback
-YAHOO_OAUTH_SCOPES=openid email profile mail-r
+YAHOO_OAUTH_SCOPES=openid email profile
 ```
+
+No pongas `mail-r` hasta que Yahoo lo apruebe en
+<https://senders.yahooinc.com/developer/developer-access/>.
+Si lo pides sin aprobación, Yahoo responde `invalid_scope`.
 
 Sin esas variables, `POST /auth/yahoo/login` responde **503** con el enlace
 de developer. No desplegar el Worker de esta rama hasta pegarlas.

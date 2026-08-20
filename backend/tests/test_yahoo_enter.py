@@ -74,12 +74,13 @@ class YahooOAuthGateTests(unittest.TestCase):
                 "https://hms-ai-assistant-production.up.railway.app"
                 "/auth/yahoo/callback"
             )
-            settings.yahoo_oauth_scopes = "openid email profile mail-r"
+            settings.yahoo_oauth_scopes = "openid email profile"
             url = build_yahoo_authorization_url("state-token")
         self.assertIn("https://api.login.yahoo.com/oauth2/request_auth", url)
         self.assertIn("client_id=client-id", url)
         self.assertIn("state=state-token", url)
-        self.assertIn("mail-r", url)
+        self.assertIn("openid", url)
+        self.assertNotIn("mail-r", url)
 
     def test_sanitize_return_to_stays_on_donexto(self) -> None:
         with patch(
@@ -111,6 +112,13 @@ class YahooOAuthGateTests(unittest.TestCase):
         self.assertTrue(granted_mail_read({"scope": "openid email mail-r"}))
         self.assertTrue(granted_mail_read({"scope": "openid,mail-w"}))
         self.assertFalse(granted_mail_read({"scope": "openid email profile"}))
+
+    def test_invalid_scope_message_is_spanish(self) -> None:
+        from app.api.yahoo_mail import _yahoo_callback_error_message
+
+        text = _yahoo_callback_error_message("invalid_scope", "invalid scope")
+        self.assertIn("identidad", text.lower())
+        self.assertNotEqual(text, "invalid scope")
 
 
 if __name__ == "__main__":

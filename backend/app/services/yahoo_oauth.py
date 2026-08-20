@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 YAHOO_AUTHORIZE_URL = "https://api.login.yahoo.com/oauth2/request_auth"
 YAHOO_TOKEN_URL = "https://api.login.yahoo.com/oauth2/get_token"
 YAHOO_USERINFO_URL = "https://api.login.yahoo.com/openid/v1/userinfo"
-YAHOO_DEFAULT_SCOPES = "openid email profile mail-r"
+YAHOO_DEFAULT_SCOPES = "openid email profile"
 YAHOO_DEFAULT_RETURN = "https://app.donexto.com/"
 
 

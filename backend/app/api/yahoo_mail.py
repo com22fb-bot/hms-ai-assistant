@@ -202,6 +202,19 @@ def yahoo_login(
     }
 
 
+def _yahoo_callback_error_message(error: str, description: str) -> str:
+    code = (error or "").lower().replace("-", "_")
+    text = (description or "").lower().replace("+", " ")
+    if code == "invalid_scope" or "invalid scope" in text:
+        return (
+            "Yahoo no aceptó el permiso de correo en esta app. "
+            "Por ahora Donexto solo pide identidad (openid, email, profile). "
+            "La lectura del buzón (mail-r) hay que solicitarla en "
+            "https://senders.yahooinc.com/developer/developer-access/"
+        )
+    return description or "Yahoo rechazó la autorización."
+
+
 def _callback_error_page(title: str, message: str) -> HTMLResponse:
     return HTMLResponse(
         status_code=400,
@@ -221,9 +234,9 @@ def _callback_error_page(title: str, message: str) -> HTMLResponse:
 def yahoo_callback(request: Request) -> HTMLResponse | RedirectResponse:
     oauth_error = request.query_params.get("error")
     if oauth_error:
-        description = request.query_params.get(
-            "error_description",
-            "Yahoo rechazó la autorización.",
+        description = _yahoo_callback_error_message(
+            oauth_error,
+            request.query_params.get("error_description") or "",
         )
         return _callback_error_page("No fue posible conectar Yahoo", description)
 

@@ -109,7 +109,7 @@ class Settings:
     yahoo_oauth_scopes: str = field(
         default_factory=lambda: get_environment_variable(
             "YAHOO_OAUTH_SCOPES",
-            "openid email profile mail-r",
+            "openid email profile",
         )
     )
 
