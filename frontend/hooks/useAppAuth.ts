@@ -244,7 +244,11 @@ export function useAppAuth() {
       setRawSession(nextSession);
 
       if (event === "PASSWORD_RECOVERY") {
-        setPasswordRecovery(true);
+        if (yahooImapOwnsIdentity(nextSession?.user)) {
+          setPasswordRecovery(false);
+        } else {
+          setPasswordRecovery(true);
+        }
       }
 
       if (event === "SIGNED_OUT") {

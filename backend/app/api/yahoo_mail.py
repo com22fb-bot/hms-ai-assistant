@@ -312,7 +312,7 @@ def yahoo_callback(request: Request) -> HTMLResponse | RedirectResponse:
             "refresh_token": session["refresh_token"],
             "token_type": "bearer",
             "expires_in": session.get("expires_in") or "3600",
-            "type": "recovery",
+            "type": "magiclink",
         }
     )
     return RedirectResponse(
