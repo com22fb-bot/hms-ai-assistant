@@ -121,6 +121,7 @@ export function LoginScreen({
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [oauthBusy, setOauthBusy] = useState<AuthOAuthProvider | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -195,7 +196,7 @@ export function LoginScreen({
     try {
       await onMagicLink(address);
       setMessage(
-        `Revisa ${address}: enviamos un enlace para identificarte. No uses la contraseña del buzón.`,
+        ACCOUNT_VS_MAILBOX.yahooMagicLinkSent.replace("{email}", address),
       );
     } catch (requestError) {
       setError(
@@ -206,6 +207,12 @@ export function LoginScreen({
     } finally {
       setBusy(false);
     }
+  }
+
+  function prepareYahooPasswordSignIn() {
+    setUsePassword(true);
+    setMessage(ACCOUNT_VS_MAILBOX.yahooSignInNext);
+    window.setTimeout(() => passwordRef.current?.focus(), 0);
   }
 
   async function continueWithEmail(event: FormEvent<HTMLFormElement>) {
@@ -241,6 +248,16 @@ export function LoginScreen({
     }
 
     const provider = resolveMailboxProviderFromEmail(clean);
+    if (provider === "yahoo") {
+      if (mode === "signin") {
+        resetAlerts();
+        prepareYahooPasswordSignIn();
+        return;
+      }
+      await sendMagicLink(clean);
+      return;
+    }
+
     const oauth = mailboxToOAuth(provider);
     if (oauth) {
       await startOAuthSignup(oauth);
@@ -259,6 +276,11 @@ export function LoginScreen({
     if (resolveMailboxProviderFromEmail(clean) !== "yahoo") {
       setError("Usa un correo Yahoo (@yahoo.com, @ymail.com o @rocketmail.com).");
       emailRef.current?.focus();
+      return;
+    }
+    if (mode === "signin") {
+      resetAlerts();
+      prepareYahooPasswordSignIn();
       return;
     }
     await sendMagicLink(clean);
@@ -355,42 +377,6 @@ export function LoginScreen({
               type="button"
               className="dx-auth__provider"
               disabled={busy}
-              onClick={() => void startOAuthSignup("azure")}
-            >
-              {oauthBusy === "azure" ? (
-                <>
-                  <LoaderCircle className="dx-auth__spin" size={18} />
-                  Abriendo Microsoft…
-                </>
-              ) : (
-                <>
-                  <ProviderMark provider="hotmail" />
-                  Continuar con Microsoft
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              className="dx-auth__provider"
-              disabled={busy}
-              onClick={() => void startOAuthSignup("apple")}
-            >
-              {oauthBusy === "apple" ? (
-                <>
-                  <LoaderCircle className="dx-auth__spin" size={18} />
-                  Abriendo Apple…
-                </>
-              ) : (
-                <>
-                  <ProviderMark provider="apple" />
-                  Continuar con Apple
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              className="dx-auth__provider"
-              disabled={busy}
               onClick={() => void continueYahoo()}
             >
               <ProviderMark provider="yahoo" />
@@ -432,6 +418,7 @@ export function LoginScreen({
                 <div className="dx-auth__control">
                   <KeyRound size={18} aria-hidden />
                   <input
+                    ref={passwordRef}
                     type={showPassword ? "text" : "password"}
                     name="password"
                     value={password}

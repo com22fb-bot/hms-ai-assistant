@@ -14,6 +14,10 @@ export const ACCOUNT_VS_MAILBOX = {
   signupFullNameLabel: "Nombre completo",
   loginHelper:
     "Identifícate con el correo que vas a vigilar.",
+  yahooSignInNext:
+    "Primero entra a Donexto. Usa la contraseña de Donexto, no la de Yahoo. Si no la tienes, pulsa «Entrar con enlace al correo». Después, dentro de la app, conectas el buzón con tu clave de Yahoo.",
+  yahooMagicLinkSent:
+    "Revisa {email}: ese enlace entra a tu cuenta Donexto. No uses la clave de Yahoo aquí. Cuando abras el enlace, conectas el buzón con tu clave de Yahoo.",
   loginFoot: "Esta es tu cuenta de Donexto.",
   signupChooserBody:
     "Elige el correo que vas a vigilar: será el mismo de tu cuenta Donexto. Te llevamos al inicio de sesión de ese proveedor.",
