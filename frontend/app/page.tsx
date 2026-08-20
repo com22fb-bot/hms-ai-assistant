@@ -1677,6 +1677,7 @@ export default function HomePage() {
     needsEmailConfirm,
     signIn,
     signInWithGoogle,
+    signInWithYahoo,
     signInWithProvider,
     signUp,
     resendSignupEmail,
@@ -1714,6 +1715,7 @@ export default function HomePage() {
           onSignIn={signIn}
           onSignUp={signUp}
           onSignInWithGoogle={signInWithGoogle}
+          onSignInWithYahoo={signInWithYahoo}
           onSignInWithProvider={signInWithProvider}
           onResendSignupEmail={resendSignupEmail}
           onMagicLink={signInWithMagicLink}

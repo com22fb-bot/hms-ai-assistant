@@ -168,6 +168,7 @@ export default function AdminPage() {
     needsEmailConfirm,
     signIn,
     signInWithGoogle,
+    signInWithYahoo,
     signInWithProvider,
     signUp,
     resendSignupEmail,
@@ -349,6 +350,7 @@ export default function AdminPage() {
           onSignIn={signIn}
           onSignUp={signUp}
           onSignInWithGoogle={signInWithGoogle}
+          onSignInWithYahoo={signInWithYahoo}
           onSignInWithProvider={signInWithProvider}
           onResendSignupEmail={resendSignupEmail}
           onMagicLink={signInWithMagicLink}

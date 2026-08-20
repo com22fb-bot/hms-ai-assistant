@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+import time
+
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.schemas.gmail import GoogleConnectionStatus
@@ -18,9 +20,14 @@ from app.services.yahoo_imap import (
     normalize_yahoo_app_password,
     verify_yahoo_login,
 )
+from app.services.yahoo_session import mint_yahoo_session_or_http
 
 
 router = APIRouter(prefix="/auth/yahoo", tags=["Yahoo Mail"])
+
+_ENTER_WINDOW_SECONDS = 15 * 60
+_ENTER_MAX_ATTEMPTS = 8
+_enter_attempts: dict[str, list[float]] = {}
 
 
 class YahooConnectRequest(BaseModel):
@@ -28,12 +35,42 @@ class YahooConnectRequest(BaseModel):
     app_password: str = Field(min_length=6, max_length=256)
 
 
-@router.post("/connect")
-def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
-    """Vincula un buzón Yahoo al workspace Donexto actual."""
-    context = require_request_context()
-    address = normalize_yahoo_address(payload.email)
-    app_password = normalize_yahoo_app_password(payload.app_password)
+class YahooEnterResponse(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int | None = None
+    email: str
+    connected: bool = True
+    provider: str = "yahoo"
+    message: str | None = None
+
+
+def _enforce_enter_rate_limit(key: str) -> None:
+    now = time.time()
+    stamps = [
+        stamp
+        for stamp in _enter_attempts.get(key, [])
+        if now - stamp < _ENTER_WINDOW_SECONDS
+    ]
+    if len(stamps) >= _ENTER_MAX_ATTEMPTS:
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "status": "rate_limited",
+                "message": (
+                    "Demasiados intentos seguidos. Espera unos minutos "
+                    "e inténtalo de nuevo."
+                ),
+            },
+        )
+    stamps.append(now)
+    _enter_attempts[key] = stamps
+
+
+def _verify_yahoo_or_http(address: str, app_password: str) -> tuple[str, str]:
+    address = normalize_yahoo_address(address)
+    app_password = normalize_yahoo_app_password(app_password)
 
     if "@" not in address:
         raise HTTPException(
@@ -41,19 +78,6 @@ def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
             detail={
                 "status": "invalid_email",
                 "message": "Indica un correo de Yahoo válido.",
-            },
-        )
-
-    account_email = (context.user.email or "").strip().lower()
-    if account_email and address != account_email:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "mailbox_mismatch",
-                "message": (
-                    "El buzón Yahoo debe ser el mismo correo de tu cuenta "
-                    f"Donexto ({account_email})."
-                ),
             },
         )
 
@@ -68,12 +92,22 @@ def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
             },
         ) from error
 
+    return address, app_password
+
+
+def persist_yahoo_mailbox(
+    *,
+    user_id: str,
+    workspace_id: str,
+    address: str,
+    app_password: str,
+) -> GoogleConnectionStatus:
+    """Guarda el buzón Yahoo cifrado en el workspace indicado."""
     try:
-        # Desactiva otros buzones del workspace para que Yahoo quede como activo.
         try:
             oauth_storage.client.table("communication_accounts").update(
                 {"status": "inactive"}
-            ).eq("workspace_id", context.workspace_id).eq(
+            ).eq("workspace_id", workspace_id).eq(
                 "status", "active"
             ).neq("provider", "yahoo").execute()
         except Exception:
@@ -84,8 +118,8 @@ def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
             provider_account_id=address,
             email=address,
             display_name=address,
-            workspace_id=context.workspace_id,
-            connected_by_profile_id=context.user.id,
+            workspace_id=workspace_id,
+            connected_by_profile_id=user_id,
             status="active",
         )
         oauth_storage.save_credentials(
@@ -98,8 +132,8 @@ def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
             metadata={
                 "protocol": "imap",
                 "host": "imap.mail.yahoo.com",
-                "connected_by_profile_id": context.user.id,
-                "workspace_id": context.workspace_id,
+                "connected_by_profile_id": user_id,
+                "workspace_id": workspace_id,
             },
         )
     except (OAuthStorageError, OAuthCredentialError) as error:
@@ -119,8 +153,75 @@ def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
         has_access_token=True,
         has_refresh_token=False,
         scopes=["imap.mail.yahoo.com"],
-        message="Buzón Yahoo conectado. Siguiente paso: descargar y clasificar los últimos seis meses.",
+        message=(
+            "Buzón Yahoo conectado. Siguiente paso: descargar y clasificar "
+            "los últimos seis meses."
+        ),
         login_url=None,
+    )
+
+
+@router.post("/enter", response_model=YahooEnterResponse)
+def yahoo_enter(
+    payload: YahooConnectRequest,
+    request: Request,
+) -> YahooEnterResponse:
+    """Correo + clave de Yahoo = sesión. El usuario no da de alta Donexto."""
+    client_host = request.client.host if request.client else "unknown"
+    address_key = normalize_yahoo_address(payload.email)
+    _enforce_enter_rate_limit(f"{client_host}:{address_key}")
+
+    address, app_password = _verify_yahoo_or_http(
+        payload.email,
+        payload.app_password,
+    )
+    session = mint_yahoo_session_or_http(address)
+    persist_yahoo_mailbox(
+        user_id=session["user_id"],
+        workspace_id=session["workspace_id"],
+        address=address,
+        app_password=app_password,
+    )
+    expires_raw = session.get("expires_in")
+    expires_in = int(expires_raw) if expires_raw else None
+    return YahooEnterResponse(
+        access_token=session["access_token"],
+        refresh_token=session["refresh_token"],
+        expires_in=expires_in,
+        email=address,
+        connected=True,
+        provider="yahoo",
+        message="Entraste con Yahoo. El buzón ya quedó conectado.",
+    )
+
+
+@router.post("/connect")
+def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
+    """Vincula un buzón Yahoo al workspace Donexto actual (ya logueado)."""
+    context = require_request_context()
+    address, app_password = _verify_yahoo_or_http(
+        payload.email,
+        payload.app_password,
+    )
+
+    account_email = (context.user.email or "").strip().lower()
+    if account_email and address != account_email:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "mailbox_mismatch",
+                "message": (
+                    "El buzón Yahoo debe ser el mismo correo con el que "
+                    f"entraste ({account_email})."
+                ),
+            },
+        )
+
+    return persist_yahoo_mailbox(
+        user_id=context.user.id,
+        workspace_id=context.workspace_id,
+        address=address,
+        app_password=app_password,
     )
 
 

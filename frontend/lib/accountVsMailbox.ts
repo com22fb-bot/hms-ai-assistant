@@ -9,11 +9,19 @@ export const ACCOUNT_VS_MAILBOX = {
   loginEyebrow: "Cuenta Donexto",
   loginTitleSignIn: "Entrar a Donexto",
   loginTitleSignUp: "Crear cuenta",
+  loginTitleYahoo: "Entrar con Yahoo",
   loginEmailLabel: "Correo",
   loginPasswordLabel: "Contraseña de Donexto",
+  loginYahooPasswordLabel: "Contraseña de Yahoo",
   signupFullNameLabel: "Nombre completo",
   loginHelper:
     "Identifícate con el correo que vas a vigilar.",
+  loginHelperYahoo:
+    "Entras con tu correo Yahoo y la misma clave. No das de alta un usuario Donexto.",
+  yahooSignInNext:
+    "Entras con tu correo Yahoo y la misma clave. No hay usuario Donexto aparte.",
+  yahooMagicLinkSent:
+    "Entraste — o entra — con el correo y la clave de Yahoo. No usamos un enlace para Yahoo.",
   loginFoot: "Esta es tu cuenta de Donexto.",
   signupChooserBody:
     "Elige el correo que vas a vigilar: será el mismo de tu cuenta Donexto. Te llevamos al inicio de sesión de ese proveedor.",
@@ -29,10 +37,10 @@ export const ACCOUNT_VS_MAILBOX = {
   signupHaveAccount: "Ya tengo cuenta — Entrar",
   signupYahooTitle: "Yahoo",
   signupYahooBody:
-    "Confirmamos tu correo Yahoo. Luego conectas el buzón con tu correo y tu clave de Yahoo.",
+    "Entras con tu correo Yahoo y la misma clave. No das de alta un usuario Donexto.",
   signupYahooCta: "Continuar con Yahoo",
   signupYahooContinue:
-    "Te enviamos un enlace a ese Yahoo. Después conectas el buzón con tu correo y tu clave.",
+    "Con el correo y la clave de Yahoo entras y el buzón queda conectado.",
   signupHotmailPending:
     "Te llevamos al inicio de sesión de Microsoft.",
   signupApplePending:
@@ -131,8 +139,8 @@ export function confirmGateBodyFor(email: string): string {
   const label = mailboxServiceLabel(provider);
   if (provider === "yahoo") {
     return (
-      "Te escribimos a ese mismo Yahoo. Este correo confirma tu cuenta Donexto. " +
-      "Después conectas el buzón con tu correo y la misma clave de Yahoo."
+      "Entras con tu correo Yahoo y la misma clave. Eso identifica tu cuenta " +
+      "y autoriza la lectura. No hay un alta de usuario Donexto ni un enlace extra."
     );
   }
   const password = mailboxPasswordPhrase(provider);
@@ -158,9 +166,9 @@ export function authSecurityBodyFor(email?: string): string {
   }
   if (provider === "yahoo") {
     return (
-      "Si te das de alta con Yahoo, te escribimos a ese mismo correo. Sin el " +
-      "clic no entras. Para leer el buzón, escribes tu correo y la misma clave " +
-      "de Yahoo. Sin códigos extra ni verificación en dos pasos en Donexto."
+      "Con Yahoo no das de alta un usuario Donexto. Escribes tu correo y la " +
+      "misma clave con la que entras a Yahoo. Eso abre la app y conecta el buzón. " +
+      "Sin códigos extra ni verificación en dos pasos en Donexto."
     );
   }
   return (
@@ -177,8 +185,8 @@ export function oneLinerFor(email?: string): string {
     : "other";
   if (provider === "yahoo") {
     return (
-      "El correo con el que entras a Donexto es el mismo buzón que vigilamos. " +
-      "Para leer Yahoo, escribes tu correo y la misma clave con la que entras a Yahoo."
+      "Entras con tu correo Yahoo y la misma clave. No das de alta un usuario " +
+      "Donexto: ese correo es el buzón que vigilamos."
     );
   }
   const password = mailboxPasswordPhrase(provider);
@@ -207,8 +215,8 @@ export function step2EmptyLeadFor(email?: string): string {
     : "other";
   if (provider === "yahoo") {
     return (
-      "Sin conectar el buzón no hay bandeja que clasificar. Escribe tu correo " +
-      "Yahoo y la misma clave con la que entras a Yahoo."
+      "Sin el correo y la clave de Yahoo no hay bandeja que clasificar. " +
+      "Eso es el acceso: no hay un usuario Donexto aparte."
     );
   }
   const password = mailboxPasswordPhrase(provider);
@@ -220,6 +228,9 @@ export function step2EmptyLeadFor(email?: string): string {
 export function loginHelperFor(email?: string): string {
   if (!email) {
     return ACCOUNT_VS_MAILBOX.loginHelper;
+  }
+  if (resolveMailboxProviderFromEmail(email) === "yahoo") {
+    return ACCOUNT_VS_MAILBOX.loginHelperYahoo;
   }
   const label = mailboxServiceLabel(resolveMailboxProviderFromEmail(email));
   return (

@@ -48,6 +48,8 @@ Selector en Ajustes y tira en el login. Chrome de menú/perfil. El resto de la a
 
 No hay wizard de Seguridad Yahoo ni código de 16 dígitos. En Donexto: correo y la misma clave de Yahoo.
 
+Login Yahoo: un paso. Correo + clave de Yahoo = sesión y buzón. El usuario normal **no** da de alta un usuario Donexto ni usa enlace mágico.
+
 ## P00.6 — Copy: ni pedidos ni hogar son el producto
 
 Hogar es el **mercado** (correo personal, no corporativo). Pedidos es **uno de cuatro frentes**, igual que dinero, seguridad y familia. No titularizar “hogar”. No reducir compras a “envíos”.

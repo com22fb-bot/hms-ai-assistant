@@ -4,6 +4,11 @@ import type { Session, User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
+import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
+
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
+  "/api/hms";
 
 export type SignUpResult =
   | { kind: "signed_in" }
@@ -46,19 +51,29 @@ function isDonextoVerified(user: User | null | undefined): boolean {
   return user?.user_metadata?.donexto_verified === true;
 }
 
+function yahooImapOwnsIdentity(user: User | null | undefined): boolean {
+  if (!user?.email) {
+    return false;
+  }
+  if (user.user_metadata?.signup_via === "yahoo_imap") {
+    return true;
+  }
+  return resolveMailboxProviderFromEmail(user.email) === "yahoo";
+}
+
 /**
- * Sin `user_metadata.donexto_verified === true` no hay app.
- * Google pone `email_confirmed_at` al instante: eso NO salta el gate.
- * Identities / provider tampoco. Solo el clic del mail Donexto
- * (`?donexto_verify=1`) marca el flag.
+ * Gmail: hace falta el clic del mail Donexto (`donexto_verified`).
+ * Yahoo: el IMAP ya demostró que el correo es suyo; no hay alta ni gate.
  */
 function sessionNeedsDonextoEmailConfirm(session: Session | null): boolean {
   const user = session?.user;
   if (!user) {
     return false;
   }
-
-  return !isDonextoVerified(user);
+  if (isDonextoVerified(user) || yahooImapOwnsIdentity(user)) {
+    return false;
+  }
+  return true;
 }
 
 function isDonextoVerifyReturn(): boolean {
@@ -188,6 +203,16 @@ function translateAuthError(
   return message;
 }
 
+function detailMessage(payload: {
+  detail?: { message?: string } | string;
+  message?: string;
+}): string | undefined {
+  const detail = payload.detail;
+  if (typeof detail === "string") return detail;
+  if (detail?.message) return detail.message;
+  return payload.message;
+}
+
 export function useAppAuth() {
   const [rawSession, setRawSession] =
     useState<Session | null>(null);
@@ -282,7 +307,11 @@ export function useAppAuth() {
         return;
       }
 
-      if (!userHasOAuthIdentity(currentUser) || isDonextoVerified(currentUser)) {
+      if (
+        !userHasOAuthIdentity(currentUser) ||
+        isDonextoVerified(currentUser) ||
+        yahooImapOwnsIdentity(currentUser)
+      ) {
         return;
       }
 
@@ -384,6 +413,54 @@ export function useAppAuth() {
   const signInWithGoogle = useCallback(async () => {
     await signInWithProvider("google");
   }, [signInWithProvider]);
+
+  const signInWithYahoo = useCallback(
+    async (email: string, password: string) => {
+      const response = await fetch(`${API_BASE_URL}/auth/yahoo/enter`, {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          app_password: password,
+        }),
+      });
+
+      let payload: {
+        access_token?: string;
+        refresh_token?: string;
+        detail?: { message?: string } | string;
+        message?: string;
+      } = {};
+
+      try {
+        payload = (await response.json()) as typeof payload;
+      } catch {
+        throw new Error(
+          `No fue posible leer la respuesta de Yahoo (HTTP ${response.status}).`,
+        );
+      }
+
+      if (!response.ok || !payload.access_token || !payload.refresh_token) {
+        throw new Error(
+          detailMessage(payload) ??
+            "Yahoo no aceptó el correo o la clave. Escríbelos igual que cuando entras a Yahoo.",
+        );
+      }
+
+      const { error } = await supabase.auth.setSession({
+        access_token: payload.access_token,
+        refresh_token: payload.refresh_token,
+      });
+
+      if (error) {
+        throw new Error(translateAuthError(error.message));
+      }
+    },
+    [],
+  );
 
   const signUp = useCallback(
     async (
@@ -573,6 +650,7 @@ export function useAppAuth() {
     sendDonextoVerifyEmail,
     signIn,
     signInWithGoogle,
+    signInWithYahoo,
     signInWithProvider,
     signUp,
     resendSignupEmail,
