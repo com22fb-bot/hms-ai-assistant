@@ -31,6 +31,7 @@ _PROTECTED_PREFIXES = (
 _PUBLIC_PATHS = {
     "/auth/google/callback",
     "/auth/google/login",
+    "/auth/yahoo/enter",
 }
 
 

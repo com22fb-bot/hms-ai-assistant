@@ -2,10 +2,10 @@
 
 ## Cómo conectar
 
-1. Crear cuenta Donexto con el mismo correo Yahoo (enlace de confirmación).
-2. Verificar el correo Donexto.
-3. Conectar buzón → **Yahoo**: correo y **la misma clave con la que entra a Yahoo**.
-4. Pantalla de **seis meses** → **Descargar y clasificar** (mismas barras que Gmail).
+1. En app.donexto.com: **Continuar con Yahoo**.
+2. Correo Yahoo + **la misma clave con la que entra a Yahoo**.
+3. Eso abre la app y conecta el buzón. **No hay alta de usuario Donexto** ni enlace de confirmación.
+4. Pantalla de **seis meses** → **Descargar y clasificar**.
 
 No hay wizard de 16 dígitos, ni portal de Seguridad Yahoo, ni verificación en dos pasos dentro de Donexto.
 
@@ -30,5 +30,5 @@ No hay wizard de 16 dígitos, ni portal de Seguridad Yahoo, ni verificación en 
 
 - Host: `imap.mail.yahoo.com`
 - Puerto: `993` SSL
-- Backend: `POST /auth/yahoo/connect`
+- Backend: `POST /auth/yahoo/enter` (público: login + buzón) y `POST /auth/yahoo/connect` (reconectar ya logueado)
 - Importación: `GET/POST /gmail/import/*` (misma API que Gmail; rama IMAP si `provider=yahoo`)

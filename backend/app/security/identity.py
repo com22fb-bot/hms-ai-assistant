@@ -440,6 +440,36 @@ def require_request_context() -> WorkspaceContext:
     return context
 
 
+def bootstrap_workspace_for_user(
+    user_id: str,
+    email: str,
+    full_name: str = "",
+) -> tuple[AuthenticatedUser, str]:
+    """Crea perfil y workspace personal para un usuario Auth ya existente."""
+
+    user = AuthenticatedUser(
+        id=user_id,
+        email=email.strip().lower(),
+        full_name=full_name.strip(),
+        raw_user_metadata={},
+    )
+    _ensure_profile(user)
+    _ensure_personal_workspace(user)
+    memberships = _active_memberships(user.id)
+    if not memberships:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "workspace_required",
+                "message": (
+                    "Yahoo autenticó, pero no se pudo crear el espacio "
+                    "de trabajo. Inténtalo de nuevo."
+                ),
+            },
+        )
+    return user, str(memberships[0]["workspace_id"])
+
+
 def require_google_account() -> tuple[WorkspaceContext, dict[str, Any]]:
     context = require_request_context()
 

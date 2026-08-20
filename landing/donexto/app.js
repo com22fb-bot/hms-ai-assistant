@@ -60,7 +60,7 @@ const strings = {
     how_title: "Cómo se conecta",
     how_1_t: "Identidad",
     how_1_p:
-      "Creas la cuenta Donexto y confirmas el correo. Eso es el acceso a la app, no la clave del buzón de Gmail.",
+      "Con Yahoo entras con tu correo y la misma clave. Con Gmail, Google te identifica. No das de alta un usuario Donexto aparte.",
     how_2_t: "Lectura",
     how_2_p:
       "Gmail se autoriza en el sitio de Google. Yahoo, con el mismo correo y la misma clave con la que entras a Yahoo.",
@@ -164,7 +164,7 @@ const strings = {
     how_title: "How it connects",
     how_1_t: "Identity",
     how_1_p:
-      "You create a Donexto account and confirm the email. That is app access—not your Gmail mailbox password.",
+      "With Yahoo you sign in with your email and the same password. With Gmail, Google identifies you. You do not create a separate Donexto user.",
     how_2_t: "Reading",
     how_2_p:
       "Gmail is authorized on Google’s site. Yahoo uses the same email and password you use to sign in to Yahoo.",

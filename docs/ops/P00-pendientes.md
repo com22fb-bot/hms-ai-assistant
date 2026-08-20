@@ -48,7 +48,7 @@ Selector en Ajustes y tira en el login. Chrome de menú/perfil. El resto de la a
 
 No hay wizard de Seguridad Yahoo ni código de 16 dígitos. En Donexto: correo y la misma clave de Yahoo.
 
-Login Yahoo: primero cuenta Donexto (contraseña de Donexto o enlace). Después, en la app, la clave de Yahoo para el buzón. No se envía el enlace mágico al pulsar Continuar si ya es un inicio de sesión.
+Login Yahoo: un paso. Correo + clave de Yahoo = sesión y buzón. El usuario normal **no** da de alta un usuario Donexto ni usa enlace mágico.
 
 ## P00.6 — Copy: ni pedidos ni hogar son el producto
 
