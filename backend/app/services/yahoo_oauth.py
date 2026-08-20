@@ -168,4 +168,5 @@ def yahoo_email_from_userinfo(userinfo: dict[str, Any]) -> str:
 
 def granted_mail_read(token_payload: dict[str, Any]) -> bool:
     scope = str(token_payload.get("scope") or "").lower()
-    return "mail-r" in scope or "mail" in scope
+    parts = {part for part in scope.replace(",", " ").split() if part}
+    return bool(parts & {"mail-r", "mail-w", "mail"})

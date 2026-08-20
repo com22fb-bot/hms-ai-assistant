@@ -109,6 +109,7 @@ class YahooOAuthGateTests(unittest.TestCase):
 
     def test_mail_read_scope_detection(self) -> None:
         self.assertTrue(granted_mail_read({"scope": "openid email mail-r"}))
+        self.assertTrue(granted_mail_read({"scope": "openid,mail-w"}))
         self.assertFalse(granted_mail_read({"scope": "openid email profile"}))
 
 
