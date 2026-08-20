@@ -1,7 +1,7 @@
 "use client";
 
 import { LoaderCircle, Mail, X } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { AccountVsMailboxHint } from "@/components/auth/AccountVsMailboxHint";
 import {
@@ -22,7 +22,7 @@ type MailboxConnectModalProps = {
   mode?: MailboxConnectMode;
   onClose: () => void;
   onConnectGoogle: () => void | Promise<void>;
-  onConnectYahoo: (email: string, appPassword: string) => Promise<void>;
+  onConnectYahoo: () => Promise<void>;
 };
 
 export function MailboxConnectModal({
@@ -38,10 +38,6 @@ export function MailboxConnectModal({
   const [step, setStep] = useState<ProviderChoice>(
     mode === "yahoo" ? "yahoo" : "choose",
   );
-  const [yahooEmail, setYahooEmail] = useState(
-    mode === "yahoo" ? accountEmail : "",
-  );
-  const [yahooPassword, setYahooPassword] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
 
@@ -55,8 +51,6 @@ export function MailboxConnectModal({
       return;
     }
     setStep(mode === "yahoo" ? "yahoo" : "choose");
-    setYahooEmail(mode === "yahoo" ? accountEmail : "");
-    setYahooPassword("");
     setLocalError(null);
     setConnectingGoogle(false);
   }, [open, mode, accountEmail]);
@@ -65,8 +59,6 @@ export function MailboxConnectModal({
     if (step !== "yahoo" || yahooLocked) {
       return;
     }
-    setYahooEmail("");
-    setYahooPassword("");
     setLocalError(null);
   }, [step, yahooLocked]);
 
@@ -89,22 +81,15 @@ export function MailboxConnectModal({
     }
   }
 
-  async function handleYahooSubmit(event: FormEvent) {
-    event.preventDefault();
+  async function handleYahooClick() {
     setLocalError(null);
-
     try {
-      const mailboxEmail = yahooLocked
-        ? accountEmail
-        : yahooEmail;
-      await onConnectYahoo(mailboxEmail, yahooPassword);
-      setYahooPassword("");
-      onClose();
+      await onConnectYahoo();
     } catch (error) {
       setLocalError(
         error instanceof Error
           ? error.message
-          : "No fue posible conectar Yahoo.",
+          : "No fue posible abrir Yahoo.",
       );
     }
   }
@@ -221,77 +206,37 @@ export function MailboxConnectModal({
                 type="button"
                 className="dx-connect-btn dx-connect-btn--secondary"
                 disabled={connectingGoogle || connectingYahoo}
-                onClick={() => {
-                  setLocalError(null);
-                  setStep("yahoo");
-                }}
+                onClick={() => void handleYahooClick()}
               >
-                Yahoo Mail
+                {connectingYahoo ? (
+                  <>
+                    <LoaderCircle size={18} className="app-spin" />
+                    Abriendo Yahoo…
+                  </>
+                ) : (
+                  "Yahoo Mail"
+                )}
               </button>
               <p className="dx-connect-hint">
                 {ACCOUNT_VS_MAILBOX.connectYahooChooserHint}
               </p>
             </>
           ) : (
-            <form
-              className="dx-connect-form"
-              autoComplete="on"
-              onSubmit={(event) => void handleYahooSubmit(event)}
-            >
+            <div className="dx-connect-form">
               {mode === "choose" ? (
                 <button
                   type="button"
                   className="dx-connect-back"
                   onClick={() => {
                     setStep("choose");
-                    setYahooEmail("");
-                    setYahooPassword("");
                     setLocalError(null);
                   }}
                 >
                   ← Volver
                 </button>
               ) : null}
-
-              <label htmlFor="dx-yahoo-mailbox-email">
-                Correo de Yahoo
-                <input
-                  id="dx-yahoo-mailbox-email"
-                  name="username"
-                  type="email"
-                  inputMode="email"
-                  required
-                  readOnly={yahooLocked}
-                  autoComplete="username"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  placeholder="tucorreo@yahoo.com"
-                  value={yahooLocked ? accountEmail : yahooEmail}
-                  onChange={(event) => {
-                    if (!yahooLocked) {
-                      setYahooEmail(event.target.value);
-                    }
-                  }}
-                />
-              </label>
-              <label htmlFor="dx-yahoo-password">
-                Contraseña de Yahoo
-                <input
-                  id="dx-yahoo-password"
-                  name="password"
-                  type="password"
-                  required
-                  minLength={6}
-                  autoComplete="current-password"
-                  placeholder="La misma con la que entras a Yahoo"
-                  value={yahooPassword}
-                  onChange={(event) => setYahooPassword(event.target.value)}
-                />
-              </label>
               <p className="dx-connect-hint">
-                Solo tu correo y tu clave de Yahoo. Sin códigos extra ni
-                verificación en dos pasos en Donexto.
+                {ACCOUNT_VS_MAILBOX.connectYahooBody}
               </p>
               {localError ? (
                 <div className="dx-connect-error" role="alert">
@@ -299,20 +244,21 @@ export function MailboxConnectModal({
                 </div>
               ) : null}
               <button
-                type="submit"
+                type="button"
                 className="dx-connect-btn dx-connect-btn--primary"
                 disabled={connectingYahoo}
+                onClick={() => void handleYahooClick()}
               >
                 {connectingYahoo ? (
                   <>
                     <LoaderCircle size={16} className="app-spin" />
-                    Conectando Yahoo…
+                    Abriendo Yahoo…
                   </>
                 ) : (
-                  "Conectar Yahoo"
+                  "Ir a Yahoo"
                 )}
               </button>
-            </form>
+            </div>
           )}
         </div>
       </section>

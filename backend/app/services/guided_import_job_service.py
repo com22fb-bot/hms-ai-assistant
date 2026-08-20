@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import threading
 import time
-from datetime import datetime, timezone
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -12,7 +11,7 @@ from google.oauth2.credentials import Credentials
 from app.services.gmail_full_sync import sync_gmail_page
 from app.services.gmail_import_inventory import initial_import_snapshot
 from app.services.oauth_storage import OAuthStorage
-from app.services.yahoo_imap import YahooImapError
+from app.services.yahoo_imap import YahooImapError, stored_yahoo_uses_oauth
 from app.services.yahoo_import import (
     YAHOO_PAGE_SIZE,
     is_yahoo_provider,
@@ -70,15 +69,16 @@ def _storage() -> OAuthStorage:
     return OAuthStorage()
 
 
-def _yahoo_secret(account: dict[str, Any]) -> tuple[str, str]:
+def _yahoo_secret(account: dict[str, Any]) -> tuple[str, str, bool]:
     email = str(account.get("email") or "").strip()
     stored = _storage().get_credentials(str(account["id"])) or {}
-    app_password = str(stored.get("access_token") or "")
-    if not email or not app_password:
+    secret = str(stored.get("access_token") or "")
+    if not email or not secret or not stored_yahoo_uses_oauth(stored):
         raise YahooImapError(
-            "Vuelve a conectar Yahoo: falta el correo o la clave."
+            "Vuelve a autorizar Yahoo en el sitio de Yahoo. "
+            "Donexto no pide tu clave."
         )
-    return email, app_password
+    return email, secret, True
 
 
 def _job(job_id: str) -> dict[str, Any]:
@@ -240,10 +240,10 @@ def _run_job(job_id: str) -> None:
                 offset = int(job.get("next_page_token") or 0)
                 secret = _storage().get_credentials(account_id) or {}
                 app_password = str(secret.get("access_token") or "")
-                if not app_password:
+                if not app_password or not stored_yahoo_uses_oauth(secret):
                     raise YahooImapError(
-                        "Vuelve a conectar Yahoo: falta la contraseña "
-                        "de aplicación."
+                        "Vuelve a autorizar Yahoo en el sitio de Yahoo. "
+                        "Donexto no pide tu clave."
                     )
                 sync_page = sync_yahoo_page(
                     account=account,
@@ -251,6 +251,7 @@ def _run_job(job_id: str) -> None:
                     refs=refs,
                     offset=offset,
                     batch_size=int(job.get("batch_size") or YAHOO_PAGE_SIZE),
+                    oauth=True,
                 )
             else:
                 credentials = get_google_credentials_for_account(
@@ -517,11 +518,12 @@ def start_guided_import(
             )
 
         if is_yahoo_provider(account):
-            email, app_password = _yahoo_secret(account)
+            email, app_password, oauth = _yahoo_secret(account)
             snapshot = yahoo_initial_snapshot(
                 email,
                 app_password,
                 cutoff_at=now,
+                oauth=oauth,
             )
             query = str(snapshot["query"])
             expected = int(snapshot["eligible_messages"])
@@ -572,7 +574,7 @@ def start_guided_import(
             )
 
         if is_yahoo_provider(account):
-            email, app_password = _yahoo_secret(account)
+            email, app_password, oauth = _yahoo_secret(account)
             since = now - timedelta(days=7)
             last_sync_at = account.get("last_sync_at")
             if last_sync_at:
@@ -586,6 +588,7 @@ def start_guided_import(
                 email,
                 app_password,
                 since=since,
+                oauth=oauth,
             )
             query = f"yahoo:since:{since.date().isoformat()}"
             expected = len(refs)

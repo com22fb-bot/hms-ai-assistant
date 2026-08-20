@@ -65,7 +65,10 @@ Crear cuenta → **Apple** abre el portal de Apple.
 ### Yahoo
 
 `supabase-js` **no** incluye `yahoo` como Provider de Auth.
-El usuario entra con correo + clave de Yahoo (`POST /auth/yahoo/enter`). Donexto crea la sesión Auth por detrás; **no hay alta de usuario Donexto** ni enlace. El IMAP es a la vez identidad y lectura del buzón. No hay portal de Seguridad / 2FA dentro de Donexto.
+El usuario firma en el sitio de Yahoo (`POST /auth/yahoo/login` → redirect a
+Yahoo → `GET /auth/yahoo/callback`). Donexto crea la sesión Auth por detrás;
+**no hay alta de usuario Donexto** ni enlace. IMAP lee el buzón con el token
+OAuth (`OAUTHBEARER`). Donexto no pide la clave de Yahoo. Ver [YAHOO_OAUTH.md](./YAHOO_OAUTH.md).
 
 ## Relación con el buzón
 
@@ -73,4 +76,4 @@ El usuario entra con correo + clave de Yahoo (`POST /auth/yahoo/enter`). Donexto
 |------|----------|
 | Supabase Auth · Google / Azure / Apple | Cuenta Donexto (Crear cuenta) |
 | Backend · `/auth/google/*` | Leer el buzón Gmail (Paso 2) |
-| IMAP Yahoo | Entrar y leer el buzón Yahoo (`/auth/yahoo/enter`) |
+| Backend · `/auth/yahoo/login` + callback | Entrar y leer el buzón Yahoo (OAuth + IMAP) |

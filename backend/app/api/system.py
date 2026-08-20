@@ -71,6 +71,9 @@ def env_status() -> dict[str, Any]:
             "HMS_DATA_MUTATIONS_ENABLED": _env_is_set(
                 "HMS_DATA_MUTATIONS_ENABLED"
             ),
+            "YAHOO_CLIENT_ID": _env_is_set("YAHOO_CLIENT_ID"),
+            "YAHOO_CLIENT_SECRET": _env_is_set("YAHOO_CLIENT_SECRET"),
+            "YAHOO_REDIRECT_URI": _env_is_set("YAHOO_REDIRECT_URI"),
         },
         "oauth_shape": {
             "frontend_mentions_donexto": frontend_is_donexto,

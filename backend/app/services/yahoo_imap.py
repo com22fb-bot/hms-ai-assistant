@@ -1,4 +1,4 @@
-"""Lectura de Yahoo Mail por IMAP (correo y clave de Yahoo)."""
+"""Lectura de Yahoo Mail por IMAP con OAuth (el usuario firma en Yahoo)."""
 
 from __future__ import annotations
 
@@ -26,6 +26,19 @@ YAHOO_DOMAINS = (
 
 class YahooImapError(RuntimeError):
     """Fallo al conectar o leer Yahoo IMAP."""
+
+
+def stored_yahoo_uses_oauth(stored: dict[str, Any] | None) -> bool:
+    if not stored:
+        return False
+    metadata = stored.get("metadata") or {}
+    if not isinstance(metadata, dict):
+        return False
+    return str(metadata.get("auth") or "").lower() in {
+        "oauthbearer",
+        "oauth",
+        "oauth2",
+    }
 
 
 def _decode_header_value(value: str | None) -> str:
@@ -71,6 +84,7 @@ def _open_yahoo_client(
     app_password: str,
     *,
     timeout: int = 45,
+    oauth: bool = False,
 ) -> imaplib.IMAP4_SSL:
     context = ssl.create_default_context()
     safe_timeout = max(15, int(timeout))
@@ -90,20 +104,44 @@ def _open_yahoo_client(
             ssl_context=context,
         )
 
-    status, _data = client.login(address, app_password)
+    if oauth:
+        initial = (
+            f"n,a={address},\x01host={YAHOO_IMAP_HOST}\x01port={YAHOO_IMAP_PORT}"
+            f"\x01auth=Bearer {app_password}\x01\x01"
+        ).encode("utf-8")
+
+        def _oauthbearer(_challenge: bytes | None) -> bytes:
+            return initial
+
+        try:
+            status, _data = client.authenticate("OAUTHBEARER", _oauthbearer)
+        except imaplib.IMAP4.error as error:
+            try:
+                client.logout()
+            except Exception:
+                pass
+            raise YahooImapError(
+                "Yahoo no aceptó la autorización OAuth. Vuelve a firmar "
+                "en el sitio de Yahoo."
+            ) from error
+    else:
+        status, _data = client.login(address, app_password)
+
     if status != "OK":
         try:
             client.logout()
         except Exception:
             pass
         raise YahooImapError(
-            "Yahoo no aceptó esa clave. Escríbela igual que cuando entras a Yahoo."
+            "Yahoo no aceptó la autorización. Vuelve a firmar en el sitio de Yahoo."
+            if oauth
+            else "Yahoo no aceptó esa clave. Escríbela igual que cuando entras a Yahoo."
         )
     return client
 
 
 def verify_yahoo_login(address: str, app_password: str) -> None:
-    """Comprueba correo y clave de Yahoo contra IMAP."""
+    """Legacy: IMAP LOGIN. El producto ya no pide claves; no lo usa la API."""
     address = normalize_yahoo_address(address)
     app_password = normalize_yahoo_app_password(app_password)
 
@@ -163,15 +201,17 @@ def list_yahoo_messages(
     app_password: str,
     *,
     max_results: int = 20,
+    oauth: bool = False,
 ) -> list[dict[str, Any]]:
     """Lista mensajes recientes del INBOX de Yahoo."""
     address = normalize_yahoo_address(address)
-    app_password = normalize_yahoo_app_password(app_password)
+    if not oauth:
+        app_password = normalize_yahoo_app_password(app_password)
     max_results = max(1, min(int(max_results), 100))
     messages: list[dict[str, Any]] = []
 
     try:
-        client = _open_yahoo_client(address, app_password)
+        client = _open_yahoo_client(address, app_password, oauth=oauth)
         try:
             status, _ = client.select("INBOX", readonly=True)
             if status != "OK":

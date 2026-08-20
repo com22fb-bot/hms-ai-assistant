@@ -17,7 +17,7 @@ from app.services.oauth_storage import oauth_storage
 from app.services.yahoo_imap import (
     YahooImapError,
     list_yahoo_messages,
-    normalize_yahoo_app_password,
+    stored_yahoo_uses_oauth,
 )
 
 
@@ -46,25 +46,24 @@ def create_gmail_router(
         if provider in ("yahoo", "imap"):
             credentials = oauth_storage.get_credentials(str(account["id"]))
             address = str(account.get("email") or "").strip()
-            app_password = normalize_yahoo_app_password(
-                str((credentials or {}).get("access_token") or "")
-            )
-            if not address or not app_password:
+            token = str((credentials or {}).get("access_token") or "")
+            if not address or not token or not stored_yahoo_uses_oauth(credentials):
                 raise HTTPException(
                     status_code=401,
                     detail={
                         "status": "yahoo_credentials_missing",
                         "message": (
-                            "El buzón Yahoo no tiene credenciales válidas. "
-                            "Vuelve a conectar el correo."
+                            "Vuelve a firmar en el sitio de Yahoo. "
+                            "Donexto no pide la clave del buzón."
                         ),
                     },
                 )
             try:
                 raw_messages = list_yahoo_messages(
                     address,
-                    app_password,
+                    token,
                     max_results=limit,
+                    oauth=True,
                 )
             except YahooImapError as error:
                 raise HTTPException(

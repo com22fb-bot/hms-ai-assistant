@@ -122,15 +122,18 @@ def yahoo_initial_snapshot(
     app_password: str,
     *,
     cutoff_at: datetime | None = None,
+    oauth: bool = False,
 ) -> dict[str, Any]:
     address = normalize_yahoo_address(address)
-    app_password = normalize_yahoo_app_password(app_password)
+    if not oauth:
+        app_password = normalize_yahoo_app_password(app_password)
     start, current = _history_window(cutoff_at)
 
     client = _open_yahoo_client(
         address,
         app_password,
         timeout=YAHOO_IMPORT_TIMEOUT,
+        oauth=oauth,
     )
     try:
         grouped = _collect_refs(
@@ -190,8 +193,13 @@ def yahoo_initial_snapshot(
     }
 
 
-def yahoo_inventory(address: str, app_password: str) -> dict[str, Any]:
-    snapshot = yahoo_initial_snapshot(address, app_password)
+def yahoo_inventory(
+    address: str,
+    app_password: str,
+    *,
+    oauth: bool = False,
+) -> dict[str, Any]:
+    snapshot = yahoo_initial_snapshot(address, app_password, oauth=oauth)
     snapshot.pop("yahoo_refs", None)
     breakdown = snapshot.pop("breakdown")
     excluded = snapshot.pop("excluded")
@@ -228,13 +236,16 @@ def yahoo_incremental_refs(
     app_password: str,
     *,
     since: datetime,
+    oauth: bool = False,
 ) -> list[str]:
     address = normalize_yahoo_address(address)
-    app_password = normalize_yahoo_app_password(app_password)
+    if not oauth:
+        app_password = normalize_yahoo_app_password(app_password)
     client = _open_yahoo_client(
         address,
         app_password,
         timeout=YAHOO_IMPORT_TIMEOUT,
+        oauth=oauth,
     )
     try:
         grouped = _collect_refs(
@@ -295,10 +306,12 @@ def sync_yahoo_page(
     refs: list[str],
     offset: int,
     batch_size: int = YAHOO_PAGE_SIZE,
+    oauth: bool = False,
 ) -> dict[str, Any]:
     account_id = str(account["id"])
     address = normalize_yahoo_address(str(account.get("email") or ""))
-    app_password = normalize_yahoo_app_password(app_password)
+    if not oauth:
+        app_password = normalize_yahoo_app_password(app_password)
     safe_batch = min(max(int(batch_size), 1), 50)
     started_at = _utc_now()
 
@@ -349,6 +362,7 @@ def sync_yahoo_page(
         address,
         app_password,
         timeout=YAHOO_IMPORT_TIMEOUT,
+        oauth=oauth,
     )
     selected_folder: str | None = None
     try:

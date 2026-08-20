@@ -10,7 +10,7 @@
 2. Catálogo banco / pedido / reserva / social / publicidad.
 3. Bases de bancos MX, US, CA, UE, LATAM.
 4. Idioma en ajustes: ES, EN, FR, IT, PT.
-5. Yahoo: **correo + clave**, sin guía de 16 dígitos ni 2FA en Donexto.
+5. Yahoo: **firma en el sitio de Yahoo** (OAuth). Donexto no pide clave de buzón.
 6. Landing y app: H1 **Donexto**. Producto = criterio (qué sí requiere acción). Cuatro frentes al **mismo peso**: Dinero · Seguridad · Pedidos · Familia. Hogar no es titular; pedidos no es “envíos”. Publicar landing siempre a Pages **Production / `main`**.
 
 ## Estado
@@ -18,7 +18,7 @@
 | Pieza | Dónde | Prod |
 | --- | --- | --- |
 | Landing (criterio + 4 frentes) | Pages `donexto` Production `main` | Este deploy |
-| Yahoo correo + clave | Worker `donexto-app` + backend IMAP | Worker: este deploy. Railway: al mergear a `main` |
+| Yahoo OAuth (firma en Yahoo) | Worker `donexto-app` + backend IMAP OAUTHBEARER | Tras merge + vars `YAHOO_CLIENT_*` en Railway |
 | Idioma ES/EN/FR/IT/PT | Worker ajustes | Este deploy |
 | Clasificador v4 + catálogo bancos | `backend` `logistica1-triage-v4` | **Railway solo tras merge a `main`** |
 
@@ -46,9 +46,12 @@ Selector en Ajustes y tira en el login. Chrome de menú/perfil. El resto de la a
 
 ## P00.5 — Yahoo
 
-No hay wizard de Seguridad Yahoo ni código de 16 dígitos. En Donexto: correo y la misma clave de Yahoo.
+No hay wizard de Seguridad Yahoo ni código de 16 dígitos. Donexto **no pide**
+la clave de Yahoo: te lleva a firmar en el sitio de Yahoo (OAuth), igual que
+Gmail va a Google. Ver `docs/ops/YAHOO_OAUTH.md`.
 
-Login Yahoo: un paso. Correo + clave de Yahoo = sesión y buzón. El usuario normal **no** da de alta un usuario Donexto ni usa enlace mágico.
+Login Yahoo: un paso. **Continuar con Yahoo** abre Yahoo. El usuario normal
+**no** da de alta un usuario Donexto ni usa enlace mágico.
 
 ## P00.6 — Copy: ni pedidos ni hogar son el producto
 
@@ -80,6 +83,6 @@ git checkout restorepoint-HMS-CP-20260818-210235
 ## Definición de hecho
 
 1. donexto.com: H1 Donexto; kicker **no** es “Correo del hogar”; pilar 03 = **Pedidos**; prototipo A = **Prioridad**.
-2. App login: “Lo siguiente que sí importa. El resto espera.” Yahoo pide correo + clave. Inicio no lista los cuatro frentes; esos viven en “Qué mira”.
+2. App login: “Lo siguiente que sí importa. El resto espera.” Yahoo abre el sitio de Yahoo. Inicio no lista los cuatro frentes; esos viven en “Qué mira”.
 3. Merge a `main` + Railway v4 + reclasificar buzón de Héctor.
 4. Héctor confirma Banamex en Avisos.

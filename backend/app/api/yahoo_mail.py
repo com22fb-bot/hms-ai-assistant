@@ -1,33 +1,45 @@
-"""Conexión de Yahoo Mail (IMAP con correo y clave de Yahoo)."""
+"""Conexión de Yahoo Mail por OAuth: el usuario firma en Yahoo, no da su clave."""
 
 from __future__ import annotations
 
-import time
+from datetime import datetime, timedelta, timezone
+from html import escape
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
 from app.schemas.gmail import GoogleConnectionStatus
 from app.security.identity import require_request_context
 from app.services.oauth_storage import (
     OAuthCredentialError,
+    OAuthStateError,
     OAuthStorageError,
     oauth_storage,
 )
-from app.services.yahoo_imap import (
-    YahooImapError,
-    normalize_yahoo_address,
-    normalize_yahoo_app_password,
-    verify_yahoo_login,
+from app.services.yahoo_oauth import (
+    YahooOAuthError,
+    build_yahoo_authorization_url,
+    exchange_yahoo_code,
+    fetch_yahoo_userinfo,
+    granted_mail_read,
+    require_yahoo_oauth_config,
+    sanitize_return_to,
+    yahoo_email_from_userinfo,
 )
 from app.services.yahoo_session import mint_yahoo_session_or_http
 
 
 router = APIRouter(prefix="/auth/yahoo", tags=["Yahoo Mail"])
 
-_ENTER_WINDOW_SECONDS = 15 * 60
-_ENTER_MAX_ATTEMPTS = 8
-_enter_attempts: dict[str, list[float]] = {}
+_PASSWORD_REJECTED = {
+    "status": "yahoo_password_not_accepted",
+    "message": (
+        "Donexto no pide la contraseña de Yahoo ni de ningún buzón. "
+        "Pulsa Continuar con Yahoo y firma en el sitio de Yahoo."
+    ),
+}
 
 
 class YahooConnectRequest(BaseModel):
@@ -46,53 +58,8 @@ class YahooEnterResponse(BaseModel):
     message: str | None = None
 
 
-def _enforce_enter_rate_limit(key: str) -> None:
-    now = time.time()
-    stamps = [
-        stamp
-        for stamp in _enter_attempts.get(key, [])
-        if now - stamp < _ENTER_WINDOW_SECONDS
-    ]
-    if len(stamps) >= _ENTER_MAX_ATTEMPTS:
-        raise HTTPException(
-            status_code=429,
-            detail={
-                "status": "rate_limited",
-                "message": (
-                    "Demasiados intentos seguidos. Espera unos minutos "
-                    "e inténtalo de nuevo."
-                ),
-            },
-        )
-    stamps.append(now)
-    _enter_attempts[key] = stamps
-
-
-def _verify_yahoo_or_http(address: str, app_password: str) -> tuple[str, str]:
-    address = normalize_yahoo_address(address)
-    app_password = normalize_yahoo_app_password(app_password)
-
-    if "@" not in address:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "invalid_email",
-                "message": "Indica un correo de Yahoo válido.",
-            },
-        )
-
-    try:
-        verify_yahoo_login(address, app_password)
-    except YahooImapError as error:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "yahoo_auth_failed",
-                "message": str(error),
-            },
-        ) from error
-
-    return address, app_password
+class YahooLoginRequest(BaseModel):
+    return_to: str | None = None
 
 
 def persist_yahoo_mailbox(
@@ -100,9 +67,13 @@ def persist_yahoo_mailbox(
     user_id: str,
     workspace_id: str,
     address: str,
-    app_password: str,
+    access_token: str,
+    refresh_token: str | None = None,
+    expires_at: datetime | None = None,
+    scopes: list[str] | None = None,
+    mail_read: bool = True,
 ) -> GoogleConnectionStatus:
-    """Guarda el buzón Yahoo cifrado en el workspace indicado."""
+    """Guarda tokens OAuth de Yahoo cifrados. Nunca una contraseña."""
     try:
         try:
             oauth_storage.client.table("communication_accounts").update(
@@ -120,17 +91,18 @@ def persist_yahoo_mailbox(
             display_name=address,
             workspace_id=workspace_id,
             connected_by_profile_id=user_id,
-            status="active",
+            status="active" if mail_read else "inactive",
         )
         oauth_storage.save_credentials(
             account_id=account["id"],
-            access_token=app_password,
-            refresh_token=None,
-            expires_at=None,
-            token_uri=None,
-            scopes=["imap.mail.yahoo.com"],
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_at=expires_at,
+            token_uri="https://api.login.yahoo.com/oauth2/get_token",
+            scopes=scopes or ["openid", "email", "profile"],
             metadata={
                 "protocol": "imap",
+                "auth": "oauthbearer",
                 "host": "imap.mail.yahoo.com",
                 "connected_by_profile_id": user_id,
                 "workspace_id": workspace_id,
@@ -146,19 +118,38 @@ def persist_yahoo_mailbox(
             },
         ) from error
 
+    if not mail_read:
+        return GoogleConnectionStatus(
+            connected=False,
+            email=address,
+            provider="yahoo",
+            has_access_token=True,
+            has_refresh_token=bool(refresh_token),
+            scopes=scopes or [],
+            message=(
+                "Entraste con Yahoo. Para leer el buzón, Yahoo debe aprobar "
+                "el alcance de correo (mail-r) en la app de desarrollador."
+            ),
+            login_url="/auth/yahoo/login",
+        )
+
     return GoogleConnectionStatus(
         connected=True,
         email=address,
         provider="yahoo",
         has_access_token=True,
-        has_refresh_token=False,
-        scopes=["imap.mail.yahoo.com"],
+        has_refresh_token=bool(refresh_token),
+        scopes=scopes or [],
         message=(
-            "Buzón Yahoo conectado. Siguiente paso: descargar y clasificar "
+            "Buzón Yahoo autorizado. Siguiente paso: descargar y clasificar "
             "los últimos seis meses."
         ),
         login_url=None,
     )
+
+
+def _reject_yahoo_password() -> None:
+    raise HTTPException(status_code=410, detail=_PASSWORD_REJECTED)
 
 
 @router.post("/enter", response_model=YahooEnterResponse)
@@ -166,62 +157,154 @@ def yahoo_enter(
     payload: YahooConnectRequest,
     request: Request,
 ) -> YahooEnterResponse:
-    """Correo + clave de Yahoo = sesión. El usuario no da de alta Donexto."""
-    client_host = request.client.host if request.client else "unknown"
-    address_key = normalize_yahoo_address(payload.email)
-    _enforce_enter_rate_limit(f"{client_host}:{address_key}")
-
-    address, app_password = _verify_yahoo_or_http(
-        payload.email,
-        payload.app_password,
-    )
-    session = mint_yahoo_session_or_http(address)
-    persist_yahoo_mailbox(
-        user_id=session["user_id"],
-        workspace_id=session["workspace_id"],
-        address=address,
-        app_password=app_password,
-    )
-    expires_raw = session.get("expires_in")
-    expires_in = int(expires_raw) if expires_raw else None
-    return YahooEnterResponse(
-        access_token=session["access_token"],
-        refresh_token=session["refresh_token"],
-        expires_in=expires_in,
-        email=address,
-        connected=True,
-        provider="yahoo",
-        message="Entraste con Yahoo. El buzón ya quedó conectado.",
-    )
+    """Deshabilitado: Donexto no acepta la clave de Yahoo."""
+    _reject_yahoo_password()
+    raise AssertionError("unreachable")
 
 
 @router.post("/connect")
 def yahoo_connect(payload: YahooConnectRequest) -> GoogleConnectionStatus:
-    """Vincula un buzón Yahoo al workspace Donexto actual (ya logueado)."""
-    context = require_request_context()
-    address, app_password = _verify_yahoo_or_http(
-        payload.email,
-        payload.app_password,
+    """Deshabilitado: reconectar Yahoo es firmar otra vez en Yahoo."""
+    _reject_yahoo_password()
+    raise AssertionError("unreachable")
+
+
+@router.post("/login")
+def yahoo_login(
+    request: Request,
+    payload: YahooLoginRequest | None = None,
+) -> dict[str, str]:
+    """Devuelve la URL para firmar en el sitio de Yahoo."""
+    require_yahoo_oauth_config()
+    return_to = sanitize_return_to(
+        (payload.return_to if payload else None)
+        or request.headers.get("origin")
+    )
+    try:
+        state = oauth_storage.create_oauth_state(
+            provider="yahoo",
+            ttl_minutes=15,
+            return_to=return_to,
+        )
+    except OAuthStorageError as error:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": "No fue posible preparar el inicio de sesión de Yahoo.",
+                "technical_detail": str(error),
+            },
+        ) from error
+
+    return {
+        "status": "ok",
+        "authorization_url": build_yahoo_authorization_url(state),
+    }
+
+
+def _callback_error_page(title: str, message: str) -> HTMLResponse:
+    return HTMLResponse(
+        status_code=400,
+        content=f"""
+        <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{escape(title)}</title></head><body>
+        <h1>{escape(title)}</h1>
+        <p>{escape(message)}</p>
+        <p><a href="https://app.donexto.com/">Volver a Donexto</a></p>
+        </body></html>
+        """,
     )
 
-    account_email = (context.user.email or "").strip().lower()
-    if account_email and address != account_email:
+
+@router.get("/callback", response_model=None)
+def yahoo_callback(request: Request) -> HTMLResponse | RedirectResponse:
+    oauth_error = request.query_params.get("error")
+    if oauth_error:
+        description = request.query_params.get(
+            "error_description",
+            "Yahoo rechazó la autorización.",
+        )
+        return _callback_error_page("No fue posible conectar Yahoo", description)
+
+    state = request.query_params.get("state")
+    code = request.query_params.get("code")
+    if not state or not code:
         raise HTTPException(
             status_code=400,
             detail={
-                "status": "mailbox_mismatch",
-                "message": (
-                    "El buzón Yahoo debe ser el mismo correo con el que "
-                    f"entraste ({account_email})."
-                ),
+                "status": "error",
+                "message": "Yahoo no devolvió un código de autorización.",
             },
         )
 
-    return persist_yahoo_mailbox(
-        user_id=context.user.id,
-        workspace_id=context.workspace_id,
+    try:
+        state_context = oauth_storage.consume_oauth_state(state, "yahoo")
+    except OAuthStateError as error:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "error",
+                "message": "El inicio de sesión de Yahoo expiró. Inténtalo de nuevo.",
+                "technical_detail": str(error),
+            },
+        ) from error
+    except OAuthStorageError as error:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": "No fue posible validar el inicio de sesión de Yahoo.",
+                "technical_detail": str(error),
+            },
+        ) from error
+
+    try:
+        token_payload = exchange_yahoo_code(code)
+        access = str(token_payload.get("access_token") or "")
+        refresh = str(token_payload.get("refresh_token") or "") or None
+        userinfo = fetch_yahoo_userinfo(access)
+        address = yahoo_email_from_userinfo(userinfo)
+    except YahooOAuthError as error:
+        return _callback_error_page("No fue posible conectar Yahoo", str(error))
+
+    session = mint_yahoo_session_or_http(address)
+    expires_in = token_payload.get("expires_in")
+    expires_at = None
+    if expires_in:
+        try:
+            expires_at = datetime.now(timezone.utc) + timedelta(
+                seconds=int(expires_in)
+            )
+        except (TypeError, ValueError):
+            expires_at = None
+
+    raw_scope = str(token_payload.get("scope") or "")
+    scopes = [part for part in raw_scope.replace(",", " ").split() if part]
+    persist_yahoo_mailbox(
+        user_id=session["user_id"],
+        workspace_id=session["workspace_id"],
         address=address,
-        app_password=app_password,
+        access_token=access,
+        refresh_token=refresh,
+        expires_at=expires_at,
+        scopes=scopes,
+        mail_read=granted_mail_read(token_payload),
+    )
+
+    return_to = sanitize_return_to(str(state_context.get("return_to") or ""))
+    fragment = urlencode(
+        {
+            "access_token": session["access_token"],
+            "refresh_token": session["refresh_token"],
+            "token_type": "bearer",
+            "expires_in": session.get("expires_in") or "3600",
+            "type": "recovery",
+        }
+    )
+    return RedirectResponse(
+        url=f"{return_to.rstrip('/')}/#{fragment}",
+        status_code=302,
     )
 
 

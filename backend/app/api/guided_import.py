@@ -16,7 +16,7 @@ from app.services.guided_import_job_service import (
     start_guided_import,
 )
 from app.services.oauth_storage import oauth_storage
-from app.services.yahoo_imap import YahooImapError
+from app.services.yahoo_imap import YahooImapError, stored_yahoo_uses_oauth
 from app.services.yahoo_import import is_yahoo_provider, yahoo_inventory
 
 
@@ -42,31 +42,31 @@ def _google_credentials(account: dict[str, Any]) -> Any:
     )
 
 
-def _yahoo_secret(account: dict[str, Any]) -> tuple[str, str]:
+def _yahoo_secret(account: dict[str, Any]) -> tuple[str, str, bool]:
     credentials = oauth_storage.get_credentials(str(account["id"]))
     token = str((credentials or {}).get("access_token") or "")
     email = str(account.get("email") or "")
-    if not token or not email:
+    if not token or not email or not stored_yahoo_uses_oauth(credentials):
         raise HTTPException(
             status_code=401,
             detail={
                 "status": "yahoo_required",
                 "message": (
-                    "Vuelve a conectar Yahoo: falta la contraseña "
-                    "de aplicación."
+                    "Vuelve a autorizar Yahoo en el sitio de Yahoo. "
+                    "Donexto no pide tu clave."
                 ),
             },
         )
-    return email, token
+    return email, token, True
 
 
 @router.get("/inventory")
 def import_inventory() -> dict[str, Any]:
     account = _mailbox_account()
     if is_yahoo_provider(account):
-        email, app_password = _yahoo_secret(account)
+        email, app_password, oauth = _yahoo_secret(account)
         try:
-            return yahoo_inventory(email, app_password)
+            return yahoo_inventory(email, app_password, oauth=oauth)
         except YahooImapError as error:
             raise HTTPException(
                 status_code=400,

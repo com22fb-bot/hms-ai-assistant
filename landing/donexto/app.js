@@ -16,7 +16,7 @@ const strings = {
     cta_app3: "Abrir la app",
     cta_mail: "support@donexto.com",
     trust_1: "Google autentica en su propio sitio",
-    trust_2: "Yahoo con tu correo y tu clave",
+    trust_2: "Yahoo autentica en su propio sitio",
     trust_3: "Correo personal, no de oficina",
     video_title: "El criterio, en 40 segundos",
     video_lede: "Se dice Do-NEX-to. Marca, criterio y tablero.",
@@ -27,7 +27,7 @@ const strings = {
     story_next: "Siguiente",
     story_vo_toggle: "Guion (voz en off)",
     story_vo_full:
-      "Donexto. Do Next To… Atención sobre tu correo personal. Lo que pide acción sube; la oferta espera. Google autentica en su sitio; Yahoo, con tu correo y tu clave. Confirmas, autorizas la lectura y ves qué sigue. app.donexto.com",
+      "Donexto. Do Next To… Atención sobre tu correo personal. Lo que pide acción sube; la oferta espera. Google autentica en su sitio; Yahoo, en el suyo. Confirmas, autorizas la lectura y ves qué sigue. app.donexto.com",
     scope_title: "Qué mira",
     scope_lede:
       "Correo personal. Cuatro frentes, el mismo peso. Pedidos no gana a familia; familia no gana a un cargo.",
@@ -60,10 +60,10 @@ const strings = {
     how_title: "Cómo se conecta",
     how_1_t: "Identidad",
     how_1_p:
-      "Con Yahoo entras con tu correo y la misma clave. Con Gmail, Google te identifica. No das de alta un usuario Donexto aparte.",
+      "Con Yahoo te llevamos a su sitio para firmar. Con Gmail, Google te identifica. No das de alta un usuario Donexto aparte.",
     how_2_t: "Lectura",
     how_2_p:
-      "Gmail se autoriza en el sitio de Google. Yahoo, con el mismo correo y la misma clave con la que entras a Yahoo.",
+      "Gmail se autoriza en el sitio de Google. Yahoo, en el sitio de Yahoo. Donexto no pide claves de buzón.",
     how_3_t: "Consola",
     how_3_p:
       "Ves prioridad clasificada. El buzón original no se borra ni se reescribe.",
@@ -123,7 +123,7 @@ const strings = {
     cta_app3: "Open the app",
     cta_mail: "support@donexto.com",
     trust_1: "Google authenticates on Google’s site",
-    trust_2: "Yahoo with your email and password",
+    trust_2: "Yahoo authenticates on Yahoo’s site",
     trust_3: "Personal email, not the office",
     video_title: "The signal, in 40 seconds",
     video_lede: "Say Do-NEX-to. Brand, standard, board.",
@@ -134,7 +134,7 @@ const strings = {
     story_next: "Next",
     story_vo_toggle: "Voiceover script",
     story_vo_full:
-      "Donexto. Do Next To… Attention on personal email. What needs action rises; the offer waits. Google signs in on Google’s site; Yahoo with your email and password. You confirm, authorize reading, and you see what to do next. app.donexto.com",
+      "Donexto. Do Next To… Attention on personal email. What needs action rises; the offer waits. Google signs in on Google’s site; Yahoo on Yahoo’s. You confirm, authorize reading, and you see what to do next. app.donexto.com",
     scope_title: "What it watches",
     scope_lede:
       "Personal email. Four fronts, equal weight. Orders do not outrank family; family does not outrank a charge.",
@@ -164,10 +164,10 @@ const strings = {
     how_title: "How it connects",
     how_1_t: "Identity",
     how_1_p:
-      "With Yahoo you sign in with your email and the same password. With Gmail, Google identifies you. You do not create a separate Donexto user.",
+      "With Yahoo we take you to Yahoo’s site to sign in. With Gmail, Google identifies you. You do not create a separate Donexto user.",
     how_2_t: "Reading",
     how_2_p:
-      "Gmail is authorized on Google’s site. Yahoo uses the same email and password you use to sign in to Yahoo.",
+      "Gmail is authorized on Google’s site. Yahoo, on Yahoo’s site. Donexto never asks for a mailbox password.",
     how_3_t: "Console",
     how_3_p: "You see classified priority. The original mailbox is not deleted or rewritten.",
     console_title: "Console",
@@ -232,11 +232,11 @@ const storyShots = {
       duration: 8,
       label: "03 · 0:14–0:22",
       chapter: "Acceso",
-      line: "Google autentica en su sitio. Yahoo, con tu correo y tu clave.",
+      line: "Google autentica en su sitio. Yahoo, en el suyo.",
       html: `
         <div class="vis-steps">
           <div class="vis-step"><span>1</span><strong>Google</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">en su sitio</p></div>
-          <div class="vis-step"><span>2</span><strong>Yahoo</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">correo y clave</p></div>
+          <div class="vis-step"><span>2</span><strong>Yahoo</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">en su sitio</p></div>
         </div>`,
     },
     {
@@ -300,11 +300,11 @@ const storyShots = {
       duration: 8,
       label: "03 · 0:14–0:22",
       chapter: "Access",
-      line: "Google authenticates on its site. Yahoo, with your email and password.",
+      line: "Google authenticates on its site. Yahoo, on Yahoo’s.",
       html: `
         <div class="vis-steps">
           <div class="vis-step"><span>1</span><strong>Google</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">on its site</p></div>
-          <div class="vis-step"><span>2</span><strong>Yahoo</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">email and password</p></div>
+          <div class="vis-step"><span>2</span><strong>Yahoo</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">on its site</p></div>
         </div>`,
     },
     {

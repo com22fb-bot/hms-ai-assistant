@@ -91,6 +91,27 @@ class Settings:
             "GOOGLE_REDIRECT_URI"
         )
     )
+    yahoo_client_id: str = field(
+        default_factory=lambda: get_environment_variable(
+            "YAHOO_CLIENT_ID"
+        )
+    )
+    yahoo_client_secret: str = field(
+        default_factory=lambda: get_environment_variable(
+            "YAHOO_CLIENT_SECRET"
+        )
+    )
+    yahoo_redirect_uri: str = field(
+        default_factory=lambda: get_environment_variable(
+            "YAHOO_REDIRECT_URI"
+        )
+    )
+    yahoo_oauth_scopes: str = field(
+        default_factory=lambda: get_environment_variable(
+            "YAHOO_OAUTH_SCOPES",
+            "openid email profile mail-r",
+        )
+    )
 
     frontend_origins: list[str] = field(
         default_factory=lambda: get_list_environment_variable(

@@ -55,7 +55,8 @@ function yahooImapOwnsIdentity(user: User | null | undefined): boolean {
   if (!user?.email) {
     return false;
   }
-  if (user.user_metadata?.signup_via === "yahoo_imap") {
+  const via = String(user.user_metadata?.signup_via ?? "").toLowerCase();
+  if (via === "yahoo_imap" || via === "yahoo_oauth") {
     return true;
   }
   return resolveMailboxProviderFromEmail(user.email) === "yahoo";
@@ -63,7 +64,7 @@ function yahooImapOwnsIdentity(user: User | null | undefined): boolean {
 
 /**
  * Gmail: hace falta el clic del mail Donexto (`donexto_verified`).
- * Yahoo: el IMAP ya demostró que el correo es suyo; no hay alta ni gate.
+ * Yahoo: firmar en el sitio de Yahoo ya demuestra el correo; no hay alta ni gate.
  */
 function sessionNeedsDonextoEmailConfirm(session: Session | null): boolean {
   const user = session?.user;
@@ -414,53 +415,41 @@ export function useAppAuth() {
     await signInWithProvider("google");
   }, [signInWithProvider]);
 
-  const signInWithYahoo = useCallback(
-    async (email: string, password: string) => {
-      const response = await fetch(`${API_BASE_URL}/auth/yahoo/enter`, {
-        method: "POST",
-        cache: "no-store",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          app_password: password,
-        }),
-      });
+  const signInWithYahoo = useCallback(async () => {
+    const response = await fetch(`${API_BASE_URL}/auth/yahoo/login`, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        return_to: window.location.origin,
+      }),
+    });
 
-      let payload: {
-        access_token?: string;
-        refresh_token?: string;
-        detail?: { message?: string } | string;
-        message?: string;
-      } = {};
+    let payload: {
+      authorization_url?: string;
+      detail?: { message?: string } | string;
+      message?: string;
+    } = {};
 
-      try {
-        payload = (await response.json()) as typeof payload;
-      } catch {
-        throw new Error(
-          `No fue posible leer la respuesta de Yahoo (HTTP ${response.status}).`,
-        );
-      }
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      throw new Error(
+        `No fue posible abrir Yahoo (HTTP ${response.status}).`,
+      );
+    }
 
-      if (!response.ok || !payload.access_token || !payload.refresh_token) {
-        throw new Error(
-          detailMessage(payload) ??
-            "Yahoo no aceptó el correo o la clave. Escríbelos igual que cuando entras a Yahoo.",
-        );
-      }
+    if (!response.ok || !payload.authorization_url) {
+      throw new Error(
+        detailMessage(payload) ??
+          "No fue posible abrir el inicio de sesión de Yahoo.",
+      );
+    }
 
-      const { error } = await supabase.auth.setSession({
-        access_token: payload.access_token,
-        refresh_token: payload.refresh_token,
-      });
-
-      if (error) {
-        throw new Error(translateAuthError(error.message));
-      }
-    },
-    [],
-  );
+    window.location.assign(payload.authorization_url);
+  }, []);
 
   const signUp = useCallback(
     async (

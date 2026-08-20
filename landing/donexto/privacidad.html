@@ -181,12 +181,12 @@
             pide la contraseña de Gmail.
           </li>
           <li>
-            <strong>Yahoo</strong>: entras en Donexto con el mismo correo y la
-            misma clave con la que entras a Yahoo. Eso abre la app y autoriza
-            la lectura: no das de alta un usuario Donexto aparte ni usas una
-            contraseña Donexto. Donexto usa esa clave para leer el buzón por
-            IMAP (servidor de Yahoo, cifrado). Se guarda cifrada solo para
-            seguir leyendo el buzón mientras la conexión siga activa.
+            <strong>Yahoo</strong>: te llevamos al sitio de Yahoo para firmar
+            (OAuth). Eso abre la app y, si autorizas la lectura, conecta el
+            buzón. No das de alta un usuario Donexto aparte ni escribes la clave
+            de Yahoo en Donexto. Donexto lee el buzón por IMAP (servidor de
+            Yahoo, cifrado) con el token OAuth. Ese token se guarda cifrado
+            solo para seguir leyendo el buzón mientras la conexión siga activa.
           </li>
         </ul>
         <p>
@@ -196,8 +196,9 @@
         </p>
         <p>
           Con Gmail te enviamos un correo de verificación de Donexto; sin ese
-          paso no hay acceso ni lectura del buzón. Con Yahoo no: el correo y la
-          clave de Yahoo son el acceso y la autorización de lectura.
+          paso no hay acceso ni lectura del buzón. Con Yahoo no: firmar en el
+          sitio de Yahoo es el acceso y la autorización de lectura. Donexto no
+          pide la clave de ningún buzón.
         </p>
         <p>
           Según el buzón que conectes, el sistema accede, en la medida necesaria
@@ -210,7 +211,8 @@
           </li>
           <li>
             Autorización de lectura: en Gmail, tokens de Google almacenados
-            cifrados. En Yahoo, la clave del buzón almacenada cifrada para IMAP.
+            cifrados. En Yahoo, tokens OAuth de Yahoo almacenados cifrados para
+            IMAP.
           </li>
           <li>
             Metadatos y fragmentos de correo: remitente, asunto, fecha y, cuando
@@ -296,13 +298,14 @@
         </p>
         <h3>Yahoo</h3>
         <p>
-          Yahoo no se conecta hoy con una API OAuth de correo en Donexto. Se
-          conecta por IMAP seguro (<code>imap.mail.yahoo.com</code>, puerto 993
-          con SSL). Tú escribes en Donexto el correo y la clave de esa cuenta
-          Yahoo: con eso entras y queda autorizado el buzón. No hay un usuario
-          Donexto aparte ni una contraseña Donexto. Guardamos esa clave cifrada
-          para leer el buzón. Para dejar de dar acceso: desconecta el buzón en
-          Donexto y, si quieres invalidar esa clave, cámbiala en Yahoo.
+          Yahoo se conecta con OAuth: firmas en el sitio de Yahoo. Donexto no
+          pide la clave de esa cuenta. Si Yahoo autoriza el alcance de correo,
+          Donexto lee el buzón por IMAP seguro (<code>imap.mail.yahoo.com</code>,
+          puerto 993 con SSL) usando el token OAuth. No hay un usuario Donexto
+          aparte ni una contraseña Donexto. Guardamos ese token cifrado para
+          leer el buzón. Para dejar de dar acceso: desconecta el buzón en
+          Donexto y revoca Donexto en las aplicaciones conectadas de tu cuenta
+          Yahoo.
         </p>
         <p>
           AOL no está disponible todavía.
@@ -320,8 +323,8 @@
 
         <h2 id="compartida">3. Responsabilidad compartida</h2>
         <p>
-          Donexto cifra la autorización de lectura (tokens de Google o clave
-          IMAP de Yahoo). Eso no cierra, por sí solo, el permiso del lado del
+          Donexto cifra la autorización de lectura (tokens de Google o tokens
+          OAuth de Yahoo). Eso no cierra, por sí solo, el permiso del lado del
           buzón.
         </p>
         <p>
@@ -331,8 +334,8 @@
             href="https://myaccount.google.com/permissions"
             rel="noopener noreferrer"
             >https://myaccount.google.com/permissions</a
-          >. En Yahoo, cambia la clave de esa cuenta si quieres invalidar la
-          que Donexto tenía guardada.
+          >. En Yahoo, desconecta el buzón en Donexto y revoca Donexto en las
+          aplicaciones conectadas de tu cuenta Yahoo.
         </p>
 
         <h2 id="encargados">4. Encargados</h2>
@@ -345,8 +348,9 @@
             lectura del buzón por la API de Gmail.
           </li>
           <li>
-            Yahoo, si conectas Yahoo: el servidor IMAP de Yahoo recibe tu
-            correo y tu clave para que Donexto lea el buzón.
+            Yahoo, si conectas Yahoo: identidad (cuando firmas en Yahoo) y
+            lectura del buzón por IMAP con el token OAuth. Donexto no envía tu
+            clave a Yahoo porque nunca la pide.
           </li>
           <li>
             Supabase, Railway, Cloudflare y Resend: datos de la cuenta Donexto,
@@ -393,7 +397,8 @@
           Puedes ver tus datos de usuario y corregir clasificaciones dentro de
           la app, o pedírnoslo por correo. Puedes desconectar el buzón o eliminar
           la cuenta en Donexto. En Gmail, también puedes revocar Donexto en
-          Google. En Yahoo, puedes cambiar la clave de esa cuenta. Puedes
+          Google. En Yahoo, puedes revocar Donexto en las aplicaciones
+          conectadas de tu cuenta Yahoo. Puedes
           solicitar la exportación de los datos generados dentro de Donexto
           (configuraciones de cuenta e historial de clasificaciones). Eso no
           incluye exportar tu bandeja completa: esa vive y se queda en el
@@ -420,8 +425,8 @@
         </ul>
         <p>
           Al tramitar la baja: dejamos de leer tu buzón; borramos o dejamos de
-          usar la autorización de lectura en Donexto (tokens de Google o clave
-          IMAP de Yahoo); y bloqueamos o borramos los datos de Donexto conforme
+          usar la autorización de lectura en Donexto (tokens de Google o tokens
+          OAuth de Yahoo); y bloqueamos o borramos los datos de Donexto conforme
           a la ley aplicable. En México, el bloqueo previo que marca la LFPDPPP
           cuando aplica. Los respaldos de infraestructura pueden conservar
           copias un tiempo, hasta que roten; esas copias no se usan para
@@ -438,8 +443,8 @@
             href="https://myaccount.google.com/permissions"
             rel="noopener noreferrer"
             >https://myaccount.google.com/permissions</a
-          >. En Yahoo, desconecta el buzón en Donexto y cambia la clave de Yahoo
-          si quieres invalidar la que estaba guardada.
+          >. En Yahoo, desconecta el buzón en Donexto y revoca Donexto en las
+          aplicaciones conectadas de tu cuenta Yahoo.
         </p>
 
         <h2 id="cookies">8. Cookies</h2>

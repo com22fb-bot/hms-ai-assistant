@@ -1,4 +1,4 @@
-"""Entrada Yahoo: IMAP prueba el correo; Donexto abre sesión sin alta aparte."""
+"""Entrada Yahoo: OAuth en el sitio de Yahoo; Donexto abre sesión sin alta aparte."""
 
 from __future__ import annotations
 
@@ -15,11 +15,11 @@ from app.security.identity import bootstrap_workspace_for_user
 
 logger = logging.getLogger(__name__)
 
-YAHOO_SIGNUP_VIA = "yahoo_imap"
+YAHOO_SIGNUP_VIA = "yahoo_oauth"
 
 
 class YahooSessionError(RuntimeError):
-    """No se pudo abrir la sesión Donexto tras un IMAP válido."""
+    """No se pudo abrir la sesión Donexto tras firmar en Yahoo."""
 
 
 def _user_payload(user: Any) -> dict[str, Any]:

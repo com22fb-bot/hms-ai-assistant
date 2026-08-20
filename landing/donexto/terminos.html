@@ -204,9 +204,10 @@
         <p>
           Gmail y Yahoo no se identifican igual. Gmail: Google te identifica y
           te enviamos un correo de verificación de Donexto; después autorizas
-          la lectura en el sitio de Google. Yahoo: entras con el correo y la
-          misma clave de Yahoo; eso abre la app y autoriza la lectura. Con
-          Yahoo no das de alta un usuario Donexto aparte.
+          la lectura en el sitio de Google. Yahoo: te llevamos al sitio de
+          Yahoo para firmar; eso abre la app y, si autorizas la lectura, conecta
+          el buzón. Donexto no pide la contraseña de Yahoo ni de ningún buzón.
+          Con Yahoo no das de alta un usuario Donexto aparte.
         </p>
         <p>
           <strong>Disponible hoy</strong>
@@ -217,10 +218,10 @@
             pide la contraseña de Gmail.
           </li>
           <li>
-            Yahoo: escribes en Donexto el correo y la misma clave con la que
-            entras a Yahoo. Eso es el acceso y la lectura. Donexto lee el buzón
-            por IMAP seguro y guarda esa clave cifrada. No hay una contraseña
-            Donexto aparte.
+            Yahoo: firmas en el sitio de Yahoo (OAuth). Donexto no pide tu
+            clave. Donexto lee el buzón por IMAP seguro con el token que Yahoo
+            entrega y guarda ese token cifrado. No hay una contraseña Donexto
+            aparte.
           </li>
         </ul>
         <p>
@@ -245,14 +246,14 @@
             (OAuth).
           </li>
           <li>
-            Yahoo: la autorización de lectura ocurre en Donexto, con el correo
-            y la clave de Yahoo, contra el servidor IMAP de Yahoo. Ese mismo
-            paso es el acceso; no hay un alta de usuario Donexto.
+            Yahoo: la autorización ocurre en el sitio de Yahoo (OAuth). Donexto
+            usa el token contra el servidor IMAP de Yahoo. Ese mismo paso es el
+            acceso; no hay un alta de usuario Donexto.
           </li>
           <li>
             Gmail: te enviamos un correo de verificación de Donexto; sin ese
-            paso no hay acceso ni lectura. Yahoo no usa ese correo: el IMAP
-            prueba que el buzón es tuyo.
+            paso no hay acceso ni lectura. Yahoo no usa ese correo: firmar en
+            Yahoo prueba que el buzón es tuyo.
           </li>
           <li>
             Pedimos que los datos de la cuenta sean verdaderos, que puedas abrir
@@ -263,7 +264,7 @@
           <li>
             La contraseña de la cuenta Donexto, si la usas (Gmail u otro
             correo), no es la de Gmail. Con Yahoo no existe esa contraseña
-            aparte: usas la clave de Yahoo.
+            aparte: firmas en el sitio de Yahoo.
           </li>
           <li>
             Gmail: si revocas Donexto en
@@ -272,8 +273,8 @@
               rel="noopener noreferrer"
               >https://myaccount.google.com/permissions</a
             >, dejamos de poder leer ese buzón. Yahoo: desconecta el buzón en
-            Donexto; cambia la clave en Yahoo si quieres invalidar la que estaba
-            guardada.
+            Donexto y revoca Donexto en las aplicaciones conectadas de tu cuenta
+            Yahoo.
           </li>
         </ul>
 
@@ -411,8 +412,8 @@
             href="https://myaccount.google.com/permissions"
             rel="noopener noreferrer"
             >https://myaccount.google.com/permissions</a
-          >. En Yahoo, cambia la clave de esa cuenta si quieres invalidar la
-          que Donexto tenía guardada.
+          >. En Yahoo, desconecta el buzón en Donexto y revoca Donexto en las
+          aplicaciones conectadas de tu cuenta Yahoo.
         </p>
         <p>
           Podemos actualizar estos términos en

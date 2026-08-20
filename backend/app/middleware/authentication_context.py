@@ -32,6 +32,8 @@ _PUBLIC_PATHS = {
     "/auth/google/callback",
     "/auth/google/login",
     "/auth/yahoo/enter",
+    "/auth/yahoo/login",
+    "/auth/yahoo/callback",
 }
 
 

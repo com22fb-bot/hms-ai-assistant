@@ -1,7 +1,7 @@
 /**
  * Ruteo de alta por dominio del buzón que el usuario quiere vigilar.
  * Gmail → Google OAuth. Hotmail/Outlook → Azure. Apple → Apple.
- * Yahoo → un paso: correo + clave de Yahoo (IMAP). No hay usuario Donexto aparte.
+ * Yahoo → un paso: te llevamos al sitio de Yahoo (OAuth). No hay clave en Donexto.
  */
 
 export type MailboxConnectMode = "gmail" | "yahoo" | "choose";

@@ -12,16 +12,15 @@ export const ACCOUNT_VS_MAILBOX = {
   loginTitleYahoo: "Entrar con Yahoo",
   loginEmailLabel: "Correo",
   loginPasswordLabel: "Contraseña de Donexto",
-  loginYahooPasswordLabel: "Contraseña de Yahoo",
   signupFullNameLabel: "Nombre completo",
   loginHelper:
     "Identifícate con el correo que vas a vigilar.",
   loginHelperYahoo:
-    "Entras con tu correo Yahoo y la misma clave. No das de alta un usuario Donexto.",
+    "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   yahooSignInNext:
-    "Entras con tu correo Yahoo y la misma clave. No hay usuario Donexto aparte.",
+    "Firma en el sitio de Yahoo. Donexto no pide la clave de ningún buzón.",
   yahooMagicLinkSent:
-    "Entraste — o entra — con el correo y la clave de Yahoo. No usamos un enlace para Yahoo.",
+    "Te llevamos a Yahoo para firmar. No usamos un enlace ni tu clave aquí.",
   loginFoot: "Esta es tu cuenta de Donexto.",
   signupChooserBody:
     "Elige el correo que vas a vigilar: será el mismo de tu cuenta Donexto. Te llevamos al inicio de sesión de ese proveedor.",
@@ -37,10 +36,10 @@ export const ACCOUNT_VS_MAILBOX = {
   signupHaveAccount: "Ya tengo cuenta — Entrar",
   signupYahooTitle: "Yahoo",
   signupYahooBody:
-    "Entras con tu correo Yahoo y la misma clave. No das de alta un usuario Donexto.",
+    "Te llevamos al sitio de Yahoo para que firmes. Donexto no pide tu clave.",
   signupYahooCta: "Continuar con Yahoo",
   signupYahooContinue:
-    "Con el correo y la clave de Yahoo entras y el buzón queda conectado.",
+    "Yahoo te identifica en su sitio. Si autorizas la lectura, el buzón queda conectado.",
   signupHotmailPending:
     "Te llevamos al inicio de sesión de Microsoft.",
   signupApplePending:
@@ -64,18 +63,17 @@ export const ACCOUNT_VS_MAILBOX = {
   connectBanner: "Esto no pide tu contraseña de Gmail · solo autoriza la lectura",
   connectChooserTitle: "Autoriza la lectura de tu correo",
   connectChooserBody:
-    "El buzón es el mismo correo de tu cuenta Donexto. Gmail autoriza lectura en Google; Yahoo pide tu correo y la misma clave con la que entras a Yahoo.",
+    "El buzón es el mismo correo de tu cuenta Donexto. Gmail autoriza lectura en Google; Yahoo, en el sitio de Yahoo. Donexto no pide claves de buzón.",
   connectGmailBody:
     "Donexto nunca te pidió la contraseña de Gmail. Esta pantalla de Google es solo para autorizar la lectura de este mismo buzón.",
   connectGmailCta: "Autorizar lectura de este Gmail",
   connectYahooTitle: "Conecta tu correo Yahoo",
   connectYahooBody:
-    "Escribe tu correo Yahoo y la misma clave con la que entras a Yahoo. Una sola vez.",
-  connectYahooAppPasswordLabel: "Contraseña de Yahoo",
+    "Te llevamos al sitio de Yahoo para autorizar la lectura. Donexto no pide tu clave.",
   connectGoogleHint:
     "Te llevamos a la página oficial de Google para autorizar la lectura de este mismo Gmail (no es el login de Donexto y no pedimos tu contraseña).",
   connectYahooChooserHint:
-    "Escribes tu correo y la misma clave con la que entras a Yahoo. Sin códigos extra ni verificación en dos pasos.",
+    "Yahoo te identifica y autoriza la lectura en su propio sitio. Sin clave en Donexto.",
 
   changeMailboxLabel: "Volver a autorizar buzón",
   connectMailboxLabel: "Autorizar buzón",
@@ -139,8 +137,8 @@ export function confirmGateBodyFor(email: string): string {
   const label = mailboxServiceLabel(provider);
   if (provider === "yahoo") {
     return (
-      "Entras con tu correo Yahoo y la misma clave. Eso identifica tu cuenta " +
-      "y autoriza la lectura. No hay un alta de usuario Donexto ni un enlace extra."
+      "Firma en el sitio de Yahoo. Eso identifica tu cuenta y, si Yahoo " +
+      "autoriza la lectura, conecta el buzón. Donexto no pide tu clave."
     );
   }
   const password = mailboxPasswordPhrase(provider);
@@ -166,9 +164,9 @@ export function authSecurityBodyFor(email?: string): string {
   }
   if (provider === "yahoo") {
     return (
-      "Con Yahoo no das de alta un usuario Donexto. Escribes tu correo y la " +
-      "misma clave con la que entras a Yahoo. Eso abre la app y conecta el buzón. " +
-      "Sin códigos extra ni verificación en dos pasos en Donexto."
+      "Con Yahoo no das de alta un usuario Donexto ni escribes la clave aquí. " +
+      "Te llevamos al sitio de Yahoo para firmar. Si autorizas la lectura, " +
+      "el buzón queda conectado."
     );
   }
   return (
@@ -185,8 +183,8 @@ export function oneLinerFor(email?: string): string {
     : "other";
   if (provider === "yahoo") {
     return (
-      "Entras con tu correo Yahoo y la misma clave. No das de alta un usuario " +
-      "Donexto: ese correo es el buzón que vigilamos."
+      "Firma en el sitio de Yahoo. Donexto no pide tu clave: ese correo " +
+      "es el buzón que vigilamos."
     );
   }
   const password = mailboxPasswordPhrase(provider);
@@ -201,7 +199,7 @@ export function connectBannerFor(email?: string): string {
     ? resolveMailboxProviderFromEmail(email)
     : "other";
   if (provider === "yahoo") {
-    return "Escribe tu correo Yahoo y la misma clave con la que entras a Yahoo. Sin códigos extra ni verificación en dos pasos.";
+    return "Te llevamos al sitio de Yahoo para autorizar la lectura. Donexto no pide tu clave.";
   }
   if (provider === "gmail") {
     return ACCOUNT_VS_MAILBOX.connectBanner;
@@ -215,8 +213,8 @@ export function step2EmptyLeadFor(email?: string): string {
     : "other";
   if (provider === "yahoo") {
     return (
-      "Sin el correo y la clave de Yahoo no hay bandeja que clasificar. " +
-      "Eso es el acceso: no hay un usuario Donexto aparte."
+      "Sin autorizar Yahoo no hay bandeja que clasificar. Firma en el sitio " +
+      "de Yahoo; Donexto no pide tu clave."
     );
   }
   const password = mailboxPasswordPhrase(provider);

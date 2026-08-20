@@ -724,7 +724,7 @@ function Dashboard({
     connectingYahoo,
     loadGoogleStatus,
     startGoogleConnection,
-    connectYahoo,
+    startYahooConnection,
   } = useGoogleStatus();
 
   const isGoogleMailbox =
@@ -1605,14 +1605,20 @@ function Dashboard({
                   : new Error(message);
               }
             }}
-            onConnectYahoo={async (email, appPassword) => {
-              await connectYahoo(email, appPassword);
-              setMailboxPickerOpen(false);
-              setNotice(
-                `Yahoo verificado (${email}). Ahora descarga y clasifica los últimos seis meses.`,
-              );
-              setInitialFlowOpened(false);
-              setGuidedImportOpen(true);
+            onConnectYahoo={async () => {
+              setNotice("Te llevamos a Yahoo para firmar ahí…");
+              try {
+                await startYahooConnection();
+              } catch (requestError) {
+                const message =
+                  requestError instanceof Error
+                    ? requestError.message
+                    : "No fue posible abrir Yahoo.";
+                setNotice(message);
+                throw requestError instanceof Error
+                  ? requestError
+                  : new Error(message);
+              }
             }}
           />
         ) : null}

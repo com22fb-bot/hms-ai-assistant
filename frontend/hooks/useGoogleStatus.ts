@@ -138,46 +138,50 @@ export function useGoogleStatus() {
     window.location.assign(payload.authorization_url);
   }, []);
 
-  const connectYahoo = useCallback(
-    async (email: string, appPassword: string) => {
-      setConnectingYahoo(true);
-      setConnectionError(null);
+  const startYahooConnection = useCallback(async () => {
+    setConnectingYahoo(true);
+    setConnectionError(null);
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/yahoo/login`, {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          return_to: window.location.origin,
+        }),
+      });
+
+      let payload: {
+        authorization_url?: string;
+        detail?: { message?: string } | string;
+      } = {};
 
       try {
-        const response = await hmsFetch(
-          `${API_BASE_URL}/auth/yahoo/connect`,
-          {
-            method: "POST",
-            cache: "no-store",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              email: email.trim(),
-              app_password: appPassword.trim(),
-            }),
-          },
+        payload = (await response.json()) as typeof payload;
+      } catch {
+        throw new Error(
+          `No fue posible abrir Yahoo (HTTP ${response.status}).`,
         );
-
-        const payload = (await response.json()) as GoogleConnectionStatus & {
-          detail?: { message?: string } | string;
-        };
-
-        if (!response.ok) {
-          throw new Error(
-            detailMessage(payload) ??
-              "Yahoo no aceptó esa clave. Escríbela igual que cuando entras a Yahoo.",
-          );
-        }
-
-        setConnection(payload);
-        return payload;
-      } finally {
-        setConnectingYahoo(false);
       }
-    },
-    [],
-  );
+
+      if (!response.ok || !payload.authorization_url) {
+        const detail =
+          typeof payload.detail === "string"
+            ? payload.detail
+            : payload.detail?.message;
+        throw new Error(
+          detail ?? "No fue posible abrir el inicio de sesión de Yahoo.",
+        );
+      }
+
+      window.location.assign(payload.authorization_url);
+    } finally {
+      setConnectingYahoo(false);
+    }
+  }, []);
 
   return {
     connection,
@@ -186,6 +190,6 @@ export function useGoogleStatus() {
     connectingYahoo,
     loadGoogleStatus,
     startGoogleConnection,
-    connectYahoo,
+    startYahooConnection,
   };
 }

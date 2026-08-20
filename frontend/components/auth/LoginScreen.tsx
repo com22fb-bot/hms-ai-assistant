@@ -58,7 +58,7 @@ type LoginScreenProps = {
     fullName: string,
   ) => Promise<unknown>;
   onSignInWithGoogle: () => Promise<void>;
-  onSignInWithYahoo: (email: string, password: string) => Promise<void>;
+  onSignInWithYahoo: () => Promise<void>;
   onSignInWithProvider: (provider: AuthOAuthProvider) => Promise<void>;
   onResendSignupEmail?: (email: string) => Promise<void>;
   onMagicLink: (email: string) => Promise<void>;
@@ -99,7 +99,7 @@ function ProviderMark({
 
 /**
  * Acceso Donexto.
- * Yahoo: correo + la misma clave de Yahoo. No hay alta de usuario Donexto.
+ * Yahoo: te llevamos al sitio de Yahoo (OAuth). Donexto no pide la clave.
  * Gmail: Google OAuth; la contraseña de Gmail no se pide aquí.
  */
 export function LoginScreen({
@@ -215,38 +215,17 @@ export function LoginScreen({
     }
   }
 
-  function showYahooForm() {
-    setYahooMode(true);
-    setUsePassword(false);
-    resetAlerts();
-    window.setTimeout(() => {
-      if (email.trim()) {
-        passwordRef.current?.focus();
-      } else {
-        emailRef.current?.focus();
-      }
-    }, 0);
-  }
-
-  async function enterWithYahoo(address: string, yahooPassword: string) {
-    if (yahooPassword.length < 6) {
-      setError(
-        "Escribe la misma clave con la que entras a Yahoo (mínimo 6 caracteres).",
-      );
-      passwordRef.current?.focus();
-      return;
-    }
+  async function enterWithYahoo() {
     setBusy(true);
     resetAlerts();
     try {
-      await onSignInWithYahoo(address, yahooPassword);
+      await onSignInWithYahoo();
     } catch (requestError) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "Yahoo no aceptó el correo o la clave.",
+          : "No fue posible abrir Yahoo.",
       );
-    } finally {
       setBusy(false);
     }
   }
@@ -260,7 +239,7 @@ export function LoginScreen({
     if (!isValidSignupEmail(clean)) {
       setError(
         yahooFlow
-          ? "Escribe tu correo Yahoo."
+          ? "Pulsa Continuar con Yahoo: Donexto no pide tu clave."
           : "Escribe el correo con el que te identificas.",
       );
       return;
@@ -268,7 +247,7 @@ export function LoginScreen({
 
     const provider = resolveMailboxProviderFromEmail(clean);
     if (yahooFlow || provider === "yahoo") {
-      await enterWithYahoo(clean, password);
+      await enterWithYahoo();
       return;
     }
 
@@ -302,22 +281,7 @@ export function LoginScreen({
   }
 
   async function continueYahoo() {
-    const clean = email.trim().toLowerCase();
-    if (
-      isValidSignupEmail(clean) &&
-      resolveMailboxProviderFromEmail(clean) !== "yahoo"
-    ) {
-      setError(
-        "Usa un correo Yahoo (@yahoo.com, @ymail.com o @rocketmail.com).",
-      );
-      emailRef.current?.focus();
-      return;
-    }
-    if (yahooFlow && isValidSignupEmail(clean) && password.length >= 6) {
-      await enterWithYahoo(clean, password);
-      return;
-    }
-    showYahooForm();
+    await enterWithYahoo();
   }
 
   async function recoverPassword() {
@@ -452,13 +416,9 @@ export function LoginScreen({
               </div>
             </label>
 
-            {yahooFlow || (mode === "signin" && usePassword) ? (
+            {mode === "signin" && usePassword && !yahooFlow ? (
               <label className="dx-auth__field">
-                <span>
-                  {yahooFlow
-                    ? ACCOUNT_VS_MAILBOX.loginYahooPasswordLabel
-                    : ACCOUNT_VS_MAILBOX.loginPasswordLabel}
-                </span>
+                <span>{ACCOUNT_VS_MAILBOX.loginPasswordLabel}</span>
                 <div className="dx-auth__control">
                   <KeyRound size={18} aria-hidden />
                   <input
@@ -469,11 +429,7 @@ export function LoginScreen({
                     autoComplete="current-password"
                     autoCapitalize="none"
                     spellCheck={false}
-                    placeholder={
-                      yahooFlow
-                        ? "La misma con la que entras a Yahoo"
-                        : "Solo si ya la definiste aquí"
-                    }
+                    placeholder="Solo si ya la definiste aquí"
                     disabled={busy}
                     onChange={(event) => setPassword(event.target.value)}
                   />
@@ -495,9 +451,11 @@ export function LoginScreen({
               {busy && oauthBusy === null ? (
                 <>
                   <LoaderCircle className="dx-auth__spin" size={18} />
-                  {yahooFlow ? "Entrando…" : "Continuando…"}
+                  {yahooFlow ? "Abriendo Yahoo…" : "Continuando…"}
                 </>
-              ) : yahooFlow || (mode === "signin" && usePassword) ? (
+              ) : yahooFlow ? (
+                "Ir a Yahoo"
+              ) : mode === "signin" && usePassword ? (
                 "Entrar"
               ) : (
                 "Continuar"

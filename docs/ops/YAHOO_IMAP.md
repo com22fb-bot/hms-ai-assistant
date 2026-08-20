@@ -1,17 +1,24 @@
-# Yahoo Mail en Donexto
+# Yahoo Mail en Donexto (IMAP)
+
+La identidad y la autorización son **OAuth**. Ver [YAHOO_OAUTH.md](./YAHOO_OAUTH.md).
+Donexto no pide la clave de Yahoo.
+
+IMAP solo se usa **después** de firmar en Yahoo, con el token OAuth
+(`AUTHENTICATE OAUTHBEARER` en `imap.mail.yahoo.com:993`).
 
 ## Cómo conectar
 
 1. En app.donexto.com: **Continuar con Yahoo**.
-2. Correo Yahoo + **la misma clave con la que entra a Yahoo**.
-3. Eso abre la app y conecta el buzón. **No hay alta de usuario Donexto** ni enlace de confirmación.
+2. Firmas en el sitio de Yahoo.
+3. Eso abre la app y, si Yahoo concedió `mail-r`, conecta el buzón.
 4. Pantalla de **seis meses** → **Descargar y clasificar**.
 
-No hay wizard de 16 dígitos, ni portal de Seguridad Yahoo, ni verificación en dos pasos dentro de Donexto.
+No hay wizard de 16 dígitos, ni portal de Seguridad Yahoo, ni contraseña
+de buzón en Donexto.
 
 ## Tras conectar
 
-- Se guardan credenciales cifradas (`OAUTH_ENCRYPTION_KEY` en Railway).
+- Se guardan tokens OAuth cifrados (`OAUTH_ENCRYPTION_KEY` en Railway).
 - Otros buzones del workspace pasan a inactivo.
 - Donexto cuenta el INBOX y Enviados de los últimos **183 días** (seis meses).
 - **Descargar y clasificar** importa esos mensajes y usa el mismo motor de casos que Gmail.
@@ -21,8 +28,8 @@ No hay wizard de 16 dígitos, ni portal de Seguridad Yahoo, ni verificación en 
 
 | Mensaje | Causa |
 |---------|--------|
-| Yahoo no aceptó esa clave | Correo o clave distintos a los de Yahoo |
-| Demasiado corta | La clave no se escribió completa |
+| Falta YAHOO_CLIENT_ID / SECRET / REDIRECT | App OAuth no creada o vars ausentes en Railway |
+| Yahoo no aceptó la autorización OAuth | Token vencido o sin alcance `mail-r` |
 | Error de red / timeout | Firewall o salida a `imap.mail.yahoo.com:993` bloqueada |
 | Falta OAUTH_ENCRYPTION_KEY | Variable ausente en Railway |
 
@@ -30,5 +37,6 @@ No hay wizard de 16 dígitos, ni portal de Seguridad Yahoo, ni verificación en 
 
 - Host: `imap.mail.yahoo.com`
 - Puerto: `993` SSL
-- Backend: `POST /auth/yahoo/enter` (público: login + buzón) y `POST /auth/yahoo/connect` (reconectar ya logueado)
+- Auth: OAUTHBEARER (nunca LOGIN con clave)
+- Backend: `POST /auth/yahoo/login` + `GET /auth/yahoo/callback`
 - Importación: `GET/POST /gmail/import/*` (misma API que Gmail; rama IMAP si `provider=yahoo`)
