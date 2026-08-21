@@ -1,10 +1,10 @@
 export type AuthGateIntent = "login" | "signup";
 export type AuthGateNext =
   | "provider_login"
-  | "provider_signup"
+  | "confirm_signup"
   | "stay_subscribe";
 
-/** Continuar solo entra si ya hay cuenta. Suscribirse es el alta. */
+/** Continuar solo entra si ya hay cuenta. Suscribirse confirma el correo en Donexto. */
 export function gateNextAfterResolve(
   intent: AuthGateIntent,
   exists: boolean,
@@ -13,7 +13,7 @@ export function gateNextAfterResolve(
     return "provider_login";
   }
   if (intent === "signup") {
-    return "provider_signup";
+    return "confirm_signup";
   }
   return "stay_subscribe";
 }

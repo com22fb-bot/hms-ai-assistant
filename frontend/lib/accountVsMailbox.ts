@@ -16,6 +16,13 @@ export const ACCOUNT_VS_MAILBOX = {
   loginHelper: "Escribe tu correo.",
   loginContinueCta: "Continuar",
   loginSubscribeCta: "Suscribirse",
+  signupConfirmTitle: "Confirma tu correo Donexto",
+  signupConfirmHelper:
+    "Revisa que sea el correo con el que te quieres suscribir. Todavía no vas a Yahoo.",
+  signupConfirmCta: "Sí, suscribirme con este correo",
+  signupConfirmBack: "Usar otro correo",
+  signupConfirmYahooNote:
+    "Después de confirmar, firmas en el sitio de Yahoo. Donexto no pide la clave.",
   loginHelperYahoo:
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   servicesActiveLabel: "Servicios en Donexto",
