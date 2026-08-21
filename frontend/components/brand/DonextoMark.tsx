@@ -5,11 +5,12 @@ type DonextoMarkProps = {
   alt?: string;
 };
 
-export const DONEXTO_APP_ICON_SRC = "/brand/donexto-app-icon.png";
+/** Placa 3D: Do / Next / To + @ morada sobre los tres puntos. */
+export const DONEXTO_APP_ICON_SRC = "/brand/donexto-3d-2026.png";
 
 export function DonextoMark({
   className,
-  size = 42,
+  size = 72,
   alt = "",
 }: DonextoMarkProps) {
   return (

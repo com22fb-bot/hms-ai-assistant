@@ -64,14 +64,14 @@
 }
 
 .app-brand-icon {
-  width: 42px !important;
-  height: 42px !important;
-  border-radius: 12px !important;
+  width: 72px !important;
+  height: 72px !important;
+  border-radius: 14px !important;
   background: #050b10 !important;
   color: transparent !important;
-  box-shadow: 0 0 0 1px rgba(94, 207, 196, 0.28) !important;
+  box-shadow: none !important;
   display: block !important;
-  object-fit: cover !important;
+  object-fit: contain !important;
   object-position: center !important;
   padding: 0 !important;
 }
@@ -83,18 +83,20 @@ img.auth-logo {
 }
 
 img.auth-logo {
-  object-fit: cover;
+  width: 72px !important;
+  height: 72px !important;
+  object-fit: contain;
   object-position: center;
   padding: 0;
+  border-radius: 14px;
 }
 
 .app-loading-mark {
-  width: 72px;
-  height: 72px;
+  width: 96px;
+  height: 96px;
   border-radius: 18px;
-  object-fit: cover;
+  object-fit: contain;
   background: #050b10;
-  box-shadow: 0 0 0 1px rgba(94, 207, 196, 0.28);
 }
 
 .app-brand strong {

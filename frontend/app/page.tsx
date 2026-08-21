@@ -481,7 +481,7 @@ function PasswordRecoveryScreen({
       <section className="auth-recovery-shell">
         <div className="auth-panel-top">
           <div className="auth-panel-brand">
-            <DonextoMark className="auth-logo" size={51} />
+            <DonextoMark className="auth-logo" size={72} />
             <div>
               <strong>Donexto</strong>
               <small>Recuperación segura</small>
@@ -1029,7 +1029,7 @@ function Dashboard({
         }
       >
         <div className="app-brand">
-          <DonextoMark className="app-brand-icon" size={42} />
+          <DonextoMark className="app-brand-icon" size={72} alt="Donexto — Do Next To…" />
           <div>
             <strong>Donexto</strong>
             <small>Do Next To…</small>
@@ -1715,7 +1715,7 @@ export default function HomePage() {
     <LanguageProvider userId={session?.id ?? null}>
       {loading ? (
         <div className="app-loading-screen">
-          <DonextoMark className="app-loading-mark" size={72} alt="Donexto" />
+          <DonextoMark className="app-loading-mark" size={96} alt="Donexto — Do Next To…" />
           <span>Verificando sesión segura...</span>
         </div>
       ) : passwordRecovery ? (

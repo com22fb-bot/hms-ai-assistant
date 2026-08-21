@@ -8,8 +8,8 @@
   "theme_color": "#02070b",
   "icons": [
     {
-      "src": "/brand/donexto-app-icon.png",
-      "sizes": "512x512",
+      "src": "/brand/donexto-3d-2026.png",
+      "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any"
     }
