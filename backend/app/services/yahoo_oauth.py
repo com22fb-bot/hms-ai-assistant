@@ -92,8 +92,8 @@ def build_yahoo_authorization_url(state: str) -> str:
             "response_type": "code",
             "scope": settings.yahoo_oauth_scopes,
             "state": state,
+            "nonce": state,
             "language": "es-mx",
-            "prompt": "login",
         }
     )
     return f"{YAHOO_AUTHORIZE_URL}?{query}"
