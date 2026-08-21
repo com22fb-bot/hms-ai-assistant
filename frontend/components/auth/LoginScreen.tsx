@@ -14,7 +14,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { LanguageStrip } from "@/components/UserSettingsPanel";
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
-import type { AuthOAuthProvider } from "@/hooks/useAppAuth";
+import type { AuthOAuthProvider, YahooAuthIntent } from "@/hooks/useAppAuth";
 import {
   isValidSignupEmail,
   resolveMailboxProviderFromEmail,
@@ -60,7 +60,7 @@ type LoginScreenProps = {
     fullName: string,
   ) => Promise<unknown>;
   onSignInWithGoogle: () => Promise<void>;
-  onSignInWithYahoo: () => Promise<void>;
+  onSignInWithYahoo: (intent?: YahooAuthIntent) => Promise<void>;
   onSignInWithProvider: (provider: AuthOAuthProvider) => Promise<void>;
   onResendSignupEmail?: (email: string) => Promise<void>;
   onMagicLink: (email: string) => Promise<void>;
@@ -127,6 +127,29 @@ export function LoginScreen({
   const [oauthBusy, setOauthBusy] = useState<AuthOAuthProvider | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("donexto") !== "signup") {
+      return;
+    }
+    setMode("signup");
+    const hinted = (params.get("email") || "").trim().toLowerCase();
+    if (isValidSignupEmail(hinted)) {
+      setEmail(hinted);
+    }
+    setMessage(
+      params.get("reason") === "no_account"
+        ? "Yahoo confirmó tu correo, pero aún no hay cuenta Donexto. Créala aquí. Tener Yahoo no da acceso a Donexto."
+        : "Crea tu cuenta Donexto para continuar.",
+    );
+    const url = new URL(window.location.href);
+    url.searchParams.delete("donexto");
+    url.searchParams.delete("reason");
+    url.searchParams.delete("email");
+    const cleaned = `${url.pathname}${url.search}${url.hash}`;
+    window.history.replaceState({}, "", cleaned || "/");
+  }, []);
 
   useEffect(() => {
     const html = document.documentElement;
@@ -214,11 +237,11 @@ export function LoginScreen({
     }
   }
 
-  async function enterWithYahoo() {
+  async function enterWithYahoo(intent: YahooAuthIntent = "login") {
     setBusy(true);
     resetAlerts();
     try {
-      await onSignInWithYahoo();
+      await onSignInWithYahoo(intent);
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -298,7 +321,7 @@ export function LoginScreen({
           return;
         }
         if (payload.next === "yahoo_oauth") {
-          await onSignInWithYahoo();
+          await onSignInWithYahoo("login");
           return;
         }
         if (payload.next === "google_oauth") {
@@ -328,7 +351,7 @@ export function LoginScreen({
 
     const provider = resolveMailboxProviderFromEmail(clean);
     if (provider === "yahoo") {
-      await enterWithYahoo();
+      await enterWithYahoo("signup");
       return;
     }
     const oauth = mailboxToOAuth(provider);
@@ -340,7 +363,7 @@ export function LoginScreen({
   }
 
   async function continueYahoo() {
-    await enterWithYahoo();
+    await enterWithYahoo(mode === "signup" ? "signup" : "login");
   }
 
   async function recoverPassword() {
@@ -397,7 +420,9 @@ export function LoginScreen({
             </h2>
             <p className="dx-auth__slogan">
               {yahooFlow
-                ? ACCOUNT_VS_MAILBOX.loginHelperYahoo
+                ? mode === "signup"
+                  ? ACCOUNT_VS_MAILBOX.loginHelperYahooSignUp
+                  : ACCOUNT_VS_MAILBOX.loginHelperYahoo
                 : ACCOUNT_VS_MAILBOX.loginHelper}
             </p>
           </header>
@@ -441,9 +466,12 @@ export function LoginScreen({
               onClick={() => void continueYahoo()}
             >
               <ProviderMark provider="yahoo" />
-              Continuar con Yahoo
+              {mode === "signup"
+                ? "Crear cuenta con Yahoo"
+                : "Continuar con Yahoo"}
             </button>
           </div>
+          <p className="dx-auth__p0">{ACCOUNT_VS_MAILBOX.yahooButtonHint}</p>
 
           <p className="dx-auth__divider">o escribe tu correo</p>
 

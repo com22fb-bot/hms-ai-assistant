@@ -24,11 +24,13 @@ from app.services.yahoo_oauth import (
     exchange_yahoo_code,
     fetch_yahoo_userinfo,
     granted_mail_read,
+    normalize_yahoo_intent,
     require_yahoo_oauth_config,
     sanitize_return_to,
     yahoo_email_from_userinfo,
+    yahoo_intent_from_state,
 )
-from app.services.yahoo_session import mint_yahoo_session_or_http
+from app.services.yahoo_session import auth_user_exists, mint_yahoo_session_or_http
 
 
 router = APIRouter(prefix="/auth/yahoo", tags=["Yahoo Mail"])
@@ -60,6 +62,22 @@ class YahooEnterResponse(BaseModel):
 
 class YahooLoginRequest(BaseModel):
     return_to: str | None = None
+    intent: str | None = None
+
+
+def _signup_redirect(return_to: str, email: str) -> RedirectResponse:
+    """Yahoo identificó el correo, pero no hay cuenta Donexto: no hay sesión."""
+    query = urlencode(
+        {
+            "donexto": "signup",
+            "reason": "no_account",
+            "email": email,
+        }
+    )
+    return RedirectResponse(
+        url=f"{return_to.rstrip('/')}?{query}",
+        status_code=302,
+    )
 
 
 def persist_yahoo_mailbox(
@@ -177,6 +195,7 @@ def yahoo_login(
 ) -> dict[str, str]:
     """Devuelve la URL para firmar en el sitio de Yahoo."""
     require_yahoo_oauth_config()
+    intent = normalize_yahoo_intent(payload.intent if payload else None)
     return_to = sanitize_return_to(
         (payload.return_to if payload else None)
         or request.headers.get("origin")
@@ -186,6 +205,7 @@ def yahoo_login(
             provider="yahoo",
             ttl_minutes=15,
             return_to=return_to,
+            state_prefix=intent,
         )
     except OAuthStorageError as error:
         raise HTTPException(
@@ -199,6 +219,7 @@ def yahoo_login(
 
     return {
         "status": "ok",
+        "intent": intent,
         "authorization_url": build_yahoo_authorization_url(state),
     }
 
@@ -282,7 +303,16 @@ def yahoo_callback(request: Request) -> HTMLResponse | RedirectResponse:
     except YahooOAuthError as error:
         return _callback_error_page("No fue posible conectar Yahoo", str(error))
 
-    session = mint_yahoo_session_or_http(address)
+    intent = yahoo_intent_from_state(state)
+    return_to = sanitize_return_to(str(state_context.get("return_to") or ""))
+    exists = auth_user_exists(address)
+    if intent != "signup" and not exists:
+        return _signup_redirect(return_to, address)
+
+    session = mint_yahoo_session_or_http(
+        address,
+        allow_create=intent == "signup",
+    )
     expires_in = token_payload.get("expires_in")
     expires_at = None
     if expires_in:
@@ -306,7 +336,6 @@ def yahoo_callback(request: Request) -> HTMLResponse | RedirectResponse:
         mail_read=granted_mail_read(token_payload),
     )
 
-    return_to = sanitize_return_to(str(state_context.get("return_to") or ""))
     fragment = urlencode(
         {
             "access_token": session["access_token"],

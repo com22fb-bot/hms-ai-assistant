@@ -16,7 +16,11 @@ export const ACCOUNT_VS_MAILBOX = {
   loginHelper:
     "Escribe tu correo. Si ya tienes cuenta, te llevamos a Google o Yahoo. Si no, a crear cuenta.",
   loginHelperYahoo:
-    "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
+    "El botón de Yahoo solo identifica a quien ya tiene cuenta Donexto. Tener un correo Yahoo no da acceso. Si aún no tienes cuenta, pulsa Crear cuenta.",
+  loginHelperYahooSignUp:
+    "Yahoo confirmará tu correo y con eso se crea tu cuenta Donexto. Tener Yahoo, por sí solo, no alcanza.",
+  yahooButtonHint:
+    "Tener Yahoo no es tener cuenta Donexto.",
   yahooWaitingMailTitle: "Ya entraste con Yahoo",
   yahooWaitingMailBody:
     "Yahoo identificó tu cuenta. Aún no autoriza a Donexto a leer el buzón (mail-r). Cierra sesión si quieres entrar con otro correo.",

@@ -323,12 +323,15 @@ class OAuthStorage:
         profile_id: str | UUID | None = None,
         workspace_id: str | UUID | None = None,
         return_to: str | None = None,
+        state_prefix: str | None = None,
     ) -> str:
         """
         Crea y persiste un estado OAuth.
 
         Retorna el valor original que debe enviarse al proveedor.
         En Supabase solo se almacena su hash SHA-256.
+        `state_prefix` viaja en el token (p. ej. login/signup) porque
+        return_to se sanitiza a solo el origen.
         """
 
         normalized_provider = _normalize_provider(provider)
@@ -341,6 +344,9 @@ class OAuthStorage:
         self.delete_expired_oauth_states()
 
         raw_state = secrets.token_urlsafe(48)
+        prefix = (state_prefix or "").strip().lower()
+        if prefix:
+            raw_state = f"{prefix}.{raw_state}"
         hashed_state = _state_hash(raw_state)
         expires_at = _utc_now() + timedelta(minutes=ttl_minutes)
 

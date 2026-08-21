@@ -65,6 +65,22 @@ def require_yahoo_oauth_config() -> None:
         )
 
 
+YAHOO_OAUTH_INTENTS = frozenset({"login", "signup"})
+
+
+def normalize_yahoo_intent(value: str | None) -> str:
+    """login = ya es usuario Donexto; signup = quiere crear cuenta."""
+    clean = (value or "login").strip().lower()
+    return clean if clean in YAHOO_OAUTH_INTENTS else "login"
+
+
+def yahoo_intent_from_state(state: str) -> str:
+    prefix, separator, _rest = (state or "").partition(".")
+    if separator and prefix in YAHOO_OAUTH_INTENTS:
+        return prefix
+    return "login"
+
+
 def sanitize_return_to(value: str | None) -> str:
     allowed = {item.rstrip("/") for item in settings.frontend_origins}
     if value:

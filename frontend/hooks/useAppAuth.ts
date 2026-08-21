@@ -17,6 +17,7 @@ export type SignUpResult =
 
 /** Proveedores OAuth de identidad en Supabase Auth (alta / login). */
 export type AuthOAuthProvider = "google" | "azure" | "apple" | "yahoo";
+export type YahooAuthIntent = "login" | "signup";
 
 const OAUTH_PROVIDER_LABEL: Record<AuthOAuthProvider, string> = {
   google: "Google",
@@ -419,7 +420,9 @@ export function useAppAuth() {
     await signInWithProvider("google");
   }, [signInWithProvider]);
 
-  const signInWithYahoo = useCallback(async () => {
+  const signInWithYahoo = useCallback(async (
+    intent: YahooAuthIntent = "login",
+  ) => {
     const response = await fetch(`${API_BASE_URL}/auth/yahoo/login`, {
       method: "POST",
       cache: "no-store",
@@ -428,6 +431,7 @@ export function useAppAuth() {
       },
       body: JSON.stringify({
         return_to: window.location.origin,
+        intent,
       }),
     });
 
