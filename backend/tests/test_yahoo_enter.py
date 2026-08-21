@@ -121,6 +121,24 @@ class YahooOAuthGateTests(unittest.TestCase):
         self.assertEqual(caught.exception.status_code, 503)
         self.assertIn("yahoo_oauth_not_configured", str(caught.exception.detail))
 
+    def test_login_intent_rejects_unknown_yahoo_hint(self) -> None:
+        from app.api.yahoo_mail import YahooLoginRequest, yahoo_login
+
+        with (
+            patch("app.api.yahoo_mail.require_yahoo_oauth_config"),
+            patch("app.api.yahoo_mail.auth_user_exists", return_value=False),
+        ):
+            with self.assertRaises(HTTPException) as caught:
+                yahoo_login(
+                    _FakeRequest("/auth/yahoo/login"),  # type: ignore[arg-type]
+                    YahooLoginRequest(
+                        intent="login",
+                        login_hint="melgibson@yahoo.com",
+                    ),
+                )
+        self.assertEqual(caught.exception.status_code, 403)
+        self.assertIn("Suscribirse", str(caught.exception.detail))
+
     def test_mail_read_scope_detection(self) -> None:
         self.assertTrue(granted_mail_read({"scope": "openid email mail-r"}))
         self.assertTrue(granted_mail_read({"scope": "openid,mail-w"}))
