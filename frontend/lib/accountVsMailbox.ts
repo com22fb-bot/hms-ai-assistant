@@ -27,9 +27,12 @@ export const ACCOUNT_VS_MAILBOX = {
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   servicesActiveLabel: "Servicios en Donexto",
   servicesActiveBadge: "Activos",
-  yahooWaitingMailTitle: "Actualiza el buzón",
+  yahooWaitingMailTitle: "Ya firmaste en Yahoo",
   yahooWaitingMailBody:
-    "Ya firmaste en Yahoo. Pulsa Actualizar buzón para traer correos con esa misma sesión. No te volvemos a mandar a Yahoo.",
+    "Tu cuenta Donexto está lista. Yahoo todavía no autoriza a esta app a leer el buzón. No te volvemos a mandar a Yahoo: cuando Yahoo apruebe el permiso, Actualizar buzón traerá los correos.",
+  yahooGrantMailReadTitle: "Autoriza la lectura del buzón",
+  yahooGrantMailReadBody:
+    "Yahoo ya aprobó el permiso de correo para Donexto. Firma una sola vez en Yahoo para autorizar la lectura. Después no te volvemos a mandar.",
   updateMailboxLabel: "Actualizar buzón",
   yahooSignInNext:
     "Firma en el sitio de Yahoo. Donexto no pide la clave de ningún buzón.",

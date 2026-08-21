@@ -734,6 +734,7 @@ function Dashboard({
   const yahooIdentityReady =
     connection?.provider === "yahoo" && Boolean(connection.has_access_token);
   const yahooMailPending = yahooIdentityReady && !Boolean(connection?.connected);
+  const yahooMailReadAvailable = Boolean(connection?.mail_read_available);
   const usesGuidedImport = Boolean(isGoogleMailbox || isYahooMailbox);
 
   const {
@@ -843,9 +844,26 @@ function Dashboard({
     setNotice(null);
   }
 
+  function stayOnYahooPending() {
+    setMailboxPickerOpen(false);
+    setGuidedImportOpen(false);
+    setNotice(ACCOUNT_VS_MAILBOX.yahooWaitingMailBody);
+  }
+
   function requestMailboxOrExplain() {
-    if (connection?.connected || yahooMailPending) {
+    if (connection?.connected) {
       openConnectedMailboxActions();
+      return;
+    }
+    if (yahooMailPending) {
+      if (yahooMailReadAvailable) {
+        void startYahooConnection({
+          intent: "mailbox",
+          loginHint: session.email,
+        });
+        return;
+      }
+      stayOnYahooPending();
       return;
     }
     openMailboxConnect();
@@ -1266,20 +1284,19 @@ function Dashboard({
               mailboxConnected={Boolean(connection?.connected)}
               mailboxLoading={loadingConnection}
               yahooMailPending={yahooMailPending}
+              yahooMailReadAvailable={yahooMailReadAvailable}
               onConnectMailbox={() => {
-                if (yahooMailPending || connection?.connected) {
-                  openConnectedMailboxActions();
+                requestMailboxOrExplain();
+              }}
+              onChangeMailbox={() => {
+                if (yahooMailPending && !yahooMailReadAvailable) {
+                  stayOnYahooPending();
                   return;
                 }
                 openMailboxConnect();
               }}
-              onChangeMailbox={() => openMailboxConnect()}
               onRefreshMailbox={() => {
-                if (connection?.connected || yahooMailPending) {
-                  openConnectedMailboxActions();
-                  return;
-                }
-                openMailboxConnect();
+                requestMailboxOrExplain();
               }}
               onOpenAllMail={() => openMailView()}
               onOpenCategory={(category) => {
@@ -1587,7 +1604,7 @@ function Dashboard({
             accountEmail={session.email}
             mode={mailboxConnectModeFromEmail(session.email)}
             onClose={() => {
-              if (!connection?.connected) {
+              if (!connection?.connected && !yahooIdentityReady) {
                 return;
               }
               setMailboxPickerOpen(false);
@@ -1610,9 +1627,17 @@ function Dashboard({
               }
             }}
             onConnectYahoo={async () => {
+              if (yahooIdentityReady && !yahooMailReadAvailable) {
+                setMailboxPickerOpen(false);
+                setNotice(ACCOUNT_VS_MAILBOX.yahooWaitingMailBody);
+                return;
+              }
               setNotice("Te llevamos a Yahoo para firmar ahí…");
               try {
-                await startYahooConnection();
+                await startYahooConnection({
+                  intent: yahooIdentityReady ? "mailbox" : "login",
+                  loginHint: session.email,
+                });
               } catch (requestError) {
                 const message =
                   requestError instanceof Error

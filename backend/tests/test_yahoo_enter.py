@@ -75,6 +75,7 @@ class YahooOAuthGateTests(unittest.TestCase):
                 "/auth/yahoo/callback"
             )
             settings.yahoo_oauth_scopes = "openid email profile"
+            settings.yahoo_mail_read_enabled = False
             url = build_yahoo_authorization_url(
                 "state-token",
                 login_hint="hsalcidor@yahoo.com",
@@ -106,10 +107,30 @@ class YahooOAuthGateTests(unittest.TestCase):
                 "/auth/yahoo/callback"
             )
             settings.yahoo_oauth_scopes = "openid email profile"
+            settings.yahoo_mail_read_enabled = False
             mailbox = build_yahoo_authorization_url("mailbox.state-token")
             login = build_yahoo_authorization_url("login.state-token")
         self.assertNotIn("mail-r", mailbox)
         self.assertNotIn("mail-r", login)
+
+    def test_mailbox_intent_requests_mail_read_only_when_enabled(self) -> None:
+        with patch(
+            "app.services.yahoo_oauth.settings"
+        ) as settings:
+            settings.yahoo_client_id = "client-id"
+            settings.yahoo_client_secret = "secret"
+            settings.yahoo_redirect_uri = (
+                "https://hms-ai-assistant-production.up.railway.app"
+                "/auth/yahoo/callback"
+            )
+            settings.yahoo_oauth_scopes = "openid email profile"
+            settings.yahoo_mail_read_enabled = True
+            mailbox = build_yahoo_authorization_url("mailbox.state-token")
+            login = build_yahoo_authorization_url("login.state-token")
+            signup = build_yahoo_authorization_url("signup.state-token")
+        self.assertIn("mail-r", mailbox)
+        self.assertNotIn("mail-r", login)
+        self.assertNotIn("mail-r", signup)
 
     def test_sanitize_return_to_stays_on_donexto(self) -> None:
         with patch(
@@ -165,6 +186,7 @@ class YahooOAuthGateTests(unittest.TestCase):
 
         text = _yahoo_callback_error_message("invalid_scope", "invalid scope")
         self.assertIn("buzón", text.lower())
+        self.assertIn("no hace falta firmar", text.lower())
         self.assertNotEqual(text, "invalid scope")
 
     def test_intent_helpers(self) -> None:

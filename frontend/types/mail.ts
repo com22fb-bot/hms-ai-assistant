@@ -8,6 +8,7 @@ export type GoogleConnectionStatus = {
   scopes: string[];
   login_url: string | null;
   message: string | null;
+  mail_read_available?: boolean;
 };
 
 export type GmailMessage = {

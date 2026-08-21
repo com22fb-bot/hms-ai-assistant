@@ -306,7 +306,9 @@ export function LoginScreen({
         await sendMagicLink(address);
         return;
       }
-      await continueWithProvider(address, "signup");
+      setBusy(false);
+      setOauthBusy(null);
+      setError("Ese correo no tiene cuenta Donexto. Pulsa Suscribirse.");
     } catch (requestError) {
       setError(
         requestError instanceof Error

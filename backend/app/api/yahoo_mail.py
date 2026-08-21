@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
+from app.core.config import settings
 from app.schemas.gmail import GoogleConnectionStatus
 from app.security.identity import require_request_context
 from app.services.oauth_storage import (
@@ -151,7 +152,8 @@ def persist_yahoo_mailbox(
                 "Entraste con Yahoo. Para leer el buzón, Yahoo debe aprobar "
                 "el alcance de correo (mail-r) en la app de desarrollador."
             ),
-            login_url="/auth/yahoo/login",
+            login_url=None,
+            mail_read_available=settings.yahoo_mail_read_enabled,
         )
 
     return GoogleConnectionStatus(
@@ -247,7 +249,8 @@ def _yahoo_callback_error_message(error: str, description: str) -> str:
     if code == "invalid_scope" or "invalid scope" in text:
         return (
             "Yahoo no autorizó leer este buzón. "
-            "Vuelve a Donexto y pulsa Actualizar buzón."
+            "Vuelve a Donexto: no hace falta firmar otra vez. "
+            "Falta el permiso de correo de la app."
         )
     return description or "Yahoo rechazó la autorización."
 
@@ -383,16 +386,26 @@ def yahoo_status() -> GoogleConnectionStatus:
         )
 
     credentials = oauth_storage.get_credentials(str(account["id"]))
+    scopes = list((credentials or {}).get("scopes") or [])
+    mail_read = granted_mail_read({"scope": " ".join(scopes)})
+    has_token = bool(credentials and credentials.get("access_token"))
     return GoogleConnectionStatus(
-        connected=bool(credentials and credentials.get("access_token")),
+        connected=bool(has_token and mail_read),
         email=account.get("email"),
         provider="yahoo",
-        has_access_token=bool(
-            credentials and credentials.get("access_token")
-        ),
+        has_access_token=has_token,
         has_refresh_token=False,
-        scopes=(credentials or {}).get("scopes", []),
-        message="Buzón Yahoo conectado.",
+        scopes=scopes,
+        message=(
+            "Buzón Yahoo autorizado."
+            if mail_read
+            else (
+                "Entraste con Yahoo. Falta el permiso de lectura del "
+                "correo (mail-r); sin eso Donexto no puede abrir el buzón."
+            )
+        ),
+        login_url=None,
+        mail_read_available=settings.yahoo_mail_read_enabled,
     )
 
 

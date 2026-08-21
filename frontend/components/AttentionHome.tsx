@@ -130,6 +130,7 @@ export function AttentionHome({
   mailboxConnected,
   mailboxLoading,
   yahooMailPending = false,
+  yahooMailReadAvailable = false,
   personName,
   onConnectMailbox,
   onChangeMailbox,
@@ -142,6 +143,7 @@ export function AttentionHome({
   mailboxConnected: boolean;
   mailboxLoading: boolean;
   yahooMailPending?: boolean;
+  yahooMailReadAvailable?: boolean;
   personName: string;
   onConnectMailbox: () => void;
   onChangeMailbox: () => void;
@@ -232,12 +234,16 @@ export function AttentionHome({
     const watchEmail = (accountEmail || mailboxEmail || "").trim();
     const connectMode = mailboxConnectModeFromEmail(watchEmail);
     const emptyTitle = yahooMailPending
-      ? ACCOUNT_VS_MAILBOX.yahooWaitingMailTitle
+      ? yahooMailReadAvailable
+        ? ACCOUNT_VS_MAILBOX.yahooGrantMailReadTitle
+        : ACCOUNT_VS_MAILBOX.yahooWaitingMailTitle
       : watchEmail
         ? authorizeMailboxTitle(watchEmail)
         : ACCOUNT_VS_MAILBOX.step2Title;
     const emptyCta = yahooMailPending
-      ? ACCOUNT_VS_MAILBOX.updateMailboxLabel
+      ? yahooMailReadAvailable
+        ? ACCOUNT_VS_MAILBOX.yahooGrantMailReadTitle
+        : null
       : connectMode === "gmail"
         ? ACCOUNT_VS_MAILBOX.connectGmailCta
         : connectMode === "yahoo"
@@ -250,7 +256,9 @@ export function AttentionHome({
           <div>
             <p className="dx-attention__kicker">
               {yahooMailPending
-                ? ACCOUNT_VS_MAILBOX.updateMailboxLabel
+                ? yahooMailReadAvailable
+                  ? ACCOUNT_VS_MAILBOX.yahooGrantMailReadTitle
+                  : ACCOUNT_VS_MAILBOX.yahooWaitingMailTitle
                 : "Cuenta lista · falta autorizar lectura"}
             </p>
             <h1>
@@ -267,7 +275,9 @@ export function AttentionHome({
           <strong>{emptyTitle}</strong>
           <p>
             {yahooMailPending
-              ? ACCOUNT_VS_MAILBOX.yahooWaitingMailBody
+              ? yahooMailReadAvailable
+                ? ACCOUNT_VS_MAILBOX.yahooGrantMailReadBody
+                : ACCOUNT_VS_MAILBOX.yahooWaitingMailBody
               : step2EmptyLeadFor(watchEmail)}
           </p>
           {yahooMailPending ? null : (
