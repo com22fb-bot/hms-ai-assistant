@@ -13,10 +13,13 @@ export const ACCOUNT_VS_MAILBOX = {
   loginEmailLabel: "Correo",
   loginPasswordLabel: "Contraseña de Donexto",
   signupFullNameLabel: "Nombre completo",
-  loginHelper:
-    "Escribe tu correo. Si ya tienes cuenta, te llevamos a Google o Yahoo. Si no, a crear cuenta.",
+  loginHelper: "Escribe tu correo.",
+  loginContinueCta: "Continuar",
+  loginSubscribeCta: "Suscribirse",
   loginHelperYahoo:
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
+  servicesActiveLabel: "Servicios en Donexto",
+  servicesActiveBadge: "Activos",
   yahooWaitingMailTitle: "Ya entraste con Yahoo",
   yahooWaitingMailBody:
     "Yahoo identificó tu cuenta. Aún no autoriza a Donexto a leer el buzón (mail-r). Cierra sesión si quieres entrar con otro correo.",

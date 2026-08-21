@@ -1,4 +1,8 @@
-"""Entrada Yahoo: OAuth en el sitio de Yahoo; Donexto abre sesión sin alta aparte."""
+"""Entrada Yahoo: OAuth en el sitio de Yahoo.
+
+Tener correo Yahoo no da acceso a Donexto. El login solo abre sesión si
+el correo ya es usuario. El alta ocurre solo con intent=signup.
+"""
 
 from __future__ import annotations
 
@@ -226,8 +230,13 @@ def _mint_session_from_link(client: Any, email: str) -> dict[str, str]:
     )
 
 
-def _ensure_yahoo_auth_user(client: Any, email: str) -> tuple[str, str | None]:
-    """Crea o actualiza el usuario Auth. No guarda la clave de Yahoo."""
+def _ensure_yahoo_auth_user(
+    client: Any,
+    email: str,
+    *,
+    allow_create: bool = True,
+) -> tuple[str, str | None]:
+    """Localiza el usuario Auth. Solo crea uno si allow_create (alta explícita)."""
 
     metadata = {
         "donexto_verified": True,
@@ -253,6 +262,9 @@ def _ensure_yahoo_auth_user(client: Any, email: str) -> tuple[str, str | None]:
         except Exception:
             logger.warning("No se pudo marcar donexto_verified en %s", email, exc_info=True)
         return user_id, None
+
+    if not allow_create:
+        raise YahooSessionError("no_donexto_account")
 
     created_password = secrets.token_urlsafe(48)
     try:
@@ -308,11 +320,19 @@ def _ensure_yahoo_auth_user(client: Any, email: str) -> tuple[str, str | None]:
     return user_id, created_password
 
 
-def mint_yahoo_session(email: str) -> dict[str, str]:
+def mint_yahoo_session(
+    email: str,
+    *,
+    allow_create: bool = True,
+) -> dict[str, str]:
     """Usuario Auth + tokens. La clave de Yahoo nunca es password de Supabase."""
 
     client = get_supabase_client()
-    user_id, created_password = _ensure_yahoo_auth_user(client, email)
+    user_id, created_password = _ensure_yahoo_auth_user(
+        client,
+        email,
+        allow_create=allow_create,
+    )
 
     session: dict[str, str] = {}
     if created_password:
@@ -335,12 +355,27 @@ def mint_yahoo_session(email: str) -> dict[str, str]:
     return session
 
 
-def mint_yahoo_session_or_http(email: str) -> dict[str, str]:
+def mint_yahoo_session_or_http(
+    email: str,
+    *,
+    allow_create: bool = True,
+) -> dict[str, str]:
     try:
-        return mint_yahoo_session(email)
+        return mint_yahoo_session(email, allow_create=allow_create)
     except HTTPException:
         raise
     except YahooSessionError as error:
+        if str(error) == "no_donexto_account":
+            raise HTTPException(
+                status_code=403,
+                detail={
+                    "status": "no_donexto_account",
+                    "message": (
+                        "Yahoo confirmó el correo, pero no hay cuenta Donexto. "
+                        "Tener Yahoo no da acceso. Crea la cuenta primero."
+                    ),
+                },
+            ) from error
         raise HTTPException(
             status_code=503,
             detail={
@@ -349,7 +384,7 @@ def mint_yahoo_session_or_http(email: str) -> dict[str, str]:
             },
         ) from error
     except Exception as error:
-        logger.exception("Alta silenciosa Yahoo falló para %s", email)
+        logger.exception("Sesión Yahoo falló para %s", email)
         raise HTTPException(
             status_code=503,
             detail={

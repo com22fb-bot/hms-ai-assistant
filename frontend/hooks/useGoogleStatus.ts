@@ -151,6 +151,7 @@ export function useGoogleStatus() {
         },
         body: JSON.stringify({
           return_to: window.location.origin,
+          intent: "login",
         }),
       });
 

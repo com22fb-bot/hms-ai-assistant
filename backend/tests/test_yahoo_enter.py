@@ -75,14 +75,25 @@ class YahooOAuthGateTests(unittest.TestCase):
                 "/auth/yahoo/callback"
             )
             settings.yahoo_oauth_scopes = "openid email profile"
-            url = build_yahoo_authorization_url("state-token")
+            url = build_yahoo_authorization_url(
+                "state-token",
+                login_hint="hsalcidor@yahoo.com",
+            )
+            without_hint = build_yahoo_authorization_url("state-token")
+            ignored = build_yahoo_authorization_url(
+                "state-token",
+                login_hint="not-an-email",
+            )
         self.assertIn("https://api.login.yahoo.com/oauth2/request_auth", url)
         self.assertIn("client_id=client-id", url)
         self.assertIn("state=state-token", url)
         self.assertIn("openid", url)
         self.assertIn("nonce=state-token", url)
+        self.assertIn("login_hint=hsalcidor%40yahoo.com", url)
         self.assertNotIn("prompt=", url)
         self.assertNotIn("mail-r", url)
+        self.assertNotIn("login_hint", without_hint)
+        self.assertNotIn("login_hint", ignored)
 
     def test_sanitize_return_to_stays_on_donexto(self) -> None:
         with patch(
@@ -121,6 +132,149 @@ class YahooOAuthGateTests(unittest.TestCase):
         text = _yahoo_callback_error_message("invalid_scope", "invalid scope")
         self.assertIn("identidad", text.lower())
         self.assertNotEqual(text, "invalid scope")
+
+    def test_intent_helpers(self) -> None:
+        from app.services.yahoo_oauth import (
+            normalize_yahoo_intent,
+            yahoo_intent_from_state,
+        )
+
+        self.assertEqual(normalize_yahoo_intent(None), "login")
+        self.assertEqual(normalize_yahoo_intent("signup"), "signup")
+        self.assertEqual(normalize_yahoo_intent("other"), "login")
+        self.assertEqual(yahoo_intent_from_state("login.abc"), "login")
+        self.assertEqual(yahoo_intent_from_state("signup.xyz"), "signup")
+        self.assertEqual(yahoo_intent_from_state("plain-token"), "login")
+
+    def test_callback_login_unknown_email_has_no_session(self) -> None:
+        from fastapi.responses import RedirectResponse
+        from app.api.yahoo_mail import yahoo_callback
+
+        request = SimpleNamespace(
+            query_params={"state": "login.token", "code": "auth-code"}
+        )
+        with (
+            patch("app.api.yahoo_mail.oauth_storage") as storage,
+            patch(
+                "app.api.yahoo_mail.exchange_yahoo_code",
+                return_value={"access_token": "ya"},
+            ),
+            patch("app.api.yahoo_mail.fetch_yahoo_userinfo", return_value={}),
+            patch(
+                "app.api.yahoo_mail.yahoo_email_from_userinfo",
+                return_value="nuevo@yahoo.com",
+            ),
+            patch("app.api.yahoo_mail.auth_user_exists", return_value=False),
+            patch("app.api.yahoo_mail.mint_yahoo_session_or_http") as mint,
+            patch("app.api.yahoo_mail.persist_yahoo_mailbox") as persist,
+            patch(
+                "app.api.yahoo_mail.sanitize_return_to",
+                return_value="https://app.donexto.com/",
+            ),
+        ):
+            storage.consume_oauth_state.return_value = {
+                "return_to": "https://app.donexto.com/",
+            }
+            response = yahoo_callback(request)  # type: ignore[arg-type]
+
+        self.assertIsInstance(response, RedirectResponse)
+        location = str(response.headers.get("location") or response.url)
+        self.assertIn("donexto=signup", location)
+        self.assertIn("reason=no_account", location)
+        self.assertIn("nuevo%40yahoo.com", location)
+        self.assertNotIn("access_token", location)
+        mint.assert_not_called()
+        persist.assert_not_called()
+
+    def test_callback_login_existing_mints_session(self) -> None:
+        from fastapi.responses import RedirectResponse
+        from app.api.yahoo_mail import yahoo_callback
+
+        request = SimpleNamespace(
+            query_params={"state": "login.token", "code": "auth-code"}
+        )
+        with (
+            patch("app.api.yahoo_mail.oauth_storage") as storage,
+            patch(
+                "app.api.yahoo_mail.exchange_yahoo_code",
+                return_value={"access_token": "ya", "expires_in": 3600},
+            ),
+            patch("app.api.yahoo_mail.fetch_yahoo_userinfo", return_value={}),
+            patch(
+                "app.api.yahoo_mail.yahoo_email_from_userinfo",
+                return_value="hsalcidor@yahoo.com",
+            ),
+            patch("app.api.yahoo_mail.auth_user_exists", return_value=True),
+            patch("app.api.yahoo_mail.mint_yahoo_session_or_http") as mint,
+            patch("app.api.yahoo_mail.persist_yahoo_mailbox") as persist,
+            patch(
+                "app.api.yahoo_mail.sanitize_return_to",
+                return_value="https://app.donexto.com/",
+            ),
+        ):
+            storage.consume_oauth_state.return_value = {
+                "return_to": "https://app.donexto.com/",
+            }
+            mint.return_value = {
+                "user_id": "u1",
+                "workspace_id": "w1",
+                "access_token": "at",
+                "refresh_token": "rt",
+                "expires_in": "3600",
+            }
+            response = yahoo_callback(request)  # type: ignore[arg-type]
+
+        self.assertIsInstance(response, RedirectResponse)
+        location = str(response.headers.get("location") or response.url)
+        self.assertIn("access_token=at", location)
+        self.assertIn("type=magiclink", location)
+        mint.assert_called_once_with(
+            "hsalcidor@yahoo.com",
+            allow_create=False,
+        )
+        persist.assert_called_once()
+
+    def test_callback_signup_unknown_mints_session(self) -> None:
+        from fastapi.responses import RedirectResponse
+        from app.api.yahoo_mail import yahoo_callback
+
+        request = SimpleNamespace(
+            query_params={"state": "signup.token", "code": "auth-code"}
+        )
+        with (
+            patch("app.api.yahoo_mail.oauth_storage") as storage,
+            patch(
+                "app.api.yahoo_mail.exchange_yahoo_code",
+                return_value={"access_token": "ya"},
+            ),
+            patch("app.api.yahoo_mail.fetch_yahoo_userinfo", return_value={}),
+            patch(
+                "app.api.yahoo_mail.yahoo_email_from_userinfo",
+                return_value="nuevo@yahoo.com",
+            ),
+            patch("app.api.yahoo_mail.auth_user_exists", return_value=False),
+            patch("app.api.yahoo_mail.mint_yahoo_session_or_http") as mint,
+            patch("app.api.yahoo_mail.persist_yahoo_mailbox"),
+            patch(
+                "app.api.yahoo_mail.sanitize_return_to",
+                return_value="https://app.donexto.com/",
+            ),
+        ):
+            storage.consume_oauth_state.return_value = {
+                "return_to": "https://app.donexto.com/",
+            }
+            mint.return_value = {
+                "user_id": "u2",
+                "workspace_id": "w2",
+                "access_token": "at2",
+                "refresh_token": "rt2",
+                "expires_in": "3600",
+            }
+            response = yahoo_callback(request)  # type: ignore[arg-type]
+
+        location = str(response.headers.get("location") or response.url)
+        self.assertIn("access_token=at2", location)
+        mint.assert_called_once_with("nuevo@yahoo.com", allow_create=True)
 
 
 if __name__ == "__main__":

@@ -17,6 +17,7 @@ export type SignUpResult =
 
 /** Proveedores OAuth de identidad en Supabase Auth (alta / login). */
 export type AuthOAuthProvider = "google" | "azure" | "apple" | "yahoo";
+export type YahooAuthIntent = "login" | "signup";
 
 const OAUTH_PROVIDER_LABEL: Record<AuthOAuthProvider, string> = {
   google: "Google",
@@ -391,12 +392,13 @@ export function useAppAuth() {
   );
 
   const signInWithProvider = useCallback(
-    async (provider: AuthOAuthProvider) => {
+    async (provider: AuthOAuthProvider, email?: string) => {
       // supabase-js no tipa `yahoo` como Provider de Auth.
       if (provider === "yahoo") {
         throw new Error("Falta activar Yahoo en Supabase Auth");
       }
 
+      const hint = email?.trim().toLowerCase();
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -404,6 +406,7 @@ export function useAppAuth() {
           queryParams: {
             prompt: "consent",
             access_type: "offline",
+            ...(hint ? { login_hint: hint } : {}),
           },
         },
       });
@@ -415,11 +418,15 @@ export function useAppAuth() {
     [],
   );
 
-  const signInWithGoogle = useCallback(async () => {
-    await signInWithProvider("google");
+  const signInWithGoogle = useCallback(async (email?: string) => {
+    await signInWithProvider("google", email);
   }, [signInWithProvider]);
 
-  const signInWithYahoo = useCallback(async () => {
+  const signInWithYahoo = useCallback(async (
+    intent: YahooAuthIntent = "login",
+    email?: string,
+  ) => {
+    const hint = email?.trim().toLowerCase();
     const response = await fetch(`${API_BASE_URL}/auth/yahoo/login`, {
       method: "POST",
       cache: "no-store",
@@ -428,6 +435,8 @@ export function useAppAuth() {
       },
       body: JSON.stringify({
         return_to: window.location.origin,
+        intent,
+        ...(hint ? { login_hint: hint } : {}),
       }),
     });
 

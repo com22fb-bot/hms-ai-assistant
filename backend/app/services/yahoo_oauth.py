@@ -65,6 +65,22 @@ def require_yahoo_oauth_config() -> None:
         )
 
 
+YAHOO_OAUTH_INTENTS = frozenset({"login", "signup"})
+
+
+def normalize_yahoo_intent(value: str | None) -> str:
+    """login = ya es usuario Donexto; signup = quiere crear cuenta."""
+    clean = (value or "login").strip().lower()
+    return clean if clean in YAHOO_OAUTH_INTENTS else "login"
+
+
+def yahoo_intent_from_state(state: str) -> str:
+    prefix, separator, _rest = (state or "").partition(".")
+    if separator and prefix in YAHOO_OAUTH_INTENTS:
+        return prefix
+    return "login"
+
+
 def sanitize_return_to(value: str | None) -> str:
     allowed = {item.rstrip("/") for item in settings.frontend_origins}
     if value:
@@ -83,20 +99,34 @@ def sanitize_return_to(value: str | None) -> str:
     return YAHOO_DEFAULT_RETURN
 
 
-def build_yahoo_authorization_url(state: str) -> str:
+def sanitize_login_hint(value: str | None) -> str | None:
+    clean = (value or "").strip().lower()
+    if "@" not in clean or len(clean) > 320:
+        return None
+    domain = clean.rsplit("@", 1)[-1]
+    if "." not in domain:
+        return None
+    return clean
+
+
+def build_yahoo_authorization_url(
+    state: str,
+    login_hint: str | None = None,
+) -> str:
     require_yahoo_oauth_config()
-    query = urlencode(
-        {
-            "client_id": settings.yahoo_client_id,
-            "redirect_uri": settings.yahoo_redirect_uri,
-            "response_type": "code",
-            "scope": settings.yahoo_oauth_scopes,
-            "state": state,
-            "nonce": state,
-            "language": "es-mx",
-        }
-    )
-    return f"{YAHOO_AUTHORIZE_URL}?{query}"
+    query: dict[str, str] = {
+        "client_id": settings.yahoo_client_id,
+        "redirect_uri": settings.yahoo_redirect_uri,
+        "response_type": "code",
+        "scope": settings.yahoo_oauth_scopes,
+        "state": state,
+        "nonce": state,
+        "language": "es-mx",
+    }
+    hint = sanitize_login_hint(login_hint)
+    if hint:
+        query["login_hint"] = hint
+    return f"{YAHOO_AUTHORIZE_URL}?{urlencode(query)}"
 
 
 def _basic_auth_header() -> str:

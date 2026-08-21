@@ -90,6 +90,11 @@
   border-radius: 999px;
 }
 
+.dx-auth__secondary:hover:not(:disabled) {
+  border-color: rgba(46, 230, 214, 0.45);
+  color: #2ee6d6;
+}
+
 .dx-auth__divider {
   color: #6d7c82;
 }
@@ -146,10 +151,23 @@
   color: #2ee6d6;
 }
 
-.dx-auth__provider {
+.dx-auth__services {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(16, 22, 27, 0.72);
+}
+
+.dx-auth__services-kicker {
+  color: #6d7c82;
+}
+
+.dx-auth__services-kicker span {
+  color: #2ee6d6;
+}
+
+.dx-auth__service {
   background: #10161b;
-  border-color: rgba(255, 255, 255, 0.12);
-  color: #f2f6f7;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #9aa8ae;
 }
 
 .dx-auth__provider--gmail {
