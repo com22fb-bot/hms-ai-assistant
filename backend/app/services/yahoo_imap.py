@@ -12,16 +12,10 @@ from email.header import decode_header, make_header
 from email.utils import parseaddr, parsedate_to_datetime
 from typing import Any
 
+from app.services.yahoo_domains import is_yahoo_mail_address
 
 YAHOO_IMAP_HOST = "imap.mail.yahoo.com"
 YAHOO_IMAP_PORT = 993
-YAHOO_DOMAINS = (
-    "yahoo.com",
-    "yahoo.com.mx",
-    "yahoo.es",
-    "ymail.com",
-    "rocketmail.com",
-)
 
 
 class YahooImapError(RuntimeError):
@@ -70,13 +64,7 @@ def normalize_yahoo_app_password(raw: str) -> str:
 
 
 def _is_yahoo_like_address(address: str) -> bool:
-    if "@" not in address:
-        return False
-    domain = address.rsplit("@", 1)[-1]
-    return any(
-        domain == item or domain.endswith("." + item)
-        for item in YAHOO_DOMAINS
-    )
+    return is_yahoo_mail_address(address)
 
 
 def _open_yahoo_client(
@@ -153,8 +141,8 @@ def verify_yahoo_login(address: str, app_password: str) -> None:
 
     if not _is_yahoo_like_address(address):
         raise YahooImapError(
-            "Indica un correo de Yahoo (@yahoo.com, @ymail.com, "
-            "@rocketmail.com o similar)."
+            "Indica un correo de Yahoo (@yahoo.com, @yahoo.com.mx, "
+            "@ymail.com, @rocketmail.com o similar)."
         )
 
     if len(app_password) < 6:

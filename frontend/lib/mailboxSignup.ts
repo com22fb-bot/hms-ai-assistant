@@ -21,7 +21,7 @@ const YAHOO_DOMAINS = [
   "yahoo.es",
   "ymail.com",
   "rocketmail.com",
-];
+]; // México: @yahoo.com.mx usa el mismo OAuth que @yahoo.com
 
 const HOTMAIL_DOMAINS = [
   "hotmail.com",

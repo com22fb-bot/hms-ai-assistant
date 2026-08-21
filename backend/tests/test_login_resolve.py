@@ -39,8 +39,36 @@ class LoginResolveTests(unittest.TestCase):
         self.assertEqual(
             resolve_mailbox_provider("hsalcidor@yahoo.com"), "yahoo"
         )
+        self.assertEqual(
+            resolve_mailbox_provider("creechihuahua@yahoo.com.mx"), "yahoo"
+        )
+        self.assertEqual(
+            resolve_mailbox_provider("Alguien@Yahoo.Com.Mx"), "yahoo"
+        )
         self.assertEqual(resolve_mailbox_provider("x@outlook.com"), "hotmail")
         self.assertEqual(resolve_mailbox_provider("x@empresa.mx"), "other")
+
+    def test_yahoo_com_mx_existing_goes_to_oauth(self) -> None:
+        with patch(
+            "app.api.login_resolve.auth_user_exists", return_value=True
+        ):
+            result = resolve_login(
+                LoginResolveRequest(email="persona@yahoo.com.mx")
+            )
+        self.assertTrue(result["exists"])
+        self.assertEqual(result["provider"], "yahoo")
+        self.assertEqual(result["next"], "yahoo_oauth")
+
+    def test_yahoo_com_mx_unknown_stays_signup(self) -> None:
+        with patch(
+            "app.api.login_resolve.auth_user_exists", return_value=False
+        ):
+            result = resolve_login(
+                LoginResolveRequest(email="nuevo@yahoo.com.mx")
+            )
+        self.assertFalse(result["exists"])
+        self.assertEqual(result["provider"], "yahoo")
+        self.assertEqual(result["next"], "signup")
 
     def test_existing_yahoo_goes_to_oauth(self) -> None:
         with patch(

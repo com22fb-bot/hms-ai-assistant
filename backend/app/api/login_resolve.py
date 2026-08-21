@@ -5,19 +5,13 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from app.services.yahoo_domains import is_yahoo_mail_address
 from app.services.yahoo_session import auth_user_exists
 
 
 router = APIRouter(prefix="/auth/login", tags=["Login"])
 
 _GMAIL = ("gmail.com", "googlemail.com")
-_YAHOO = (
-    "yahoo.com",
-    "yahoo.com.mx",
-    "yahoo.es",
-    "ymail.com",
-    "rocketmail.com",
-)
 _HOTMAIL = (
     "hotmail.com",
     "hotmail.es",
@@ -37,7 +31,7 @@ def _domain(email: str) -> str:
     at = email.rfind("@")
     if at < 0:
         return ""
-    return email[at + 1 :]
+    return email[at + 1 :].strip().lower()
 
 
 def _matches(domain: str, roots: tuple[str, ...]) -> bool:
@@ -50,7 +44,7 @@ def resolve_mailbox_provider(email: str) -> str:
         return "other"
     if _matches(domain, _GMAIL):
         return "gmail"
-    if _matches(domain, _YAHOO):
+    if is_yahoo_mail_address(email):
         return "yahoo"
     if _matches(domain, _HOTMAIL):
         return "hotmail"
