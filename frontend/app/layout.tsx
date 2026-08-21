@@ -24,10 +24,10 @@ export const metadata: Metadata = {
     "Do Next To…: atención sobre el correo personal, antes del caos de la bandeja. donexto.com",
   icons: {
     icon: [
-      { url: "/brand/donexto-mark.svg", type: "image/svg+xml" },
+      { url: "/brand/donexto-app-icon.png", type: "image/png", sizes: "512x512" },
       { url: "/favicon.ico" },
     ],
-    apple: "/brand/donexto-mark.svg",
+    apple: "/brand/donexto-app-icon.png",
   },
 };
 

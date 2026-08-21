@@ -8,8 +8,8 @@
   "theme_color": "#02070b",
   "icons": [
     {
-      "src": "/hms-import-robot.png",
-      "sizes": "any",
+      "src": "/brand/donexto-app-icon.png",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     }
