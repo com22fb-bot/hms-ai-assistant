@@ -65,13 +65,24 @@ def require_yahoo_oauth_config() -> None:
         )
 
 
-YAHOO_OAUTH_INTENTS = frozenset({"login", "signup"})
+YAHOO_OAUTH_INTENTS = frozenset({"login", "signup", "mailbox"})
 
 
 def normalize_yahoo_intent(value: str | None) -> str:
-    """login = ya es usuario Donexto; signup = quiere crear cuenta."""
+    """login/signup = identidad; mailbox = pedir lectura del buzón."""
     clean = (value or "login").strip().lower()
     return clean if clean in YAHOO_OAUTH_INTENTS else "login"
+
+
+def yahoo_authorize_scopes(intent: str) -> str:
+    """Continuar/Suscribirse: identidad. Actualizar buzón: suma mail-r."""
+    configured = (settings.yahoo_oauth_scopes or YAHOO_DEFAULT_SCOPES).strip()
+    parts = [part for part in configured.replace(",", " ").split() if part]
+    if intent == "mailbox":
+        lowered = {part.lower() for part in parts}
+        if "mail-r" not in lowered:
+            parts.append("mail-r")
+    return " ".join(parts) if parts else YAHOO_DEFAULT_SCOPES
 
 
 def yahoo_intent_from_state(state: str) -> str:
@@ -118,7 +129,7 @@ def build_yahoo_authorization_url(
         "client_id": settings.yahoo_client_id,
         "redirect_uri": settings.yahoo_redirect_uri,
         "response_type": "code",
-        "scope": settings.yahoo_oauth_scopes,
+        "scope": yahoo_authorize_scopes(yahoo_intent_from_state(state)),
         "state": state,
         "nonce": state,
         "language": "es-mx",

@@ -236,20 +236,23 @@ export function AttentionHome({
       : watchEmail
         ? authorizeMailboxTitle(watchEmail)
         : ACCOUNT_VS_MAILBOX.step2Title;
-    const emptyCta =
-      yahooMailPending
-        ? null
-        : connectMode === "gmail"
-          ? ACCOUNT_VS_MAILBOX.connectGmailCta
-          : connectMode === "yahoo"
-            ? ACCOUNT_VS_MAILBOX.connectYahooTitle
-            : ACCOUNT_VS_MAILBOX.step2Cta;
+    const emptyCta = yahooMailPending
+      ? ACCOUNT_VS_MAILBOX.updateMailboxLabel
+      : connectMode === "gmail"
+        ? ACCOUNT_VS_MAILBOX.connectGmailCta
+        : connectMode === "yahoo"
+          ? ACCOUNT_VS_MAILBOX.updateMailboxLabel
+          : ACCOUNT_VS_MAILBOX.step2Cta;
 
     return (
       <section className="dx-attention" aria-label="Autorizar buzón">
         <header className="dx-attention__hero">
           <div>
-            <p className="dx-attention__kicker">Cuenta lista · falta autorizar lectura</p>
+            <p className="dx-attention__kicker">
+              {yahooMailPending
+                ? ACCOUNT_VS_MAILBOX.updateMailboxLabel
+                : "Cuenta lista · falta autorizar lectura"}
+            </p>
             <h1>
               {personName ? `Hola, ${personName}` : "Hola"}
             </h1>

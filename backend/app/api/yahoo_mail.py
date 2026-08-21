@@ -246,10 +246,8 @@ def _yahoo_callback_error_message(error: str, description: str) -> str:
     text = (description or "").lower().replace("+", " ")
     if code == "invalid_scope" or "invalid scope" in text:
         return (
-            "Yahoo no aceptó el permiso de correo en esta app. "
-            "Por ahora Donexto solo pide identidad (openid, email, profile). "
-            "La lectura del buzón (mail-r) hay que solicitarla en "
-            "https://senders.yahooinc.com/developer/developer-access/"
+            "Yahoo no autorizó leer este buzón. "
+            "Vuelve a Donexto y pulsa Actualizar buzón."
         )
     return description or "Yahoo rechazó la autorización."
 

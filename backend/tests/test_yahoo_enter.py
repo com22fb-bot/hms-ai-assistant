@@ -95,6 +95,22 @@ class YahooOAuthGateTests(unittest.TestCase):
         self.assertNotIn("login_hint", without_hint)
         self.assertNotIn("login_hint", ignored)
 
+    def test_mailbox_intent_requests_mail_read(self) -> None:
+        with patch(
+            "app.services.yahoo_oauth.settings"
+        ) as settings:
+            settings.yahoo_client_id = "client-id"
+            settings.yahoo_client_secret = "secret"
+            settings.yahoo_redirect_uri = (
+                "https://hms-ai-assistant-production.up.railway.app"
+                "/auth/yahoo/callback"
+            )
+            settings.yahoo_oauth_scopes = "openid email profile"
+            mailbox = build_yahoo_authorization_url("mailbox.state-token")
+            login = build_yahoo_authorization_url("login.state-token")
+        self.assertIn("mail-r", mailbox)
+        self.assertNotIn("mail-r", login)
+
     def test_sanitize_return_to_stays_on_donexto(self) -> None:
         with patch(
             "app.services.yahoo_oauth.settings"
@@ -148,7 +164,7 @@ class YahooOAuthGateTests(unittest.TestCase):
         from app.api.yahoo_mail import _yahoo_callback_error_message
 
         text = _yahoo_callback_error_message("invalid_scope", "invalid scope")
-        self.assertIn("identidad", text.lower())
+        self.assertIn("buzón", text.lower())
         self.assertNotEqual(text, "invalid scope")
 
     def test_intent_helpers(self) -> None:
@@ -158,7 +174,8 @@ class YahooOAuthGateTests(unittest.TestCase):
         )
 
         self.assertEqual(normalize_yahoo_intent(None), "login")
-        self.assertEqual(normalize_yahoo_intent("signup"), "signup")
+        self.assertEqual(normalize_yahoo_intent("mailbox"), "mailbox")
+        self.assertEqual(yahoo_intent_from_state("mailbox.abc"), "mailbox")
         self.assertEqual(normalize_yahoo_intent("other"), "login")
         self.assertEqual(yahoo_intent_from_state("login.abc"), "login")
         self.assertEqual(yahoo_intent_from_state("signup.xyz"), "signup")

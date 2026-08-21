@@ -843,13 +843,27 @@ function Dashboard({
     setNotice(null);
   }
 
+  function startYahooMailbox() {
+    setNotice("Te llevamos a Yahoo para autorizar la lectura de este buzón…");
+    void startYahooConnection({
+      intent: "mailbox",
+      loginHint: session.email,
+    }).catch((requestError: unknown) => {
+      setNotice(
+        requestError instanceof Error
+          ? requestError.message
+          : "No fue posible abrir Yahoo.",
+      );
+    });
+  }
+
   function requestMailboxOrExplain() {
     if (connection?.connected) {
       openConnectedMailboxActions();
       return;
     }
     if (yahooMailPending) {
-      setNotice(ACCOUNT_VS_MAILBOX.yahooWaitingMailBody);
+      startYahooMailbox();
       return;
     }
     openMailboxConnect();
@@ -1080,13 +1094,13 @@ function Dashboard({
             type="button"
             className="app-sidebar-primary"
             aria-label={
-              connection?.connected
-                ? "Descargar correos nuevos"
+              connection?.connected || yahooMailPending
+                ? ACCOUNT_VS_MAILBOX.updateMailboxLabel
                 : ACCOUNT_VS_MAILBOX.connectMailboxLabel
             }
             disabled={
               loadingConnection ||
-              yahooMailPending ||
+              connectingYahoo ||
               Boolean(connection?.connected && syncing)
             }
             onClick={() => {
@@ -1105,11 +1119,9 @@ function Dashboard({
               ? "Verificando…"
               : syncing
                 ? `Lote ${syncProgress.currentBatch}…`
-                : connection?.connected
-                  ? "Actualizar correo"
-                  : yahooMailPending
-                    ? "Lectura pendiente"
-                    : ACCOUNT_VS_MAILBOX.connectMailboxLabel}
+                : connection?.connected || yahooMailPending
+                  ? ACCOUNT_VS_MAILBOX.updateMailboxLabel
+                  : ACCOUNT_VS_MAILBOX.connectMailboxLabel}
           </button>
 
           {connection?.connected ? (
@@ -1272,7 +1284,13 @@ function Dashboard({
               mailboxConnected={Boolean(connection?.connected)}
               mailboxLoading={loadingConnection}
               yahooMailPending={yahooMailPending}
-              onConnectMailbox={() => openMailboxConnect()}
+              onConnectMailbox={() => {
+                if (yahooMailPending) {
+                  startYahooMailbox();
+                  return;
+                }
+                openMailboxConnect();
+              }}
               onChangeMailbox={() => openMailboxConnect()}
               onRefreshMailbox={() => {
                 if (connection?.connected) {
@@ -1471,7 +1489,7 @@ function Dashboard({
                 type="button"
                 disabled={
                   loadingConnection ||
-                  yahooMailPending ||
+                  connectingYahoo ||
                   Boolean(connection?.connected && syncing)
                 }
                 onClick={() => {
@@ -1488,11 +1506,9 @@ function Dashboard({
                 )}
                 <div>
                   <strong>
-                    {connection?.connected
-                      ? "Actualizar buzón"
-                      : yahooMailPending
-                        ? "Lectura pendiente"
-                        : ACCOUNT_VS_MAILBOX.connectMailboxLabel}
+                    {connection?.connected || yahooMailPending
+                      ? ACCOUNT_VS_MAILBOX.updateMailboxLabel
+                      : ACCOUNT_VS_MAILBOX.connectMailboxLabel}
                   </strong>
                   <span>
                     {connection?.connected

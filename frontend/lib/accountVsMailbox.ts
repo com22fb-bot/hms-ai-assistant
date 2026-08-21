@@ -20,9 +20,10 @@ export const ACCOUNT_VS_MAILBOX = {
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   servicesActiveLabel: "Servicios en Donexto",
   servicesActiveBadge: "Activos",
-  yahooWaitingMailTitle: "Ya entraste con Yahoo",
+  yahooWaitingMailTitle: "Actualiza el buzón",
   yahooWaitingMailBody:
-    "Yahoo identificó tu cuenta. Aún no autoriza a Donexto a leer el buzón (mail-r). Cierra sesión si quieres entrar con otro correo.",
+    "Ya estás en Donexto. Pulsa Actualizar buzón para que Yahoo autorice la lectura de este correo.",
+  updateMailboxLabel: "Actualizar buzón",
   yahooSignInNext:
     "Firma en el sitio de Yahoo. Donexto no pide la clave de ningún buzón.",
   yahooMagicLinkSent:
