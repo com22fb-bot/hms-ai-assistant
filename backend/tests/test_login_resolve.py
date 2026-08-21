@@ -52,6 +52,17 @@ class LoginResolveTests(unittest.TestCase):
         self.assertTrue(result["exists"])
         self.assertEqual(result["next"], "yahoo_oauth")
 
+    def test_unknown_yahoo_goes_to_signup_not_oauth(self) -> None:
+        with patch(
+            "app.api.login_resolve.auth_user_exists", return_value=False
+        ):
+            result = resolve_login(
+                LoginResolveRequest(email="melgibson@yahoo.com")
+            )
+        self.assertFalse(result["exists"])
+        self.assertEqual(result["next"], "signup")
+        self.assertEqual(result["provider"], "yahoo")
+
     def test_unknown_email_goes_to_signup(self) -> None:
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=False

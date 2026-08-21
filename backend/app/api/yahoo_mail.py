@@ -26,6 +26,7 @@ from app.services.yahoo_oauth import (
     granted_mail_read,
     normalize_yahoo_intent,
     require_yahoo_oauth_config,
+    sanitize_login_hint,
     sanitize_return_to,
     yahoo_email_from_userinfo,
     yahoo_intent_from_state,
@@ -197,6 +198,18 @@ def yahoo_login(
     """Devuelve la URL para firmar en el sitio de Yahoo."""
     require_yahoo_oauth_config()
     intent = normalize_yahoo_intent(payload.intent if payload else None)
+    hint = sanitize_login_hint(payload.login_hint if payload else None)
+    if intent == "login" and hint and not auth_user_exists(hint):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "no_donexto_account",
+                "message": (
+                    "Ese correo no tiene cuenta Donexto. "
+                    "Pulsa Suscribirse."
+                ),
+            },
+        )
     return_to = sanitize_return_to(
         (payload.return_to if payload else None)
         or request.headers.get("origin")
@@ -223,7 +236,7 @@ def yahoo_login(
         "intent": intent,
         "authorization_url": build_yahoo_authorization_url(
             state,
-            login_hint=payload.login_hint if payload else None,
+            login_hint=hint,
         ),
     }
 
