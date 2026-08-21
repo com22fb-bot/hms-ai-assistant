@@ -4,7 +4,7 @@
  * Yahoo → un paso: te llevamos al sitio de Yahoo (OAuth). No hay clave en Donexto.
  */
 
-export type MailboxConnectMode = "gmail" | "yahoo" | "choose";
+export type MailboxConnectMode = "gmail" | "yahoo" | "microsoft" | "choose";
 
 export type MailboxSignupProvider =
   | "gmail"
@@ -26,10 +26,14 @@ const YAHOO_DOMAINS = [
 const HOTMAIL_DOMAINS = [
   "hotmail.com",
   "hotmail.es",
+  "hotmail.com.mx",
   "outlook.com",
   "outlook.es",
+  "outlook.com.mx",
   "live.com",
+  "live.com.mx",
   "msn.com",
+  "onmicrosoft.com",
 ];
 
 const APPLE_DOMAINS = ["icloud.com", "me.com", "mac.com"];
@@ -84,6 +88,9 @@ export function mailboxConnectModeFromEmail(
   }
   if (provider === "yahoo") {
     return "yahoo";
+  }
+  if (provider === "hotmail") {
+    return "microsoft";
   }
   return "choose";
 }

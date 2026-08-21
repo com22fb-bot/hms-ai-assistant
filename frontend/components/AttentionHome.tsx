@@ -248,7 +248,9 @@ export function AttentionHome({
         ? ACCOUNT_VS_MAILBOX.connectGmailCta
         : connectMode === "yahoo"
           ? ACCOUNT_VS_MAILBOX.updateMailboxLabel
-          : ACCOUNT_VS_MAILBOX.step2Cta;
+          : connectMode === "microsoft"
+            ? ACCOUNT_VS_MAILBOX.connectMicrosoftCta
+            : ACCOUNT_VS_MAILBOX.step2Cta;
 
     return (
       <section className="dx-attention" aria-label="Autorizar buzón">

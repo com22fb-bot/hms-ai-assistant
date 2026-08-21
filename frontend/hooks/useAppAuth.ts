@@ -63,16 +63,35 @@ function yahooImapOwnsIdentity(user: User | null | undefined): boolean {
   return resolveMailboxProviderFromEmail(user.email) === "yahoo";
 }
 
+function microsoftOwnsIdentity(user: User | null | undefined): boolean {
+  if (!user?.email) {
+    return false;
+  }
+  const via = String(user.user_metadata?.signup_via ?? "").toLowerCase();
+  if (via === "microsoft_oauth") {
+    return true;
+  }
+  const identities = user.identities ?? [];
+  if (identities.some((identity) => identity.provider === "azure")) {
+    return true;
+  }
+  return resolveMailboxProviderFromEmail(user.email) === "hotmail";
+}
+
 /**
  * Gmail: hace falta el clic del mail Donexto (`donexto_verified`).
- * Yahoo: firmar en el sitio de Yahoo ya demuestra el correo; no hay alta ni gate.
+ * Yahoo y Microsoft: firmar en su sitio ya demuestra el correo.
  */
 function sessionNeedsDonextoEmailConfirm(session: Session | null): boolean {
   const user = session?.user;
   if (!user) {
     return false;
   }
-  if (isDonextoVerified(user) || yahooImapOwnsIdentity(user)) {
+  if (
+    isDonextoVerified(user)
+    || yahooImapOwnsIdentity(user)
+    || microsoftOwnsIdentity(user)
+  ) {
     return false;
   }
   return true;
@@ -464,6 +483,48 @@ export function useAppAuth() {
     window.location.assign(payload.authorization_url);
   }, []);
 
+  const signInWithMicrosoft = useCallback(async (
+    intent: YahooAuthIntent = "login",
+    email?: string,
+  ) => {
+    const hint = email?.trim().toLowerCase();
+    const response = await fetch(`${API_BASE_URL}/auth/microsoft/login`, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        return_to: window.location.origin,
+        intent,
+        ...(hint ? { login_hint: hint } : {}),
+      }),
+    });
+
+    let payload: {
+      authorization_url?: string;
+      detail?: { message?: string } | string;
+      message?: string;
+    } = {};
+
+    try {
+      payload = (await response.json()) as typeof payload;
+    } catch {
+      throw new Error(
+        `No fue posible abrir Microsoft (HTTP ${response.status}).`,
+      );
+    }
+
+    if (!response.ok || !payload.authorization_url) {
+      throw new Error(
+        detailMessage(payload) ??
+          "No fue posible abrir el inicio de sesión de Microsoft.",
+      );
+    }
+
+    window.location.assign(payload.authorization_url);
+  }, []);
+
   const signUp = useCallback(
     async (
       email: string,
@@ -653,6 +714,7 @@ export function useAppAuth() {
     signIn,
     signInWithGoogle,
     signInWithYahoo,
+    signInWithMicrosoft,
     signInWithProvider,
     signUp,
     resendSignupEmail,

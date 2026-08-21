@@ -721,9 +721,11 @@ function Dashboard({
     loadingConnection,
     connectionError,
     connectingYahoo,
+    connectingMicrosoft,
     loadGoogleStatus,
     startGoogleConnection,
     startYahooConnection,
+    startMicrosoftConnection,
   } = useGoogleStatus();
 
   const isGoogleMailbox =
@@ -1600,6 +1602,7 @@ function Dashboard({
           <MailboxConnectModal
             open={mailboxPickerOpen}
             connectingYahoo={connectingYahoo}
+            connectingMicrosoft={connectingMicrosoft}
             required={!connection?.connected && !yahooIdentityReady}
             accountEmail={session.email}
             mode={mailboxConnectModeFromEmail(session.email)}
@@ -1643,6 +1646,24 @@ function Dashboard({
                   requestError instanceof Error
                     ? requestError.message
                     : "No fue posible abrir Yahoo.";
+                setNotice(message);
+                throw requestError instanceof Error
+                  ? requestError
+                  : new Error(message);
+              }
+            }}
+            onConnectMicrosoft={async () => {
+              setNotice("Te llevamos a Microsoft para firmar ahí…");
+              try {
+                await startMicrosoftConnection({
+                  intent: "login",
+                  loginHint: session.email,
+                });
+              } catch (requestError) {
+                const message =
+                  requestError instanceof Error
+                    ? requestError.message
+                    : "No fue posible abrir Microsoft.";
                 setNotice(message);
                 throw requestError instanceof Error
                   ? requestError
@@ -1714,6 +1735,7 @@ export default function HomePage() {
     signIn,
     signInWithGoogle,
     signInWithYahoo,
+    signInWithMicrosoft,
     signInWithProvider,
     signUp,
     resendSignupEmail,
@@ -1752,6 +1774,7 @@ export default function HomePage() {
           onSignUp={signUp}
           onSignInWithGoogle={signInWithGoogle}
           onSignInWithYahoo={signInWithYahoo}
+          onSignInWithMicrosoft={signInWithMicrosoft}
           onSignInWithProvider={signInWithProvider}
           onResendSignupEmail={resendSignupEmail}
           onMagicLink={signInWithMagicLink}

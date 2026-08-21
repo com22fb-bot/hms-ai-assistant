@@ -46,6 +46,12 @@ class LoginResolveTests(unittest.TestCase):
             resolve_mailbox_provider("Alguien@Yahoo.Com.Mx"), "yahoo"
         )
         self.assertEqual(resolve_mailbox_provider("x@outlook.com"), "hotmail")
+        self.assertEqual(
+            resolve_mailbox_provider("x@outlook.com.mx"), "hotmail"
+        )
+        self.assertEqual(
+            resolve_mailbox_provider("x@hotmail.com.mx"), "hotmail"
+        )
         self.assertEqual(resolve_mailbox_provider("x@empresa.mx"), "other")
 
     def test_yahoo_com_mx_existing_goes_to_oauth(self) -> None:

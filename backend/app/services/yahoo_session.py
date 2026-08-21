@@ -235,12 +235,13 @@ def _ensure_yahoo_auth_user(
     email: str,
     *,
     allow_create: bool = True,
+    signup_via: str = YAHOO_SIGNUP_VIA,
 ) -> tuple[str, str | None]:
     """Localiza el usuario Auth. Solo crea uno si allow_create (alta explícita)."""
 
     metadata = {
         "donexto_verified": True,
-        "signup_via": YAHOO_SIGNUP_VIA,
+        "signup_via": signup_via,
     }
     existing = _find_user_by_email(client, email)
     created_password: str | None = None
@@ -324,14 +325,16 @@ def mint_yahoo_session(
     email: str,
     *,
     allow_create: bool = True,
+    signup_via: str = YAHOO_SIGNUP_VIA,
 ) -> dict[str, str]:
-    """Usuario Auth + tokens. La clave de Yahoo nunca es password de Supabase."""
+    """Usuario Auth + tokens. La clave del buzón nunca es password de Supabase."""
 
     client = get_supabase_client()
     user_id, created_password = _ensure_yahoo_auth_user(
         client,
         email,
         allow_create=allow_create,
+        signup_via=signup_via,
     )
 
     session: dict[str, str] = {}
@@ -359,9 +362,15 @@ def mint_yahoo_session_or_http(
     email: str,
     *,
     allow_create: bool = True,
+    signup_via: str = YAHOO_SIGNUP_VIA,
+    provider_label: str = "Yahoo",
 ) -> dict[str, str]:
     try:
-        return mint_yahoo_session(email, allow_create=allow_create)
+        return mint_yahoo_session(
+            email,
+            allow_create=allow_create,
+            signup_via=signup_via,
+        )
     except HTTPException:
         raise
     except YahooSessionError as error:
@@ -371,8 +380,9 @@ def mint_yahoo_session_or_http(
                 detail={
                     "status": "no_donexto_account",
                     "message": (
-                        "Yahoo confirmó el correo, pero no hay cuenta Donexto. "
-                        "Tener Yahoo no da acceso. Crea la cuenta primero."
+                        f"{provider_label} confirmó el correo, pero no hay "
+                        f"cuenta Donexto. Tener {provider_label} no da acceso. "
+                        "Crea la cuenta primero."
                     ),
                 },
             ) from error
@@ -384,13 +394,13 @@ def mint_yahoo_session_or_http(
             },
         ) from error
     except Exception as error:
-        logger.exception("Sesión Yahoo falló para %s", email)
+        logger.exception("Sesión %s falló para %s", provider_label, email)
         raise HTTPException(
             status_code=503,
             detail={
                 "status": "yahoo_session_failed",
                 "message": (
-                    "Yahoo autenticó, pero no se pudo abrir Donexto. "
+                    f"{provider_label} autenticó, pero no se pudo abrir Donexto. "
                     "Inténtalo de nuevo o escribe a support@donexto.com."
                 ),
             },

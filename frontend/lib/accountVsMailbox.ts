@@ -18,11 +18,13 @@ export const ACCOUNT_VS_MAILBOX = {
   loginSubscribeCta: "Suscribirse",
   signupConfirmTitle: "Confirma tu correo Donexto",
   signupConfirmHelper:
-    "Revisa que sea el correo con el que te quieres suscribir. Todavía no vas a Yahoo.",
+    "Revisa que sea el correo con el que te quieres suscribir. Todavía no sales de Donexto.",
   signupConfirmCta: "Sí, suscribirme con este correo",
   signupConfirmBack: "Usar otro correo",
   signupConfirmYahooNote:
     "Después de confirmar, firmas en el sitio de Yahoo. Donexto no pide la clave.",
+  signupConfirmMicrosoftNote:
+    "Después de confirmar, firmas en el sitio de Microsoft. Donexto no pide la clave de Outlook, Hotmail ni Microsoft 365.",
   loginHelperYahoo:
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   servicesActiveLabel: "Servicios en Donexto",
@@ -91,6 +93,10 @@ export const ACCOUNT_VS_MAILBOX = {
     "Te llevamos a la página oficial de Google para autorizar la lectura de este mismo Gmail (no es el login de Donexto y no pedimos tu contraseña).",
   connectYahooChooserHint:
     "Yahoo te identifica y autoriza la lectura en su propio sitio. Sin clave en Donexto.",
+  connectMicrosoftTitle: "Conecta Outlook, Hotmail o Microsoft 365",
+  connectMicrosoftBody:
+    "Te llevamos al sitio de Microsoft para firmar. Donexto no pide la clave de Outlook.",
+  connectMicrosoftCta: "Continuar con Microsoft",
 
   changeMailboxLabel: "Volver a autorizar buzón",
   connectMailboxLabel: "Autorizar buzón",

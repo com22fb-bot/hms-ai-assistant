@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from app.services.microsoft_domains import is_microsoft_mail_address
 from app.services.yahoo_domains import is_yahoo_mail_address
 from app.services.yahoo_session import auth_user_exists
 
@@ -12,14 +13,6 @@ from app.services.yahoo_session import auth_user_exists
 router = APIRouter(prefix="/auth/login", tags=["Login"])
 
 _GMAIL = ("gmail.com", "googlemail.com")
-_HOTMAIL = (
-    "hotmail.com",
-    "hotmail.es",
-    "outlook.com",
-    "outlook.es",
-    "live.com",
-    "msn.com",
-)
 _APPLE = ("icloud.com", "me.com", "mac.com")
 
 
@@ -46,7 +39,7 @@ def resolve_mailbox_provider(email: str) -> str:
         return "gmail"
     if is_yahoo_mail_address(email):
         return "yahoo"
-    if _matches(domain, _HOTMAIL):
+    if is_microsoft_mail_address(email):
         return "hotmail"
     if _matches(domain, _APPLE):
         return "apple"

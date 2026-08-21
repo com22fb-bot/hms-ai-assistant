@@ -74,6 +74,9 @@ def env_status() -> dict[str, Any]:
             "YAHOO_CLIENT_ID": _env_is_set("YAHOO_CLIENT_ID"),
             "YAHOO_CLIENT_SECRET": _env_is_set("YAHOO_CLIENT_SECRET"),
             "YAHOO_REDIRECT_URI": _env_is_set("YAHOO_REDIRECT_URI"),
+            "AZURE_CLIENT_ID": _env_is_set("AZURE_CLIENT_ID"),
+            "AZURE_CLIENT_SECRET": _env_is_set("AZURE_CLIENT_SECRET"),
+            "AZURE_REDIRECT_URI": _env_is_set("AZURE_REDIRECT_URI"),
         },
         "oauth_shape": {
             "frontend_mentions_donexto": frontend_is_donexto,

@@ -65,6 +65,10 @@ type LoginScreenProps = {
     intent?: YahooAuthIntent,
     email?: string,
   ) => Promise<void>;
+  onSignInWithMicrosoft: (
+    intent?: YahooAuthIntent,
+    email?: string,
+  ) => Promise<void>;
   onSignInWithProvider: (
     provider: AuthOAuthProvider,
     email?: string,
@@ -118,6 +122,7 @@ export function LoginScreen({
   onSignUp: _onSignUp,
   onSignInWithGoogle,
   onSignInWithYahoo,
+  onSignInWithMicrosoft,
   onSignInWithProvider,
   onMagicLink,
   onResetPassword,
@@ -187,6 +192,8 @@ export function LoginScreen({
         await onSignInWithGoogle(address);
       } else if (provider === "yahoo") {
         await onSignInWithYahoo(yahooIntent, address);
+      } else if (provider === "azure") {
+        await onSignInWithMicrosoft(yahooIntent, address);
       } else {
         await onSignInWithProvider(provider, address);
       }
@@ -554,7 +561,9 @@ export function LoginScreen({
             {confirmingSignup ? (
               <>
                 <p className="dx-auth__signup-copy">
-                  {ACCOUNT_VS_MAILBOX.signupConfirmYahooNote}
+                  {resolveMailboxProviderFromEmail(email) === "hotmail"
+                    ? ACCOUNT_VS_MAILBOX.signupConfirmMicrosoftNote
+                    : ACCOUNT_VS_MAILBOX.signupConfirmYahooNote}
                 </p>
                 <button type="submit" className="dx-auth__submit" disabled={busy}>
                   {busy ? (
@@ -651,6 +660,10 @@ export function LoginScreen({
               <li className="dx-auth__service">
                 <ProviderMark provider="yahoo" />
                 Yahoo
+              </li>
+              <li className="dx-auth__service">
+                <ProviderMark provider="hotmail" />
+                Microsoft
               </li>
             </ul>
           </div>
