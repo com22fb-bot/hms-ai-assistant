@@ -12,7 +12,7 @@ import {
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { LanguageStrip } from "@/components/UserSettingsPanel";
-import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
+import { ACCOUNT_VS_MAILBOX, signupConfirmNote } from "@/lib/accountVsMailbox";
 import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
 import type { AuthOAuthProvider, YahooAuthIntent } from "@/hooks/useAppAuth";
 import { gateNextAfterResolve } from "@/lib/loginGate";
@@ -561,9 +561,7 @@ export function LoginScreen({
             {confirmingSignup ? (
               <>
                 <p className="dx-auth__signup-copy">
-                  {resolveMailboxProviderFromEmail(email) === "hotmail"
-                    ? ACCOUNT_VS_MAILBOX.signupConfirmMicrosoftNote
-                    : ACCOUNT_VS_MAILBOX.signupConfirmYahooNote}
+                  {signupConfirmNote(email)}
                 </p>
                 <button type="submit" className="dx-auth__submit" disabled={busy}>
                   {busy ? (

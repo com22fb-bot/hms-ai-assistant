@@ -360,7 +360,7 @@ def get_google_connection_status() -> GoogleConnectionStatus:
             connected=False,
             message=(
                 "Este workspace no tiene un buzón de correo conectado "
-                "(Gmail o Yahoo)."
+                "(Gmail, Yahoo u Outlook)."
             ),
             login_url="/auth/google/start",
         )

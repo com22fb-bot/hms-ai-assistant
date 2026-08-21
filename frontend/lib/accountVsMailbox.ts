@@ -16,15 +16,19 @@ export const ACCOUNT_VS_MAILBOX = {
   loginHelper: "Escribe tu correo.",
   loginContinueCta: "Continuar",
   loginSubscribeCta: "Suscribirse",
-  signupConfirmTitle: "Confirma tu correo Donexto",
+  signupConfirmTitle: "Confirma el correo de Donexto",
   signupConfirmHelper:
-    "Revisa que sea el correo con el que te quieres suscribir. Todavía no sales de Donexto.",
-  signupConfirmCta: "Sí, suscribirme con este correo",
+    "Confirma el correo que vas a utilizar para el servicio Donexto. Revísalo antes de seguir.",
+  signupConfirmCta: "Sí, este es el correo de mi cuenta Donexto",
   signupConfirmBack: "Usar otro correo",
   signupConfirmYahooNote:
-    "Después de confirmar, firmas en el sitio de Yahoo. Donexto no pide la clave.",
+    "Al confirmar, Donexto usará este correo. Después firmas en el sitio de Yahoo.",
   signupConfirmMicrosoftNote:
-    "Después de confirmar, firmas en el sitio de Microsoft. Donexto no pide la clave de Outlook, Hotmail ni Microsoft 365.",
+    "Al confirmar, Donexto usará este correo. Después firmas en el sitio de Microsoft.",
+  signupConfirmGmailNote:
+    "Al confirmar, Donexto usará este correo. Después Google te identifica.",
+  signupConfirmOtherNote:
+    "Al confirmar, Donexto usará este correo para tu cuenta y para vigilar ese mismo buzón.",
   loginHelperYahoo:
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   servicesActiveLabel: "Servicios en Donexto",
@@ -144,6 +148,20 @@ export function mailboxPasswordPhrase(
     default:
       return "contraseña de ese correo";
   }
+}
+
+export function signupConfirmNote(email: string): string {
+  const provider = resolveMailboxProviderFromEmail(email);
+  if (provider === "hotmail") {
+    return ACCOUNT_VS_MAILBOX.signupConfirmMicrosoftNote;
+  }
+  if (provider === "gmail") {
+    return ACCOUNT_VS_MAILBOX.signupConfirmGmailNote;
+  }
+  if (provider === "yahoo") {
+    return ACCOUNT_VS_MAILBOX.signupConfirmYahooNote;
+  }
+  return ACCOUNT_VS_MAILBOX.signupConfirmOtherNote;
 }
 
 export function authorizeMailboxTitle(email: string): string {

@@ -168,6 +168,66 @@ def microsoft_email_from_profile(profile: dict[str, Any]) -> str:
 
 
 def granted_microsoft_mail_read(token_payload: dict[str, Any]) -> bool:
-    scope = str(token_payload.get("scope") or "").lower()
-    parts = {part for part in scope.replace(",", " ").split() if part}
-    return bool(parts & {"mail.read", "mail.readwrite", "mail.readbasic"})
+    scope = str(token_payload.get("scope") or "").lower().replace(",", " ")
+    return "mail.read" in scope
+
+
+def refresh_microsoft_tokens(refresh_token: str) -> dict[str, Any]:
+    require_microsoft_oauth_config()
+    try:
+        response = httpx.post(
+            MICROSOFT_TOKEN_URL,
+            data={
+                "client_id": settings.azure_client_id,
+                "client_secret": settings.azure_client_secret,
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+                "scope": microsoft_authorize_scopes(),
+            },
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            timeout=30.0,
+        )
+    except httpx.HTTPError as error:
+        raise MicrosoftOAuthError(
+            "No hubo respuesta al renovar la sesión de Microsoft."
+        ) from error
+    if response.status_code >= 400:
+        logger.warning(
+            "Microsoft refresh error %s: %s",
+            response.status_code,
+            response.text[:300],
+        )
+        raise MicrosoftOAuthError(
+            "Microsoft pidió firmar de nuevo. Vuelve al sitio de Microsoft."
+        )
+    payload = response.json()
+    if not isinstance(payload, dict) or not payload.get("access_token"):
+        raise MicrosoftOAuthError("Microsoft devolvió un token incompleto.")
+    return payload
+
+
+def graph_get(
+    access_token: str,
+    url: str,
+    *,
+    params: dict[str, str] | None = None,
+) -> dict[str, Any]:
+    try:
+        response = httpx.get(
+            url,
+            params=params,
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=45.0,
+        )
+    except httpx.HTTPError as error:
+        raise MicrosoftOAuthError(
+            "No hubo respuesta de Microsoft Graph."
+        ) from error
+    if response.status_code >= 400:
+        raise MicrosoftOAuthError(
+            f"graph_http_{response.status_code}:{response.text[:240]}"
+        )
+    payload = response.json()
+    if not isinstance(payload, dict):
+        raise MicrosoftOAuthError("Microsoft Graph devolvió un cuerpo inválido.")
+    return payload

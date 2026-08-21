@@ -15,6 +15,7 @@ from fastapi import HTTPException
 
 from app.api.login_resolve import resolve_mailbox_provider
 from app.middleware.authentication_context import AuthenticationContextMiddleware
+from app.security.identity import MAILBOX_PROVIDERS
 from app.services.microsoft_domains import is_microsoft_mail_address
 from app.services.microsoft_oauth import (
     build_microsoft_authorization_url,
@@ -55,6 +56,7 @@ class MicrosoftOAuthTests(unittest.TestCase):
         self.assertEqual(
             resolve_mailbox_provider("x@contoso.onmicrosoft.com"), "hotmail"
         )
+        self.assertIn("microsoft", MAILBOX_PROVIDERS)
 
     def test_authorization_url(self) -> None:
         with patch("app.services.microsoft_oauth.settings") as settings:
@@ -109,6 +111,11 @@ class MicrosoftOAuthTests(unittest.TestCase):
     def test_mail_read_and_email(self) -> None:
         self.assertTrue(
             granted_microsoft_mail_read({"scope": "openid Mail.Read User.Read"})
+        )
+        self.assertTrue(
+            granted_microsoft_mail_read(
+                {"scope": "openid https://graph.microsoft.com/Mail.Read"}
+            )
         )
         self.assertFalse(
             granted_microsoft_mail_read({"scope": "openid User.Read"})

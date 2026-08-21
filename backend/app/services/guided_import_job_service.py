@@ -19,6 +19,14 @@ from app.services.yahoo_import import (
     yahoo_incremental_refs,
     yahoo_initial_snapshot,
 )
+from app.services.microsoft_import import (
+    MICROSOFT_PAGE_SIZE,
+    MicrosoftImportError,
+    is_microsoft_provider,
+    microsoft_incremental_refs,
+    microsoft_initial_snapshot,
+    sync_microsoft_page,
+)
 from app.services.safe_case_classifier import classify_pending_messages
 from app.services.message_rules_service import apply_active_rules_to_unprocessed_messages
 from app.services.message_watch_service import match_watch_rules_for_account
@@ -252,6 +260,20 @@ def _run_job(job_id: str) -> None:
                     offset=offset,
                     batch_size=int(job.get("batch_size") or YAHOO_PAGE_SIZE),
                     oauth=True,
+                )
+            elif is_microsoft_provider(account):
+                metadata = dict(job.get("metadata") or {})
+                refs = [
+                    str(item)
+                    for item in (metadata.get("microsoft_refs") or [])
+                    if item
+                ]
+                offset = int(job.get("next_page_token") or 0)
+                sync_page = sync_microsoft_page(
+                    account=account,
+                    refs=refs,
+                    offset=offset,
+                    batch_size=int(job.get("batch_size") or MICROSOFT_PAGE_SIZE),
                 )
             else:
                 credentials = get_google_credentials_for_account(
@@ -541,6 +563,24 @@ def start_guided_import(
             }
             selection_categories = ["six_month_history"]
             batch_size = YAHOO_PAGE_SIZE
+        elif is_microsoft_provider(account):
+            snapshot = microsoft_initial_snapshot(account, cutoff_at=now)
+            query = str(snapshot["query"])
+            expected = int(snapshot["eligible_messages"])
+            job_mode = "historical"
+            metadata = {
+                "guided_import": True,
+                "guided_mode": "initial",
+                "history_days": snapshot["history_days"],
+                "period_start_local": snapshot["period_start_local"],
+                "period_end_local": snapshot["period_end_local"],
+                "timezone": snapshot["timezone"],
+                "microsoft_refs": snapshot.get("microsoft_refs") or [],
+                "classification_totals": {},
+                "without_case": 0,
+            }
+            selection_categories = ["six_month_history"]
+            batch_size = MICROSOFT_PAGE_SIZE
         else:
             if credentials is None:
                 raise ValueError(
@@ -603,6 +643,30 @@ def start_guided_import(
             }
             selection_categories = ["new_messages"]
             batch_size = YAHOO_PAGE_SIZE
+        elif is_microsoft_provider(account):
+            since = now - timedelta(days=7)
+            last_sync_at = account.get("last_sync_at")
+            if last_sync_at:
+                parsed = datetime.fromisoformat(
+                    str(last_sync_at).replace("Z", "+00:00")
+                )
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                since = parsed - timedelta(minutes=5)
+            refs = microsoft_incremental_refs(account, since=since)
+            query = f"microsoft:since:{since.date().isoformat()}"
+            expected = len(refs)
+            job_mode = "incremental"
+            metadata = {
+                "guided_import": True,
+                "guided_mode": "incremental",
+                "timezone": "America/Chihuahua",
+                "microsoft_refs": refs,
+                "classification_totals": {},
+                "without_case": 0,
+            }
+            selection_categories = ["new_messages"]
+            batch_size = MICROSOFT_PAGE_SIZE
         else:
             query = _incremental_query(account)
             expected = 0

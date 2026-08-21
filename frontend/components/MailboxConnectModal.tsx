@@ -213,7 +213,7 @@ export function MailboxConnectModal({
               <button
                 type="button"
                 className="dx-connect-btn dx-connect-btn--primary"
-                disabled={connectingGoogle || connectingYahoo}
+                disabled={connectingGoogle || connectingYahoo || connectingMicrosoft}
                 onClick={() => void handleGoogleClick()}
               >
                 {connectingGoogle ? (
@@ -235,7 +235,7 @@ export function MailboxConnectModal({
               <button
                 type="button"
                 className="dx-connect-btn dx-connect-btn--secondary"
-                disabled={connectingGoogle || connectingYahoo}
+                disabled={connectingGoogle || connectingYahoo || connectingMicrosoft}
                 onClick={() => void handleYahooClick()}
               >
                 {connectingYahoo ? (
