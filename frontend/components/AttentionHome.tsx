@@ -129,6 +129,7 @@ export function AttentionHome({
   mailboxEmail,
   mailboxConnected,
   mailboxLoading,
+  yahooMailPending = false,
   personName,
   onConnectMailbox,
   onChangeMailbox,
@@ -140,6 +141,7 @@ export function AttentionHome({
   mailboxEmail?: string | null;
   mailboxConnected: boolean;
   mailboxLoading: boolean;
+  yahooMailPending?: boolean;
   personName: string;
   onConnectMailbox: () => void;
   onChangeMailbox: () => void;
@@ -229,15 +231,19 @@ export function AttentionHome({
   if (!mailboxConnected && !mailboxLoading) {
     const watchEmail = (accountEmail || mailboxEmail || "").trim();
     const connectMode = mailboxConnectModeFromEmail(watchEmail);
-    const emptyTitle = watchEmail
-      ? authorizeMailboxTitle(watchEmail)
-      : ACCOUNT_VS_MAILBOX.step2Title;
+    const emptyTitle = yahooMailPending
+      ? ACCOUNT_VS_MAILBOX.yahooWaitingMailTitle
+      : watchEmail
+        ? authorizeMailboxTitle(watchEmail)
+        : ACCOUNT_VS_MAILBOX.step2Title;
     const emptyCta =
-      connectMode === "gmail"
-        ? ACCOUNT_VS_MAILBOX.connectGmailCta
-        : connectMode === "yahoo"
-          ? ACCOUNT_VS_MAILBOX.connectYahooTitle
-          : ACCOUNT_VS_MAILBOX.step2Cta;
+      yahooMailPending
+        ? null
+        : connectMode === "gmail"
+          ? ACCOUNT_VS_MAILBOX.connectGmailCta
+          : connectMode === "yahoo"
+            ? ACCOUNT_VS_MAILBOX.connectYahooTitle
+            : ACCOUNT_VS_MAILBOX.step2Cta;
 
     return (
       <section className="dx-attention" aria-label="Autorizar buzón">
@@ -256,12 +262,20 @@ export function AttentionHome({
         <div className="dx-attention__empty dx-attention__empty--gate">
           <Mail size={28} />
           <strong>{emptyTitle}</strong>
-          <p>{step2EmptyLeadFor(watchEmail)}</p>
-          <AccountVsMailboxHint variant="step2" email={watchEmail} />
-          <button type="button" onClick={onConnectMailbox}>
-            <Mail size={16} />
-            {emptyCta}
-          </button>
+          <p>
+            {yahooMailPending
+              ? ACCOUNT_VS_MAILBOX.yahooWaitingMailBody
+              : step2EmptyLeadFor(watchEmail)}
+          </p>
+          {yahooMailPending ? null : (
+            <AccountVsMailboxHint variant="step2" email={watchEmail} />
+          )}
+          {emptyCta ? (
+            <button type="button" onClick={onConnectMailbox}>
+              <Mail size={16} />
+              {emptyCta}
+            </button>
+          ) : null}
         </div>
       </section>
     );

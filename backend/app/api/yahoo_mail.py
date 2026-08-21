@@ -91,7 +91,7 @@ def persist_yahoo_mailbox(
             display_name=address,
             workspace_id=workspace_id,
             connected_by_profile_id=user_id,
-            status="active" if mail_read else "inactive",
+            status="active",
         )
         oauth_storage.save_credentials(
             account_id=account["id"],
@@ -106,6 +106,7 @@ def persist_yahoo_mailbox(
                 "host": "imap.mail.yahoo.com",
                 "connected_by_profile_id": user_id,
                 "workspace_id": workspace_id,
+                "mail_read": mail_read,
             },
         )
     except (OAuthStorageError, OAuthCredentialError) as error:

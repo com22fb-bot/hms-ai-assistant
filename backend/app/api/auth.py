@@ -22,6 +22,7 @@ from app.services.oauth_storage import (
     OAuthStorageError,
     oauth_storage,
 )
+from app.services.yahoo_oauth import granted_mail_read
 
 router = APIRouter(prefix="/auth/google", tags=["Google OAuth"])
 
@@ -367,16 +368,25 @@ def get_google_connection_status() -> GoogleConnectionStatus:
     provider = str(account.get("provider") or "google")
 
     if provider in ("yahoo", "imap"):
+        scopes = list((credentials or {}).get("scopes") or [])
+        mail_read = granted_mail_read({"scope": " ".join(scopes)})
+        has_token = bool(credentials and credentials.get("access_token"))
         return GoogleConnectionStatus(
-            connected=bool(credentials and credentials.get("access_token")),
+            connected=bool(has_token and mail_read),
             email=account.get("email") or None,
             provider="yahoo",
-            has_access_token=bool(
-                credentials and credentials.get("access_token")
-            ),
+            has_access_token=has_token,
             has_refresh_token=False,
-            scopes=(credentials or {}).get("scopes", []),
-            message="Buzón Yahoo conectado a este workspace.",
+            scopes=scopes,
+            message=(
+                "Buzón Yahoo autorizado."
+                if mail_read
+                else (
+                    "Entraste con Yahoo. Falta el permiso de lectura del "
+                    "correo (mail-r); sin eso Donexto no puede abrir el buzón."
+                )
+            ),
+            login_url=None if mail_read else "/auth/yahoo/login",
         )
 
     return GoogleConnectionStatus(

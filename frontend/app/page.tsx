@@ -732,6 +732,9 @@ function Dashboard({
     (connection.provider == null || connection.provider === "google");
   const isYahooMailbox =
     connection?.connected && connection.provider === "yahoo";
+  const yahooIdentityReady =
+    connection?.provider === "yahoo" && Boolean(connection.has_access_token);
+  const yahooMailPending = yahooIdentityReady && !Boolean(connection?.connected);
   const usesGuidedImport = Boolean(isGoogleMailbox || isYahooMailbox);
 
   const {
@@ -768,12 +771,12 @@ function Dashboard({
     if (loadingConnection) {
       return;
     }
-    if (connection?.connected) {
+    if (connection?.connected || yahooIdentityReady) {
       setMailboxPickerOpen(false);
       return;
     }
     setMailboxPickerOpen(true);
-  }, [connection?.connected, loadingConnection]);
+  }, [connection?.connected, loadingConnection, yahooIdentityReady]);
 
   useEffect(() => {
     if (
@@ -1261,6 +1264,7 @@ function Dashboard({
               mailboxEmail={connection?.email}
               mailboxConnected={Boolean(connection?.connected)}
               mailboxLoading={loadingConnection}
+              yahooMailPending={yahooMailPending}
               onConnectMailbox={() => openMailboxConnect()}
               onChangeMailbox={() => openMailboxConnect()}
               onRefreshMailbox={() => {
@@ -1579,7 +1583,7 @@ function Dashboard({
           <MailboxConnectModal
             open={mailboxPickerOpen}
             connectingYahoo={connectingYahoo}
-            required={!connection?.connected}
+            required={!connection?.connected && !yahooIdentityReady}
             accountEmail={session.email}
             mode={mailboxConnectModeFromEmail(session.email)}
             onClose={() => {

@@ -17,6 +17,9 @@ export const ACCOUNT_VS_MAILBOX = {
     "Identifícate con el correo que vas a vigilar.",
   loginHelperYahoo:
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
+  yahooWaitingMailTitle: "Ya entraste con Yahoo",
+  yahooWaitingMailBody:
+    "Yahoo identificó tu cuenta. Aún no autoriza a Donexto a leer el buzón (mail-r). Cierra sesión si quieres entrar con otro correo.",
   yahooSignInNext:
     "Firma en el sitio de Yahoo. Donexto no pide la clave de ningún buzón.",
   yahooMagicLinkSent:
