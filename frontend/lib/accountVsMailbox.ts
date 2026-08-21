@@ -14,7 +14,7 @@ export const ACCOUNT_VS_MAILBOX = {
   loginPasswordLabel: "Contraseña de Donexto",
   signupFullNameLabel: "Nombre completo",
   loginHelper:
-    "Identifícate con el correo que vas a vigilar.",
+    "Escribe tu correo. Si ya tienes cuenta, te llevamos a Google o Yahoo. Si no, a crear cuenta.",
   loginHelperYahoo:
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   yahooWaitingMailTitle: "Ya entraste con Yahoo",

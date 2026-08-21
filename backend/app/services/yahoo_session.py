@@ -109,6 +109,15 @@ def _find_user_by_email(client: Any, email: str) -> dict[str, Any]:
     return {}
 
 
+def auth_user_exists(email: str) -> bool:
+    """True si ya hay usuario Auth con ese correo."""
+    clean = (email or "").strip().lower()
+    if "@" not in clean:
+        return False
+    client = get_supabase_client()
+    return bool(_find_user_by_email(client, clean).get("id"))
+
+
 def _link_properties(response: Any) -> dict[str, Any]:
     props = getattr(response, "properties", None)
     if props is None and isinstance(response, dict):

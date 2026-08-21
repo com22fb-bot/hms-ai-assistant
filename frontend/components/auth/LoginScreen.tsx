@@ -32,6 +32,8 @@ export type GateThemeId =
 
 const TERMS_URL = "https://www.donexto.com/terminos.html";
 const PRIVACY_URL = "https://www.donexto.com/privacidad.html";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "/api/hms";
 
 function mailboxToOAuth(
   provider: MailboxSignupProvider,
@@ -168,9 +170,6 @@ export function LoginScreen({
   }
 
   async function startOAuthSignup(provider: AuthOAuthProvider) {
-    if (busy) {
-      return;
-    }
     resetAlerts();
     setBusy(true);
     setOauthBusy(provider);
@@ -245,12 +244,6 @@ export function LoginScreen({
       return;
     }
 
-    const provider = resolveMailboxProviderFromEmail(clean);
-    if (yahooFlow || provider === "yahoo") {
-      await enterWithYahoo();
-      return;
-    }
-
     if (mode === "signin" && usePassword) {
       if (password.length < 8) {
         setError("La contraseña de Donexto usa al menos 8 caracteres.");
@@ -272,6 +265,72 @@ export function LoginScreen({
       return;
     }
 
+    if (mode === "signin") {
+      setBusy(true);
+      resetAlerts();
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/login/resolve`, {
+          method: "POST",
+          cache: "no-store",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: clean }),
+        });
+        const payload = (await response.json()) as {
+          next?: string;
+          exists?: boolean;
+          detail?: { message?: string } | string;
+        };
+        if (!response.ok) {
+          const detail = payload.detail;
+          throw new Error(
+            typeof detail === "string"
+              ? detail
+              : detail?.message || "No fue posible revisar ese correo.",
+          );
+        }
+        if (!payload.exists || payload.next === "signup") {
+          setBusy(false);
+          goSignUp();
+          setEmail(clean);
+          setMessage(
+            "Ese correo aún no tiene cuenta Donexto. Créala para continuar.",
+          );
+          return;
+        }
+        if (payload.next === "yahoo_oauth") {
+          await onSignInWithYahoo();
+          return;
+        }
+        if (payload.next === "google_oauth") {
+          await startOAuthSignup("google");
+          return;
+        }
+        if (payload.next === "azure_oauth") {
+          await startOAuthSignup("azure");
+          return;
+        }
+        if (payload.next === "apple_oauth") {
+          await startOAuthSignup("apple");
+          return;
+        }
+        await sendMagicLink(clean);
+        return;
+      } catch (requestError) {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "No fue posible continuar con ese correo.",
+        );
+        setBusy(false);
+        return;
+      }
+    }
+
+    const provider = resolveMailboxProviderFromEmail(clean);
+    if (provider === "yahoo") {
+      await enterWithYahoo();
+      return;
+    }
     const oauth = mailboxToOAuth(provider);
     if (oauth) {
       await startOAuthSignup(oauth);
@@ -386,7 +445,7 @@ export function LoginScreen({
             </button>
           </div>
 
-          <p className="dx-auth__divider">o</p>
+          <p className="dx-auth__divider">o escribe tu correo</p>
 
           <form
             className="dx-auth__form"

@@ -34,6 +34,7 @@ _PUBLIC_PATHS = {
     "/auth/yahoo/enter",
     "/auth/yahoo/login",
     "/auth/yahoo/callback",
+    "/auth/login/resolve",
 }
 
 
