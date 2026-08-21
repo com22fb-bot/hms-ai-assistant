@@ -90,6 +90,11 @@
   border-radius: 999px;
 }
 
+.dx-auth__secondary:hover:not(:disabled) {
+  border-color: rgba(46, 230, 214, 0.45);
+  color: #2ee6d6;
+}
+
 .dx-auth__divider {
   color: #6d7c82;
 }

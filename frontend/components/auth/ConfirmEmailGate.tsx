@@ -90,13 +90,13 @@ export function ConfirmEmailGate({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             className="dx-auth__logo"
-            src="/brand/donexto-3d-2026.png"
-            width={512}
-            height={512}
+            src="/brand/donexto-logo-official.png"
+            width={1024}
+            height={1024}
             alt="Donexto — Do Next To…"
             decoding="async"
           />
-          <p className="dx-auth__brand">Donexto</p>
+          <p className="dx-auth__sr">Donexto</p>
         </div>
       </aside>
 

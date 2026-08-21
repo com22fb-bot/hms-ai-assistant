@@ -1030,9 +1030,14 @@ function Dashboard({
         }
       >
         <div className="app-brand">
-          <span className="app-brand-icon" aria-hidden>
-            D
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="app-brand-icon"
+            src="/brand/donexto-mark.svg"
+            width={42}
+            height={42}
+            alt=""
+          />
           <div>
             <strong>Donexto</strong>
             <small>Do Next To…</small>

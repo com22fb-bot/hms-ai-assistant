@@ -67,15 +67,12 @@
   width: 42px !important;
   height: 42px !important;
   border-radius: 12px !important;
-  background: #0c8a80 !important;
-  color: #fff !important;
+  background: #0a1620 !important;
+  color: transparent !important;
   box-shadow: none !important;
-  display: grid !important;
-  place-items: center !important;
-  font-family: var(--dx-display) !important;
-  font-size: 1.25rem !important;
-  font-weight: 700 !important;
-  letter-spacing: -0.03em !important;
+  display: block !important;
+  object-fit: cover !important;
+  padding: 0 !important;
 }
 
 .app-brand strong {

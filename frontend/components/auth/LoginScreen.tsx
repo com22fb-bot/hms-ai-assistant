@@ -128,7 +128,6 @@ export function LoginScreen({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [oauthBusy, setOauthBusy] = useState<AuthOAuthProvider | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -138,7 +137,6 @@ export function LoginScreen({
     if (params.get("donexto") !== "signup") {
       return;
     }
-    setMode("signup");
     const hinted = (params.get("email") || "").trim().toLowerCase();
     if (isValidSignupEmail(hinted)) {
       setEmail(hinted);
@@ -171,30 +169,6 @@ export function LoginScreen({
   function resetAlerts() {
     setError(null);
     setMessage(null);
-  }
-
-  function goSignIn() {
-    setMode("signin");
-    resetAlerts();
-    setBusy(false);
-    setOauthBusy(null);
-    setUsePassword(false);
-  }
-
-  function goSignUp(prefill?: string) {
-    setMode("signup");
-    resetAlerts();
-    setBusy(false);
-    setOauthBusy(null);
-    setUsePassword(false);
-    setPassword("");
-    if (prefill) {
-      setEmail(prefill);
-    }
-    window.setTimeout(() => {
-      emailRef.current?.focus();
-      emailRef.current?.select();
-    }, 0);
   }
 
   async function startOAuth(
@@ -264,6 +238,61 @@ export function LoginScreen({
     await sendMagicLink(address);
   }
 
+  async function resolveAndContinue(address: string) {
+    setBusy(true);
+    resetAlerts();
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login/resolve`, {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: address }),
+      });
+      const payload = (await response.json()) as {
+        next?: string;
+        exists?: boolean;
+        detail?: { message?: string } | string;
+      };
+      if (!response.ok) {
+        const detail = payload.detail;
+        throw new Error(
+          typeof detail === "string"
+            ? detail
+            : detail?.message || "No fue posible revisar ese correo.",
+        );
+      }
+      const exists = Boolean(payload.exists) && payload.next !== "signup";
+      if (exists) {
+        if (payload.next === "yahoo_oauth") {
+          await startOAuth("yahoo", address, "login");
+          return;
+        }
+        if (payload.next === "google_oauth") {
+          await startOAuth("google", address);
+          return;
+        }
+        if (payload.next === "azure_oauth") {
+          await startOAuth("azure", address);
+          return;
+        }
+        if (payload.next === "apple_oauth") {
+          await startOAuth("apple", address);
+          return;
+        }
+        await sendMagicLink(address);
+        return;
+      }
+      await continueWithProvider(address, "signup");
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "No fue posible continuar con ese correo.",
+      );
+      setBusy(false);
+    }
+  }
+
   async function continueWithEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) {
@@ -271,15 +300,10 @@ export function LoginScreen({
     }
     const clean = email.trim().toLowerCase();
     if (!isValidSignupEmail(clean)) {
-      setError(
-        mode === "signup"
-          ? "Confirma el correo que usará Donexto."
-          : "Escribe tu correo para continuar.",
-      );
+      setError("Escribe tu correo para continuar.");
       return;
     }
-
-    if (mode === "signin" && usePassword) {
+    if (usePassword) {
       if (password.length < 8) {
         setError("La contraseña de Donexto usa al menos 8 caracteres.");
         return;
@@ -299,63 +323,19 @@ export function LoginScreen({
       }
       return;
     }
+    await resolveAndContinue(clean);
+  }
 
-    setBusy(true);
-    resetAlerts();
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/login/resolve`, {
-        method: "POST",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: clean }),
-      });
-      const payload = (await response.json()) as {
-        next?: string;
-        exists?: boolean;
-        detail?: { message?: string } | string;
-      };
-      if (!response.ok) {
-        const detail = payload.detail;
-        throw new Error(
-          typeof detail === "string"
-            ? detail
-            : detail?.message || "No fue posible revisar ese correo.",
-        );
-      }
-      if (!payload.exists || payload.next === "signup") {
-        if (mode === "signup") {
-          await continueWithProvider(clean, "signup");
-          return;
-        }
-        setBusy(false);
-        goSignUp(clean);
-        return;
-      }
-      if (payload.next === "yahoo_oauth") {
-        await startOAuth("yahoo", clean, "login");
-        return;
-      }
-      if (payload.next === "google_oauth") {
-        await startOAuth("google", clean);
-        return;
-      }
-      if (payload.next === "azure_oauth") {
-        await startOAuth("azure", clean);
-        return;
-      }
-      if (payload.next === "apple_oauth") {
-        await startOAuth("apple", clean);
-        return;
-      }
-      await sendMagicLink(clean);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "No fue posible continuar con ese correo.",
-      );
-      setBusy(false);
+  async function subscribeWithEmail() {
+    if (busy) {
+      return;
     }
+    const clean = email.trim().toLowerCase();
+    if (!isValidSignupEmail(clean)) {
+      setError("Escribe el correo con el que te vas a suscribir.");
+      return;
+    }
+    await resolveAndContinue(clean);
   }
 
   async function recoverPassword() {
@@ -387,13 +367,13 @@ export function LoginScreen({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             className="dx-auth__logo"
-            src="/brand/donexto-3d-2026.png"
-            width={512}
-            height={512}
+            src="/brand/donexto-logo-official.png"
+            width={1024}
+            height={1024}
             alt="Donexto — Do Next To…"
             decoding="async"
           />
-          <h1 className="dx-auth__brand">Donexto</h1>
+          <h1 className="dx-auth__sr">Donexto</h1>
           <p className="dx-auth__promise">
             {`${DONEXTO_QUALITY.whatItDoes}\n${DONEXTO_QUALITY.promise}`}
           </p>
@@ -404,14 +384,10 @@ export function LoginScreen({
         <div className="dx-auth__card" aria-labelledby="dx-auth-title">
           <header className="dx-auth__heading">
             <h2 id="dx-auth-title" className="dx-auth__title">
-              {mode === "signup"
-                ? ACCOUNT_VS_MAILBOX.loginTitleSignUp
-                : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
+              {ACCOUNT_VS_MAILBOX.loginTitleSignIn}
             </h2>
             <p className="dx-auth__slogan">
-              {mode === "signup"
-                ? ACCOUNT_VS_MAILBOX.loginHelperSignUp
-                : ACCOUNT_VS_MAILBOX.loginHelper}
+              {ACCOUNT_VS_MAILBOX.loginHelper}
             </p>
           </header>
 
@@ -434,11 +410,7 @@ export function LoginScreen({
             noValidate
           >
             <label className="dx-auth__field">
-              <span>
-                {mode === "signup"
-                  ? "Correo que usará la aplicación"
-                  : "Correo"}
-              </span>
+              <span>Correo</span>
               <div className="dx-auth__control">
                 <Mail size={18} aria-hidden />
                 <input
@@ -458,7 +430,7 @@ export function LoginScreen({
               </div>
             </label>
 
-            {mode === "signin" && usePassword ? (
+            {usePassword ? (
               <label className="dx-auth__field">
                 <span>{ACCOUNT_VS_MAILBOX.loginPasswordLabel}</span>
                 <div className="dx-auth__control">
@@ -500,43 +472,45 @@ export function LoginScreen({
                   <LoaderCircle className="dx-auth__spin" size={18} />
                   Abriendo tu correo…
                 </>
-              ) : mode === "signin" && usePassword ? (
-                "Entrar"
-              ) : mode === "signup" ? (
-                "Confirmar y continuar"
               ) : (
-                "Continuar"
+                ACCOUNT_VS_MAILBOX.loginContinueCta
               )}
+            </button>
+            <button
+              type="button"
+              className="dx-auth__secondary"
+              disabled={busy}
+              onClick={() => void subscribeWithEmail()}
+            >
+              {ACCOUNT_VS_MAILBOX.loginSubscribeCta}
             </button>
           </form>
 
-          {mode === "signin" ? (
-            <div className="dx-auth__alt">
+          <div className="dx-auth__alt">
+            <button
+              type="button"
+              className="dx-auth__link"
+              disabled={busy}
+              onClick={() => {
+                setUsePassword((value) => !value);
+                resetAlerts();
+              }}
+            >
+              {usePassword
+                ? "Entrar con enlace al correo"
+                : "Tengo contraseña de Donexto"}
+            </button>
+            {usePassword ? (
               <button
                 type="button"
                 className="dx-auth__link"
                 disabled={busy}
-                onClick={() => {
-                  setUsePassword((value) => !value);
-                  resetAlerts();
-                }}
+                onClick={() => void recoverPassword()}
               >
-                {usePassword
-                  ? "Entrar con enlace al correo"
-                  : "Tengo contraseña de Donexto"}
+                Olvidé mi contraseña
               </button>
-              {usePassword ? (
-                <button
-                  type="button"
-                  className="dx-auth__link"
-                  disabled={busy}
-                  onClick={() => void recoverPassword()}
-                >
-                  Olvidé mi contraseña
-                </button>
-              ) : null}
-            </div>
-          ) : null}
+            ) : null}
+          </div>
 
           <div
             className="dx-auth__services"
@@ -556,18 +530,6 @@ export function LoginScreen({
                 Yahoo
               </li>
             </ul>
-          </div>
-
-          <div className="dx-auth__bottom-mode">
-            {mode === "signin" ? (
-              <button type="button" disabled={busy} onClick={() => goSignUp()}>
-                ¿No tienes cuenta? Crear cuenta
-              </button>
-            ) : (
-              <button type="button" disabled={busy} onClick={goSignIn}>
-                ¿Ya tienes cuenta? Entrar
-              </button>
-            )}
           </div>
 
           <LanguageStrip />

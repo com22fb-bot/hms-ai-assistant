@@ -77,11 +77,13 @@
 }
 
 .dx-auth__logo {
-  width: 5.25rem;
-  height: 5.25rem;
-  object-fit: cover;
-  object-position: center 28%;
+  width: min(11.5rem, 78%);
+  height: auto;
+  max-height: 7.5rem;
+  object-fit: contain;
+  object-position: center;
   border-radius: 1.15rem;
+  background: #0a1620;
   box-shadow:
     0 10px 24px rgba(0, 0, 0, 0.45),
     0 0 0 1px rgba(46, 230, 214, 0.18);
@@ -312,15 +314,21 @@
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
-  min-height: 2.6rem;
+  width: 100%;
+  min-height: 2.85rem;
   border-radius: 999px;
   border: 1px solid var(--dx-line);
   background: transparent;
   color: var(--dx-ink);
   font: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
+  font-size: 0.95rem;
+  font-weight: 700;
   cursor: pointer;
+}
+
+.dx-auth__secondary:disabled {
+  opacity: 0.72;
+  cursor: wait;
 }
 
 .dx-auth__secondary.is-ghost {
@@ -645,9 +653,8 @@
 }
 
 .dx-auth--signup .dx-auth__logo {
-  width: 3.85rem;
-  height: 3.85rem;
-  border-radius: 0.9rem;
+  width: min(8.5rem, 70%);
+  max-height: 5.5rem;
 }
 
 .dx-auth--signup .dx-auth__brand {
@@ -664,13 +671,13 @@
 
 @media (max-height: 720px) {
   .dx-auth__logo {
-    width: 4.35rem;
-    height: 4.35rem;
+    width: min(9.5rem, 70%);
+    max-height: 6.25rem;
   }
 
   .dx-auth--signup .dx-auth__logo {
-    width: 3.4rem;
-    height: 3.4rem;
+    width: min(7.5rem, 64%);
+    max-height: 4.75rem;
   }
 
   .dx-auth__heading {
@@ -728,9 +735,10 @@
   }
 
   .dx-auth__logo {
-    width: 13.25rem;
-    height: 13.25rem;
-    border-radius: 2.15rem;
+    width: min(16.5rem, 100%);
+    height: auto;
+    max-height: 13.25rem;
+    border-radius: 1.35rem;
     object-fit: contain;
     object-position: center;
   }
@@ -773,9 +781,10 @@
   }
 
   .dx-auth--signup .dx-auth__logo {
-    width: 13.25rem;
-    height: 13.25rem;
-    border-radius: 2.15rem;
+    width: min(16.5rem, 100%);
+    height: auto;
+    max-height: 13.25rem;
+    border-radius: 1.35rem;
     object-fit: contain;
     object-position: center;
   }
