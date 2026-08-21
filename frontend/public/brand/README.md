@@ -4,7 +4,8 @@
 
 | Archivo | Uso |
 |---------|-----|
-| **`donexto-logo-official.png`** | Logo chico, app, favicon, PWA |
+| **`donexto-3d-2026.png`** | Placa cuadrada in-app / favicon: Do Next To + @ morada sobre los 3 puntos |
+| **`donexto-logo-official.png`** | Banner / login hero (escena completa) |
 | **`donexto-logo-official-hero.png`** | Banner / login hero |
 | Legal micro | `© HMSR · MR` + Héctor M. Salcido Roacho |
 

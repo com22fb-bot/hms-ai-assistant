@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 
+import { DonextoMark } from "@/components/brand/DonextoMark";
 import { GuidedImportWizard } from "@/components/GuidedImportWizard";
 import { ConfirmEmailGate } from "@/components/auth/ConfirmEmailGate";
 import { LoginScreen } from "@/components/auth/LoginScreen";
@@ -480,9 +481,7 @@ function PasswordRecoveryScreen({
       <section className="auth-recovery-shell">
         <div className="auth-panel-top">
           <div className="auth-panel-brand">
-            <span className="auth-logo">
-              <Sparkles size={25} />
-            </span>
+            <DonextoMark className="auth-logo" size={72} />
             <div>
               <strong>Donexto</strong>
               <small>Recuperación segura</small>
@@ -1030,14 +1029,7 @@ function Dashboard({
         }
       >
         <div className="app-brand">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            className="app-brand-icon"
-            src="/brand/donexto-mark.svg"
-            width={42}
-            height={42}
-            alt=""
-          />
+          <DonextoMark className="app-brand-icon" size={72} alt="Donexto — Do Next To…" />
           <div>
             <strong>Donexto</strong>
             <small>Do Next To…</small>
@@ -1723,7 +1715,7 @@ export default function HomePage() {
     <LanguageProvider userId={session?.id ?? null}>
       {loading ? (
         <div className="app-loading-screen">
-          <Sparkles size={34} />
+          <DonextoMark className="app-loading-mark" size={96} alt="Donexto — Do Next To…" />
           <span>Verificando sesión segura...</span>
         </div>
       ) : passwordRecovery ? (

@@ -64,15 +64,39 @@
 }
 
 .app-brand-icon {
-  width: 42px !important;
-  height: 42px !important;
-  border-radius: 12px !important;
-  background: #0a1620 !important;
+  width: 72px !important;
+  height: 72px !important;
+  border-radius: 14px !important;
+  background: #050b10 !important;
   color: transparent !important;
   box-shadow: none !important;
   display: block !important;
-  object-fit: cover !important;
+  object-fit: contain !important;
+  object-position: center !important;
   padding: 0 !important;
+}
+
+.app-shell[data-theme="accessible"] .app-brand-icon,
+img.auth-logo {
+  background: #050b10 !important;
+  color: transparent !important;
+}
+
+img.auth-logo {
+  width: 72px !important;
+  height: 72px !important;
+  object-fit: contain;
+  object-position: center;
+  padding: 0;
+  border-radius: 14px;
+}
+
+.app-loading-mark {
+  width: 96px;
+  height: 96px;
+  border-radius: 18px;
+  object-fit: contain;
+  background: #050b10;
 }
 
 .app-brand strong {
