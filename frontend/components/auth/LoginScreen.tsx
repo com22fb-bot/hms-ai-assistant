@@ -15,6 +15,7 @@ import { LanguageStrip } from "@/components/UserSettingsPanel";
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
 import type { AuthOAuthProvider, YahooAuthIntent } from "@/hooks/useAppAuth";
+import { gateNextAfterResolve } from "@/lib/loginGate";
 import {
   isValidSignupEmail,
   resolveMailboxProviderFromEmail,
@@ -238,7 +239,10 @@ export function LoginScreen({
     await sendMagicLink(address);
   }
 
-  async function resolveAndContinue(address: string) {
+  async function resolveAndContinue(
+    address: string,
+    intent: "login" | "signup",
+  ) {
     setBusy(true);
     resetAlerts();
     try {
@@ -262,6 +266,14 @@ export function LoginScreen({
         );
       }
       const exists = Boolean(payload.exists) && payload.next !== "signup";
+      const gate = gateNextAfterResolve(intent, exists);
+      if (gate === "stay_subscribe") {
+        setBusy(false);
+        setOauthBusy(null);
+        setMessage(null);
+        setError("Ese correo no tiene cuenta Donexto. Pulsa Suscribirse.");
+        return;
+      }
       if (exists) {
         if (payload.next === "yahoo_oauth") {
           await startOAuth("yahoo", address, "login");
@@ -290,6 +302,7 @@ export function LoginScreen({
           : "No fue posible continuar con ese correo.",
       );
       setBusy(false);
+      setOauthBusy(null);
     }
   }
 
@@ -323,7 +336,7 @@ export function LoginScreen({
       }
       return;
     }
-    await resolveAndContinue(clean);
+    await resolveAndContinue(clean, "login");
   }
 
   async function subscribeWithEmail() {
@@ -335,7 +348,7 @@ export function LoginScreen({
       setError("Escribe el correo con el que te vas a suscribir.");
       return;
     }
-    await resolveAndContinue(clean);
+    await resolveAndContinue(clean, "signup");
   }
 
   async function recoverPassword() {
