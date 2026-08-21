@@ -210,3 +210,12 @@
 .dx-connect-body .dx-avm-hint__icon {
   color: #0c8a80;
 }
+
+.dx-connect-signout {
+  padding: 0 1.15rem 1.15rem;
+}
+
+.dx-connect-signout .dx-connect-back {
+  display: block;
+  margin-top: 0.5rem;
+}

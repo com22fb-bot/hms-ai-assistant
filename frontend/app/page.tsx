@@ -1620,6 +1620,7 @@ function Dashboard({
                   : new Error(message);
               }
             }}
+            onSignOut={onLogout}
           />
         ) : null}
 

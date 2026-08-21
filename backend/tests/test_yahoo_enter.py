@@ -80,6 +80,7 @@ class YahooOAuthGateTests(unittest.TestCase):
         self.assertIn("client_id=client-id", url)
         self.assertIn("state=state-token", url)
         self.assertIn("openid", url)
+        self.assertIn("prompt=login", url)
         self.assertNotIn("mail-r", url)
 
     def test_sanitize_return_to_stays_on_donexto(self) -> None:

@@ -23,6 +23,7 @@ type MailboxConnectModalProps = {
   onClose: () => void;
   onConnectGoogle: () => void | Promise<void>;
   onConnectYahoo: () => Promise<void>;
+  onSignOut?: () => void;
 };
 
 export function MailboxConnectModal({
@@ -34,6 +35,7 @@ export function MailboxConnectModal({
   onClose,
   onConnectGoogle,
   onConnectYahoo,
+  onSignOut,
 }: MailboxConnectModalProps) {
   const [step, setStep] = useState<ProviderChoice>(
     mode === "yahoo" ? "yahoo" : "choose",
@@ -261,6 +263,19 @@ export function MailboxConnectModal({
             </div>
           )}
         </div>
+
+        {onSignOut ? (
+          <p className="dx-connect-hint dx-connect-signout">
+            Esta sesión es <strong>{accountEmail}</strong>.
+            <button
+              type="button"
+              className="dx-connect-back"
+              onClick={onSignOut}
+            >
+              Cerrar sesión y usar otro correo
+            </button>
+          </p>
+        ) : null}
       </section>
     </div>
   );
