@@ -112,6 +112,14 @@ class Settings:
             "openid email profile",
         )
     )
+    # Solo true cuando Yahoo ya aprobó mail-r. Si se pide antes, Yahoo
+    # responde invalid_scope y el login se rompe.
+    yahoo_mail_read_enabled: bool = field(
+        default_factory=lambda: get_boolean_environment_variable(
+            "YAHOO_MAIL_READ_ENABLED",
+            False,
+        )
+    )
 
     frontend_origins: list[str] = field(
         default_factory=lambda: get_list_environment_variable(

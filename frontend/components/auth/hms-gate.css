@@ -599,6 +599,19 @@
   color: #2ee6d6;
 }
 
+.dx-auth__confirm-email {
+  margin: 0.15rem 0 0.85rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(46, 230, 214, 0.28);
+  border-radius: 12px;
+  background: rgba(8, 24, 28, 0.72);
+  color: #f4fafb;
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  word-break: break-all;
+}
+
 .dx-auth__signup-copy {
   margin: 0;
   font-size: 0.86rem;

@@ -15,6 +15,7 @@ import { LanguageStrip } from "@/components/UserSettingsPanel";
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
 import type { AuthOAuthProvider, YahooAuthIntent } from "@/hooks/useAppAuth";
+import { gateNextAfterResolve } from "@/lib/loginGate";
 import {
   isValidSignupEmail,
   resolveMailboxProviderFromEmail,
@@ -129,6 +130,7 @@ export function LoginScreen({
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [oauthBusy, setOauthBusy] = useState<AuthOAuthProvider | null>(null);
+  const [confirmingSignup, setConfirmingSignup] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
@@ -140,6 +142,7 @@ export function LoginScreen({
     const hinted = (params.get("email") || "").trim().toLowerCase();
     if (isValidSignupEmail(hinted)) {
       setEmail(hinted);
+      setConfirmingSignup(true);
     }
     const url = new URL(window.location.href);
     url.searchParams.delete("donexto");
@@ -238,7 +241,10 @@ export function LoginScreen({
     await sendMagicLink(address);
   }
 
-  async function resolveAndContinue(address: string) {
+  async function resolveAndContinue(
+    address: string,
+    intent: "login" | "signup",
+  ) {
     setBusy(true);
     resetAlerts();
     try {
@@ -262,6 +268,24 @@ export function LoginScreen({
         );
       }
       const exists = Boolean(payload.exists) && payload.next !== "signup";
+      const gate = gateNextAfterResolve(intent, exists);
+      if (gate === "stay_subscribe") {
+        setBusy(false);
+        setOauthBusy(null);
+        setConfirmingSignup(false);
+        setMessage(null);
+        setError("Ese correo no tiene cuenta Donexto. Pulsa Suscribirse.");
+        return;
+      }
+      if (gate === "confirm_signup") {
+        setBusy(false);
+        setOauthBusy(null);
+        setError(null);
+        setMessage(null);
+        setConfirmingSignup(true);
+        setUsePassword(false);
+        return;
+      }
       if (exists) {
         if (payload.next === "yahoo_oauth") {
           await startOAuth("yahoo", address, "login");
@@ -282,7 +306,9 @@ export function LoginScreen({
         await sendMagicLink(address);
         return;
       }
-      await continueWithProvider(address, "signup");
+      setBusy(false);
+      setOauthBusy(null);
+      setError("Ese correo no tiene cuenta Donexto. Pulsa Suscribirse.");
     } catch (requestError) {
       setError(
         requestError instanceof Error
@@ -290,6 +316,7 @@ export function LoginScreen({
           : "No fue posible continuar con ese correo.",
       );
       setBusy(false);
+      setOauthBusy(null);
     }
   }
 
@@ -323,7 +350,56 @@ export function LoginScreen({
       }
       return;
     }
-    await resolveAndContinue(clean);
+    await resolveAndContinue(clean, "login");
+  }
+
+  async function confirmSignupOnDonexto() {
+    if (busy) {
+      return;
+    }
+    const clean = email.trim().toLowerCase();
+    if (!isValidSignupEmail(clean)) {
+      setError("Escribe el correo con el que te vas a suscribir.");
+      return;
+    }
+    setBusy(true);
+    resetAlerts();
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login/resolve`, {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: clean }),
+      });
+      const payload = (await response.json()) as {
+        next?: string;
+        exists?: boolean;
+        detail?: { message?: string } | string;
+      };
+      if (!response.ok) {
+        const detail = payload.detail;
+        throw new Error(
+          typeof detail === "string"
+            ? detail
+            : detail?.message || "No fue posible revisar ese correo.",
+        );
+      }
+      const exists = Boolean(payload.exists) && payload.next !== "signup";
+      if (exists) {
+        setConfirmingSignup(false);
+        await resolveAndContinue(clean, "login");
+        return;
+      }
+      await continueWithProvider(clean, "signup");
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "No fue posible confirmar ese correo.",
+      );
+      setBusy(false);
+      setOauthBusy(null);
+    }
   }
 
   async function subscribeWithEmail() {
@@ -335,7 +411,7 @@ export function LoginScreen({
       setError("Escribe el correo con el que te vas a suscribir.");
       return;
     }
-    await resolveAndContinue(clean);
+    await resolveAndContinue(clean, "signup");
   }
 
   async function recoverPassword() {
@@ -384,10 +460,14 @@ export function LoginScreen({
         <div className="dx-auth__card" aria-labelledby="dx-auth-title">
           <header className="dx-auth__heading">
             <h2 id="dx-auth-title" className="dx-auth__title">
-              {ACCOUNT_VS_MAILBOX.loginTitleSignIn}
+              {confirmingSignup
+                ? ACCOUNT_VS_MAILBOX.signupConfirmTitle
+                : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
             </h2>
             <p className="dx-auth__slogan">
-              {ACCOUNT_VS_MAILBOX.loginHelper}
+              {confirmingSignup
+                ? ACCOUNT_VS_MAILBOX.signupConfirmHelper
+                : ACCOUNT_VS_MAILBOX.loginHelper}
             </p>
           </header>
 
@@ -406,11 +486,21 @@ export function LoginScreen({
 
           <form
             className="dx-auth__form"
-            onSubmit={(event) => void continueWithEmail(event)}
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (confirmingSignup) {
+                void confirmSignupOnDonexto();
+                return;
+              }
+              void continueWithEmail(event);
+            }}
             noValidate
           >
+            {confirmingSignup ? (
+              <p className="dx-auth__confirm-email">{email.trim().toLowerCase()}</p>
+            ) : null}
             <label className="dx-auth__field">
-              <span>Correo</span>
+              <span>{confirmingSignup ? "Confirma o corrige el correo" : "Correo"}</span>
               <div className="dx-auth__control">
                 <Mail size={18} aria-hidden />
                 <input
@@ -461,6 +551,35 @@ export function LoginScreen({
               </label>
             ) : null}
 
+            {confirmingSignup ? (
+              <>
+                <p className="dx-auth__signup-copy">
+                  {ACCOUNT_VS_MAILBOX.signupConfirmYahooNote}
+                </p>
+                <button type="submit" className="dx-auth__submit" disabled={busy}>
+                  {busy ? (
+                    <>
+                      <LoaderCircle className="dx-auth__spin" size={18} />
+                      Confirmando…
+                    </>
+                  ) : (
+                    ACCOUNT_VS_MAILBOX.signupConfirmCta
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="dx-auth__secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    setConfirmingSignup(false);
+                    resetAlerts();
+                  }}
+                >
+                  {ACCOUNT_VS_MAILBOX.signupConfirmBack}
+                </button>
+              </>
+            ) : (
+              <>
             <button type="submit" className="dx-auth__submit" disabled={busy}>
               {busy && oauthBusy === null ? (
                 <>
@@ -484,8 +603,11 @@ export function LoginScreen({
             >
               {ACCOUNT_VS_MAILBOX.loginSubscribeCta}
             </button>
+              </>
+            )}
           </form>
 
+          {confirmingSignup ? null : (
           <div className="dx-auth__alt">
             <button
               type="button"
@@ -511,6 +633,7 @@ export function LoginScreen({
               </button>
             ) : null}
           </div>
+          )}
 
           <div
             className="dx-auth__services"

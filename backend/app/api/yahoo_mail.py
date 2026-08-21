@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
+from app.core.config import settings
 from app.schemas.gmail import GoogleConnectionStatus
 from app.security.identity import require_request_context
 from app.services.oauth_storage import (
@@ -26,6 +27,7 @@ from app.services.yahoo_oauth import (
     granted_mail_read,
     normalize_yahoo_intent,
     require_yahoo_oauth_config,
+    sanitize_login_hint,
     sanitize_return_to,
     yahoo_email_from_userinfo,
     yahoo_intent_from_state,
@@ -150,7 +152,8 @@ def persist_yahoo_mailbox(
                 "Entraste con Yahoo. Para leer el buzón, Yahoo debe aprobar "
                 "el alcance de correo (mail-r) en la app de desarrollador."
             ),
-            login_url="/auth/yahoo/login",
+            login_url=None,
+            mail_read_available=settings.yahoo_mail_read_enabled,
         )
 
     return GoogleConnectionStatus(
@@ -197,6 +200,18 @@ def yahoo_login(
     """Devuelve la URL para firmar en el sitio de Yahoo."""
     require_yahoo_oauth_config()
     intent = normalize_yahoo_intent(payload.intent if payload else None)
+    hint = sanitize_login_hint(payload.login_hint if payload else None)
+    if intent == "login" and hint and not auth_user_exists(hint):
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "no_donexto_account",
+                "message": (
+                    "Ese correo no tiene cuenta Donexto. "
+                    "Pulsa Suscribirse."
+                ),
+            },
+        )
     return_to = sanitize_return_to(
         (payload.return_to if payload else None)
         or request.headers.get("origin")
@@ -223,7 +238,7 @@ def yahoo_login(
         "intent": intent,
         "authorization_url": build_yahoo_authorization_url(
             state,
-            login_hint=payload.login_hint if payload else None,
+            login_hint=hint,
         ),
     }
 
@@ -233,10 +248,9 @@ def _yahoo_callback_error_message(error: str, description: str) -> str:
     text = (description or "").lower().replace("+", " ")
     if code == "invalid_scope" or "invalid scope" in text:
         return (
-            "Yahoo no aceptó el permiso de correo en esta app. "
-            "Por ahora Donexto solo pide identidad (openid, email, profile). "
-            "La lectura del buzón (mail-r) hay que solicitarla en "
-            "https://senders.yahooinc.com/developer/developer-access/"
+            "Yahoo no autorizó leer este buzón. "
+            "Vuelve a Donexto: no hace falta firmar otra vez. "
+            "Falta el permiso de correo de la app."
         )
     return description or "Yahoo rechazó la autorización."
 
@@ -372,16 +386,26 @@ def yahoo_status() -> GoogleConnectionStatus:
         )
 
     credentials = oauth_storage.get_credentials(str(account["id"]))
+    scopes = list((credentials or {}).get("scopes") or [])
+    mail_read = granted_mail_read({"scope": " ".join(scopes)})
+    has_token = bool(credentials and credentials.get("access_token"))
     return GoogleConnectionStatus(
-        connected=bool(credentials and credentials.get("access_token")),
+        connected=bool(has_token and mail_read),
         email=account.get("email"),
         provider="yahoo",
-        has_access_token=bool(
-            credentials and credentials.get("access_token")
-        ),
+        has_access_token=has_token,
         has_refresh_token=False,
-        scopes=(credentials or {}).get("scopes", []),
-        message="Buzón Yahoo conectado.",
+        scopes=scopes,
+        message=(
+            "Buzón Yahoo autorizado."
+            if mail_read
+            else (
+                "Entraste con Yahoo. Falta el permiso de lectura del "
+                "correo (mail-r); sin eso Donexto no puede abrir el buzón."
+            )
+        ),
+        login_url=None,
+        mail_read_available=settings.yahoo_mail_read_enabled,
     )
 
 

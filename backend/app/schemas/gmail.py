@@ -31,3 +31,4 @@ class GoogleConnectionStatus(BaseModel):
     scopes: list[str] = Field(default_factory=list)
     login_url: str | None = None
     message: str | None = None
+    mail_read_available: bool = False

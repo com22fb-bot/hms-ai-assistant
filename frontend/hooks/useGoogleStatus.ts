@@ -138,11 +138,15 @@ export function useGoogleStatus() {
     window.location.assign(payload.authorization_url);
   }, []);
 
-  const startYahooConnection = useCallback(async () => {
+  const startYahooConnection = useCallback(async (options?: {
+    intent?: "login" | "signup" | "mailbox";
+    loginHint?: string;
+  }) => {
     setConnectingYahoo(true);
     setConnectionError(null);
 
     try {
+      const hint = options?.loginHint?.trim().toLowerCase();
       const response = await fetch(`${API_BASE_URL}/auth/yahoo/login`, {
         method: "POST",
         cache: "no-store",
@@ -151,7 +155,8 @@ export function useGoogleStatus() {
         },
         body: JSON.stringify({
           return_to: window.location.origin,
-          intent: "login",
+          intent: options?.intent ?? "login",
+          ...(hint ? { login_hint: hint } : {}),
         }),
       });
 

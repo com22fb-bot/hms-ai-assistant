@@ -53,8 +53,9 @@ def create_gmail_router(
                     detail={
                         "status": "yahoo_credentials_missing",
                         "message": (
-                            "Vuelve a firmar en el sitio de Yahoo. "
-                            "Donexto no pide la clave del buzón."
+                            "Donexto aún no puede leer este buzón Yahoo. "
+                            "Falta el permiso de correo que Yahoo aprueba "
+                            "en la app. No hace falta volver a firmar."
                         ),
                     },
                 )

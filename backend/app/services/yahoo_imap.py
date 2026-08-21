@@ -121,8 +121,9 @@ def _open_yahoo_client(
             except Exception:
                 pass
             raise YahooImapError(
-                "Yahoo no aceptó la autorización OAuth. Vuelve a firmar "
-                "en el sitio de Yahoo."
+                "Donexto aún no puede leer este buzón Yahoo. "
+                "Falta el permiso de correo que Yahoo aprueba en la app. "
+                "No hace falta volver a firmar."
             ) from error
     else:
         status, _data = client.login(address, app_password)
@@ -133,7 +134,9 @@ def _open_yahoo_client(
         except Exception:
             pass
         raise YahooImapError(
-            "Yahoo no aceptó la autorización. Vuelve a firmar en el sitio de Yahoo."
+            "Donexto aún no puede leer este buzón Yahoo. "
+            "Falta el permiso de correo que Yahoo aprueba en la app. "
+            "No hace falta volver a firmar."
             if oauth
             else "Yahoo no aceptó esa clave. Escríbela igual que cuando entras a Yahoo."
         )

@@ -75,6 +75,7 @@ class YahooOAuthGateTests(unittest.TestCase):
                 "/auth/yahoo/callback"
             )
             settings.yahoo_oauth_scopes = "openid email profile"
+            settings.yahoo_mail_read_enabled = False
             url = build_yahoo_authorization_url(
                 "state-token",
                 login_hint="hsalcidor@yahoo.com",
@@ -94,6 +95,42 @@ class YahooOAuthGateTests(unittest.TestCase):
         self.assertNotIn("mail-r", url)
         self.assertNotIn("login_hint", without_hint)
         self.assertNotIn("login_hint", ignored)
+
+    def test_mailbox_intent_does_not_request_mail_read(self) -> None:
+        with patch(
+            "app.services.yahoo_oauth.settings"
+        ) as settings:
+            settings.yahoo_client_id = "client-id"
+            settings.yahoo_client_secret = "secret"
+            settings.yahoo_redirect_uri = (
+                "https://hms-ai-assistant-production.up.railway.app"
+                "/auth/yahoo/callback"
+            )
+            settings.yahoo_oauth_scopes = "openid email profile"
+            settings.yahoo_mail_read_enabled = False
+            mailbox = build_yahoo_authorization_url("mailbox.state-token")
+            login = build_yahoo_authorization_url("login.state-token")
+        self.assertNotIn("mail-r", mailbox)
+        self.assertNotIn("mail-r", login)
+
+    def test_mailbox_intent_requests_mail_read_only_when_enabled(self) -> None:
+        with patch(
+            "app.services.yahoo_oauth.settings"
+        ) as settings:
+            settings.yahoo_client_id = "client-id"
+            settings.yahoo_client_secret = "secret"
+            settings.yahoo_redirect_uri = (
+                "https://hms-ai-assistant-production.up.railway.app"
+                "/auth/yahoo/callback"
+            )
+            settings.yahoo_oauth_scopes = "openid email profile"
+            settings.yahoo_mail_read_enabled = True
+            mailbox = build_yahoo_authorization_url("mailbox.state-token")
+            login = build_yahoo_authorization_url("login.state-token")
+            signup = build_yahoo_authorization_url("signup.state-token")
+        self.assertIn("mail-r", mailbox)
+        self.assertNotIn("mail-r", login)
+        self.assertNotIn("mail-r", signup)
 
     def test_sanitize_return_to_stays_on_donexto(self) -> None:
         with patch(
@@ -121,6 +158,24 @@ class YahooOAuthGateTests(unittest.TestCase):
         self.assertEqual(caught.exception.status_code, 503)
         self.assertIn("yahoo_oauth_not_configured", str(caught.exception.detail))
 
+    def test_login_intent_rejects_unknown_yahoo_hint(self) -> None:
+        from app.api.yahoo_mail import YahooLoginRequest, yahoo_login
+
+        with (
+            patch("app.api.yahoo_mail.require_yahoo_oauth_config"),
+            patch("app.api.yahoo_mail.auth_user_exists", return_value=False),
+        ):
+            with self.assertRaises(HTTPException) as caught:
+                yahoo_login(
+                    _FakeRequest("/auth/yahoo/login"),  # type: ignore[arg-type]
+                    YahooLoginRequest(
+                        intent="login",
+                        login_hint="melgibson@yahoo.com",
+                    ),
+                )
+        self.assertEqual(caught.exception.status_code, 403)
+        self.assertIn("Suscribirse", str(caught.exception.detail))
+
     def test_mail_read_scope_detection(self) -> None:
         self.assertTrue(granted_mail_read({"scope": "openid email mail-r"}))
         self.assertTrue(granted_mail_read({"scope": "openid,mail-w"}))
@@ -130,7 +185,8 @@ class YahooOAuthGateTests(unittest.TestCase):
         from app.api.yahoo_mail import _yahoo_callback_error_message
 
         text = _yahoo_callback_error_message("invalid_scope", "invalid scope")
-        self.assertIn("identidad", text.lower())
+        self.assertIn("buzón", text.lower())
+        self.assertIn("no hace falta firmar", text.lower())
         self.assertNotEqual(text, "invalid scope")
 
     def test_intent_helpers(self) -> None:
@@ -140,7 +196,8 @@ class YahooOAuthGateTests(unittest.TestCase):
         )
 
         self.assertEqual(normalize_yahoo_intent(None), "login")
-        self.assertEqual(normalize_yahoo_intent("signup"), "signup")
+        self.assertEqual(normalize_yahoo_intent("mailbox"), "mailbox")
+        self.assertEqual(yahoo_intent_from_state("mailbox.abc"), "mailbox")
         self.assertEqual(normalize_yahoo_intent("other"), "login")
         self.assertEqual(yahoo_intent_from_state("login.abc"), "login")
         self.assertEqual(yahoo_intent_from_state("signup.xyz"), "signup")

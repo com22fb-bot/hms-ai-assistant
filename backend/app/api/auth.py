@@ -386,7 +386,8 @@ def get_google_connection_status() -> GoogleConnectionStatus:
                     "correo (mail-r); sin eso Donexto no puede abrir el buzón."
                 )
             ),
-            login_url=None if mail_read else "/auth/yahoo/login",
+            login_url=None,
+            mail_read_available=settings.yahoo_mail_read_enabled,
         )
 
     return GoogleConnectionStatus(

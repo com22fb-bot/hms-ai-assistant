@@ -130,6 +130,7 @@ export function AttentionHome({
   mailboxConnected,
   mailboxLoading,
   yahooMailPending = false,
+  yahooMailReadAvailable = false,
   personName,
   onConnectMailbox,
   onChangeMailbox,
@@ -142,6 +143,7 @@ export function AttentionHome({
   mailboxConnected: boolean;
   mailboxLoading: boolean;
   yahooMailPending?: boolean;
+  yahooMailReadAvailable?: boolean;
   personName: string;
   onConnectMailbox: () => void;
   onChangeMailbox: () => void;
@@ -232,24 +234,33 @@ export function AttentionHome({
     const watchEmail = (accountEmail || mailboxEmail || "").trim();
     const connectMode = mailboxConnectModeFromEmail(watchEmail);
     const emptyTitle = yahooMailPending
-      ? ACCOUNT_VS_MAILBOX.yahooWaitingMailTitle
+      ? yahooMailReadAvailable
+        ? ACCOUNT_VS_MAILBOX.yahooGrantMailReadTitle
+        : ACCOUNT_VS_MAILBOX.yahooWaitingMailTitle
       : watchEmail
         ? authorizeMailboxTitle(watchEmail)
         : ACCOUNT_VS_MAILBOX.step2Title;
-    const emptyCta =
-      yahooMailPending
-        ? null
-        : connectMode === "gmail"
-          ? ACCOUNT_VS_MAILBOX.connectGmailCta
-          : connectMode === "yahoo"
-            ? ACCOUNT_VS_MAILBOX.connectYahooTitle
-            : ACCOUNT_VS_MAILBOX.step2Cta;
+    const emptyCta = yahooMailPending
+      ? yahooMailReadAvailable
+        ? ACCOUNT_VS_MAILBOX.yahooGrantMailReadTitle
+        : null
+      : connectMode === "gmail"
+        ? ACCOUNT_VS_MAILBOX.connectGmailCta
+        : connectMode === "yahoo"
+          ? ACCOUNT_VS_MAILBOX.updateMailboxLabel
+          : ACCOUNT_VS_MAILBOX.step2Cta;
 
     return (
       <section className="dx-attention" aria-label="Autorizar buzón">
         <header className="dx-attention__hero">
           <div>
-            <p className="dx-attention__kicker">Cuenta lista · falta autorizar lectura</p>
+            <p className="dx-attention__kicker">
+              {yahooMailPending
+                ? yahooMailReadAvailable
+                  ? ACCOUNT_VS_MAILBOX.yahooGrantMailReadTitle
+                  : ACCOUNT_VS_MAILBOX.yahooWaitingMailTitle
+                : "Cuenta lista · falta autorizar lectura"}
+            </p>
             <h1>
               {personName ? `Hola, ${personName}` : "Hola"}
             </h1>
@@ -264,7 +275,9 @@ export function AttentionHome({
           <strong>{emptyTitle}</strong>
           <p>
             {yahooMailPending
-              ? ACCOUNT_VS_MAILBOX.yahooWaitingMailBody
+              ? yahooMailReadAvailable
+                ? ACCOUNT_VS_MAILBOX.yahooGrantMailReadBody
+                : ACCOUNT_VS_MAILBOX.yahooWaitingMailBody
               : step2EmptyLeadFor(watchEmail)}
           </p>
           {yahooMailPending ? null : (

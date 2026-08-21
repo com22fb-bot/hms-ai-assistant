@@ -257,7 +257,7 @@ export function MailboxConnectModal({
                     Abriendo Yahoo…
                   </>
                 ) : (
-                  "Ir a Yahoo"
+                  ACCOUNT_VS_MAILBOX.updateMailboxLabel
                 )}
               </button>
             </div>
