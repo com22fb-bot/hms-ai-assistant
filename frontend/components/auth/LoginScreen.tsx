@@ -59,9 +59,15 @@ type LoginScreenProps = {
     password: string,
     fullName: string,
   ) => Promise<unknown>;
-  onSignInWithGoogle: () => Promise<void>;
-  onSignInWithYahoo: (intent?: YahooAuthIntent) => Promise<void>;
-  onSignInWithProvider: (provider: AuthOAuthProvider) => Promise<void>;
+  onSignInWithGoogle: (email?: string) => Promise<void>;
+  onSignInWithYahoo: (
+    intent?: YahooAuthIntent,
+    email?: string,
+  ) => Promise<void>;
+  onSignInWithProvider: (
+    provider: AuthOAuthProvider,
+    email?: string,
+  ) => Promise<void>;
   onResendSignupEmail?: (email: string) => Promise<void>;
   onMagicLink: (email: string) => Promise<void>;
   onResetPassword: (email: string) => Promise<void>;
@@ -119,7 +125,6 @@ export function LoginScreen({
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [usePassword, setUsePassword] = useState(false);
-  const [yahooMode, setYahooMode] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -138,11 +143,6 @@ export function LoginScreen({
     if (isValidSignupEmail(hinted)) {
       setEmail(hinted);
     }
-    setMessage(
-      params.get("reason") === "no_account"
-        ? "Yahoo confirmó tu correo, pero aún no hay cuenta Donexto. Créala aquí. Tener Yahoo no da acceso a Donexto."
-        : "Crea tu cuenta Donexto para continuar.",
-    );
     const url = new URL(window.location.href);
     url.searchParams.delete("donexto");
     url.searchParams.delete("reason");
@@ -179,28 +179,39 @@ export function LoginScreen({
     setBusy(false);
     setOauthBusy(null);
     setUsePassword(false);
-    setYahooMode(false);
   }
 
-  function goSignUp() {
+  function goSignUp(prefill?: string) {
     setMode("signup");
     resetAlerts();
     setBusy(false);
     setOauthBusy(null);
     setUsePassword(false);
-    setYahooMode(false);
     setPassword("");
+    if (prefill) {
+      setEmail(prefill);
+    }
+    window.setTimeout(() => {
+      emailRef.current?.focus();
+      emailRef.current?.select();
+    }, 0);
   }
 
-  async function startOAuthSignup(provider: AuthOAuthProvider) {
+  async function startOAuth(
+    provider: AuthOAuthProvider,
+    address: string,
+    yahooIntent: YahooAuthIntent = "login",
+  ) {
     resetAlerts();
     setBusy(true);
     setOauthBusy(provider);
     try {
       if (provider === "google") {
-        await onSignInWithGoogle();
+        await onSignInWithGoogle(address);
+      } else if (provider === "yahoo") {
+        await onSignInWithYahoo(yahooIntent, address);
       } else {
-        await onSignInWithProvider(provider);
+        await onSignInWithProvider(provider, address);
       }
     } catch (requestError) {
       const fallback =
@@ -208,7 +219,9 @@ export function LoginScreen({
           ? "No fue posible abrir el inicio de sesión de Microsoft."
           : provider === "apple"
             ? "No fue posible abrir el inicio de sesión de Apple."
-            : "No fue posible abrir el inicio de sesión de Google.";
+            : provider === "yahoo"
+              ? "No fue posible abrir Yahoo."
+              : "No fue posible abrir el inicio de sesión de Google.";
       setError(
         requestError instanceof Error ? requestError.message : fallback,
       );
@@ -216,9 +229,6 @@ export function LoginScreen({
       setOauthBusy(null);
     }
   }
-
-  const typedProvider = resolveMailboxProviderFromEmail(email.trim());
-  const yahooFlow = yahooMode || typedProvider === "yahoo";
 
   async function sendMagicLink(address: string) {
     setBusy(true);
@@ -237,19 +247,21 @@ export function LoginScreen({
     }
   }
 
-  async function enterWithYahoo(intent: YahooAuthIntent = "login") {
-    setBusy(true);
-    resetAlerts();
-    try {
-      await onSignInWithYahoo(intent);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "No fue posible abrir Yahoo.",
-      );
-      setBusy(false);
+  async function continueWithProvider(
+    address: string,
+    yahooIntent: YahooAuthIntent,
+  ) {
+    const provider = resolveMailboxProviderFromEmail(address);
+    if (provider === "yahoo") {
+      await startOAuth("yahoo", address, yahooIntent);
+      return;
     }
+    const oauth = mailboxToOAuth(provider);
+    if (oauth) {
+      await startOAuth(oauth, address, yahooIntent);
+      return;
+    }
+    await sendMagicLink(address);
   }
 
   async function continueWithEmail(event: FormEvent<HTMLFormElement>) {
@@ -260,9 +272,9 @@ export function LoginScreen({
     const clean = email.trim().toLowerCase();
     if (!isValidSignupEmail(clean)) {
       setError(
-        yahooFlow
-          ? "Pulsa Continuar con Yahoo: Donexto no pide tu clave."
-          : "Escribe el correo con el que te identificas.",
+        mode === "signup"
+          ? "Confirma el correo que usará Donexto."
+          : "Escribe tu correo para continuar.",
       );
       return;
     }
@@ -288,82 +300,62 @@ export function LoginScreen({
       return;
     }
 
-    if (mode === "signin") {
-      setBusy(true);
-      resetAlerts();
-      try {
-        const response = await fetch(`${API_BASE_URL}/auth/login/resolve`, {
-          method: "POST",
-          cache: "no-store",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: clean }),
-        });
-        const payload = (await response.json()) as {
-          next?: string;
-          exists?: boolean;
-          detail?: { message?: string } | string;
-        };
-        if (!response.ok) {
-          const detail = payload.detail;
-          throw new Error(
-            typeof detail === "string"
-              ? detail
-              : detail?.message || "No fue posible revisar ese correo.",
-          );
-        }
-        if (!payload.exists || payload.next === "signup") {
-          setBusy(false);
-          goSignUp();
-          setEmail(clean);
-          setMessage(
-            "Ese correo aún no tiene cuenta Donexto. Créala para continuar.",
-          );
-          return;
-        }
-        if (payload.next === "yahoo_oauth") {
-          await onSignInWithYahoo("login");
-          return;
-        }
-        if (payload.next === "google_oauth") {
-          await startOAuthSignup("google");
-          return;
-        }
-        if (payload.next === "azure_oauth") {
-          await startOAuthSignup("azure");
-          return;
-        }
-        if (payload.next === "apple_oauth") {
-          await startOAuthSignup("apple");
-          return;
-        }
-        await sendMagicLink(clean);
-        return;
-      } catch (requestError) {
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : "No fue posible continuar con ese correo.",
+    setBusy(true);
+    resetAlerts();
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login/resolve`, {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: clean }),
+      });
+      const payload = (await response.json()) as {
+        next?: string;
+        exists?: boolean;
+        detail?: { message?: string } | string;
+      };
+      if (!response.ok) {
+        const detail = payload.detail;
+        throw new Error(
+          typeof detail === "string"
+            ? detail
+            : detail?.message || "No fue posible revisar ese correo.",
         );
+      }
+      if (!payload.exists || payload.next === "signup") {
+        if (mode === "signup") {
+          await continueWithProvider(clean, "signup");
+          return;
+        }
         setBusy(false);
+        goSignUp(clean);
         return;
       }
+      if (payload.next === "yahoo_oauth") {
+        await startOAuth("yahoo", clean, "login");
+        return;
+      }
+      if (payload.next === "google_oauth") {
+        await startOAuth("google", clean);
+        return;
+      }
+      if (payload.next === "azure_oauth") {
+        await startOAuth("azure", clean);
+        return;
+      }
+      if (payload.next === "apple_oauth") {
+        await startOAuth("apple", clean);
+        return;
+      }
+      await sendMagicLink(clean);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "No fue posible continuar con ese correo.",
+      );
+      setBusy(false);
     }
-
-    const provider = resolveMailboxProviderFromEmail(clean);
-    if (provider === "yahoo") {
-      await enterWithYahoo("signup");
-      return;
-    }
-    const oauth = mailboxToOAuth(provider);
-    if (oauth) {
-      await startOAuthSignup(oauth);
-      return;
-    }
-    await sendMagicLink(clean);
-  }
-
-  async function continueYahoo() {
-    await enterWithYahoo(mode === "signup" ? "signup" : "login");
   }
 
   async function recoverPassword() {
@@ -412,17 +404,13 @@ export function LoginScreen({
         <div className="dx-auth__card" aria-labelledby="dx-auth-title">
           <header className="dx-auth__heading">
             <h2 id="dx-auth-title" className="dx-auth__title">
-              {yahooFlow
-                ? ACCOUNT_VS_MAILBOX.loginTitleYahoo
-                : mode === "signup"
-                  ? ACCOUNT_VS_MAILBOX.loginTitleSignUp
-                  : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
+              {mode === "signup"
+                ? ACCOUNT_VS_MAILBOX.loginTitleSignUp
+                : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
             </h2>
             <p className="dx-auth__slogan">
-              {yahooFlow
-                ? mode === "signup"
-                  ? ACCOUNT_VS_MAILBOX.loginHelperYahooSignUp
-                  : ACCOUNT_VS_MAILBOX.loginHelperYahoo
+              {mode === "signup"
+                ? ACCOUNT_VS_MAILBOX.loginHelperSignUp
                 : ACCOUNT_VS_MAILBOX.loginHelper}
             </p>
           </header>
@@ -440,48 +428,17 @@ export function LoginScreen({
             </div>
           ) : null}
 
-          <div className="dx-auth__providers">
-            <button
-              type="button"
-              className="dx-auth__provider dx-auth__provider--gmail"
-              disabled={busy}
-              onClick={() => void startOAuthSignup("google")}
-            >
-              {oauthBusy === "google" ? (
-                <>
-                  <LoaderCircle className="dx-auth__spin" size={18} />
-                  Abriendo Google…
-                </>
-              ) : (
-                <>
-                  <ProviderMark provider="gmail" />
-                  Continuar con Google
-                </>
-              )}
-            </button>
-            <button
-              type="button"
-              className="dx-auth__provider"
-              disabled={busy}
-              onClick={() => void continueYahoo()}
-            >
-              <ProviderMark provider="yahoo" />
-              {mode === "signup"
-                ? "Crear cuenta con Yahoo"
-                : "Continuar con Yahoo"}
-            </button>
-          </div>
-          <p className="dx-auth__p0">{ACCOUNT_VS_MAILBOX.yahooButtonHint}</p>
-
-          <p className="dx-auth__divider">o escribe tu correo</p>
-
           <form
             className="dx-auth__form"
             onSubmit={(event) => void continueWithEmail(event)}
             noValidate
           >
             <label className="dx-auth__field">
-              <span>Correo</span>
+              <span>
+                {mode === "signup"
+                  ? "Correo que usará la aplicación"
+                  : "Correo"}
+              </span>
               <div className="dx-auth__control">
                 <Mail size={18} aria-hidden />
                 <input
@@ -494,16 +451,14 @@ export function LoginScreen({
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
-                  placeholder={
-                    yahooFlow ? "tucorreo@yahoo.com" : "tu@correo.com"
-                  }
+                  placeholder="tu@correo.com"
                   disabled={busy}
                   onChange={(event) => setEmail(event.target.value)}
                 />
               </div>
             </label>
 
-            {mode === "signin" && usePassword && !yahooFlow ? (
+            {mode === "signin" && usePassword ? (
               <label className="dx-auth__field">
                 <span>{ACCOUNT_VS_MAILBOX.loginPasswordLabel}</span>
                 <div className="dx-auth__control">
@@ -538,19 +493,24 @@ export function LoginScreen({
               {busy && oauthBusy === null ? (
                 <>
                   <LoaderCircle className="dx-auth__spin" size={18} />
-                  {yahooFlow ? "Abriendo Yahoo…" : "Continuando…"}
+                  Continuando…
                 </>
-              ) : yahooFlow ? (
-                "Ir a Yahoo"
+              ) : oauthBusy ? (
+                <>
+                  <LoaderCircle className="dx-auth__spin" size={18} />
+                  Abriendo tu correo…
+                </>
               ) : mode === "signin" && usePassword ? (
                 "Entrar"
+              ) : mode === "signup" ? (
+                "Confirmar y continuar"
               ) : (
                 "Continuar"
               )}
             </button>
           </form>
 
-          {!yahooFlow && mode === "signin" ? (
+          {mode === "signin" ? (
             <div className="dx-auth__alt">
               <button
                 type="button"
@@ -578,36 +538,37 @@ export function LoginScreen({
             </div>
           ) : null}
 
-          {yahooFlow ? (
-            <div className="dx-auth__bottom-mode">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  setYahooMode(false);
-                  setPassword("");
-                  if (typedProvider === "yahoo") {
-                    setEmail("");
-                  }
-                  resetAlerts();
-                }}
-              >
-                ¿Usas Gmail u otro correo?
+          <div
+            className="dx-auth__services"
+            aria-label="Servicios en Donexto activos"
+          >
+            <p className="dx-auth__services-kicker">
+              {ACCOUNT_VS_MAILBOX.servicesActiveLabel}{" "}
+              <span>{ACCOUNT_VS_MAILBOX.servicesActiveBadge}</span>
+            </p>
+            <ul className="dx-auth__services-list">
+              <li className="dx-auth__service">
+                <ProviderMark provider="gmail" />
+                Google
+              </li>
+              <li className="dx-auth__service">
+                <ProviderMark provider="yahoo" />
+                Yahoo
+              </li>
+            </ul>
+          </div>
+
+          <div className="dx-auth__bottom-mode">
+            {mode === "signin" ? (
+              <button type="button" disabled={busy} onClick={() => goSignUp()}>
+                ¿No tienes cuenta? Crear cuenta
               </button>
-            </div>
-          ) : (
-            <div className="dx-auth__bottom-mode">
-              {mode === "signin" ? (
-                <button type="button" disabled={busy} onClick={goSignUp}>
-                  ¿No tienes cuenta? Crear cuenta
-                </button>
-              ) : (
-                <button type="button" disabled={busy} onClick={goSignIn}>
-                  ¿Ya tienes cuenta? Entrar
-                </button>
-              )}
-            </div>
-          )}
+            ) : (
+              <button type="button" disabled={busy} onClick={goSignIn}>
+                ¿Ya tienes cuenta? Entrar
+              </button>
+            )}
+          </div>
 
           <LanguageStrip />
 

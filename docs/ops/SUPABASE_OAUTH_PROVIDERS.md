@@ -65,12 +65,11 @@ Crear cuenta → **Apple** abre el portal de Apple.
 ### Yahoo
 
 `supabase-js` **no** incluye `yahoo` como Provider de Auth.
-El usuario firma en el sitio de Yahoo (`POST /auth/yahoo/login` → redirect a
-Yahoo → `GET /auth/yahoo/callback`). Tener correo Yahoo **no** da acceso:
-si el correo no está en Auth, no hay sesión y se abre Crear cuenta.
-El alta con Yahoo es explícita (`intent=signup`). IMAP lee el buzón con el
-token OAuth (`OAUTHBEARER`). Donexto no pide la clave de Yahoo. Ver
-[YAHOO_OAUTH.md](./YAHOO_OAUTH.md).
+El acceso empieza por el correo. Si ya hay cuenta, Donexto abre el sitio
+de Yahoo (`POST /auth/yahoo/login`, `login_hint`) para firmar. Si no hay
+cuenta, pide confirmar el correo y el alta usa `intent=signup`. IMAP lee
+el buzón con el token OAuth (`OAUTHBEARER`). Donexto no pide la clave de
+Yahoo. Ver [YAHOO_OAUTH.md](./YAHOO_OAUTH.md).
 
 ## Relación con el buzón
 

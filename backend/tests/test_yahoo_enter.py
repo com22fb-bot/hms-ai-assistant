@@ -75,14 +75,25 @@ class YahooOAuthGateTests(unittest.TestCase):
                 "/auth/yahoo/callback"
             )
             settings.yahoo_oauth_scopes = "openid email profile"
-            url = build_yahoo_authorization_url("state-token")
+            url = build_yahoo_authorization_url(
+                "state-token",
+                login_hint="hsalcidor@yahoo.com",
+            )
+            without_hint = build_yahoo_authorization_url("state-token")
+            ignored = build_yahoo_authorization_url(
+                "state-token",
+                login_hint="not-an-email",
+            )
         self.assertIn("https://api.login.yahoo.com/oauth2/request_auth", url)
         self.assertIn("client_id=client-id", url)
         self.assertIn("state=state-token", url)
         self.assertIn("openid", url)
         self.assertIn("nonce=state-token", url)
+        self.assertIn("login_hint=hsalcidor%40yahoo.com", url)
         self.assertNotIn("prompt=", url)
         self.assertNotIn("mail-r", url)
+        self.assertNotIn("login_hint", without_hint)
+        self.assertNotIn("login_hint", ignored)
 
     def test_sanitize_return_to_stays_on_donexto(self) -> None:
         with patch(

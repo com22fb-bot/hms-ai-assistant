@@ -3,21 +3,23 @@
 Donexto **nunca** pide la contraseña de Yahoo, Gmail ni de ningún buzón.
 El usuario firma en el sitio de Yahoo, igual que Gmail firma en Google.
 
-**Tener un correo Yahoo no da acceso a Donexto.** El botón de Yahoo solo
-identifica a quien ya es usuario. Si Yahoo confirma un correo que no está
-en Auth, no hay sesión: la app abre **Crear cuenta**.
+El acceso empieza por el **correo**. Si ya hay cuenta, Donexto abre el
+portal de ese correo (con el mail copiado) para firmar. Si no hay cuenta,
+abre **Crear cuenta** con ese mismo correo para confirmarlo. Google y Yahoo
+se muestran como servicios activos, no como botones de entrada.
 
 ## Flujo
 
-1. En `app.donexto.com`: **Continuar con Yahoo** (`intent=login`) o
-   **Crear cuenta con Yahoo** (`intent=signup`).
-2. El backend responde `POST /auth/yahoo/login` con `authorization_url`.
-3. El navegador abre `https://api.login.yahoo.com/oauth2/request_auth`.
-4. Yahoo redirige a Railway: `GET /auth/yahoo/callback`.
-5. Donexto intercambia el código y lee el correo en userinfo.
-6. Si `intent=login` y el correo **no** existe en Auth: redirect a
-   `https://app.donexto.com/?donexto=signup&reason=no_account` **sin tokens**.
-7. Si el correo ya existe, o si `intent=signup`: mint de sesión Auth y
+1. En `app.donexto.com` la persona escribe su correo y pulsa **Continuar**.
+2. `POST /auth/login/resolve` dice si existe.
+3. Si existe: `POST /auth/yahoo/login` (`intent=login`, `login_hint`) o
+   Google/Microsoft/Apple OAuth con el mismo correo.
+4. Si no existe: la pantalla pide **confirmar el correo que usará Donexto**.
+5. Al confirmar: Yahoo va con `intent=signup` y el mismo `login_hint`.
+6. Yahoo redirige a Railway: `GET /auth/yahoo/callback`.
+7. Si `intent=login` y el correo **no** existe en Auth: redirect a
+   `https://app.donexto.com/?donexto=signup&email=…` **sin tokens**.
+8. Si el correo ya existe, o si `intent=signup`: mint de sesión Auth y
    redirect a `https://app.donexto.com/#access_token=…`.
 
 ## App en Yahoo (Héctor)

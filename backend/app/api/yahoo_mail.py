@@ -63,6 +63,7 @@ class YahooEnterResponse(BaseModel):
 class YahooLoginRequest(BaseModel):
     return_to: str | None = None
     intent: str | None = None
+    login_hint: str | None = None
 
 
 def _signup_redirect(return_to: str, email: str) -> RedirectResponse:
@@ -220,7 +221,10 @@ def yahoo_login(
     return {
         "status": "ok",
         "intent": intent,
-        "authorization_url": build_yahoo_authorization_url(state),
+        "authorization_url": build_yahoo_authorization_url(
+            state,
+            login_hint=payload.login_hint if payload else None,
+        ),
     }
 
 

@@ -465,8 +465,52 @@
   position: relative;
 }
 
-.dx-auth__providers {
-  margin-top: 0.15rem;
+.dx-auth__services {
+  margin-top: 0.85rem;
+  padding: 0.65rem 0.7rem 0.6rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(16, 22, 27, 0.72);
+}
+
+.dx-auth__services-kicker {
+  margin: 0 0 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dx-soft);
+  text-align: center;
+}
+
+.dx-auth__services-kicker span {
+  color: #2ee6d6;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
+
+.dx-auth__services-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.dx-auth__service {
+  min-height: 2.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #10161b;
+  color: #9aa8ae;
+  font-size: 0.88rem;
+  font-weight: 650;
+  pointer-events: none;
+  user-select: none;
 }
 
 .dx-auth__provider {
