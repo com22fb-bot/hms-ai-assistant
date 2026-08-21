@@ -844,6 +844,18 @@ function Dashboard({
     setNotice(null);
   }
 
+  function requestMailboxOrExplain() {
+    if (connection?.connected) {
+      openConnectedMailboxActions();
+      return;
+    }
+    if (yahooMailPending) {
+      setNotice(ACCOUNT_VS_MAILBOX.yahooWaitingMailBody);
+      return;
+    }
+    openMailboxConnect();
+  }
+
   function openConnectedMailboxActions() {
     setGuidedImportOpen(true);
   }
@@ -852,7 +864,7 @@ function Dashboard({
     setMailCategory(null);
     setMailInitialMessageId(null);
     if (!connection?.connected) {
-      openMailboxConnect();
+      requestMailboxOrExplain();
       return;
     }
     if (usesGuidedImport && !importFlowStatus?.initial_import_complete) {
@@ -1077,15 +1089,11 @@ function Dashboard({
             }
             disabled={
               loadingConnection ||
+              yahooMailPending ||
               Boolean(connection?.connected && syncing)
             }
             onClick={() => {
-              if (connection?.connected) {
-                openConnectedMailboxActions();
-                return;
-              }
-
-              openMailboxConnect();
+              requestMailboxOrExplain();
             }}
           >
             {connection?.connected ? (
@@ -1102,7 +1110,9 @@ function Dashboard({
                 ? `Lote ${syncProgress.currentBatch}…`
                 : connection?.connected
                   ? "Actualizar correo"
-                  : ACCOUNT_VS_MAILBOX.connectMailboxLabel}
+                  : yahooMailPending
+                    ? "Lectura pendiente"
+                    : ACCOUNT_VS_MAILBOX.connectMailboxLabel}
           </button>
 
           {connection?.connected ? (
@@ -1464,14 +1474,11 @@ function Dashboard({
                 type="button"
                 disabled={
                   loadingConnection ||
+                  yahooMailPending ||
                   Boolean(connection?.connected && syncing)
                 }
                 onClick={() => {
-                  if (connection?.connected) {
-                    openConnectedMailboxActions();
-                    return;
-                  }
-                  openMailboxConnect();
+                  requestMailboxOrExplain();
                 }}
               >
                 {connection?.connected ? (
@@ -1486,7 +1493,9 @@ function Dashboard({
                   <strong>
                     {connection?.connected
                       ? "Actualizar buzón"
-                      : ACCOUNT_VS_MAILBOX.connectMailboxLabel}
+                      : yahooMailPending
+                        ? "Lectura pendiente"
+                        : ACCOUNT_VS_MAILBOX.connectMailboxLabel}
                   </strong>
                   <span>
                     {connection?.connected
