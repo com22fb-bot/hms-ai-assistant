@@ -155,7 +155,7 @@ export function useGoogleStatus() {
         },
         body: JSON.stringify({
           return_to: window.location.origin,
-          intent: options?.intent ?? "mailbox",
+          intent: options?.intent ?? "login",
           ...(hint ? { login_hint: hint } : {}),
         }),
       });

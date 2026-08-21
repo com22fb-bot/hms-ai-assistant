@@ -29,7 +29,7 @@ export const ACCOUNT_VS_MAILBOX = {
   servicesActiveBadge: "Activos",
   yahooWaitingMailTitle: "Actualiza el buzón",
   yahooWaitingMailBody:
-    "Ya estás en Donexto. Pulsa Actualizar buzón para que Yahoo autorice la lectura de este correo.",
+    "Ya firmaste en Yahoo. Pulsa Actualizar buzón para traer correos con esa misma sesión. No te volvemos a mandar a Yahoo.",
   updateMailboxLabel: "Actualizar buzón",
   yahooSignInNext:
     "Firma en el sitio de Yahoo. Donexto no pide la clave de ningún buzón.",

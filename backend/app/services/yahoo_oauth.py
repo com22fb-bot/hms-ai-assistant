@@ -75,14 +75,11 @@ def normalize_yahoo_intent(value: str | None) -> str:
 
 
 def yahoo_authorize_scopes(intent: str) -> str:
-    """Continuar/Suscribirse: identidad. Actualizar buzón: suma mail-r."""
+    """Identidad solamente. mail-r no se pide: Yahoo lo rechaza y rompe el login."""
+    del intent
     configured = (settings.yahoo_oauth_scopes or YAHOO_DEFAULT_SCOPES).strip()
     parts = [part for part in configured.replace(",", " ").split() if part]
-    if intent == "mailbox":
-        lowered = {part.lower() for part in parts}
-        if "mail-r" not in lowered:
-            parts.append("mail-r")
-    return " ".join(parts) if parts else YAHOO_DEFAULT_SCOPES
+    return " ".join(part for part in parts if part.lower() != "mail-r") or YAHOO_DEFAULT_SCOPES
 
 
 def yahoo_intent_from_state(state: str) -> str:

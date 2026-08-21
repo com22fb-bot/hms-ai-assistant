@@ -95,7 +95,7 @@ class YahooOAuthGateTests(unittest.TestCase):
         self.assertNotIn("login_hint", without_hint)
         self.assertNotIn("login_hint", ignored)
 
-    def test_mailbox_intent_requests_mail_read(self) -> None:
+    def test_mailbox_intent_does_not_request_mail_read(self) -> None:
         with patch(
             "app.services.yahoo_oauth.settings"
         ) as settings:
@@ -108,7 +108,7 @@ class YahooOAuthGateTests(unittest.TestCase):
             settings.yahoo_oauth_scopes = "openid email profile"
             mailbox = build_yahoo_authorization_url("mailbox.state-token")
             login = build_yahoo_authorization_url("login.state-token")
-        self.assertIn("mail-r", mailbox)
+        self.assertNotIn("mail-r", mailbox)
         self.assertNotIn("mail-r", login)
 
     def test_sanitize_return_to_stays_on_donexto(self) -> None:

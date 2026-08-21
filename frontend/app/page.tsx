@@ -843,27 +843,9 @@ function Dashboard({
     setNotice(null);
   }
 
-  function startYahooMailbox() {
-    setNotice("Te llevamos a Yahoo para autorizar la lectura de este buzón…");
-    void startYahooConnection({
-      intent: "mailbox",
-      loginHint: session.email,
-    }).catch((requestError: unknown) => {
-      setNotice(
-        requestError instanceof Error
-          ? requestError.message
-          : "No fue posible abrir Yahoo.",
-      );
-    });
-  }
-
   function requestMailboxOrExplain() {
-    if (connection?.connected) {
+    if (connection?.connected || yahooMailPending) {
       openConnectedMailboxActions();
-      return;
-    }
-    if (yahooMailPending) {
-      startYahooMailbox();
       return;
     }
     openMailboxConnect();
@@ -1285,15 +1267,15 @@ function Dashboard({
               mailboxLoading={loadingConnection}
               yahooMailPending={yahooMailPending}
               onConnectMailbox={() => {
-                if (yahooMailPending) {
-                  startYahooMailbox();
+                if (yahooMailPending || connection?.connected) {
+                  openConnectedMailboxActions();
                   return;
                 }
                 openMailboxConnect();
               }}
               onChangeMailbox={() => openMailboxConnect()}
               onRefreshMailbox={() => {
-                if (connection?.connected) {
+                if (connection?.connected || yahooMailPending) {
                   openConnectedMailboxActions();
                   return;
                 }
@@ -1562,11 +1544,7 @@ function Dashboard({
             className="app-mobile-plus"
             aria-label="Conectar o refrescar correo"
             onClick={() => {
-              if (connection?.connected) {
-                openConnectedMailboxActions();
-                return;
-              }
-              openMailboxConnect();
+              requestMailboxOrExplain();
             }}
           >
             <Plus size={29} />
