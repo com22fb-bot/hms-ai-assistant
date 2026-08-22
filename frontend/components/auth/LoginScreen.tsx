@@ -36,21 +36,6 @@ const PRIVACY_URL = "https://www.donexto.com/privacidad.html";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "/api/hms";
 
-function mailboxToOAuth(
-  provider: MailboxSignupProvider,
-): AuthOAuthProvider | null {
-  if (provider === "gmail") {
-    return "google";
-  }
-  if (provider === "hotmail") {
-    return "azure";
-  }
-  if (provider === "apple") {
-    return "apple";
-  }
-  return null;
-}
-
 type LoginScreenProps = {
   theme: GateThemeId;
   setTheme: (theme: GateThemeId) => void;
@@ -136,6 +121,7 @@ export function LoginScreen({
   const [error, setError] = useState<string | null>(null);
   const [oauthBusy, setOauthBusy] = useState<AuthOAuthProvider | null>(null);
   const [confirmingSignup, setConfirmingSignup] = useState(false);
+  const [suggestedEmail, setSuggestedEmail] = useState<string | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
@@ -169,6 +155,7 @@ export function LoginScreen({
   function resetAlerts() {
     setError(null);
     setMessage(null);
+    setSuggestedEmail(null);
   }
 
   async function startOAuth(
@@ -206,20 +193,30 @@ export function LoginScreen({
     }
   }
 
-  async function sendMagicLink(address: string) {
-    setBusy(true);
-    resetAlerts();
-    try {
-      await onMagicLink(address);
-      setMessage(`Revisa ${address}: abre el enlace para entrar.`);
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "No fue posible enviar el enlace.",
-      );
-    } finally {
-      setBusy(false);
+  type ResolvePayload = {
+    next?: string;
+    exists?: boolean;
+    message?: string;
+    suggested_email?: string | null;
+    detail?: { message?: string } | string;
+  };
+
+  function stopWithDomain(payload: ResolvePayload, asError: boolean) {
+    const text =
+      payload.message
+      || (asError
+        ? ACCOUNT_VS_MAILBOX.domainFixFallback
+        : ACCOUNT_VS_MAILBOX.domainPendingFallback);
+    setSuggestedEmail(payload.suggested_email || null);
+    setConfirmingSignup(false);
+    setBusy(false);
+    setOauthBusy(null);
+    if (asError) {
+      setMessage(null);
+      setError(text);
+    } else {
+      setError(null);
+      setMessage(text);
     }
   }
 
@@ -232,12 +229,21 @@ export function LoginScreen({
       await startOAuth("yahoo", address, yahooIntent);
       return;
     }
-    const oauth = mailboxToOAuth(provider);
-    if (oauth) {
-      await startOAuth(oauth, address, yahooIntent);
+    if (provider === "hotmail") {
+      await startOAuth("azure", address, yahooIntent);
       return;
     }
-    await sendMagicLink(address);
+    if (provider === "gmail" || provider === "apple") {
+      stopWithDomain(
+        { message: ACCOUNT_VS_MAILBOX.domainPendingFallback },
+        false,
+      );
+      return;
+    }
+    stopWithDomain(
+      { message: ACCOUNT_VS_MAILBOX.domainUnsupportedFallback },
+      false,
+    );
   }
 
   async function resolveAndContinue(
@@ -253,11 +259,7 @@ export function LoginScreen({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: address }),
       });
-      const payload = (await response.json()) as {
-        next?: string;
-        exists?: boolean;
-        detail?: { message?: string } | string;
-      };
+      const payload = (await response.json()) as ResolvePayload;
       if (!response.ok) {
         const detail = payload.detail;
         throw new Error(
@@ -267,7 +269,15 @@ export function LoginScreen({
         );
       }
       const exists = Boolean(payload.exists) && payload.next !== "signup";
-      const gate = gateNextAfterResolve(intent, exists);
+      const gate = gateNextAfterResolve(intent, exists, payload.next);
+      if (gate === "fix_domain") {
+        stopWithDomain(payload, true);
+        return;
+      }
+      if (gate === "pending_review" || gate === "unsupported") {
+        stopWithDomain(payload, false);
+        return;
+      }
       if (gate === "stay_subscribe") {
         setBusy(false);
         setOauthBusy(null);
@@ -302,7 +312,14 @@ export function LoginScreen({
           await startOAuth("apple", address);
           return;
         }
-        await sendMagicLink(address);
+        stopWithDomain(
+          {
+            message:
+              "Ese correo no usa un servicio activo en Donexto. "
+              + ACCOUNT_VS_MAILBOX.domainFixFallback,
+          },
+          true,
+        );
         return;
       }
       setBusy(false);
@@ -370,11 +387,7 @@ export function LoginScreen({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: clean }),
       });
-      const payload = (await response.json()) as {
-        next?: string;
-        exists?: boolean;
-        detail?: { message?: string } | string;
-      };
+      const payload = (await response.json()) as ResolvePayload;
       if (!response.ok) {
         const detail = payload.detail;
         throw new Error(
@@ -384,6 +397,15 @@ export function LoginScreen({
         );
       }
       const exists = Boolean(payload.exists) && payload.next !== "signup";
+      const gate = gateNextAfterResolve("signup", exists, payload.next);
+      if (gate === "fix_domain") {
+        stopWithDomain(payload, true);
+        return;
+      }
+      if (gate === "pending_review" || gate === "unsupported") {
+        stopWithDomain(payload, false);
+        return;
+      }
       if (exists) {
         setConfirmingSignup(false);
         await resolveAndContinue(clean, "login");
@@ -475,6 +497,20 @@ export function LoginScreen({
               <AlertTriangle size={18} />
               <span>{error}</span>
             </div>
+          ) : null}
+          {suggestedEmail ? (
+            <button
+              type="button"
+              className="dx-auth__secondary"
+              disabled={busy}
+              onClick={() => {
+                setEmail(suggestedEmail);
+                setConfirmingSignup(false);
+                resetAlerts();
+              }}
+            >
+              {ACCOUNT_VS_MAILBOX.useSuggestedEmail}: {suggestedEmail}
+            </button>
           ) : null}
           {message ? (
             <div className="dx-auth__alert is-ok" role="status">

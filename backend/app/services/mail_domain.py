@@ -33,21 +33,25 @@ COMMON_TYPOS: dict[str, str] = {
     "hotmal.com": "hotmail.com",
     "hotmail.co": "hotmail.com",
     "hotmail.con": "hotmail.com",
+    "hotmail.cox": "hotmail.com",
     "hotmail.cm": "hotmail.com",
     "hitmail.com": "hotmail.com",
     "gmal.com": "gmail.com",
     "gmial.com": "gmail.com",
     "gmaill.com": "gmail.com",
     "gmail.con": "gmail.com",
+    "gmail.cox": "gmail.com",
     "gmail.cm": "gmail.com",
     "googlemail.con": "googlemail.com",
     "yaho.com": "yahoo.com",
     "yahooo.com": "yahoo.com",
     "yahoo.con": "yahoo.com",
+    "yahoo.cox": "yahoo.com",
     "yahoo.cm": "yahoo.com",
     "yaho.com.mx": "yahoo.com.mx",
     "outlok.com": "outlook.com",
     "outlook.con": "outlook.com",
+    "outlook.cox": "outlook.com",
     "outlook.cm": "outlook.com",
     "iclod.com": "icloud.com",
     "icoud.com": "icloud.com",
@@ -137,6 +141,14 @@ def suggest_known_domain(domain: str) -> str | None:
     mapped = COMMON_TYPOS.get(clean)
     if mapped:
         return mapped
+
+    # hotmail.cox / gmail.con: el TLD no es un servicio de correo.
+    if "." in clean:
+        name, _, tld = clean.rpartition(".")
+        if tld in {"cox", "con", "cm", "comm", "cpm"} and name:
+            candidate = f"{name}.com"
+            if _matches(candidate, KNOWN_MAIL_DOMAINS):
+                return candidate
 
     best: str | None = None
     best_distance = 99

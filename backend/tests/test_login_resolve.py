@@ -66,6 +66,12 @@ class LoginResolveTests(unittest.TestCase):
         self.assertIn("hotmail.com", verdict.message)
         self.assertIn("Yahoo", verdict.message)
 
+    def test_hotmail_cox_is_typo_not_a_mailbox(self) -> None:
+        self.assertEqual(suggest_known_domain("hotmail.cox"), "hotmail.com")
+        verdict = classify_mail_domain("donexto@hotmail.cox")
+        self.assertEqual(verdict.status, "typo")
+        self.assertEqual(verdict.suggested_email, "donexto@hotmail.com")
+
     def test_yahoo_com_mx_existing_goes_to_oauth(self) -> None:
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=True
@@ -139,6 +145,17 @@ class LoginResolveTests(unittest.TestCase):
                 LoginResolveRequest(email="ya@gmail.com")
             )
         self.assertEqual(result["next"], "google_oauth")
+
+    def test_typo_hotmail_cox_asks_to_fix_domain(self) -> None:
+        with patch(
+            "app.api.login_resolve.auth_user_exists", return_value=False
+        ):
+            result = resolve_login(
+                LoginResolveRequest(email="donexto@hotmail.cox")
+            )
+        self.assertEqual(result["next"], "fix_domain")
+        self.assertEqual(result["suggested_email"], "donexto@hotmail.com")
+        self.assertFalse(result["notified_support"])
 
     def test_typo_hotmil_asks_to_fix_domain(self) -> None:
         with patch(
