@@ -76,7 +76,20 @@ export function resolveMailboxProviderFromEmail(
 
 export function isValidSignupEmail(email: string): boolean {
   const clean = email.trim().toLowerCase();
-  return clean.includes("@") && emailDomain(clean).includes(".");
+  const at = clean.lastIndexOf("@");
+  if (at <= 0 || at === clean.length - 1) {
+    return false;
+  }
+  const local = clean.slice(0, at);
+  const domain = emailDomain(clean);
+  if (!local || local.includes(" ")) {
+    return false;
+  }
+  if (!domain.includes(".") || domain.startsWith(".") || domain.endsWith(".")) {
+    return false;
+  }
+  const labels = domain.split(".");
+  return labels.length >= 2 && labels.every((label) => label.length > 0);
 }
 
 export function mailboxConnectModeFromEmail(

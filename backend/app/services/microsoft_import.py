@@ -113,7 +113,8 @@ def ensure_microsoft_access_token(account: dict[str, Any]) -> str:
         raise MicrosoftImportError(
             "Vuelve a firmar en el sitio de Microsoft para autorizar el buzón."
         )
-    payload = refresh_microsoft_tokens(refresh)
+    stored_token_uri = str(stored.get("token_uri") or "").strip()
+    payload = refresh_microsoft_tokens(refresh, token_uri=stored_token_uri or None)
     new_access = str(payload.get("access_token") or "")
     new_refresh = str(payload.get("refresh_token") or "") or refresh
     expires_in = payload.get("expires_in")
@@ -130,7 +131,8 @@ def ensure_microsoft_access_token(account: dict[str, Any]) -> str:
         access_token=new_access,
         refresh_token=new_refresh,
         expires_at=new_expires,
-        token_uri="https://login.microsoftonline.com/common/oauth2/v2.0/token",
+        token_uri=stored_token_uri
+        or "https://login.microsoftonline.com/common/oauth2/v2.0/token",
         scopes=scopes or list(stored.get("scopes") or []),
         metadata=dict(stored.get("metadata") or {}),
     )

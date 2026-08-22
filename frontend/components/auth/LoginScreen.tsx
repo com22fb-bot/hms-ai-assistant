@@ -141,13 +141,22 @@ export function LoginScreen({
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("donexto") !== "signup") {
-      return;
+    const flag = params.get("donexto");
+    if (flag === "microsoft_error") {
+      setError(
+        params.get("reason")
+        || "Microsoft no cerró el permiso. Inténtalo otra vez en una ventana privada.",
+      );
     }
-    const hinted = (params.get("email") || "").trim().toLowerCase();
-    if (isValidSignupEmail(hinted)) {
-      setEmail(hinted);
-      setConfirmingSignup(true);
+    if (flag === "signup") {
+      const hinted = (params.get("email") || "").trim().toLowerCase();
+      if (isValidSignupEmail(hinted)) {
+        setEmail(hinted);
+        setConfirmingSignup(true);
+      }
+    }
+    if (!flag) {
+      return;
     }
     const url = new URL(window.location.href);
     url.searchParams.delete("donexto");
@@ -155,23 +164,6 @@ export function LoginScreen({
     url.searchParams.delete("email");
     const cleaned = `${url.pathname}${url.search}${url.hash}`;
     window.history.replaceState({}, "", cleaned || "/");
-  }, []);
-
-  useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
-    const prevHtml = html.style.overflow;
-    const prevBody = body.style.overflow;
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
-    html.style.height = "100%";
-    body.style.height = "100%";
-    return () => {
-      html.style.overflow = prevHtml;
-      body.style.overflow = prevBody;
-      html.style.height = "";
-      body.style.height = "";
-    };
   }, []);
 
   function resetAlerts() {

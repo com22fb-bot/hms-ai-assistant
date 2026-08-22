@@ -22,6 +22,8 @@ from app.services.microsoft_oauth import (
     granted_microsoft_mail_read,
     microsoft_authorize_scopes,
     microsoft_email_from_profile,
+    microsoft_oauth_tenant,
+    microsoft_tenant_from_state,
 )
 
 
@@ -70,7 +72,7 @@ class MicrosoftOAuthTests(unittest.TestCase):
                 "login.state-token",
                 login_hint="ana@outlook.com.mx",
             )
-        self.assertIn("login.microsoftonline.com", url)
+        self.assertIn("login.microsoftonline.com/consumers/", url)
         self.assertIn("client_id=azure-id", url)
         self.assertIn("Mail.Read", url)
         self.assertIn("login_hint=ana%40outlook.com.mx", url)
@@ -127,6 +129,17 @@ class MicrosoftOAuthTests(unittest.TestCase):
             "ana@outlook.com",
         )
         self.assertIn("Mail.Read", microsoft_authorize_scopes())
+
+    def test_hotmail_uses_consumers_tenant(self) -> None:
+        self.assertEqual(
+            microsoft_oauth_tenant("donexto@hotmail.com"),
+            "consumers",
+        )
+        self.assertEqual(microsoft_oauth_tenant("ana@contoso.onmicrosoft.com"), "common")
+        self.assertEqual(
+            microsoft_tenant_from_state("signup.consumers.abc"),
+            "consumers",
+        )
 
 
 if __name__ == "__main__":

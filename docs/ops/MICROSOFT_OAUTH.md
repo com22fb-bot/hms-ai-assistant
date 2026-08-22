@@ -33,6 +33,11 @@ Railway redespliegue **antes** de probar Outlook en app.donexto.com.
    - `User.Read`
    - `Mail.Read`
 7. Grant admin consent solo si es un inquilino de trabajo. Cuentas personales consienten en el login.
+8. Branding y propiedades (para que el consentimiento de Hotmail no salga “incompleto”):
+   - Términos: `https://www.donexto.com/terminos.html`
+   - Privacidad: `https://www.donexto.com/privacidad.html`
+   - Soporte: `https://donexto.com`
+   - Dominio del editor: el de la app (`donextohotmail.onmicrosoft.com` está bien hasta verificar MPN)
 
 ## Flujo en la app
 
