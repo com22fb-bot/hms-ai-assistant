@@ -33,6 +33,14 @@ export const ACCOUNT_VS_MAILBOX = {
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   servicesActiveLabel: "Servicios en Donexto",
   servicesActiveBadge: "Activos",
+  servicesPendingLabel: "En revisión",
+  useSuggestedEmail: "Usar este correo",
+  domainFixFallback:
+    "Ese dominio no está activo. Opciones activas: Yahoo y Outlook/Hotmail. Gmail e iCloud: la solicitud de acceso está en revisión.",
+  domainPendingFallback:
+    "Gmail e iCloud: la solicitud de acceso está en revisión. Opciones activas: Yahoo y Outlook/Hotmail.",
+  domainUnsupportedFallback:
+    "Ese dominio existe, pero Donexto aún no lo tiene integrado. Ya avisamos a soporte. Opciones activas: Yahoo y Outlook/Hotmail. Gmail e iCloud: la solicitud de acceso está en revisión.",
   yahooWaitingMailTitle: "Ya firmaste en Yahoo",
   yahooWaitingMailBody:
     "Tu cuenta Donexto está lista. Yahoo todavía no autoriza a esta app a leer el buzón. No te volvemos a mandar a Yahoo: cuando Yahoo apruebe el permiso, Actualizar buzón traerá los correos.",

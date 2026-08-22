@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from html import escape
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
 from app.schemas.gmail import GoogleConnectionStatus
@@ -25,6 +24,9 @@ from app.services.microsoft_oauth import (
     fetch_microsoft_profile,
     granted_microsoft_mail_read,
     microsoft_email_from_profile,
+    microsoft_oauth_tenant,
+    microsoft_tenant_from_state,
+    microsoft_token_url,
     require_microsoft_oauth_config,
     sanitize_login_hint,
     sanitize_return_to,
@@ -66,6 +68,7 @@ def persist_microsoft_mailbox(
     expires_at: datetime | None = None,
     scopes: list[str] | None = None,
     mail_read: bool = True,
+    token_uri: str | None = None,
 ) -> GoogleConnectionStatus:
     try:
         try:
@@ -91,7 +94,7 @@ def persist_microsoft_mailbox(
             access_token=access_token,
             refresh_token=refresh_token,
             expires_at=expires_at,
-            token_uri="https://login.microsoftonline.com/common/oauth2/v2.0/token",
+            token_uri=token_uri or microsoft_token_url("common"),
             scopes=scopes or ["openid", "email", "profile", "User.Read"],
             metadata={
                 "protocol": "graph",
@@ -130,19 +133,33 @@ def persist_microsoft_mailbox(
     )
 
 
-def _callback_error_page(title: str, message: str) -> HTMLResponse:
-    return HTMLResponse(
-        status_code=400,
-        content=f"""
-        <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{escape(title)}</title></head><body>
-        <h1>{escape(title)}</h1>
-        <p>{escape(message)}</p>
-        <p><a href="https://app.donexto.com/">Volver a Donexto</a></p>
-        </body></html>
-        """,
+def _microsoft_error_message(code: str, description: str) -> str:
+    lowered = f"{code} {description}".lower()
+    if "server_error" in lowered:
+        return (
+            "Microsoft no cerró el permiso (error interno). "
+            "Vuelve a entrar con Hotmail en una ventana privada y acepta de nuevo."
+        )
+    if "access_denied" in lowered:
+        return "No se autorizó Microsoft. Sin Aceptar, Donexto no puede entrar."
+    if description.strip():
+        return description.strip()[:280]
+    return "Microsoft rechazó la autorización."
+
+
+def _callback_error_page(
+    title: str,
+    message: str,
+    return_to: str | None = None,
+) -> HTMLResponse | RedirectResponse:
+    home = sanitize_return_to(return_to) or "https://app.donexto.com/"
+    query = urlencode(
+        {
+            "donexto": "microsoft_error",
+            "reason": message[:180],
+        }
     )
+    return RedirectResponse(url=f"{home.rstrip('/')}?{query}", status_code=302)
 
 
 @router.post("/login")
@@ -168,12 +185,13 @@ def microsoft_login(
         (payload.return_to if payload else None)
         or request.headers.get("origin")
     )
+    tenant = microsoft_oauth_tenant(hint)
     try:
         state = oauth_storage.create_oauth_state(
             provider="microsoft",
             ttl_minutes=15,
             return_to=return_to,
-            state_prefix=intent,
+            state_prefix=f"{intent}.{tenant}",
         )
     except OAuthStorageError as error:
         raise HTTPException(
@@ -191,19 +209,20 @@ def microsoft_login(
         "authorization_url": build_microsoft_authorization_url(
             state,
             login_hint=hint,
+            tenant=tenant,
         ),
     }
 
 
 @router.get("/callback", response_model=None)
-def microsoft_callback(request: Request) -> HTMLResponse | RedirectResponse:
+def microsoft_callback(request: Request) -> RedirectResponse:
     oauth_error = request.query_params.get("error")
     if oauth_error:
-        description = (
-            request.query_params.get("error_description")
-            or "Microsoft rechazó la autorización."
+        description = request.query_params.get("error_description") or ""
+        return _callback_error_page(
+            "No fue posible conectar Microsoft",
+            _microsoft_error_message(oauth_error, description),
         )
-        return _callback_error_page("No fue posible conectar Microsoft", description)
 
     state = request.query_params.get("state")
     code = request.query_params.get("code")
@@ -239,15 +258,20 @@ def microsoft_callback(request: Request) -> HTMLResponse | RedirectResponse:
 
     return_to = sanitize_return_to(str(state_context.get("return_to") or ""))
     intent = yahoo_intent_from_state(state)
+    tenant = microsoft_tenant_from_state(state)
 
     try:
-        token_payload = exchange_microsoft_code(code)
+        token_payload = exchange_microsoft_code(code, tenant=tenant)
         access = str(token_payload.get("access_token") or "")
         refresh = str(token_payload.get("refresh_token") or "") or None
         profile = fetch_microsoft_profile(access)
         address = microsoft_email_from_profile(profile)
     except MicrosoftOAuthError as error:
-        return _callback_error_page("No fue posible conectar Microsoft", str(error))
+        return _callback_error_page(
+            "No fue posible conectar Microsoft",
+            str(error),
+            return_to,
+        )
 
     exists = auth_user_exists(address)
     if intent != "signup" and not exists:
@@ -280,6 +304,7 @@ def microsoft_callback(request: Request) -> HTMLResponse | RedirectResponse:
         expires_at=expires_at,
         scopes=scopes,
         mail_read=granted_microsoft_mail_read(token_payload),
+        token_uri=microsoft_token_url(tenant),
     )
 
     fragment = urlencode(

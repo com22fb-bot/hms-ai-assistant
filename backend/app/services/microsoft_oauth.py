@@ -13,20 +13,49 @@ import httpx
 from fastapi import HTTPException
 
 from app.core.config import settings
+from app.services.microsoft_domains import is_personal_microsoft_address
 from app.services.yahoo_oauth import (
     sanitize_login_hint,
     sanitize_return_to,
 )
 
-
 logger = logging.getLogger(__name__)
 
-MICROSOFT_AUTHORIZE_URL = (
-    "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
-)
-MICROSOFT_TOKEN_URL = (
-    "https://login.microsoftonline.com/common/oauth2/v2.0/token"
-)
+MICROSOFT_TENANTS = ("common", "consumers", "organizations")
+
+
+def microsoft_oauth_tenant(email: str | None = None) -> str:
+    """Hotmail/Outlook personal va a /consumers.
+
+    donexto@hotmail.com también es admin del inquilino Entra. /common
+    mezcla esa identidad de trabajo con la cuenta personal y Microsoft
+    responde server_error después de Aceptar.
+    """
+    if email and is_personal_microsoft_address(email):
+        return "consumers"
+    return "common"
+
+
+def microsoft_tenant_from_state(state: str) -> str:
+    parts = (state or "").split(".")
+    for part in parts[:3]:
+        if part in MICROSOFT_TENANTS:
+            return part
+    return "common"
+
+
+def microsoft_authorize_url(tenant: str = "common") -> str:
+    safe = tenant if tenant in MICROSOFT_TENANTS else "common"
+    return f"https://login.microsoftonline.com/{safe}/oauth2/v2.0/authorize"
+
+
+def microsoft_token_url(tenant: str = "common") -> str:
+    safe = tenant if tenant in MICROSOFT_TENANTS else "common"
+    return f"https://login.microsoftonline.com/{safe}/oauth2/v2.0/token"
+
+
+MICROSOFT_AUTHORIZE_URL = microsoft_authorize_url("common")
+MICROSOFT_TOKEN_URL = microsoft_token_url("common")
 MICROSOFT_GRAPH_ME_URL = "https://graph.microsoft.com/v1.0/me"
 MICROSOFT_IDENTITY_SCOPES = "openid email profile offline_access User.Read"
 MICROSOFT_MAIL_SCOPE = "Mail.Read"
@@ -82,8 +111,11 @@ def microsoft_authorize_scopes() -> str:
 def build_microsoft_authorization_url(
     state: str,
     login_hint: str | None = None,
+    tenant: str | None = None,
 ) -> str:
     require_microsoft_oauth_config()
+    hint = sanitize_login_hint(login_hint)
+    authority = tenant or microsoft_oauth_tenant(hint)
     query: dict[str, str] = {
         "client_id": settings.azure_client_id,
         "redirect_uri": settings.azure_redirect_uri,
@@ -93,17 +125,19 @@ def build_microsoft_authorization_url(
         "state": state,
         "prompt": "select_account",
     }
-    hint = sanitize_login_hint(login_hint)
     if hint:
         query["login_hint"] = hint
-    return f"{MICROSOFT_AUTHORIZE_URL}?{urlencode(query)}"
+    return f"{microsoft_authorize_url(authority)}?{urlencode(query)}"
 
 
-def exchange_microsoft_code(code: str) -> dict[str, Any]:
+def exchange_microsoft_code(
+    code: str,
+    tenant: str = "common",
+) -> dict[str, Any]:
     require_microsoft_oauth_config()
     try:
         response = httpx.post(
-            MICROSOFT_TOKEN_URL,
+            microsoft_token_url(tenant),
             data={
                 "client_id": settings.azure_client_id,
                 "client_secret": settings.azure_client_secret,
@@ -172,11 +206,15 @@ def granted_microsoft_mail_read(token_payload: dict[str, Any]) -> bool:
     return "mail.read" in scope
 
 
-def refresh_microsoft_tokens(refresh_token: str) -> dict[str, Any]:
+def refresh_microsoft_tokens(
+    refresh_token: str,
+    token_uri: str | None = None,
+) -> dict[str, Any]:
     require_microsoft_oauth_config()
+    endpoint = (token_uri or "").strip() or MICROSOFT_TOKEN_URL
     try:
         response = httpx.post(
-            MICROSOFT_TOKEN_URL,
+            endpoint,
             data={
                 "client_id": settings.azure_client_id,
                 "client_secret": settings.azure_client_secret,
