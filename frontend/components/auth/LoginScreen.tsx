@@ -12,7 +12,7 @@ import {
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { LanguageStrip } from "@/components/UserSettingsPanel";
-import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
+import { ACCOUNT_VS_MAILBOX, signupConfirmNote } from "@/lib/accountVsMailbox";
 import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
 import type { AuthOAuthProvider, YahooAuthIntent } from "@/hooks/useAppAuth";
 import { gateNextAfterResolve } from "@/lib/loginGate";
@@ -62,6 +62,10 @@ type LoginScreenProps = {
   ) => Promise<unknown>;
   onSignInWithGoogle: (email?: string) => Promise<void>;
   onSignInWithYahoo: (
+    intent?: YahooAuthIntent,
+    email?: string,
+  ) => Promise<void>;
+  onSignInWithMicrosoft: (
     intent?: YahooAuthIntent,
     email?: string,
   ) => Promise<void>;
@@ -118,6 +122,7 @@ export function LoginScreen({
   onSignUp: _onSignUp,
   onSignInWithGoogle,
   onSignInWithYahoo,
+  onSignInWithMicrosoft,
   onSignInWithProvider,
   onMagicLink,
   onResetPassword,
@@ -187,6 +192,8 @@ export function LoginScreen({
         await onSignInWithGoogle(address);
       } else if (provider === "yahoo") {
         await onSignInWithYahoo(yahooIntent, address);
+      } else if (provider === "azure") {
+        await onSignInWithMicrosoft(yahooIntent, address);
       } else {
         await onSignInWithProvider(provider, address);
       }
@@ -554,7 +561,7 @@ export function LoginScreen({
             {confirmingSignup ? (
               <>
                 <p className="dx-auth__signup-copy">
-                  {ACCOUNT_VS_MAILBOX.signupConfirmYahooNote}
+                  {signupConfirmNote(email)}
                 </p>
                 <button type="submit" className="dx-auth__submit" disabled={busy}>
                   {busy ? (
@@ -651,6 +658,10 @@ export function LoginScreen({
               <li className="dx-auth__service">
                 <ProviderMark provider="yahoo" />
                 Yahoo
+              </li>
+              <li className="dx-auth__service">
+                <ProviderMark provider="hotmail" />
+                Microsoft
               </li>
             </ul>
           </div>

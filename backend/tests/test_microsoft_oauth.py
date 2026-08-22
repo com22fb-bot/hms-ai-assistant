@@ -1,0 +1,133 @@
+"""Microsoft / Outlook / Hotmail: dominios y URL OAuth."""
+
+import os
+import unittest
+from unittest.mock import patch
+
+os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
+os.environ.setdefault("SUPABASE_SECRET_KEY", "test-secret-key-not-real")
+os.environ.setdefault(
+    "OAUTH_ENCRYPTION_KEY",
+    "test-oauth-encryption-key-32chars!!",
+)
+
+from fastapi import HTTPException
+
+from app.api.login_resolve import resolve_mailbox_provider
+from app.middleware.authentication_context import AuthenticationContextMiddleware
+from app.security.identity import MAILBOX_PROVIDERS
+from app.services.microsoft_domains import is_microsoft_mail_address
+from app.services.microsoft_oauth import (
+    build_microsoft_authorization_url,
+    granted_microsoft_mail_read,
+    microsoft_authorize_scopes,
+    microsoft_email_from_profile,
+)
+
+
+class _FakeRequest:
+    def __init__(self, path: str, method: str = "POST") -> None:
+        self.method = method
+        self.url = type("U", (), {"path": path})()
+        self.client = type("C", (), {"host": "127.0.0.1"})()
+        self.headers = {}
+
+
+class MicrosoftOAuthTests(unittest.TestCase):
+    def test_login_and_callback_are_public(self) -> None:
+        login = _FakeRequest("/auth/microsoft/login")
+        callback = _FakeRequest("/auth/microsoft/callback", method="GET")
+        self.assertFalse(
+            AuthenticationContextMiddleware._requires_identity(login)
+        )
+        self.assertFalse(
+            AuthenticationContextMiddleware._requires_identity(callback)
+        )
+
+    def test_consumer_and_365_domains(self) -> None:
+        self.assertTrue(is_microsoft_mail_address("ana@hotmail.com"))
+        self.assertTrue(is_microsoft_mail_address("ana@hotmail.com.mx"))
+        self.assertTrue(is_microsoft_mail_address("ana@outlook.com"))
+        self.assertTrue(is_microsoft_mail_address("ana@outlook.com.mx"))
+        self.assertTrue(is_microsoft_mail_address("ana@live.com.mx"))
+        self.assertTrue(is_microsoft_mail_address("ana@contoso.onmicrosoft.com"))
+        self.assertFalse(is_microsoft_mail_address("ana@empresa.mx"))
+        self.assertEqual(resolve_mailbox_provider("x@outlook.com.mx"), "hotmail")
+        self.assertEqual(
+            resolve_mailbox_provider("x@contoso.onmicrosoft.com"), "hotmail"
+        )
+        self.assertIn("microsoft", MAILBOX_PROVIDERS)
+
+    def test_authorization_url(self) -> None:
+        with patch("app.services.microsoft_oauth.settings") as settings:
+            settings.azure_client_id = "azure-id"
+            settings.azure_client_secret = "secret"
+            settings.azure_redirect_uri = (
+                "https://hms-ai-assistant-production.up.railway.app"
+                "/auth/microsoft/callback"
+            )
+            url = build_microsoft_authorization_url(
+                "login.state-token",
+                login_hint="ana@outlook.com.mx",
+            )
+        self.assertIn("login.microsoftonline.com", url)
+        self.assertIn("client_id=azure-id", url)
+        self.assertIn("Mail.Read", url)
+        self.assertIn("login_hint=ana%40outlook.com.mx", url)
+        self.assertIn("prompt=select_account", url)
+
+    def test_requires_entra_app(self) -> None:
+        from app.api.microsoft_mail import microsoft_login
+
+        with patch("app.services.microsoft_oauth.settings") as settings:
+            settings.azure_client_id = ""
+            settings.azure_client_secret = ""
+            settings.azure_redirect_uri = ""
+            with self.assertRaises(HTTPException) as caught:
+                microsoft_login(_FakeRequest("/auth/microsoft/login"), None)
+        self.assertEqual(caught.exception.status_code, 503)
+        self.assertIn(
+            "microsoft_oauth_not_configured",
+            str(caught.exception.detail),
+        )
+
+    def test_login_rejects_unknown_hint(self) -> None:
+        from app.api.microsoft_mail import MicrosoftLoginRequest, microsoft_login
+
+        with (
+            patch("app.api.microsoft_mail.require_microsoft_oauth_config"),
+            patch("app.api.microsoft_mail.auth_user_exists", return_value=False),
+        ):
+            with self.assertRaises(HTTPException) as caught:
+                microsoft_login(
+                    _FakeRequest("/auth/microsoft/login"),  # type: ignore[arg-type]
+                    MicrosoftLoginRequest(
+                        intent="login",
+                        login_hint="nadie@outlook.com",
+                    ),
+                )
+        self.assertEqual(caught.exception.status_code, 403)
+
+    def test_mail_read_and_email(self) -> None:
+        self.assertTrue(
+            granted_microsoft_mail_read({"scope": "openid Mail.Read User.Read"})
+        )
+        self.assertTrue(
+            granted_microsoft_mail_read(
+                {"scope": "openid https://graph.microsoft.com/Mail.Read"}
+            )
+        )
+        self.assertFalse(
+            granted_microsoft_mail_read({"scope": "openid User.Read"})
+        )
+        self.assertEqual(
+            microsoft_email_from_profile(
+                {"mail": None, "userPrincipalName": "Ana@Outlook.Com"}
+            ),
+            "ana@outlook.com",
+        )
+        self.assertIn("Mail.Read", microsoft_authorize_scopes())
+
+
+if __name__ == "__main__":
+    unittest.main()

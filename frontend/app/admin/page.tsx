@@ -169,6 +169,7 @@ export default function AdminPage() {
     signIn,
     signInWithGoogle,
     signInWithYahoo,
+    signInWithMicrosoft,
     signInWithProvider,
     signUp,
     resendSignupEmail,
@@ -351,6 +352,7 @@ export default function AdminPage() {
           onSignUp={signUp}
           onSignInWithGoogle={signInWithGoogle}
           onSignInWithYahoo={signInWithYahoo}
+          onSignInWithMicrosoft={signInWithMicrosoft}
           onSignInWithProvider={signInWithProvider}
           onResendSignupEmail={resendSignupEmail}
           onMagicLink={signInWithMagicLink}

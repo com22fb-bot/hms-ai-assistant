@@ -12,33 +12,37 @@ import type { MailboxConnectMode } from "@/lib/mailboxSignup";
 
 import "./mailbox-connect.css";
 
-type ProviderChoice = "choose" | "yahoo";
+type ProviderChoice = "choose" | "yahoo" | "microsoft";
 
 type MailboxConnectModalProps = {
   open: boolean;
   connectingYahoo: boolean;
+  connectingMicrosoft?: boolean;
   required?: boolean;
   accountEmail: string;
   mode?: MailboxConnectMode;
   onClose: () => void;
   onConnectGoogle: () => void | Promise<void>;
   onConnectYahoo: () => Promise<void>;
+  onConnectMicrosoft?: () => Promise<void>;
   onSignOut?: () => void;
 };
 
 export function MailboxConnectModal({
   open,
   connectingYahoo,
+  connectingMicrosoft = false,
   required = false,
   accountEmail,
   mode = "choose",
   onClose,
   onConnectGoogle,
   onConnectYahoo,
+  onConnectMicrosoft,
   onSignOut,
 }: MailboxConnectModalProps) {
   const [step, setStep] = useState<ProviderChoice>(
-    mode === "yahoo" ? "yahoo" : "choose",
+    mode === "yahoo" ? "yahoo" : mode === "microsoft" ? "microsoft" : "choose",
   );
   const [localError, setLocalError] = useState<string | null>(null);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
@@ -46,13 +50,16 @@ export function MailboxConnectModal({
   const yahooLocked = mode === "yahoo";
   const showChooser = mode === "choose" && step === "choose";
   const showYahooForm = mode === "yahoo" || step === "yahoo";
+  const showMicrosoftForm = mode === "microsoft" || step === "microsoft";
   const canDismiss = !required;
 
   useEffect(() => {
     if (!open) {
       return;
     }
-    setStep(mode === "yahoo" ? "yahoo" : "choose");
+    setStep(
+      mode === "yahoo" ? "yahoo" : mode === "microsoft" ? "microsoft" : "choose",
+    );
     setLocalError(null);
     setConnectingGoogle(false);
   }, [open, mode, accountEmail]);
@@ -96,19 +103,40 @@ export function MailboxConnectModal({
     }
   }
 
+  async function handleMicrosoftClick() {
+    setLocalError(null);
+    if (!onConnectMicrosoft) {
+      setLocalError("Microsoft aún no está disponible en este espacio.");
+      return;
+    }
+    try {
+      await onConnectMicrosoft();
+    } catch (error) {
+      setLocalError(
+        error instanceof Error
+          ? error.message
+          : "No fue posible abrir Microsoft.",
+      );
+    }
+  }
+
   const title =
     mode === "gmail"
       ? authorizeMailboxTitle(accountEmail)
-      : showYahooForm && !showChooser
-        ? ACCOUNT_VS_MAILBOX.connectYahooTitle
-        : ACCOUNT_VS_MAILBOX.connectChooserTitle;
+      : showMicrosoftForm && !showChooser
+        ? ACCOUNT_VS_MAILBOX.connectMicrosoftTitle
+        : showYahooForm && !showChooser
+          ? ACCOUNT_VS_MAILBOX.connectYahooTitle
+          : ACCOUNT_VS_MAILBOX.connectChooserTitle;
 
   const body =
     mode === "gmail"
       ? ACCOUNT_VS_MAILBOX.connectGmailBody
-      : showYahooForm && !showChooser
-        ? ACCOUNT_VS_MAILBOX.connectYahooBody
-        : ACCOUNT_VS_MAILBOX.connectChooserBody;
+      : showMicrosoftForm && !showChooser
+        ? ACCOUNT_VS_MAILBOX.connectMicrosoftBody
+        : showYahooForm && !showChooser
+          ? ACCOUNT_VS_MAILBOX.connectYahooBody
+          : ACCOUNT_VS_MAILBOX.connectChooserBody;
 
   return (
     <div className="dx-connect-overlay" role="dialog" aria-modal="true">
@@ -185,7 +213,7 @@ export function MailboxConnectModal({
               <button
                 type="button"
                 className="dx-connect-btn dx-connect-btn--primary"
-                disabled={connectingGoogle || connectingYahoo}
+                disabled={connectingGoogle || connectingYahoo || connectingMicrosoft}
                 onClick={() => void handleGoogleClick()}
               >
                 {connectingGoogle ? (
@@ -207,7 +235,7 @@ export function MailboxConnectModal({
               <button
                 type="button"
                 className="dx-connect-btn dx-connect-btn--secondary"
-                disabled={connectingGoogle || connectingYahoo}
+                disabled={connectingGoogle || connectingYahoo || connectingMicrosoft}
                 onClick={() => void handleYahooClick()}
               >
                 {connectingYahoo ? (
@@ -222,7 +250,71 @@ export function MailboxConnectModal({
               <p className="dx-connect-hint">
                 {ACCOUNT_VS_MAILBOX.connectYahooChooserHint}
               </p>
+              {onConnectMicrosoft ? (
+                <>
+                  <button
+                    type="button"
+                    className="dx-connect-btn dx-connect-btn--secondary"
+                    disabled={
+                      connectingGoogle
+                      || connectingYahoo
+                      || connectingMicrosoft
+                    }
+                    onClick={() => void handleMicrosoftClick()}
+                  >
+                    {connectingMicrosoft ? (
+                      <>
+                        <LoaderCircle size={18} className="app-spin" />
+                        Abriendo Microsoft…
+                      </>
+                    ) : (
+                      "Outlook / Hotmail / Microsoft 365"
+                    )}
+                  </button>
+                  <p className="dx-connect-hint">
+                    {ACCOUNT_VS_MAILBOX.connectMicrosoftBody}
+                  </p>
+                </>
+              ) : null}
             </>
+          ) : showMicrosoftForm ? (
+            <div className="dx-connect-form">
+              {mode === "choose" ? (
+                <button
+                  type="button"
+                  className="dx-connect-back"
+                  onClick={() => {
+                    setStep("choose");
+                    setLocalError(null);
+                  }}
+                >
+                  ← Volver
+                </button>
+              ) : null}
+              <p className="dx-connect-hint">
+                {ACCOUNT_VS_MAILBOX.connectMicrosoftBody}
+              </p>
+              {localError ? (
+                <div className="dx-connect-error" role="alert">
+                  {localError}
+                </div>
+              ) : null}
+              <button
+                type="button"
+                className="dx-connect-btn dx-connect-btn--primary"
+                disabled={connectingMicrosoft}
+                onClick={() => void handleMicrosoftClick()}
+              >
+                {connectingMicrosoft ? (
+                  <>
+                    <LoaderCircle size={16} className="app-spin" />
+                    Abriendo Microsoft…
+                  </>
+                ) : (
+                  ACCOUNT_VS_MAILBOX.connectMicrosoftCta
+                )}
+              </button>
+            </div>
           ) : (
             <div className="dx-connect-form">
               {mode === "choose" ? (

@@ -60,6 +60,7 @@ export function useGoogleStatus() {
   const [connectionError, setConnectionError] =
     useState<string | null>(null);
   const [connectingYahoo, setConnectingYahoo] = useState(false);
+  const [connectingMicrosoft, setConnectingMicrosoft] = useState(false);
 
   const loadGoogleStatus = useCallback(async () => {
     setLoadingConnection(true);
@@ -189,13 +190,66 @@ export function useGoogleStatus() {
     }
   }, []);
 
+  const startMicrosoftConnection = useCallback(async (options?: {
+    intent?: "login" | "signup" | "mailbox";
+    loginHint?: string;
+  }) => {
+    setConnectingMicrosoft(true);
+    setConnectionError(null);
+
+    try {
+      const hint = options?.loginHint?.trim().toLowerCase();
+      const response = await fetch(`${API_BASE_URL}/auth/microsoft/login`, {
+        method: "POST",
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          return_to: window.location.origin,
+          intent: options?.intent ?? "login",
+          ...(hint ? { login_hint: hint } : {}),
+        }),
+      });
+
+      let payload: {
+        authorization_url?: string;
+        detail?: { message?: string } | string;
+      } = {};
+
+      try {
+        payload = (await response.json()) as typeof payload;
+      } catch {
+        throw new Error(
+          `No fue posible abrir Microsoft (HTTP ${response.status}).`,
+        );
+      }
+
+      if (!response.ok || !payload.authorization_url) {
+        const detail =
+          typeof payload.detail === "string"
+            ? payload.detail
+            : payload.detail?.message;
+        throw new Error(
+          detail ?? "No fue posible abrir el inicio de sesión de Microsoft.",
+        );
+      }
+
+      window.location.assign(payload.authorization_url);
+    } finally {
+      setConnectingMicrosoft(false);
+    }
+  }, []);
+
   return {
     connection,
     loadingConnection,
     connectionError,
     connectingYahoo,
+    connectingMicrosoft,
     loadGoogleStatus,
     startGoogleConnection,
     startYahooConnection,
+    startMicrosoftConnection,
   };
 }

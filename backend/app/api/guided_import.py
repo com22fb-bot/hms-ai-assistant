@@ -18,6 +18,11 @@ from app.services.guided_import_job_service import (
 from app.services.oauth_storage import oauth_storage
 from app.services.yahoo_imap import YahooImapError, stored_yahoo_uses_oauth
 from app.services.yahoo_import import is_yahoo_provider, yahoo_inventory
+from app.services.microsoft_import import (
+    MicrosoftImportError,
+    is_microsoft_provider,
+    microsoft_inventory,
+)
 
 
 router = APIRouter(
@@ -75,6 +80,17 @@ def import_inventory() -> dict[str, Any]:
                     "message": str(error),
                 },
             ) from error
+    if is_microsoft_provider(account):
+        try:
+            return microsoft_inventory(account)
+        except MicrosoftImportError as error:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "status": "microsoft_inventory_failed",
+                    "message": str(error),
+                },
+            ) from error
     return inventory(_google_credentials(account))
 
 
@@ -87,7 +103,7 @@ def import_status() -> dict[str, Any]:
 def import_start(payload: ImportStartRequest) -> dict[str, Any]:
     account = _mailbox_account()
     credentials = None
-    if not is_yahoo_provider(account):
+    if not is_yahoo_provider(account) and not is_microsoft_provider(account):
         credentials = _google_credentials(account)
 
     try:
@@ -101,6 +117,14 @@ def import_start(payload: ImportStartRequest) -> dict[str, Any]:
             status_code=400,
             detail={
                 "status": "yahoo_import_failed",
+                "message": str(error),
+            },
+        ) from error
+    except MicrosoftImportError as error:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "microsoft_import_failed",
                 "message": str(error),
             },
         ) from error
@@ -122,7 +146,7 @@ def import_start(payload: ImportStartRequest) -> dict[str, Any]:
 @router.get("/compare")
 def import_compare() -> dict[str, Any]:
     account = _mailbox_account()
-    if is_yahoo_provider(account):
+    if is_yahoo_provider(account) or is_microsoft_provider(account):
         raise HTTPException(
             status_code=409,
             detail={

@@ -36,6 +36,9 @@ _current_context: ContextVar[WorkspaceContext | None] = ContextVar(
     default=None,
 )
 
+# Gmail, Yahoo IMAP y Outlook/Microsoft 365.
+MAILBOX_PROVIDERS = ["google", "yahoo", "imap", "microsoft"]
+
 
 def _first_row(response: Any) -> dict[str, Any] | None:
     data = getattr(response, "data", None)
@@ -391,13 +394,13 @@ def resolve_workspace_context(
             },
         )
 
-    # Buzón activo del workspace: Gmail (OAuth) o Yahoo (IMAP).
-    # El nombre google_account es histórico; puede ser google o yahoo.
+    # Buzón activo del workspace. El nombre google_account es histórico:
+    # puede ser Gmail, Yahoo u Outlook/Microsoft.
     google_account = _first_row(
         client.table("communication_accounts")
         .select("*")
         .eq("workspace_id", workspace_id)
-        .in_("provider", ["google", "yahoo", "imap"])
+        .in_("provider", MAILBOX_PROVIDERS)
         .eq("status", "active")
         .order("updated_at", desc=True)
         .limit(1)
@@ -481,7 +484,7 @@ def require_google_account() -> tuple[WorkspaceContext, dict[str, Any]]:
                 "connected": False,
                 "message": (
                     "La cuenta Donexto no tiene un buzón de correo conectado "
-                    "en este espacio de trabajo (Gmail o Yahoo). "
+                    "en este espacio de trabajo (Gmail, Yahoo u Outlook). "
                     "Completa el Paso 2: conectar buzón (no es el login Donexto)."
                 ),
                 "start_url": "/auth/google/start",

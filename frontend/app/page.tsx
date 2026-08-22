@@ -721,9 +721,11 @@ function Dashboard({
     loadingConnection,
     connectionError,
     connectingYahoo,
+    connectingMicrosoft,
     loadGoogleStatus,
     startGoogleConnection,
     startYahooConnection,
+    startMicrosoftConnection,
   } = useGoogleStatus();
 
   const isGoogleMailbox =
@@ -731,11 +733,19 @@ function Dashboard({
     (connection.provider == null || connection.provider === "google");
   const isYahooMailbox =
     connection?.connected && connection.provider === "yahoo";
+  const isMicrosoftMailbox =
+    connection?.connected && connection.provider === "microsoft";
   const yahooIdentityReady =
     connection?.provider === "yahoo" && Boolean(connection.has_access_token);
+  const microsoftIdentityReady =
+    connection?.provider === "microsoft" && Boolean(connection.has_access_token);
   const yahooMailPending = yahooIdentityReady && !Boolean(connection?.connected);
+  const microsoftMailPending =
+    microsoftIdentityReady && !Boolean(connection?.connected);
   const yahooMailReadAvailable = Boolean(connection?.mail_read_available);
-  const usesGuidedImport = Boolean(isGoogleMailbox || isYahooMailbox);
+  const usesGuidedImport = Boolean(
+    isGoogleMailbox || isYahooMailbox || isMicrosoftMailbox,
+  );
 
   const {
     dashboard,
@@ -771,12 +781,12 @@ function Dashboard({
     if (loadingConnection) {
       return;
     }
-    if (connection?.connected || yahooIdentityReady) {
+    if (connection?.connected || yahooIdentityReady || microsoftIdentityReady) {
       setMailboxPickerOpen(false);
       return;
     }
     setMailboxPickerOpen(true);
-  }, [connection?.connected, loadingConnection, yahooIdentityReady]);
+  }, [connection?.connected, loadingConnection, yahooIdentityReady, microsoftIdentityReady]);
 
   useEffect(() => {
     if (
@@ -864,6 +874,13 @@ function Dashboard({
         return;
       }
       stayOnYahooPending();
+      return;
+    }
+    if (microsoftMailPending) {
+      void startMicrosoftConnection({
+        intent: "mailbox",
+        loginHint: session.email,
+      });
       return;
     }
     openMailboxConnect();
@@ -1101,6 +1118,7 @@ function Dashboard({
             disabled={
               loadingConnection ||
               connectingYahoo ||
+              connectingMicrosoft ||
               Boolean(connection?.connected && syncing)
             }
             onClick={() => {
@@ -1489,6 +1507,7 @@ function Dashboard({
                 disabled={
                   loadingConnection ||
                   connectingYahoo ||
+                  connectingMicrosoft ||
                   Boolean(connection?.connected && syncing)
                 }
                 onClick={() => {
@@ -1600,11 +1619,12 @@ function Dashboard({
           <MailboxConnectModal
             open={mailboxPickerOpen}
             connectingYahoo={connectingYahoo}
-            required={!connection?.connected && !yahooIdentityReady}
+            connectingMicrosoft={connectingMicrosoft}
+            required={!connection?.connected && !yahooIdentityReady && !microsoftIdentityReady}
             accountEmail={session.email}
             mode={mailboxConnectModeFromEmail(session.email)}
             onClose={() => {
-              if (!connection?.connected && !yahooIdentityReady) {
+              if (!connection?.connected && !yahooIdentityReady && !microsoftIdentityReady) {
                 return;
               }
               setMailboxPickerOpen(false);
@@ -1643,6 +1663,24 @@ function Dashboard({
                   requestError instanceof Error
                     ? requestError.message
                     : "No fue posible abrir Yahoo.";
+                setNotice(message);
+                throw requestError instanceof Error
+                  ? requestError
+                  : new Error(message);
+              }
+            }}
+            onConnectMicrosoft={async () => {
+              setNotice("Te llevamos a Microsoft para firmar ahí…");
+              try {
+                await startMicrosoftConnection({
+                  intent: microsoftIdentityReady ? "mailbox" : "login",
+                  loginHint: session.email,
+                });
+              } catch (requestError) {
+                const message =
+                  requestError instanceof Error
+                    ? requestError.message
+                    : "No fue posible abrir Microsoft.";
                 setNotice(message);
                 throw requestError instanceof Error
                   ? requestError
@@ -1714,6 +1752,7 @@ export default function HomePage() {
     signIn,
     signInWithGoogle,
     signInWithYahoo,
+    signInWithMicrosoft,
     signInWithProvider,
     signUp,
     resendSignupEmail,
@@ -1752,6 +1791,7 @@ export default function HomePage() {
           onSignUp={signUp}
           onSignInWithGoogle={signInWithGoogle}
           onSignInWithYahoo={signInWithYahoo}
+          onSignInWithMicrosoft={signInWithMicrosoft}
           onSignInWithProvider={signInWithProvider}
           onResendSignupEmail={resendSignupEmail}
           onMagicLink={signInWithMagicLink}

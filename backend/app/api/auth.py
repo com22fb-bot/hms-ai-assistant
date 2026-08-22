@@ -23,6 +23,7 @@ from app.services.oauth_storage import (
     oauth_storage,
 )
 from app.services.yahoo_oauth import granted_mail_read
+from app.services.microsoft_oauth import granted_microsoft_mail_read
 
 router = APIRouter(prefix="/auth/google", tags=["Google OAuth"])
 
@@ -359,7 +360,7 @@ def get_google_connection_status() -> GoogleConnectionStatus:
             connected=False,
             message=(
                 "Este workspace no tiene un buzón de correo conectado "
-                "(Gmail o Yahoo)."
+                "(Gmail, Yahoo u Outlook)."
             ),
             login_url="/auth/google/start",
         )
@@ -388,6 +389,30 @@ def get_google_connection_status() -> GoogleConnectionStatus:
             ),
             login_url=None,
             mail_read_available=settings.yahoo_mail_read_enabled,
+        )
+
+    if provider in ("microsoft",):
+        scopes = list((credentials or {}).get("scopes") or [])
+        mail_read = granted_microsoft_mail_read({"scope": " ".join(scopes)})
+        has_token = bool(credentials and credentials.get("access_token"))
+        return GoogleConnectionStatus(
+            connected=bool(has_token and mail_read),
+            email=account.get("email") or None,
+            provider="microsoft",
+            has_access_token=has_token,
+            has_refresh_token=bool(
+                credentials and credentials.get("refresh_token")
+            ),
+            scopes=scopes,
+            message=(
+                "Buzón Outlook autorizado."
+                if mail_read
+                else (
+                    "Entraste con Microsoft. Falta Mail.Read "
+                    "para leer el buzón."
+                )
+            ),
+            login_url=None,
         )
 
     return GoogleConnectionStatus(

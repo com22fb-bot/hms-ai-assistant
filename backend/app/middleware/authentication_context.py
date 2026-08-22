@@ -26,6 +26,7 @@ _PROTECTED_PREFIXES = (
     "/auth/google/status",
     "/auth/google/disconnect",
     "/auth/yahoo",
+    "/auth/microsoft",
 )
 
 _PUBLIC_PATHS = {
@@ -34,6 +35,8 @@ _PUBLIC_PATHS = {
     "/auth/yahoo/enter",
     "/auth/yahoo/login",
     "/auth/yahoo/callback",
+    "/auth/microsoft/login",
+    "/auth/microsoft/callback",
     "/auth/login/resolve",
 }
 

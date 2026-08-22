@@ -16,13 +16,19 @@ export const ACCOUNT_VS_MAILBOX = {
   loginHelper: "Escribe tu correo.",
   loginContinueCta: "Continuar",
   loginSubscribeCta: "Suscribirse",
-  signupConfirmTitle: "Confirma tu correo Donexto",
+  signupConfirmTitle: "Confirma el correo de Donexto",
   signupConfirmHelper:
-    "Revisa que sea el correo con el que te quieres suscribir. Todavía no vas a Yahoo.",
-  signupConfirmCta: "Sí, suscribirme con este correo",
+    "Confirma el correo que vas a utilizar para el servicio Donexto. Revísalo antes de seguir.",
+  signupConfirmCta: "Sí, este es el correo de mi cuenta Donexto",
   signupConfirmBack: "Usar otro correo",
   signupConfirmYahooNote:
-    "Después de confirmar, firmas en el sitio de Yahoo. Donexto no pide la clave.",
+    "Al confirmar, Donexto usará este correo. Después firmas en el sitio de Yahoo.",
+  signupConfirmMicrosoftNote:
+    "Al confirmar, Donexto usará este correo. Después firmas en el sitio de Microsoft.",
+  signupConfirmGmailNote:
+    "Al confirmar, Donexto usará este correo. Después Google te identifica.",
+  signupConfirmOtherNote:
+    "Al confirmar, Donexto usará este correo para tu cuenta y para vigilar ese mismo buzón.",
   loginHelperYahoo:
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   servicesActiveLabel: "Servicios en Donexto",
@@ -91,6 +97,10 @@ export const ACCOUNT_VS_MAILBOX = {
     "Te llevamos a la página oficial de Google para autorizar la lectura de este mismo Gmail (no es el login de Donexto y no pedimos tu contraseña).",
   connectYahooChooserHint:
     "Yahoo te identifica y autoriza la lectura en su propio sitio. Sin clave en Donexto.",
+  connectMicrosoftTitle: "Conecta Outlook, Hotmail o Microsoft 365",
+  connectMicrosoftBody:
+    "Te llevamos al sitio de Microsoft para firmar. Donexto no pide la clave de Outlook.",
+  connectMicrosoftCta: "Continuar con Microsoft",
 
   changeMailboxLabel: "Volver a autorizar buzón",
   connectMailboxLabel: "Autorizar buzón",
@@ -138,6 +148,20 @@ export function mailboxPasswordPhrase(
     default:
       return "contraseña de ese correo";
   }
+}
+
+export function signupConfirmNote(email: string): string {
+  const provider = resolveMailboxProviderFromEmail(email);
+  if (provider === "hotmail") {
+    return ACCOUNT_VS_MAILBOX.signupConfirmMicrosoftNote;
+  }
+  if (provider === "gmail") {
+    return ACCOUNT_VS_MAILBOX.signupConfirmGmailNote;
+  }
+  if (provider === "yahoo") {
+    return ACCOUNT_VS_MAILBOX.signupConfirmYahooNote;
+  }
+  return ACCOUNT_VS_MAILBOX.signupConfirmOtherNote;
 }
 
 export function authorizeMailboxTitle(email: string): string {

@@ -120,6 +120,21 @@ class Settings:
             False,
         )
     )
+    azure_client_id: str = field(
+        default_factory=lambda: get_environment_variable(
+            "AZURE_CLIENT_ID"
+        )
+    )
+    azure_client_secret: str = field(
+        default_factory=lambda: get_environment_variable(
+            "AZURE_CLIENT_SECRET"
+        )
+    )
+    azure_redirect_uri: str = field(
+        default_factory=lambda: get_environment_variable(
+            "AZURE_REDIRECT_URI"
+        )
+    )
 
     frontend_origins: list[str] = field(
         default_factory=lambda: get_list_environment_variable(
