@@ -48,16 +48,16 @@ def resolve_login(payload: LoginResolveRequest) -> dict[str, object]:
     if exists:
         nxt = next_for_existing(verdict.provider)
         message = ""
+    elif verdict.status == "active":
+        nxt = "signup"
+        message = ""
     elif verdict.status == "unsupported":
         nxt = "unsupported"
         message = verdict.message
         notified = notify_unsupported_domain_async(email, verdict.domain)
-    elif verdict.status in {"typo", "missing", "pending_review"}:
+    else:
         nxt = verdict.next_when_unknown
         message = verdict.message
-    else:
-        nxt = "signup"
-        message = ""
 
     return {
         "status": "ok",

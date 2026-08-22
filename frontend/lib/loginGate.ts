@@ -25,8 +25,14 @@ export function gateNextAfterResolve(
   if (exists) {
     return "provider_login";
   }
-  if (intent === "signup") {
+  if (next === "signup" && intent === "signup") {
     return "confirm_signup";
   }
-  return "stay_subscribe";
+  if (next === "signup" && intent === "login") {
+    return "stay_subscribe";
+  }
+  if (intent === "signup" && (next === undefined || next === "")) {
+    return "confirm_signup";
+  }
+  return "fix_domain";
 }

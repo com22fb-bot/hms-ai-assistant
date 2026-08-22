@@ -142,7 +142,8 @@ def suggest_known_domain(domain: str) -> str | None:
     if mapped:
         return mapped
 
-    # hotmail.cox / gmail.con: el TLD no es un servicio de correo.
+    # hotmail.cox / hotmailer.cox: el TLD no es un servicio; se compara el nombre.
+    name = clean
     if "." in clean:
         name, _, tld = clean.rpartition(".")
         if tld in {"cox", "con", "cm", "comm", "cpm"} and name:
@@ -153,18 +154,23 @@ def suggest_known_domain(domain: str) -> str | None:
     best: str | None = None
     best_distance = 99
     for candidate in KNOWN_MAIL_DOMAINS:
-        distance = edit_distance(clean, candidate)
+        cand_name = candidate.split(".")[0]
+        distance = min(
+            edit_distance(clean, candidate),
+            edit_distance(name, cand_name),
+        )
         if distance < best_distance:
             best_distance = distance
             best = candidate
-        elif distance == best_distance and best and len(candidate) > len(best):
-            best = candidate
+        elif distance == best_distance and best:
+            prefer_com = candidate.endswith(".com") and not best.endswith(".com")
+            shorter = len(candidate) < len(best)
+            if prefer_com or (shorter and candidate.endswith(".com") == best.endswith(".com")):
+                best = candidate
 
     if best is None:
         return None
-    if best_distance == 1:
-        return best
-    if best_distance == 2 and len(clean) >= 8 and len(best) >= 8:
+    if best_distance <= 2 and len(name) >= 5:
         return best
     return None
 

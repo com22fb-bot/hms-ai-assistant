@@ -72,6 +72,18 @@ class LoginResolveTests(unittest.TestCase):
         self.assertEqual(verdict.status, "typo")
         self.assertEqual(verdict.suggested_email, "donexto@hotmail.com")
 
+    def test_hotmailer_cox_is_typo_not_subscribe(self) -> None:
+        self.assertEqual(suggest_known_domain("hotmailer.cox"), "hotmail.com")
+        with patch(
+            "app.api.login_resolve.auth_user_exists", return_value=False
+        ):
+            result = resolve_login(
+                LoginResolveRequest(email="donexto@hotmailer.cox")
+            )
+        self.assertEqual(result["next"], "fix_domain")
+        self.assertEqual(result["suggested_email"], "donexto@hotmail.com")
+        self.assertNotEqual(result["next"], "signup")
+
     def test_yahoo_com_mx_existing_goes_to_oauth(self) -> None:
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=True

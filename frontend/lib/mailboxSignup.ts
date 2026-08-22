@@ -74,6 +74,71 @@ export function resolveMailboxProviderFromEmail(
   return "other";
 }
 
+const TYPO_TLDS = new Set(["cox", "con", "cm", "comm", "cpm"]);
+
+function editDistance(left: string, right: string): number {
+  const previous = Array.from({ length: right.length + 1 }, (_, i) => i);
+  for (let i = 0; i < left.length; i += 1) {
+    const current = [i + 1];
+    for (let j = 0; j < right.length; j += 1) {
+      current.push(
+        Math.min(
+          current[j] + 1,
+          previous[j + 1] + 1,
+          previous[j] + (left[i] === right[j] ? 0 : 1),
+        ),
+      );
+    }
+    previous.splice(0, previous.length, ...current);
+  }
+  return previous[right.length];
+}
+
+const KNOWN_DOMAINS = [
+  ...GMAIL_DOMAINS,
+  ...YAHOO_DOMAINS,
+  ...HOTMAIL_DOMAINS,
+  ...APPLE_DOMAINS,
+];
+
+export function suggestKnownMailbox(email: string): string | null {
+  const domain = emailDomain(email);
+  const local = email.trim().toLowerCase().split("@")[0] || "";
+  if (!domain || !local) {
+    return null;
+  }
+  if (KNOWN_DOMAINS.some((root) => domain === root || domain.endsWith(`.${root}`))) {
+    return null;
+  }
+  const name = domain.includes(".") ? domain.slice(0, domain.lastIndexOf(".")) : domain;
+  const tld = domain.includes(".") ? domain.slice(domain.lastIndexOf(".") + 1) : "";
+  if (TYPO_TLDS.has(tld) && KNOWN_DOMAINS.includes(`${name}.com`)) {
+    return `${local}@${name}.com`;
+  }
+  let best: string | null = null;
+  let bestDistance = 99;
+  for (const candidate of KNOWN_DOMAINS) {
+    const candName = candidate.split(".")[0] || candidate;
+    const distance = Math.min(
+      editDistance(domain, candidate),
+      editDistance(name, candName),
+    );
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = candidate;
+    }
+  }
+  if (best && bestDistance <= 2 && name.length >= 5) {
+    return `${local}@${best}`;
+  }
+  return null;
+}
+
+export function isKnownActiveMailbox(email: string): boolean {
+  const provider = resolveMailboxProviderFromEmail(email);
+  return provider === "yahoo" || provider === "hotmail";
+}
+
 export function isValidSignupEmail(email: string): boolean {
   const clean = email.trim().toLowerCase();
   const at = clean.lastIndexOf("@");

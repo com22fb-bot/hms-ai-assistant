@@ -19,6 +19,7 @@ import { gateNextAfterResolve } from "@/lib/loginGate";
 import {
   isValidSignupEmail,
   resolveMailboxProviderFromEmail,
+  suggestKnownMailbox,
   type MailboxSignupProvider,
 } from "@/lib/mailboxSignup";
 
@@ -156,6 +157,24 @@ export function LoginScreen({
     setError(null);
     setMessage(null);
     setSuggestedEmail(null);
+  }
+
+  function blockUnknownMailbox(address: string): boolean {
+    if (resolveMailboxProviderFromEmail(address) !== "other") {
+      return false;
+    }
+    const suggested = suggestKnownMailbox(address);
+    if (!suggested) {
+      return false;
+    }
+    setSuggestedEmail(suggested);
+    setConfirmingSignup(false);
+    setError(
+      `Ese dominio no es un correo activo. ¿Quisiste decir ${suggested}? `
+        + ACCOUNT_VS_MAILBOX.domainFixFallback,
+    );
+    setMessage(null);
+    return true;
   }
 
   async function startOAuth(
@@ -343,7 +362,12 @@ export function LoginScreen({
     }
     const clean = email.trim().toLowerCase();
     if (!isValidSignupEmail(clean)) {
-      setError("Escribe tu correo para continuar.");
+      setError(
+        "Escribe un correo válido, con @ y un dominio real (ejemplo: nombre@hotmail.com).",
+      );
+      return;
+    }
+    if (blockUnknownMailbox(clean)) {
       return;
     }
     if (usePassword) {
@@ -375,7 +399,12 @@ export function LoginScreen({
     }
     const clean = email.trim().toLowerCase();
     if (!isValidSignupEmail(clean)) {
-      setError("Escribe el correo con el que te vas a suscribir.");
+      setError(
+        "Escribe un correo válido, con @ y un dominio real (ejemplo: nombre@hotmail.com).",
+      );
+      return;
+    }
+    if (blockUnknownMailbox(clean)) {
       return;
     }
     setBusy(true);
@@ -429,7 +458,12 @@ export function LoginScreen({
     }
     const clean = email.trim().toLowerCase();
     if (!isValidSignupEmail(clean)) {
-      setError("Escribe el correo con el que te vas a suscribir.");
+      setError(
+        "Escribe un correo válido, con @ y un dominio real (ejemplo: nombre@hotmail.com).",
+      );
+      return;
+    }
+    if (blockUnknownMailbox(clean)) {
       return;
     }
     await resolveAndContinue(clean, "signup");
