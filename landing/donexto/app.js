@@ -207,6 +207,309 @@ const strings = {
     social_title: "Channel",
     foot_tag: "Do Next To…",
   },
+  fr: {
+    nav_video: "Histoire",
+    nav_levels: "Critère",
+    nav_console: "Console",
+    nav_how: "Comment",
+    nav_app: "Ouvrir l’app",
+    kicker: "Attention sur votre courrier",
+    hero_title: "Donexto",
+    hero_tagline: "Do Next To… la prochaine chose qui compte vraiment.",
+    hero_lede:
+      "Il lit Gmail, Yahoo ou Outlook et fait remonter ce qui demande une action. Le bruit promotionnel reste hors couverture. Ce n’est pas une autre boîte.",
+    cta_app: "Entrer dans Donexto",
+    cta_video: "Voir la console",
+    cta_app2: "Essayer l’app",
+    cta_app3: "Ouvrir l’app",
+    cta_mail: "support@donexto.com",
+    trust_1: "Google authentifie sur son site",
+    trust_2: "Yahoo authentifie sur son site",
+    trust_3: "Courrier personnel, pas de bureau",
+    video_title: "Le critère, en 40 secondes",
+    video_lede: "On dit Do-NEX-to. Marque, critère, tableau.",
+    video_caption: "Images de marque. Le clip avec voix sera publié quand il sera prêt.",
+    story_play: "Lecture",
+    story_pause: "Pause",
+    story_prev: "Précédent",
+    story_next: "Suivant",
+    story_vo_toggle: "Script (voix off)",
+    story_vo_full:
+      "Donexto. Do Next To… Attention sur votre courrier personnel. Ce qui demande une action monte ; l’offre attend. Google sur son site ; Yahoo sur le sien ; Outlook chez Microsoft. Vous confirmez, autorisez la lecture et voyez la suite. app.donexto.com",
+    scope_title: "Ce qu’il regarde",
+    scope_lede:
+      "Courrier personnel. Quatre fronts, même poids. Les commandes ne battent pas la famille ; la famille ne bat pas un prélèvement.",
+    scope_1_t: "Argent",
+    scope_1_p: "Prélèvements, banques, factures et échéances qui ne peuvent pas attendre.",
+    scope_2_t: "Sécurité",
+    scope_2_p: "Connexions, codes et alertes de compte. Si quelqu’un entre, cela apparaît ici.",
+    scope_3_t: "Commandes",
+    scope_3_p: "Achats, suivi, livraisons. Le colis, pas l’offre.",
+    scope_4_t: "Famille",
+    scope_4_p: "École, santé et courrier personnel. Même critère qu’un paiement : s’il demande une action, il monte.",
+    levels_title: "Trois rythmes",
+    levels_lede:
+      "Chaque message ne mérite pas une alerte. Le système choisit quand interrompre et quand se taire.",
+    n1_badge: "N1 · Maintenant",
+    n1_title: "Interrompt",
+    n1_p: "S’il faut agir maintenant — un paiement, un colis, un accès, l’école — cela peut sonner sur le téléphone.",
+    n1_hint: "",
+    n2_badge: "N2 · Quand vous pouvez",
+    n2_title: "Résume",
+    n2_p: "Agenda, contacts VIP et alertes que vous avez demandées. Un résumé, pas une poussée.",
+    n2_hint: "",
+    n3_badge: "N3 · En silence",
+    n3_title: "Classe et range",
+    n3_p: "Offres, réseaux et bulletins de masse. Archivés. Jamais en couverture.",
+    n3_hint: "",
+    how_title: "Comment ça se connecte",
+    how_1_t: "Identité",
+    how_1_p:
+      "Yahoo vous emmène sur son site. Outlook/Hotmail, chez Microsoft. Gmail, chez Google. Pas de mot de passe Donexto pour ces boîtes.",
+    how_2_t: "Lecture",
+    how_2_p:
+      "L’autorisation se fait sur le site du fournisseur. Donexto ne demande jamais le mot de passe de la boîte.",
+    how_3_t: "Console",
+    how_3_p: "Vous voyez la priorité classée. La boîte d’origine n’est ni effacée ni réécrite.",
+    console_title: "Console",
+    console_lede:
+      "Trois prototypes du même tableau. Même critère ; accent différent. L’app livre la vue exécutive.",
+    proto_a_k: "Prototype A",
+    proto_a_t: "Priorité",
+    proto_b_k: "Prototype B · dans l’app",
+    proto_b_t: "Exécutif",
+    proto_c_k: "Prototype C",
+    proto_c_t: "Opération",
+    market_title: "Pourquoi pas une autre boîte",
+    market_lede:
+      "La plus grande partie du volume est de l’offre. Donexto est pour le courrier personnel : il fait monter ce qui demande une action et fait taire le reste.",
+    stat1_v: "N1 élevé",
+    stat1_l: "Acceptation des alertes utiles",
+    stat2_v: ">60%",
+    stat2_l: "Volume = offres et bulletins",
+    stat3_v: "Mobile",
+    stat3_l: "Là où le courrier personnel s’ouvre",
+    market_note: "Hypothèses produit, pas de claims publicitaires certifiés.",
+    wait_title: "Commencez avec votre e-mail",
+    wait_lede: "L’app est sur app.donexto.com. Nous écrivons depuis support@donexto.com.",
+    or_wait: "Ou laissez un message",
+    label_name: "Nom",
+    label_email: "E-mail",
+    label_country: "Pays",
+    ph_name: "Alex",
+    ph_email: "vous@email.com",
+    opt_us: "États-Unis",
+    opt_mx: "Mexique",
+    opt_other: "Autre",
+    btn_join: "Envoyer",
+    form_note: "Ouvre votre client mail vers support@donexto.com. Nous ne vendons pas de listes.",
+    form_ok: "Presque prêt : envoyez l’e-mail qui s’est ouvert.",
+    form_err: "Saisissez un e-mail valide.",
+    social_title: "Canal",
+    foot_tag: "Do Next To…",
+  },
+  it: {
+    nav_video: "Storia",
+    nav_levels: "Criterio",
+    nav_console: "Console",
+    nav_how: "Come",
+    nav_app: "Apri app",
+    kicker: "Attenzione sulla tua posta",
+    hero_title: "Donexto",
+    hero_tagline: "Do Next To… la prossima cosa che conta davvero.",
+    hero_lede:
+      "Legge Gmail, Yahoo o Outlook e porta in alto ciò che chiede azione. Il rumore promozionale resta fuori copertina. Non è un’altra casella.",
+    cta_app: "Entra in Donexto",
+    cta_video: "Vedi la console",
+    cta_app2: "Prova l’app",
+    cta_app3: "Apri l’app",
+    cta_mail: "support@donexto.com",
+    trust_1: "Google autentica sul proprio sito",
+    trust_2: "Yahoo autentica sul proprio sito",
+    trust_3: "Posta personale, non d’ufficio",
+    video_title: "Il criterio, in 40 secondi",
+    video_lede: "Si dice Do-NEX-to. Marca, criterio, cruscotto.",
+    video_caption: "Immagini di marca. Il clip con voce si pubblica quando è pronto.",
+    story_play: "Riproduci",
+    story_pause: "Pausa",
+    story_prev: "Indietro",
+    story_next: "Avanti",
+    story_vo_toggle: "Copione (voce)",
+    story_vo_full:
+      "Donexto. Do Next To… Attenzione sulla posta personale. Ciò che chiede azione sale; l’offerta aspetta. Google sul suo sito; Yahoo sul suo; Outlook su Microsoft. Confermi, autorizzi la lettura e vedi cosa fare. app.donexto.com",
+    scope_title: "Cosa guarda",
+    scope_lede:
+      "Posta personale. Quattro fronti, stesso peso. Gli ordini non battono la famiglia; la famiglia non batte un addebito.",
+    scope_1_t: "Denaro",
+    scope_1_p: "Addebiti, banche, fatture e scadenze che non possono aspettare.",
+    scope_2_t: "Sicurezza",
+    scope_2_p: "Accessi, codici e avvisi di account. Se qualcuno entra, compare qui.",
+    scope_3_t: "Ordini",
+    scope_3_p: "Acquisti, tracciamento, consegne. Il pacco, non l’offerta.",
+    scope_4_t: "Famiglia",
+    scope_4_p: "Scuola, salute e posta personale. Stesso criterio di un pagamento: se chiede azione, sale.",
+    levels_title: "Tre ritmi",
+    levels_lede:
+      "Non ogni messaggio merita un avviso. Il sistema sceglie quando interrompere e quando stare zitto.",
+    n1_badge: "N1 · Ora",
+    n1_title: "Interrompe",
+    n1_p: "Se serve agire ora — un pagamento, un pacco, un accesso, la scuola — può suonare sul telefono.",
+    n1_hint: "",
+    n2_badge: "N2 · Quando puoi",
+    n2_title: "Riassume",
+    n2_p: "Agenda, contatti VIP e avvisi che hai chiesto. Un riepilogo, non una spinta.",
+    n2_hint: "",
+    n3_badge: "N3 · In silenzio",
+    n3_title: "Classifica e archivia",
+    n3_p: "Offerte, social e newsletter di massa. Archiviati. Mai in copertina.",
+    n3_hint: "",
+    how_title: "Come si collega",
+    how_1_t: "Identità",
+    how_1_p:
+      "Yahoo ti porta sul suo sito. Outlook/Hotmail, su Microsoft. Gmail, su Google. Niente password Donexto per queste caselle.",
+    how_2_t: "Lettura",
+    how_2_p:
+      "L’autorizzazione avviene sul sito del fornitore. Donexto non chiede mai la password della casella.",
+    how_3_t: "Console",
+    how_3_p: "Vedi la priorità classificata. La casella originale non si cancella né si riscrive.",
+    console_title: "Console",
+    console_lede:
+      "Tre prototipi dello stesso cruscotto. Stesso criterio; accento diverso. L’app spedisce la vista esecutiva.",
+    proto_a_k: "Prototipo A",
+    proto_a_t: "Priorità",
+    proto_b_k: "Prototipo B · nell’app",
+    proto_b_t: "Esecutivo",
+    proto_c_k: "Prototipo C",
+    proto_c_t: "Operazione",
+    market_title: "Perché non un’altra casella",
+    market_lede:
+      "Gran parte del volume è offerta. Donexto è per la posta personale: alza ciò che chiede azione e zittisce il resto.",
+    stat1_v: "N1 alto",
+    stat1_l: "Accettazione di avvisi utili",
+    stat2_v: ">60%",
+    stat2_l: "Volume = offerte e newsletter",
+    stat3_v: "Mobile",
+    stat3_l: "Dove si apre la posta personale",
+    market_note: "Ipotesi di prodotto, non claim pubblicitari certificati.",
+    wait_title: "Inizia con la tua email",
+    wait_lede: "L’app è su app.donexto.com. Scriviamo da support@donexto.com.",
+    or_wait: "Oppure lascia un messaggio",
+    label_name: "Nome",
+    label_email: "Email",
+    label_country: "Paese",
+    ph_name: "Alex",
+    ph_email: "tu@email.com",
+    opt_us: "Stati Uniti",
+    opt_mx: "Messico",
+    opt_other: "Altro",
+    btn_join: "Invia",
+    form_note: "Apre il client di posta verso support@donexto.com. Non vendiamo liste.",
+    form_ok: "Quasi fatto: invia l’email appena aperta.",
+    form_err: "Inserisci un’email valida.",
+    social_title: "Canale",
+    foot_tag: "Do Next To…",
+  },
+  pt: {
+    nav_video: "História",
+    nav_levels: "Critério",
+    nav_console: "Consola",
+    nav_how: "Como",
+    nav_app: "Abrir app",
+    kicker: "Atenção sobre o seu correio",
+    hero_title: "Donexto",
+    hero_tagline: "Do Next To… o que segue e importa.",
+    hero_lede:
+      "Lê Gmail, Yahoo ou Outlook e sobe o que pede ação. O ruído promocional fica fora da capa. Não é outra caixa.",
+    cta_app: "Entrar no Donexto",
+    cta_video: "Ver a consola",
+    cta_app2: "Provar a app",
+    cta_app3: "Abrir a app",
+    cta_mail: "support@donexto.com",
+    trust_1: "O Google autentica no próprio site",
+    trust_2: "A Yahoo autentica no próprio site",
+    trust_3: "Correio pessoal, não de escritório",
+    video_title: "O critério, em 40 segundos",
+    video_lede: "Diz-se Do-NEX-to. Marca, critério e quadro.",
+    video_caption: "Imagens de marca. O clipe com voz publica-se quando estiver pronto.",
+    story_play: "Reproduzir",
+    story_pause: "Pausar",
+    story_prev: "Anterior",
+    story_next: "Seguinte",
+    story_vo_toggle: "Guião (voz off)",
+    story_vo_full:
+      "Donexto. Do Next To… Atenção sobre o correio pessoal. O que pede ação sobe; a oferta espera. Google no seu site; Yahoo no seu; Outlook na Microsoft. Confirma, autoriza a leitura e vê o que segue. app.donexto.com",
+    scope_title: "O que olha",
+    scope_lede:
+      "Correio pessoal. Quatro frentes, o mesmo peso. Encomendas não ganham à família; família não ganha a um cargo.",
+    scope_1_t: "Dinheiro",
+    scope_1_p: "Cargos, bancos, faturas e prazos que não podem esperar.",
+    scope_2_t: "Segurança",
+    scope_2_p: "Acessos, códigos e avisos de conta. Se alguém entra, aparece aqui.",
+    scope_3_t: "Encomendas",
+    scope_3_p: "Compras, rastreio, entregas. O pacote, não a oferta.",
+    scope_4_t: "Família",
+    scope_4_p: "Escola, saúde e correio pessoal. O mesmo critério de um pagamento: se pede ação, sobe.",
+    levels_title: "Três ritmos",
+    levels_lede:
+      "Nem cada mensagem merece um aviso. O sistema decide quando interromper e quando calar.",
+    n1_badge: "N1 · Agora",
+    n1_title: "Interrompe",
+    n1_p: "Se pede ação agora — um pagamento, um pacote, um acesso, a escola — pode soar no telemóvel.",
+    n1_hint: "",
+    n2_badge: "N2 · Quando puder",
+    n2_title: "Resume",
+    n2_p: "Agenda, contactos VIP e avisos que pediu. Um resumo, não um empurrão.",
+    n2_hint: "",
+    n3_badge: "N3 · Em silêncio",
+    n3_title: "Classifica e guarda",
+    n3_p: "Ofertas, redes e boletins em massa. Arquivados. Nunca na capa.",
+    n3_hint: "",
+    how_title: "Como se liga",
+    how_1_t: "Identidade",
+    how_1_p:
+      "A Yahoo leva-o ao seu site. Outlook/Hotmail, à Microsoft. Gmail, ao Google. Sem palavra-passe Donexto para essas caixas.",
+    how_2_t: "Leitura",
+    how_2_p:
+      "A autorização é no site do fornecedor. O Donexto nunca pede a palavra-passe da caixa.",
+    how_3_t: "Consola",
+    how_3_p: "Vê a prioridade classificada. A caixa original não se apaga nem se reescreve.",
+    console_title: "Consola",
+    console_lede:
+      "Três protótipos do mesmo quadro. O mesmo critério; sotaque diferente. A app envia a vista executiva.",
+    proto_a_k: "Protótipo A",
+    proto_a_t: "Prioridade",
+    proto_b_k: "Protótipo B · na app",
+    proto_b_t: "Executivo",
+    proto_c_k: "Protótipo C",
+    proto_c_t: "Operação",
+    market_title: "Por que não outra caixa",
+    market_lede:
+      "A maior parte do volume é oferta. O Donexto é para o correio pessoal: sobe o que pede ação e cala o resto.",
+    stat1_v: "N1 alto",
+    stat1_l: "Aceitação de avisos úteis",
+    stat2_v: ">60%",
+    stat2_l: "Volume = ofertas e boletins",
+    stat3_v: "Telemóvel",
+    stat3_l: "Onde se abre o correio pessoal",
+    market_note: "Hipótese de produto, não claims publicitários certificados.",
+    wait_title: "Comece com o seu correio",
+    wait_lede: "A app está em app.donexto.com. Escrevemos de support@donexto.com.",
+    or_wait: "Ou deixe uma mensagem",
+    label_name: "Nome",
+    label_email: "Correio",
+    label_country: "País",
+    ph_name: "Alex",
+    ph_email: "voce@email.com",
+    opt_us: "Estados Unidos",
+    opt_mx: "México",
+    opt_other: "Outro",
+    btn_join: "Enviar",
+    form_note: "Abre o cliente de correio para support@donexto.com. Não vendemos listas.",
+    form_ok: "Quase: envie o correio que se abriu.",
+    form_err: "Escreva um correio válido.",
+    social_title: "Canal",
+    foot_tag: "Do Next To…",
+  },
 };
 
 const storyShots = {
@@ -348,7 +651,41 @@ const storyShots = {
   ],
 };
 
-let lang = "es";
+const LANGUAGE_STORAGE_KEY = "donexto-language";
+const APP_LANGUAGES = ["es", "en", "fr", "it", "pt"];
+
+function isAppLanguage(value) {
+  return APP_LANGUAGES.includes(value);
+}
+
+function readStoredLanguage() {
+  try {
+    const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+    return isAppLanguage(stored) ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredLanguage(next) {
+  try {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, next);
+  } catch {
+    /* ignore */
+  }
+}
+
+function languageFromBrowser() {
+  const value = (navigator.language || "").toLowerCase();
+  if (value.startsWith("es")) return "es";
+  if (value.startsWith("en")) return "en";
+  if (value.startsWith("fr")) return "fr";
+  if (value.startsWith("it")) return "it";
+  if (value.startsWith("pt")) return "pt";
+  return "es";
+}
+
+let lang = readStoredLanguage() || languageFromBrowser();
 let shotIndex = 0;
 let playing = false;
 let rafId = 0;
@@ -356,7 +693,7 @@ let shotStartedAt = 0;
 let elapsedInShot = 0;
 
 function shots() {
-  return storyShots[lang];
+  return storyShots[lang] || storyShots.en;
 }
 
 function totalDuration() {
@@ -447,7 +784,7 @@ function setPlaying(next) {
 
 function syncPlayButton() {
   const btn = document.getElementById("storyPlay");
-  const dict = strings[lang];
+  const dict = strings[lang] || strings.es;
   if (!btn) return;
   btn.textContent = playing ? dict.story_pause : dict.story_play;
 }
@@ -477,8 +814,9 @@ function applyLang() {
   const wasPlaying = playing;
   if (wasPlaying) setPlaying(false);
 
-  const dict = strings[lang];
-  document.documentElement.lang = lang === "es" ? "es" : "en";
+  writeStoredLanguage(lang);
+  const dict = strings[lang] || strings.es;
+  document.documentElement.lang = lang;
 
   document.querySelectorAll("[data-i18n]").forEach((el) => {
     const key = el.getAttribute("data-i18n");
@@ -491,8 +829,9 @@ function applyLang() {
     if (key && dict[key] != null) el.setAttribute("placeholder", dict[key]);
   });
 
-  const toggle = document.getElementById("langToggle");
-  if (toggle) toggle.textContent = lang === "es" ? "EN" : "ES";
+  document.querySelectorAll("#langStrip .lang").forEach((btn) => {
+    btn.classList.toggle("is-selected", btn.getAttribute("data-lang") === lang);
+  });
 
   document.querySelectorAll('a[href^="mailto"]').forEach((mailBtn) => {
     const isCta =
@@ -514,8 +853,14 @@ function applyLang() {
   syncPlayButton();
 }
 
-document.getElementById("langToggle")?.addEventListener("click", () => {
-  lang = lang === "es" ? "en" : "es";
+document.getElementById("langStrip")?.addEventListener("click", (event) => {
+  const btn = event.target.closest("[data-lang]");
+  const next = btn?.getAttribute("data-lang");
+  if (!isAppLanguage(next) || next === lang) {
+    return;
+  }
+  lang = next;
+  writeStoredLanguage(next);
   applyLang();
 });
 
@@ -545,7 +890,7 @@ document.getElementById("waitForm")?.addEventListener("submit", (event) => {
   event.preventDefault();
   const form = event.currentTarget;
   const status = document.getElementById("formStatus");
-  const dict = strings[lang];
+  const dict = strings[lang] || strings.es;
   const data = new FormData(form);
   const name = String(data.get("name") || "").trim();
   const email = String(data.get("email") || "").trim().toLowerCase();

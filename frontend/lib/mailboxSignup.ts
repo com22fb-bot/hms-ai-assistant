@@ -23,7 +23,7 @@ const YAHOO_DOMAINS = [
   "rocketmail.com",
 ]; // México: @yahoo.com.mx usa el mismo OAuth que @yahoo.com
 
-const HOTMAIL_DOMAINS = [
+export const MICROSOFT_LOGIN_DOMAINS = [
   "hotmail.com",
   "hotmail.es",
   "hotmail.com.mx",
@@ -34,7 +34,9 @@ const HOTMAIL_DOMAINS = [
   "live.com.mx",
   "msn.com",
   "onmicrosoft.com",
-];
+] as const;
+
+const HOTMAIL_DOMAINS = [...MICROSOFT_LOGIN_DOMAINS];
 
 const APPLE_DOMAINS = ["icloud.com", "me.com", "mac.com"];
 

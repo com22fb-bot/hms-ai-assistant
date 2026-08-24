@@ -51,7 +51,25 @@ class MicrosoftOAuthTests(unittest.TestCase):
         self.assertTrue(is_microsoft_mail_address("ana@hotmail.com.mx"))
         self.assertTrue(is_microsoft_mail_address("ana@outlook.com"))
         self.assertTrue(is_microsoft_mail_address("ana@outlook.com.mx"))
-        self.assertTrue(is_microsoft_mail_address("ana@live.com.mx"))
+        self.assertTrue(is_microsoft_mail_address("ana@msn.com"))
+        self.assertTrue(is_microsoft_mail_address("ana@hotmail.es"))
+        from app.services.microsoft_domains import MICROSOFT_MAIL_DOMAINS
+
+        self.assertEqual(
+            MICROSOFT_MAIL_DOMAINS,
+            (
+                "hotmail.com",
+                "hotmail.es",
+                "hotmail.com.mx",
+                "outlook.com",
+                "outlook.es",
+                "outlook.com.mx",
+                "live.com",
+                "live.com.mx",
+                "msn.com",
+                "onmicrosoft.com",
+            ),
+        )
         self.assertTrue(is_microsoft_mail_address("ana@contoso.onmicrosoft.com"))
         self.assertFalse(is_microsoft_mail_address("ana@empresa.mx"))
         self.assertEqual(resolve_mailbox_provider("x@outlook.com.mx"), "hotmail")

@@ -30,7 +30,7 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Outfit:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=peso" />
+    <link rel="stylesheet" href="./styles.css?v=lang5" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   </head>
   <body>
@@ -54,9 +54,13 @@
         <a class="nav-link subtle" href="#criterio" data-i18n="nav_levels">Criterio</a>
         <a class="nav-link subtle" href="#consola" data-i18n="nav_console">Consola</a>
         <a class="nav-link subtle" href="#how" data-i18n="nav_how">Cómo</a>
-        <button type="button" class="lang" id="langToggle" aria-label="Language">
-          EN
-        </button>
+        <div class="lang-strip" id="langStrip" role="group" aria-label="Idioma">
+          <button type="button" class="lang" data-lang="es">Español</button>
+          <button type="button" class="lang" data-lang="en">English</button>
+          <button type="button" class="lang" data-lang="fr">Français</button>
+          <button type="button" class="lang" data-lang="it">Italiano</button>
+          <button type="button" class="lang" data-lang="pt">Português</button>
+        </div>
         <a
           class="nav-link app"
           href="https://app.donexto.com"
@@ -511,6 +515,6 @@
       </p>
     </footer>
 
-    <script src="./app.js?v=peso" defer></script>
+    <script src="./app.js?v=lang5" defer></script>
   </body>
 </html>

@@ -15,6 +15,7 @@ export function LanguageStrip({ className }: { className?: string }) {
       className={["dx-lang-strip", className].filter(Boolean).join(" ")}
       role="group"
       aria-label={t("language")}
+      data-order="es-en-fr-it-pt"
     >
       {LANGUAGE_OPTIONS.map((option) => (
         <button

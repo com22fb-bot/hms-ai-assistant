@@ -54,6 +54,7 @@ function getSnapshot(): AppLanguage {
     hydrated = true;
     currentLanguage =
       readStoredLanguage() || languageFromBrowser(navigator.language);
+    writeStoredLanguage(currentLanguage);
     if (typeof document !== "undefined") {
       document.documentElement.lang = currentLanguage;
     }

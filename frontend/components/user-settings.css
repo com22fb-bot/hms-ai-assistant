@@ -195,6 +195,24 @@
   margin: 0.75rem 0 0;
 }
 
+.dx-lang-strip--app {
+  justify-content: flex-start;
+  margin: 0.35rem 0.85rem 0.55rem;
+}
+
+.dx-lang-strip--topbar {
+  display: none;
+}
+
+@media (max-width: 960px) {
+  .dx-lang-strip--topbar {
+    display: flex;
+    justify-content: flex-start;
+    margin: 0 0 0.45rem;
+    padding: 0 0.15rem;
+  }
+}
+
 .dx-lang-strip__btn {
   min-height: 2rem;
   padding: 0 0.65rem;

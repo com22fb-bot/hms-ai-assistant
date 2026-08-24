@@ -24,7 +24,7 @@ export const ACCOUNT_VS_MAILBOX = {
   signupConfirmYahooNote:
     "Al confirmar, Donexto usará este correo. Después firmas en el sitio de Yahoo.",
   signupConfirmMicrosoftNote:
-    "Al confirmar, Donexto usará este correo. Después firmas en el sitio de Microsoft.",
+    "Al confirmar, Donexto usará este correo. Después firmas en el sitio de Microsoft. No te enviamos un correo de confirmación aparte: Microsoft ya identifica la cuenta.",
   signupConfirmGmailNote:
     "Al confirmar, Donexto usará este correo. Después Google te identifica.",
   signupConfirmOtherNote:
@@ -33,6 +33,7 @@ export const ACCOUNT_VS_MAILBOX = {
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   servicesActiveLabel: "Servicios en Donexto",
   servicesActiveBadge: "Activos",
+  servicesMicrosoftTitle: "Outlook, Hotmail, Live, MSN y Microsoft 365",
   servicesPendingLabel: "En revisión",
   useSuggestedEmail: "Usar este correo",
   domainFixFallback:
