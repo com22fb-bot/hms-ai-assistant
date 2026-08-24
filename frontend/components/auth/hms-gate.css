@@ -517,11 +517,40 @@ body:has(.dx-auth) {
   gap: 0.4rem;
 }
 
+.dx-auth__service--microsoft {
+  align-items: flex-start;
+  justify-content: flex-start;
+  min-height: auto;
+  padding: 0.55rem 0.7rem;
+  text-align: left;
+}
+
+.dx-auth__service--microsoft span {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.dx-auth__service--microsoft strong {
+  font-size: 0.82rem;
+  font-weight: 750;
+  color: #e8f4f6;
+}
+
+.dx-auth__service--microsoft small {
+  display: block;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: #8aa0a8;
+  word-break: break-word;
+}
+
 .dx-auth__service {
   min-height: 2.35rem;
+  padding: 0.45rem 0.7rem;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.5rem;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);

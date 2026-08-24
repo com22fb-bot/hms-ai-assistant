@@ -44,7 +44,7 @@ import { MailCategoriesPanel } from "@/components/MailCategoriesPanel";
 import "@/components/mail-categories.css";
 import { MailInbox } from "@/components/MailInbox";
 import { PushNotificationsPanel } from "@/components/PushNotificationsPanel";
-import { UserSettingsPanel } from "@/components/UserSettingsPanel";
+import { LanguageStrip, UserSettingsPanel } from "@/components/UserSettingsPanel";
 import { LanguageProvider, useLanguage } from "@/lib/i18n/LanguageProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
 import "@/components/mail-inbox.css";
@@ -1076,6 +1076,8 @@ function Dashboard({
           </button>
         </div>
 
+        <LanguageStrip className="dx-lang-strip--app" />
+
         <nav className="app-navigation">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
@@ -1159,7 +1161,7 @@ function Dashboard({
             onClick={onLogout}
           >
             <LogOut size={18} />
-            Cerrar sesión
+            {t("profileSignOut")}
           </button>
         </div>
       </aside>
@@ -1171,7 +1173,7 @@ function Dashboard({
               type="button"
               className="app-mobile-menu"
               onClick={() => setMobileOpen(true)}
-              aria-label="Abrir menú"
+              aria-label={t("navMenu")}
             >
               <Menu size={22} />
             </button>
@@ -1181,7 +1183,7 @@ function Dashboard({
               <input
                 type="search"
                 value={search}
-                placeholder="Buscar correos, personas o avisos…"
+                placeholder={t("searchPlaceholder")}
                 onChange={(event) =>
                   setSearch(event.target.value)
                 }
@@ -1248,6 +1250,8 @@ function Dashboard({
               </div>
             </div>
           </div>
+
+          <LanguageStrip className="dx-lang-strip--topbar" />
 
           <div className="app-mobile-status">
             <div

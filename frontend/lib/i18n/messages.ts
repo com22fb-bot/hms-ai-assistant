@@ -21,7 +21,8 @@ export type MessageKey =
   | "profileSettings"
   | "profileSignOut"
   | "closeMenu"
-  | "language";
+  | "language"
+  | "searchPlaceholder";
 
 const es: Record<MessageKey, string> = {
   settingsTitle: "Ajustes",
@@ -46,6 +47,7 @@ const es: Record<MessageKey, string> = {
   profileSignOut: "Cerrar sesión",
   closeMenu: "Cerrar menú",
   language: "Idioma",
+  searchPlaceholder: "Buscar correos, personas o avisos…",
 };
 
 const en: Record<MessageKey, string> = {
@@ -71,6 +73,7 @@ const en: Record<MessageKey, string> = {
   profileSignOut: "Sign out",
   closeMenu: "Close menu",
   language: "Language",
+  searchPlaceholder: "Search mail, people, or alerts…",
 };
 
 const fr: Record<MessageKey, string> = {
@@ -96,6 +99,7 @@ const fr: Record<MessageKey, string> = {
   profileSignOut: "Se déconnecter",
   closeMenu: "Fermer le menu",
   language: "Langue",
+  searchPlaceholder: "Rechercher courrier, personnes ou alertes…",
 };
 
 const it: Record<MessageKey, string> = {
@@ -121,6 +125,7 @@ const it: Record<MessageKey, string> = {
   profileSignOut: "Esci",
   closeMenu: "Chiudi menu",
   language: "Lingua",
+  searchPlaceholder: "Cerca posta, persone o avvisi…",
 };
 
 const pt: Record<MessageKey, string> = {
@@ -146,6 +151,7 @@ const pt: Record<MessageKey, string> = {
   profileSignOut: "Terminar sessão",
   closeMenu: "Fechar menu",
   language: "Idioma",
+  searchPlaceholder: "Procurar correio, pessoas ou avisos…",
 };
 
 export const MESSAGES: Record<AppLanguage, Record<MessageKey, string>> = {

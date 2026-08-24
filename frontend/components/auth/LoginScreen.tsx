@@ -12,9 +12,10 @@ import {
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { LanguageStrip } from "@/components/UserSettingsPanel";
-import { ACCOUNT_VS_MAILBOX, signupConfirmNote } from "@/lib/accountVsMailbox";
-import { DONEXTO_QUALITY } from "@/lib/donextoQuality";
+import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import type { AuthOAuthProvider, YahooAuthIntent } from "@/hooks/useAppAuth";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { loginText } from "@/lib/i18n/loginMessages";
 import { gateNextAfterResolve } from "@/lib/loginGate";
 import {
   isValidSignupEmail,
@@ -125,6 +126,23 @@ export function LoginScreen({
   const [suggestedEmail, setSuggestedEmail] = useState<string | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+  const { language } = useLanguage();
+  const L = (key: Parameters<typeof loginText>[1]) => loginText(language, key);
+  const typedProvider = resolveMailboxProviderFromEmail(email);
+  const loginHelper =
+    typedProvider === "hotmail"
+      ? L("helperMicrosoft")
+      : typedProvider === "yahoo"
+        ? L("helperYahoo")
+        : L("helper");
+  const confirmNote =
+    typedProvider === "hotmail"
+      ? L("confirmMicrosoft")
+      : typedProvider === "gmail"
+        ? L("confirmGmail")
+        : typedProvider === "yahoo"
+          ? L("confirmYahoo")
+          : L("confirmOther");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -132,7 +150,7 @@ export function LoginScreen({
     if (flag === "microsoft_error") {
       setError(
         params.get("reason")
-        || "Microsoft no cerró el permiso. Inténtalo otra vez en una ventana privada.",
+        || L("microsoftOpenFailed"),
       );
     }
     if (flag === "signup") {
@@ -170,8 +188,7 @@ export function LoginScreen({
     setSuggestedEmail(suggested);
     setConfirmingSignup(false);
     setError(
-      `Ese dominio no es un correo activo. ¿Quisiste decir ${suggested}? `
-        + ACCOUNT_VS_MAILBOX.domainFixFallback,
+      `${L("wantedToSay")} ${suggested}? ${ACCOUNT_VS_MAILBOX.domainFixFallback}`,
     );
     setMessage(null);
     return true;
@@ -198,12 +215,12 @@ export function LoginScreen({
     } catch (requestError) {
       const fallback =
         provider === "azure"
-          ? "No fue posible abrir el inicio de sesión de Microsoft."
+          ? L("microsoftOpenFailed")
           : provider === "apple"
-            ? "No fue posible abrir el inicio de sesión de Apple."
+            ? L("appleOpenFailed")
             : provider === "yahoo"
-              ? "No fue posible abrir Yahoo."
-              : "No fue posible abrir el inicio de sesión de Google.";
+              ? L("yahooOpenFailed")
+              : L("googleOpenFailed");
       setError(
         requestError instanceof Error ? requestError.message : fallback,
       );
@@ -284,7 +301,7 @@ export function LoginScreen({
         throw new Error(
           typeof detail === "string"
             ? detail
-            : detail?.message || "No fue posible revisar ese correo.",
+            : detail?.message || L("reviewFailed"),
         );
       }
       const exists = Boolean(payload.exists) && payload.next !== "signup";
@@ -302,7 +319,7 @@ export function LoginScreen({
         setOauthBusy(null);
         setConfirmingSignup(false);
         setMessage(null);
-        setError("Ese correo no tiene cuenta Donexto. Pulsa Suscribirse.");
+        setError(L("noAccount"));
         return;
       }
       if (gate === "confirm_signup") {
@@ -333,9 +350,7 @@ export function LoginScreen({
         }
         stopWithDomain(
           {
-            message:
-              "Ese correo no usa un servicio activo en Donexto. "
-              + ACCOUNT_VS_MAILBOX.domainFixFallback,
+            message: L("noActiveService"),
           },
           true,
         );
@@ -343,12 +358,12 @@ export function LoginScreen({
       }
       setBusy(false);
       setOauthBusy(null);
-      setError("Ese correo no tiene cuenta Donexto. Pulsa Suscribirse.");
+      setError(L("noAccount"));
     } catch (requestError) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "No fue posible continuar con ese correo.",
+          : L("continueFailed"),
       );
       setBusy(false);
       setOauthBusy(null);
@@ -363,7 +378,7 @@ export function LoginScreen({
     const clean = email.trim().toLowerCase();
     if (!isValidSignupEmail(clean)) {
       setError(
-        "Escribe un correo válido, con @ y un dominio real (ejemplo: nombre@hotmail.com).",
+        L("invalidEmail"),
       );
       return;
     }
@@ -372,7 +387,7 @@ export function LoginScreen({
     }
     if (usePassword) {
       if (password.length < 8) {
-        setError("La contraseña de Donexto usa al menos 8 caracteres.");
+        setError(L("passwordMin"));
         return;
       }
       setBusy(true);
@@ -383,7 +398,7 @@ export function LoginScreen({
         setError(
           requestError instanceof Error
             ? requestError.message
-            : "No fue posible iniciar sesión en Donexto.",
+            : L("donextoSigninFailed"),
         );
       } finally {
         setBusy(false);
@@ -400,7 +415,7 @@ export function LoginScreen({
     const clean = email.trim().toLowerCase();
     if (!isValidSignupEmail(clean)) {
       setError(
-        "Escribe un correo válido, con @ y un dominio real (ejemplo: nombre@hotmail.com).",
+        L("invalidEmail"),
       );
       return;
     }
@@ -422,7 +437,7 @@ export function LoginScreen({
         throw new Error(
           typeof detail === "string"
             ? detail
-            : detail?.message || "No fue posible revisar ese correo.",
+            : detail?.message || L("reviewFailed"),
         );
       }
       const exists = Boolean(payload.exists) && payload.next !== "signup";
@@ -445,7 +460,7 @@ export function LoginScreen({
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "No fue posible confirmar ese correo.",
+          : L("confirmFailed"),
       );
       setBusy(false);
       setOauthBusy(null);
@@ -459,7 +474,7 @@ export function LoginScreen({
     const clean = email.trim().toLowerCase();
     if (!isValidSignupEmail(clean)) {
       setError(
-        "Escribe un correo válido, con @ y un dominio real (ejemplo: nombre@hotmail.com).",
+        L("invalidEmail"),
       );
       return;
     }
@@ -472,19 +487,19 @@ export function LoginScreen({
   async function recoverPassword() {
     const clean = email.trim().toLowerCase();
     if (!isValidSignupEmail(clean)) {
-      setError("Escribe primero el correo de tu cuenta Donexto.");
+      setError(L("recoverNeedEmail"));
       return;
     }
     setBusy(true);
     resetAlerts();
     try {
       await onResetPassword(clean);
-      setMessage("Enviamos un enlace para restablecer la contraseña de Donexto.");
+      setMessage(L("resetSent"));
     } catch (requestError) {
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "No fue posible solicitar el restablecimiento.",
+          : L("recoverNeedEmail"),
       );
     } finally {
       setBusy(false);
@@ -505,9 +520,7 @@ export function LoginScreen({
             decoding="async"
           />
           <h1 className="dx-auth__sr">Donexto</h1>
-          <p className="dx-auth__promise">
-            {`${DONEXTO_QUALITY.whatItDoes}\n${DONEXTO_QUALITY.promise}`}
-          </p>
+          <p className="dx-auth__promise">{L("promise")}</p>
         </div>
       </aside>
 
@@ -515,14 +528,10 @@ export function LoginScreen({
         <div className="dx-auth__card" aria-labelledby="dx-auth-title">
           <header className="dx-auth__heading">
             <h2 id="dx-auth-title" className="dx-auth__title">
-              {confirmingSignup
-                ? ACCOUNT_VS_MAILBOX.signupConfirmTitle
-                : ACCOUNT_VS_MAILBOX.loginTitleSignIn}
+              {confirmingSignup ? L("confirmTitle") : L("title")}
             </h2>
             <p className="dx-auth__slogan">
-              {confirmingSignup
-                ? ACCOUNT_VS_MAILBOX.signupConfirmHelper
-                : ACCOUNT_VS_MAILBOX.loginHelper}
+              {confirmingSignup ? L("confirmHelper") : loginHelper}
             </p>
           </header>
 
@@ -543,7 +552,7 @@ export function LoginScreen({
                 resetAlerts();
               }}
             >
-              {ACCOUNT_VS_MAILBOX.useSuggestedEmail}: {suggestedEmail}
+              {L("useSuggested")}: {suggestedEmail}
             </button>
           ) : null}
           {message ? (
@@ -569,7 +578,9 @@ export function LoginScreen({
               <p className="dx-auth__confirm-email">{email.trim().toLowerCase()}</p>
             ) : null}
             <label className="dx-auth__field">
-              <span>{confirmingSignup ? "Confirma o corrige el correo" : "Correo"}</span>
+              <span>
+                {confirmingSignup ? L("confirmEmailLabel") : L("emailLabel")}
+              </span>
               <div className="dx-auth__control">
                 <Mail size={18} aria-hidden />
                 <input
@@ -582,7 +593,7 @@ export function LoginScreen({
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
-                  placeholder="tu@correo.com"
+                  placeholder={L("emailPlaceholder")}
                   disabled={busy}
                   onChange={(event) => setEmail(event.target.value)}
                 />
@@ -591,7 +602,7 @@ export function LoginScreen({
 
             {usePassword ? (
               <label className="dx-auth__field">
-                <span>{ACCOUNT_VS_MAILBOX.loginPasswordLabel}</span>
+                <span>{L("passwordLabel")}</span>
                 <div className="dx-auth__control">
                   <KeyRound size={18} aria-hidden />
                   <input
@@ -602,7 +613,7 @@ export function LoginScreen({
                     autoComplete="current-password"
                     autoCapitalize="none"
                     spellCheck={false}
-                    placeholder="Solo si ya la definiste aquí"
+                    placeholder={L("passwordPlaceholder")}
                     disabled={busy}
                     onChange={(event) => setPassword(event.target.value)}
                   />
@@ -610,7 +621,7 @@ export function LoginScreen({
                     type="button"
                     className="dx-auth__eye"
                     aria-label={
-                      showPassword ? "Ocultar contraseña" : "Mostrar contraseña"
+                      showPassword ? L("hidePassword") : L("showPassword")
                     }
                     onClick={() => setShowPassword((value) => !value)}
                   >
@@ -622,17 +633,15 @@ export function LoginScreen({
 
             {confirmingSignup ? (
               <>
-                <p className="dx-auth__signup-copy">
-                  {signupConfirmNote(email)}
-                </p>
+                <p className="dx-auth__signup-copy">{confirmNote}</p>
                 <button type="submit" className="dx-auth__submit" disabled={busy}>
                   {busy ? (
                     <>
                       <LoaderCircle className="dx-auth__spin" size={18} />
-                      Confirmando…
+                      {L("confirming")}
                     </>
                   ) : (
-                    ACCOUNT_VS_MAILBOX.signupConfirmCta
+                    L("confirmCta")
                   )}
                 </button>
                 <button
@@ -644,7 +653,7 @@ export function LoginScreen({
                     resetAlerts();
                   }}
                 >
-                  {ACCOUNT_VS_MAILBOX.signupConfirmBack}
+                  {L("confirmBack")}
                 </button>
               </>
             ) : (
@@ -653,15 +662,15 @@ export function LoginScreen({
               {busy && oauthBusy === null ? (
                 <>
                   <LoaderCircle className="dx-auth__spin" size={18} />
-                  Continuando…
+                  {L("continuing")}
                 </>
               ) : oauthBusy ? (
                 <>
                   <LoaderCircle className="dx-auth__spin" size={18} />
-                  Abriendo tu correo…
+                  {L("openingMailbox")}
                 </>
               ) : (
-                ACCOUNT_VS_MAILBOX.loginContinueCta
+                L("continueCta")
               )}
             </button>
             <button
@@ -670,7 +679,7 @@ export function LoginScreen({
               disabled={busy}
               onClick={() => void subscribeWithEmail()}
             >
-              {ACCOUNT_VS_MAILBOX.loginSubscribeCta}
+              {L("subscribeCta")}
             </button>
               </>
             )}
@@ -687,9 +696,7 @@ export function LoginScreen({
                 resetAlerts();
               }}
             >
-              {usePassword
-                ? "Entrar con enlace al correo"
-                : "Tengo contraseña de Donexto"}
+              {usePassword ? L("enterWithLink") : L("havePassword")}
             </button>
             {usePassword ? (
               <button
@@ -698,7 +705,7 @@ export function LoginScreen({
                 disabled={busy}
                 onClick={() => void recoverPassword()}
               >
-                Olvidé mi contraseña
+                {L("forgotPassword")}
               </button>
             ) : null}
           </div>
@@ -706,24 +713,27 @@ export function LoginScreen({
 
           <div
             className="dx-auth__services"
-            aria-label="Servicios en Donexto activos"
+            aria-label={`${L("servicesKicker")} ${L("servicesActive")}`}
           >
             <p className="dx-auth__services-kicker">
-              {ACCOUNT_VS_MAILBOX.servicesActiveLabel}{" "}
-              <span>{ACCOUNT_VS_MAILBOX.servicesActiveBadge}</span>
+              {L("servicesKicker")}{" "}
+              <span>{L("servicesActive")}</span>
             </p>
             <ul className="dx-auth__services-list">
               <li className="dx-auth__service">
-                <ProviderMark provider="gmail" />
-                Google
-              </li>
-              <li className="dx-auth__service">
                 <ProviderMark provider="yahoo" />
-                Yahoo
+                <span>{L("serviceYahoo")}</span>
+              </li>
+              <li className="dx-auth__service dx-auth__service--microsoft">
+                <ProviderMark provider="hotmail" />
+                <span>
+                  <strong>{L("serviceMicrosoftTitle")}</strong>
+                  <small>{L("serviceMicrosoftDomains")}</small>
+                </span>
               </li>
               <li className="dx-auth__service">
-                <ProviderMark provider="hotmail" />
-                Microsoft
+                <ProviderMark provider="gmail" />
+                <span>{L("serviceGoogle")}</span>
               </li>
             </ul>
           </div>
@@ -731,15 +741,15 @@ export function LoginScreen({
           <LanguageStrip />
 
           <p className="dx-auth__legal-agree">
-            Al continuar aceptas los{" "}
+            {L("legalBefore")}{" "}
             <a href={TERMS_URL} target="_blank" rel="noopener noreferrer">
-              Términos
+              {L("terms")}
             </a>{" "}
-            y la{" "}
+            {L("legalAnd")}{" "}
             <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer">
-              Privacidad
+              {L("privacy")}
             </a>{" "}
-            de Donexto.
+            {L("legalAfter")}
           </p>
         </div>
 
