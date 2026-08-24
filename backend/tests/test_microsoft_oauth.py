@@ -2,6 +2,7 @@
 
 import os
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
@@ -158,6 +159,157 @@ class MicrosoftOAuthTests(unittest.TestCase):
             microsoft_tenant_from_state("signup.consumers.abc"),
             "consumers",
         )
+
+    def test_callback_missing_code_redirects_home(self) -> None:
+        from fastapi.responses import RedirectResponse
+        from app.api.microsoft_mail import microsoft_callback
+
+        response = microsoft_callback(
+            SimpleNamespace(query_params={})  # type: ignore[arg-type]
+        )
+        self.assertIsInstance(response, RedirectResponse)
+        self.assertEqual(response.status_code, 302)
+        location = str(response.headers.get("location") or response.url)
+        self.assertIn("https://app.donexto.com", location)
+        self.assertIn("donexto=microsoft_error", location)
+        self.assertNotIn("technical_detail", location)
+
+    def test_callback_used_state_redirects_home(self) -> None:
+        from fastapi.responses import RedirectResponse
+        from app.api.microsoft_mail import microsoft_callback
+        from app.services.oauth_storage import OAuthStateError
+
+        request = SimpleNamespace(
+            query_params={
+                "state": "login.consumers.used",
+                "code": "auth-code",
+            }
+        )
+        with patch("app.api.microsoft_mail.oauth_storage") as storage:
+            storage.load_oauth_state.side_effect = OAuthStateError(
+                "El estado OAuth no existe, ya fue utilizado o no corresponde "
+                "al proveedor."
+            )
+            response = microsoft_callback(request)  # type: ignore[arg-type]
+
+        self.assertIsInstance(response, RedirectResponse)
+        self.assertEqual(response.status_code, 302)
+        location = str(response.headers.get("location") or response.url)
+        self.assertIn("https://app.donexto.com", location)
+        self.assertIn("donexto=microsoft_error", location)
+        self.assertIn("reason=", location)
+        self.assertNotIn("technical_detail", location)
+        storage.consume_oauth_state.assert_not_called()
+        storage.delete_oauth_state.assert_not_called()
+
+    def test_callback_storage_error_redirects_home(self) -> None:
+        from fastapi.responses import RedirectResponse
+        from app.api.microsoft_mail import microsoft_callback
+        from app.services.oauth_storage import OAuthStorageError
+
+        request = SimpleNamespace(
+            query_params={
+                "state": "login.consumers.token",
+                "code": "auth-code",
+            }
+        )
+        with patch("app.api.microsoft_mail.oauth_storage") as storage:
+            storage.load_oauth_state.side_effect = OAuthStorageError(
+                "Supabase no responde"
+            )
+            response = microsoft_callback(request)  # type: ignore[arg-type]
+
+        location = str(response.headers.get("location") or response.url)
+        self.assertIsInstance(response, RedirectResponse)
+        self.assertIn("donexto=microsoft_error", location)
+
+    def test_callback_login_existing_deletes_state_after_token(self) -> None:
+        from fastapi.responses import RedirectResponse
+        from app.api.microsoft_mail import microsoft_callback
+
+        request = SimpleNamespace(
+            query_params={
+                "state": "login.consumers.token",
+                "code": "auth-code",
+            }
+        )
+        with (
+            patch("app.api.microsoft_mail.oauth_storage") as storage,
+            patch(
+                "app.api.microsoft_mail.exchange_microsoft_code",
+                return_value={
+                    "access_token": "ms-at",
+                    "refresh_token": "ms-rt",
+                    "expires_in": 3600,
+                    "scope": "openid Mail.Read User.Read",
+                },
+            ),
+            patch(
+                "app.api.microsoft_mail.fetch_microsoft_profile",
+                return_value={"mail": "donexto@hotmail.com"},
+            ),
+            patch(
+                "app.api.microsoft_mail.microsoft_email_from_profile",
+                return_value="donexto@hotmail.com",
+            ),
+            patch("app.api.microsoft_mail.auth_user_exists", return_value=True),
+            patch("app.api.microsoft_mail.mint_yahoo_session_or_http") as mint,
+            patch("app.api.microsoft_mail.persist_microsoft_mailbox") as persist,
+            patch(
+                "app.api.microsoft_mail.sanitize_return_to",
+                return_value="https://app.donexto.com/",
+            ),
+        ):
+            storage.load_oauth_state.return_value = {
+                "return_to": "https://app.donexto.com/",
+            }
+            mint.return_value = {
+                "user_id": "u1",
+                "workspace_id": "w1",
+                "access_token": "at",
+                "refresh_token": "rt",
+                "expires_in": "3600",
+            }
+            response = microsoft_callback(request)  # type: ignore[arg-type]
+
+        self.assertIsInstance(response, RedirectResponse)
+        location = str(response.headers.get("location") or response.url)
+        self.assertIn("access_token=at", location)
+        storage.load_oauth_state.assert_called_once_with(
+            "login.consumers.token",
+            "microsoft",
+        )
+        storage.consume_oauth_state.assert_not_called()
+        storage.delete_oauth_state.assert_called_once_with("login.consumers.token")
+        persist.assert_called_once()
+
+    def test_callback_token_error_keeps_state(self) -> None:
+        from fastapi.responses import RedirectResponse
+        from app.api.microsoft_mail import microsoft_callback
+        from app.services.microsoft_oauth import MicrosoftOAuthError
+
+        request = SimpleNamespace(
+            query_params={
+                "state": "login.consumers.token",
+                "code": "auth-code",
+            }
+        )
+        with (
+            patch("app.api.microsoft_mail.oauth_storage") as storage,
+            patch(
+                "app.api.microsoft_mail.exchange_microsoft_code",
+                side_effect=MicrosoftOAuthError("token inválido"),
+            ),
+        ):
+            storage.load_oauth_state.return_value = {
+                "return_to": "https://app.donexto.com/",
+            }
+            response = microsoft_callback(request)  # type: ignore[arg-type]
+
+        self.assertIsInstance(response, RedirectResponse)
+        location = str(response.headers.get("location") or response.url)
+        self.assertIn("donexto=microsoft_error", location)
+        storage.delete_oauth_state.assert_not_called()
 
 
 if __name__ == "__main__":

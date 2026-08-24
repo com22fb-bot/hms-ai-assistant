@@ -227,34 +227,24 @@ def microsoft_callback(request: Request) -> RedirectResponse:
     state = request.query_params.get("state")
     code = request.query_params.get("code")
     if not state or not code:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "error",
-                "message": "Microsoft no devolvió un código de autorización.",
-            },
+        return _callback_error_page(
+            "No fue posible conectar Microsoft",
+            "Microsoft no devolvió un código de autorización. Vuelve a Donexto y pulsa Continuar.",
         )
 
     try:
-        state_context = oauth_storage.consume_oauth_state(state, "microsoft")
-    except OAuthStateError as error:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "error",
-                "message": "El inicio de sesión de Microsoft expiró. Inténtalo de nuevo.",
-                "technical_detail": str(error),
-            },
-        ) from error
-    except OAuthStorageError as error:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "status": "error",
-                "message": "No fue posible validar el inicio de sesión de Microsoft.",
-                "technical_detail": str(error),
-            },
-        ) from error
+        state_context = oauth_storage.load_oauth_state(state, "microsoft")
+    except OAuthStateError:
+        return _callback_error_page(
+            "No fue posible conectar Microsoft",
+            "El inicio de sesión de Microsoft expiró o esa ventana ya se usó. "
+            "Vuelve a Donexto y pulsa Continuar. No recargues la página de Microsoft.",
+        )
+    except OAuthStorageError:
+        return _callback_error_page(
+            "No fue posible conectar Microsoft",
+            "No fue posible validar el inicio de sesión de Microsoft. Inténtalo de nuevo.",
+        )
 
     return_to = sanitize_return_to(str(state_context.get("return_to") or ""))
     intent = yahoo_intent_from_state(state)
@@ -272,6 +262,8 @@ def microsoft_callback(request: Request) -> RedirectResponse:
             str(error),
             return_to,
         )
+
+    oauth_storage.delete_oauth_state(state)
 
     exists = auth_user_exists(address)
     if intent != "signup" and not exists:
