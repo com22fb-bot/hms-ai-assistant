@@ -48,3 +48,13 @@ Railway redespliegue **antes** de probar Outlook en app.donexto.com.
 5. Con `Mail.Read`, Donexto importa los últimos seis meses (inbox + enviados) igual que Gmail/Yahoo. Spam, papelera y borradores no entran.
 
 Un dominio de empresa propio en Microsoft 365 (p. ej. `ana@empresa.mx`) no se detecta por el dominio: el usuario elige Outlook en el modal de buzón.
+
+## Si el callback de Railway falla
+
+Microsoft redirige a Railway, no a `app.donexto.com`. Si recargas esa URL, el
+código OAuth ya se usó. Donexto debe redirigir a
+`https://app.donexto.com/?donexto=microsoft_error&reason=…` — nunca dejar JSON
+`{"detail":{"status":"error",…}}` en el navegador.
+
+Cierra esa pestaña, abre https://app.donexto.com en ventana privada y pulsa
+**Continuar**. No recargues `/auth/microsoft/callback`.

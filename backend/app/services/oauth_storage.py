@@ -378,6 +378,50 @@ class OAuthStorage:
 
         return raw_state
 
+    def load_oauth_state(
+        self,
+        raw_state: str,
+        provider: str,
+    ) -> dict[str, Any]:
+        """Lee el estado sin borrarlo. Así un callback duplicado no lo quema antes del token."""
+        if not raw_state:
+            raise OAuthStateError("El estado OAuth está vacío.")
+
+        normalized_provider = _normalize_provider(provider)
+        hashed_state = _state_hash(raw_state)
+
+        response = (
+            self.client.table("oauth_states")
+            .select("*")
+            .eq("state", hashed_state)
+            .eq("provider", normalized_provider)
+            .limit(1)
+            .execute()
+        )
+        row = _first_row(response)
+        if not row:
+            raise OAuthStateError(
+                "El estado OAuth no existe, ya fue utilizado o no corresponde "
+                "al proveedor."
+            )
+
+        expires_at = _parse_datetime(row.get("expires_at"))
+        if expires_at is None or expires_at <= _utc_now():
+            self.delete_oauth_state(raw_state)
+            raise OAuthStateError("El estado OAuth expiró.")
+        return row
+
+    def delete_oauth_state(self, raw_state: str) -> None:
+        if not raw_state:
+            return
+        hashed_state = _state_hash(raw_state)
+        (
+            self.client.table("oauth_states")
+            .delete()
+            .eq("state", hashed_state)
+            .execute()
+        )
+
     def consume_oauth_state(
         self,
         raw_state: str,
