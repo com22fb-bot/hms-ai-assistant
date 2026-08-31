@@ -6,9 +6,11 @@
 
 html:has(.dx-auth),
 body:has(.dx-auth) {
-  height: auto;
+  height: auto !important;
+  max-height: none !important;
   min-height: 100%;
-  overflow: auto;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
 }
 
 .dx-auth {
@@ -123,11 +125,12 @@ body:has(.dx-auth) {
 .dx-auth__heading {
   text-align: center;
   margin: 0 0 0.75rem;
+  scroll-margin-top: 1rem;
 }
 
 .dx-auth__title {
   margin: 0;
-  padding-top: 0.12em;
+  padding-top: 0.2em;
   font-family: var(--dx-display);
   font-size: clamp(1.4rem, 5.2vw, 1.7rem);
   font-weight: 700;
@@ -156,7 +159,7 @@ body:has(.dx-auth) {
   align-items: center;
   justify-content: flex-start;
   gap: 0.55rem;
-  padding: 0.7rem 1rem max(1.25rem, env(safe-area-inset-bottom));
+  padding: 0.7rem 1rem max(1.75rem, env(safe-area-inset-bottom));
   background: var(--dx-sky);
 }
 
@@ -641,8 +644,8 @@ body:has(.dx-auth) {
 }
 
 .dx-auth__confirm-email {
-  margin: 0.15rem 0 0.85rem;
-  padding: 0.85rem 1rem;
+  margin: 0.15rem 0 0.55rem;
+  padding: 0.7rem 0.9rem;
   border: 1px solid rgba(46, 230, 214, 0.28);
   border-radius: 12px;
   background: rgba(8, 24, 28, 0.72);
@@ -759,9 +762,11 @@ body:has(.dx-auth) {
 
 @media (max-height: 560px) {
   .dx-auth__panel {
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
+  }
+
+  .dx-auth__logo {
+    max-height: 5.5rem;
   }
 }
 
@@ -769,13 +774,18 @@ body:has(.dx-auth) {
   .dx-auth {
     display: grid;
     grid-template-columns: minmax(0, 1.05fr) minmax(22rem, 0.95fr);
-    grid-template-rows: 1fr;
-    min-height: 100svh;
+    grid-template-rows: auto;
+    align-items: start;
+    min-height: 100dvh;
     height: auto;
+    max-height: none;
   }
 
   .dx-auth__hero {
-    height: 100%;
+    height: auto;
+    min-height: 100dvh;
+    position: sticky;
+    top: 0;
     display: grid;
     place-items: center;
     text-align: left;
@@ -824,12 +834,11 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__panel {
-    justify-content: safe center;
-    align-self: stretch;
-    max-height: 100svh;
-    overflow-x: hidden;
-    overflow-y: auto;
-    padding: 2rem 2.25rem;
+    justify-content: flex-start;
+    align-self: start;
+    max-height: none;
+    overflow: visible;
+    padding: 1.35rem 2.25rem 2.25rem;
     gap: 0.75rem;
   }
 
