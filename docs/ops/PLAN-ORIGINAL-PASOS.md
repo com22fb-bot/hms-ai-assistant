@@ -1,5 +1,6 @@
 # Plan original de Donexto — todos los pasos
 
+**Chat de continuación:** DonexSeptember — arranque en `docs/ops/DONEX-SEPTEMBER.md`.  
 **Fuentes (no recortar):** continuidad 11 ago 2026, prompt maestro 12 ago, Logística 1, Bloque B, landing 40 s, P00 18 ago.  
 **Dueño:** Héctor M. Salcido Roacho · marca HMSR · MR · producto **Donexto** (Do Next To…).
 
