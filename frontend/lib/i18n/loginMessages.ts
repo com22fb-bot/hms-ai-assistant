@@ -67,7 +67,7 @@ const es: Record<LoginMessageKey, string> = {
   helperYahoo:
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   helperMicrosoft:
-    "Microsoft confirma este correo en su sitio (Outlook, Hotmail, Live, MSN o Microsoft 365). Donexto no te envía otro correo de confirmación.",
+    "Microsoft identifica el correo en su sitio. Después Donexto te escribe a ese mismo correo: sin el clic no entras.",
   confirmTitle: "Confirma el correo de Donexto",
   confirmHelper:
     "Confirma el correo que vas a utilizar para el servicio Donexto. Revísalo antes de seguir.",
@@ -81,9 +81,9 @@ const es: Record<LoginMessageKey, string> = {
   confirmCta: "Sí, este es el correo de mi cuenta Donexto",
   confirmBack: "Usar otro correo",
   confirmYahoo:
-    "Al confirmar, Donexto usará este correo. Después firmas en el sitio de Yahoo.",
+    "Al confirmar, Donexto usará este correo. Después firmas en Yahoo. Luego te escribimos a ese mismo correo: sin el clic no entras.",
   confirmMicrosoft:
-    "Al confirmar, Donexto usará este correo. Después firmas en el sitio de Microsoft. No te enviamos un correo de confirmación aparte: Microsoft ya identifica la cuenta.",
+    "Al confirmar, Donexto usará este correo. Después firmas en Microsoft. Luego te escribimos a ese mismo correo: sin el clic no entras.",
   confirmGmail:
     "Al confirmar, Donexto usará este correo. Después Google te identifica.",
   confirmOther:
@@ -136,7 +136,7 @@ const en: Record<LoginMessageKey, string> = {
   helperYahoo:
     "We take you to Yahoo’s site to sign in. Donexto does not ask for your password.",
   helperMicrosoft:
-    "Microsoft confirms this address on its site (Outlook, Hotmail, Live, MSN, or Microsoft 365). Donexto does not send a separate confirmation email.",
+    "Microsoft identifies the address on its site. Then Donexto emails that same inbox: without the click you do not enter.",
   confirmTitle: "Confirm your Donexto email",
   confirmHelper:
     "Confirm the address you will use for Donexto. Check it before you continue.",
@@ -150,9 +150,9 @@ const en: Record<LoginMessageKey, string> = {
   confirmCta: "Yes, this is my Donexto email",
   confirmBack: "Use another email",
   confirmYahoo:
-    "After you confirm, Donexto will use this address. Then you sign in on Yahoo’s site.",
+    "After you confirm, Donexto will use this address. Then you sign in on Yahoo. We then email that same inbox; without the click you do not enter.",
   confirmMicrosoft:
-    "After you confirm, Donexto will use this address. Then you sign in on Microsoft’s site. We do not send a separate confirmation email: Microsoft already identifies the account.",
+    "After you confirm, Donexto will use this address. Then you sign in on Microsoft. We then email that same inbox; without the click you do not enter.",
   confirmGmail:
     "After you confirm, Donexto will use this address. Then Google identifies you.",
   confirmOther:
@@ -205,7 +205,7 @@ const fr: Record<LoginMessageKey, string> = {
   helperYahoo:
     "Nous vous emmenons sur le site Yahoo pour vous connecter. Donexto ne demande pas votre mot de passe.",
   helperMicrosoft:
-    "Microsoft confirme cette adresse sur son site (Outlook, Hotmail, Live, MSN ou Microsoft 365). Donexto n’envoie pas d’e-mail de confirmation séparé.",
+    "Microsoft identifie l’adresse sur son site. Ensuite Donexto écrit à cette boîte : sans le clic vous n’entrez pas.",
   confirmTitle: "Confirmez l’e-mail Donexto",
   confirmHelper:
     "Confirmez l’adresse que vous utiliserez pour Donexto. Vérifiez-la avant de continuer.",
@@ -219,9 +219,9 @@ const fr: Record<LoginMessageKey, string> = {
   confirmCta: "Oui, c’est l’e-mail de mon compte Donexto",
   confirmBack: "Utiliser un autre e-mail",
   confirmYahoo:
-    "Après confirmation, Donexto utilisera cette adresse. Ensuite vous vous connectez sur le site Yahoo.",
+    "Après confirmation, Donexto utilisera cette adresse. Ensuite vous vous connectez sur Yahoo. Puis nous écrivons à cette boîte : sans le clic vous n’entrez pas.",
   confirmMicrosoft:
-    "Après confirmation, Donexto utilisera cette adresse. Ensuite vous vous connectez chez Microsoft. Nous n’envoyons pas d’e-mail de confirmation séparé : Microsoft identifie déjà le compte.",
+    "Après confirmation, Donexto utilisera cette adresse. Ensuite vous vous connectez chez Microsoft. Puis nous écrivons à cette boîte : sans le clic vous n’entrez pas.",
   confirmGmail:
     "Après confirmation, Donexto utilisera cette adresse. Ensuite Google vous identifie.",
   confirmOther:
@@ -274,7 +274,7 @@ const it: Record<LoginMessageKey, string> = {
   helperYahoo:
     "Ti portiamo sul sito Yahoo per accedere. Donexto non chiede la password.",
   helperMicrosoft:
-    "Microsoft conferma questo indirizzo sul suo sito (Outlook, Hotmail, Live, MSN o Microsoft 365). Donexto non invia un’email di conferma a parte.",
+    "Microsoft identifica l’indirizzo sul suo sito. Poi Donexto scrive a quella casella: senza il clic non entri.",
   confirmTitle: "Conferma l’email Donexto",
   confirmHelper:
     "Conferma l’indirizzo che userai per Donexto. Controllalo prima di continuare.",
@@ -288,9 +288,9 @@ const it: Record<LoginMessageKey, string> = {
   confirmCta: "Sì, questa è l’email del mio account Donexto",
   confirmBack: "Usa un’altra email",
   confirmYahoo:
-    "Dopo la conferma, Donexto userà questo indirizzo. Poi accedi sul sito Yahoo.",
+    "Dopo la conferma, Donexto userà questo indirizzo. Poi accedi su Yahoo. Poi ti scriviamo a quella casella: senza il clic non entri.",
   confirmMicrosoft:
-    "Dopo la conferma, Donexto userà questo indirizzo. Poi accedi sul sito Microsoft. Non inviamo un’email di conferma a parte: Microsoft identifica già l’account.",
+    "Dopo la conferma, Donexto userà questo indirizzo. Poi accedi su Microsoft. Poi ti scriviamo a quella casella: senza il clic non entri.",
   confirmGmail:
     "Dopo la conferma, Donexto userà questo indirizzo. Poi Google ti identifica.",
   confirmOther:
@@ -343,7 +343,7 @@ const pt: Record<LoginMessageKey, string> = {
   helperYahoo:
     "Levamo-lo ao site da Yahoo para entrar. O Donexto não pede a palavra-passe.",
   helperMicrosoft:
-    "A Microsoft confirma este correio no respectivo site (Outlook, Hotmail, Live, MSN ou Microsoft 365). O Donexto não envia outro e-mail de confirmação.",
+    "A Microsoft identifica o correio no respectivo site. Depois o Donexto escreve para essa caixa: sem o clique não entra.",
   confirmTitle: "Confirme o correio Donexto",
   confirmHelper:
     "Confirme o endereço que vai usar no Donexto. Reveja-o antes de continuar.",
@@ -357,9 +357,9 @@ const pt: Record<LoginMessageKey, string> = {
   confirmCta: "Sim, este é o correio da minha conta Donexto",
   confirmBack: "Usar outro correio",
   confirmYahoo:
-    "Ao confirmar, o Donexto usa este endereço. Depois entra no site da Yahoo.",
+    "Ao confirmar, o Donexto usa este endereço. Depois entra na Yahoo. Depois escrevemos para essa caixa: sem o clique não entra.",
   confirmMicrosoft:
-    "Ao confirmar, o Donexto usa este endereço. Depois entra no site da Microsoft. Não enviamos um e-mail de confirmação à parte: a Microsoft já identifica a conta.",
+    "Ao confirmar, o Donexto usa este endereço. Depois entra na Microsoft. Depois escrevemos para essa caixa: sem o clique não entra.",
   confirmGmail:
     "Ao confirmar, o Donexto usa este endereço. Depois o Google identifica-o.",
   confirmOther:

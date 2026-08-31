@@ -22,9 +22,9 @@ export const ACCOUNT_VS_MAILBOX = {
   signupConfirmCta: "Sí, este es el correo de mi cuenta Donexto",
   signupConfirmBack: "Usar otro correo",
   signupConfirmYahooNote:
-    "Al confirmar, Donexto usará este correo. Después firmas en el sitio de Yahoo.",
+    "Al confirmar, Donexto usará este correo. Después firmas en Yahoo. Luego te escribimos a ese mismo correo: sin el clic no entras.",
   signupConfirmMicrosoftNote:
-    "Al confirmar, Donexto usará este correo. Después firmas en el sitio de Microsoft. No te enviamos un correo de confirmación aparte: Microsoft ya identifica la cuenta.",
+    "Al confirmar, Donexto usará este correo. Después firmas en Microsoft. Luego te escribimos a ese mismo correo: sin el clic no entras.",
   signupConfirmGmailNote:
     "Al confirmar, Donexto usará este correo. Después Google te identifica.",
   signupConfirmOtherNote:
@@ -61,7 +61,7 @@ export const ACCOUNT_VS_MAILBOX = {
     "Donexto nunca te pide la contraseña de Gmail aquí. Si te das de alta con Gmail, te escribimos a ese mismo correo. Sin clic en ese mail no entras ni leemos el buzón. Las pantallas de Google son de Google; la confirmación de Donexto es el correo que nosotros enviamos.",
   confirmGateTitle: "Revisa tu correo",
   confirmGateBody:
-    "Te escribimos a ese mismo Gmail. Donexto nunca te pidió la contraseña de Gmail: este correo confirma que autorizas a Donexto a, después, leer ese buzón. Sin el clic no entras.",
+    "Te escribimos a ese mismo correo. Sin el clic en ese mail no entras a Donexto.",
   confirmGateResend: "Reenviar correo de confirmación",
   confirmGateRefresh: "Ya hice clic — continuar",
   confirmGateSignOut: "Cerrar sesión",
@@ -185,12 +185,6 @@ export function authorizeGmailTitle(email: string): string {
 export function confirmGateBodyFor(email: string): string {
   const provider = resolveMailboxProviderFromEmail(email);
   const label = mailboxServiceLabel(provider);
-  if (provider === "yahoo") {
-    return (
-      "Firma en el sitio de Yahoo. Eso identifica tu cuenta y, si Yahoo " +
-      "autoriza la lectura, conecta el buzón. Donexto no pide tu clave."
-    );
-  }
   const password = mailboxPasswordPhrase(provider);
   return (
     `Te escribimos a ese mismo ${label}. Donexto nunca te pidió la ${password}: ` +
@@ -214,9 +208,8 @@ export function authSecurityBodyFor(email?: string): string {
   }
   if (provider === "yahoo") {
     return (
-      "Con Yahoo no das de alta un usuario Donexto ni escribes la clave aquí. " +
-      "Te llevamos al sitio de Yahoo para firmar. Si autorizas la lectura, " +
-      "el buzón queda conectado."
+      "Donexto nunca te pide la clave de Yahoo aquí. Firmas en el sitio de " +
+      "Yahoo y después te escribimos a ese mismo correo. Sin el clic no entras."
     );
   }
   return (

@@ -31,20 +31,6 @@ type AppSession = {
 
 const DONEXTO_VERIFY_QUERY = "donexto_verify";
 
-function userHasOAuthIdentity(user: User | null | undefined): boolean {
-  if (!user) {
-    return false;
-  }
-
-  const identities = user.identities ?? [];
-  if (identities.some((identity) => identity.provider !== "email")) {
-    return true;
-  }
-
-  const provider = String(user.app_metadata?.provider ?? "").toLowerCase();
-  return provider !== "" && provider !== "email";
-}
-
 function isDonextoVerified(user: User | null | undefined): boolean {
   return user?.user_metadata?.donexto_verified === true;
 }
@@ -60,38 +46,16 @@ function yahooImapOwnsIdentity(user: User | null | undefined): boolean {
   return resolveMailboxProviderFromEmail(user.email) === "yahoo";
 }
 
-function microsoftOwnsIdentity(user: User | null | undefined): boolean {
-  if (!user?.email) {
-    return false;
-  }
-  const via = String(user.user_metadata?.signup_via ?? "").toLowerCase();
-  if (via === "microsoft_oauth") {
-    return true;
-  }
-  const identities = user.identities ?? [];
-  if (identities.some((identity) => identity.provider === "azure")) {
-    return true;
-  }
-  return resolveMailboxProviderFromEmail(user.email) === "hotmail";
-}
-
 /**
- * Gmail: hace falta el clic del mail Donexto (`donexto_verified`).
- * Yahoo y Microsoft: firmar en su sitio ya demuestra el correo.
+ * Sin clic en el correo de verificación Donexto no hay dashboard.
+ * Firmar en Yahoo o Microsoft no sustituye ese clic.
  */
 function sessionNeedsDonextoEmailConfirm(session: Session | null): boolean {
   const user = session?.user;
   if (!user) {
     return false;
   }
-  if (
-    isDonextoVerified(user)
-    || yahooImapOwnsIdentity(user)
-    || microsoftOwnsIdentity(user)
-  ) {
-    return false;
-  }
-  return true;
+  return !isDonextoVerified(user);
 }
 
 function isDonextoVerifyReturn(): boolean {
@@ -329,11 +293,7 @@ export function useAppAuth() {
         return;
       }
 
-      if (
-        !userHasOAuthIdentity(currentUser) ||
-        isDonextoVerified(currentUser) ||
-        yahooImapOwnsIdentity(currentUser)
-      ) {
+      if (isDonextoVerified(currentUser)) {
         return;
       }
 
@@ -572,30 +532,22 @@ export function useAppAuth() {
 
   const sendDonextoVerifyEmail = useCallback(async (email: string) => {
     const cleanEmail = email.trim().toLowerCase();
-    const { data } = await supabase.auth.getSession();
-    const user = data.session?.user;
-
-    if (userHasOAuthIdentity(user)) {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: cleanEmail,
-        options: {
-          shouldCreateUser: false,
-          emailRedirectTo: donextoVerifyRedirectTo(),
-        },
-      });
-      if (error) {
-        throw new Error(translateAuthError(error.message));
-      }
-      try {
-        sessionStorage.setItem(`donexto_verify_sent:${cleanEmail}`, "1");
-      } catch {
-        // ignore
-      }
-      return;
+    const { error } = await supabase.auth.signInWithOtp({
+      email: cleanEmail,
+      options: {
+        shouldCreateUser: false,
+        emailRedirectTo: donextoVerifyRedirectTo(),
+      },
+    });
+    if (error) {
+      throw new Error(translateAuthError(error.message));
     }
-
-    await resendSignupEmail(cleanEmail);
-  }, [resendSignupEmail]);
+    try {
+      sessionStorage.setItem(`donexto_verify_sent:${cleanEmail}`, "1");
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const signInWithMagicLink = useCallback(
     async (email: string) => {

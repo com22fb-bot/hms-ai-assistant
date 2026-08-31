@@ -43,9 +43,10 @@ Railway redespliegue **antes** de probar Outlook en app.donexto.com.
 
 1. Correo `@outlook.com`, `@outlook.com.mx`, `@hotmail.com`, `@hotmail.com.mx`, `@live.com`, `@live.com.mx`, `@msn.com` o `@….onmicrosoft.com`
 2. **Continuar** solo si ya hay cuenta Donexto → Microsoft
-3. **Suscribirse** pide confirmar el correo que se va a usar para el servicio Donexto. Todavía no sale de Donexto. Después firma en Microsoft (`intent=signup`)
-4. Un correo Microsoft que no es usuario se queda en Donexto (igual que Mel Gibson en Yahoo)
-5. Con `Mail.Read`, Donexto importa los últimos seis meses (inbox + enviados) igual que Gmail/Yahoo. Spam, papelera y borradores no entran.
+3. **Suscribirse** pide confirmar el correo en Donexto. Después firma en Microsoft (`intent=signup`)
+4. Tras Microsoft, Donexto escribe a ese mismo correo. **Sin el clic no hay dashboard.**
+5. Un correo Microsoft que no es usuario se queda en Donexto (igual que Mel Gibson en Yahoo)
+6. Con `Mail.Read`, Donexto importa los últimos seis meses (inbox + enviados) igual que Gmail/Yahoo. Spam, papelera y borradores no entran.
 
 Un dominio de empresa propio en Microsoft 365 (p. ej. `ana@empresa.mx`) no se detecta por el dominio: el usuario elige Outlook en el modal de buzón.
 
