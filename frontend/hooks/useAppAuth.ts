@@ -5,10 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
 import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
-
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
-  "/api/hms";
+import { isBrowserNetworkError, postPublicHms } from "@/lib/publicHms";
 
 export type SignUpResult =
   | { kind: "signed_in" }
@@ -446,34 +443,29 @@ export function useAppAuth() {
     email?: string,
   ) => {
     const hint = email?.trim().toLowerCase();
-    const response = await fetch(`${API_BASE_URL}/auth/yahoo/login`, {
-      method: "POST",
-      cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    let resolved;
+    try {
+      resolved = await postPublicHms("/auth/yahoo/login", {
         return_to: window.location.origin,
         intent,
         ...(hint ? { login_hint: hint } : {}),
-      }),
-    });
+      });
+    } catch (error) {
+      if (isBrowserNetworkError(error)) {
+        throw new Error(
+          "No hay conexión con Donexto. Revisa la red e inténtalo de nuevo.",
+        );
+      }
+      throw error;
+    }
 
-    let payload: {
+    const payload = (resolved.payload || {}) as {
       authorization_url?: string;
       detail?: { message?: string } | string;
       message?: string;
-    } = {};
+    };
 
-    try {
-      payload = (await response.json()) as typeof payload;
-    } catch {
-      throw new Error(
-        `No fue posible abrir Yahoo (HTTP ${response.status}).`,
-      );
-    }
-
-    if (!response.ok || !payload.authorization_url) {
+    if (!resolved.ok || !payload.authorization_url) {
       throw new Error(
         detailMessage(payload) ??
           "No fue posible abrir el inicio de sesión de Yahoo.",
@@ -488,34 +480,29 @@ export function useAppAuth() {
     email?: string,
   ) => {
     const hint = email?.trim().toLowerCase();
-    const response = await fetch(`${API_BASE_URL}/auth/microsoft/login`, {
-      method: "POST",
-      cache: "no-store",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    let resolved;
+    try {
+      resolved = await postPublicHms("/auth/microsoft/login", {
         return_to: window.location.origin,
         intent,
         ...(hint ? { login_hint: hint } : {}),
-      }),
-    });
+      });
+    } catch (error) {
+      if (isBrowserNetworkError(error)) {
+        throw new Error(
+          "No hay conexión con Donexto. Revisa la red e inténtalo de nuevo.",
+        );
+      }
+      throw error;
+    }
 
-    let payload: {
+    const payload = (resolved.payload || {}) as {
       authorization_url?: string;
       detail?: { message?: string } | string;
       message?: string;
-    } = {};
+    };
 
-    try {
-      payload = (await response.json()) as typeof payload;
-    } catch {
-      throw new Error(
-        `No fue posible abrir Microsoft (HTTP ${response.status}).`,
-      );
-    }
-
-    if (!response.ok || !payload.authorization_url) {
+    if (!resolved.ok || !payload.authorization_url) {
       throw new Error(
         detailMessage(payload) ??
           "No fue posible abrir el inicio de sesión de Microsoft.",

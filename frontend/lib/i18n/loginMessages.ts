@@ -44,6 +44,7 @@ export type LoginMessageKey =
   | "noAccount"
   | "continueFailed"
   | "confirmFailed"
+  | "networkFailed"
   | "reviewFailed"
   | "microsoftOpenFailed"
   | "yahooOpenFailed"
@@ -111,6 +112,8 @@ const es: Record<LoginMessageKey, string> = {
   noAccount: "Ese correo no tiene cuenta Donexto. Pulsa Suscribirse.",
   continueFailed: "No fue posible continuar con ese correo.",
   confirmFailed: "No fue posible confirmar ese correo.",
+  networkFailed:
+    "No hay conexión con Donexto. Revisa la red e inténtalo de nuevo.",
   reviewFailed: "No fue posible revisar ese correo.",
   microsoftOpenFailed: "No fue posible abrir el inicio de sesión de Microsoft.",
   yahooOpenFailed: "No fue posible abrir Yahoo.",
@@ -178,6 +181,7 @@ const en: Record<LoginMessageKey, string> = {
   noAccount: "That email has no Donexto account. Tap Subscribe.",
   continueFailed: "We could not continue with that email.",
   confirmFailed: "We could not confirm that email.",
+  networkFailed: "No connection to Donexto. Check the network and try again.",
   reviewFailed: "We could not check that email.",
   microsoftOpenFailed: "We could not open Microsoft sign-in.",
   yahooOpenFailed: "We could not open Yahoo.",
@@ -246,6 +250,8 @@ const fr: Record<LoginMessageKey, string> = {
   noAccount: "Cet e-mail n’a pas de compte Donexto. Appuyez sur S’inscrire.",
   continueFailed: "Impossible de continuer avec cet e-mail.",
   confirmFailed: "Impossible de confirmer cet e-mail.",
+  networkFailed:
+    "Pas de connexion à Donexto. Vérifiez le réseau et réessayez.",
   reviewFailed: "Impossible de vérifier cet e-mail.",
   microsoftOpenFailed: "Impossible d’ouvrir la connexion Microsoft.",
   yahooOpenFailed: "Impossible d’ouvrir Yahoo.",
@@ -313,6 +319,8 @@ const it: Record<LoginMessageKey, string> = {
   noAccount: "Questa email non ha un account Donexto. Tocca Iscriviti.",
   continueFailed: "Impossibile continuare con questa email.",
   confirmFailed: "Impossibile confermare questa email.",
+  networkFailed:
+    "Nessuna connessione a Donexto. Controlla la rete e riprova.",
   reviewFailed: "Impossibile verificare questa email.",
   microsoftOpenFailed: "Impossibile aprire l’accesso Microsoft.",
   yahooOpenFailed: "Impossibile aprire Yahoo.",
@@ -380,6 +388,8 @@ const pt: Record<LoginMessageKey, string> = {
   noAccount: "Esse correio não tem conta Donexto. Toque em Subscrever.",
   continueFailed: "Não foi possível continuar com esse correio.",
   confirmFailed: "Não foi possível confirmar esse correio.",
+  networkFailed:
+    "Sem ligação ao Donexto. Verifique a rede e tente novamente.",
   reviewFailed: "Não foi possível verificar esse correio.",
   microsoftOpenFailed: "Não foi possível abrir o início de sessão da Microsoft.",
   yahooOpenFailed: "Não foi possível abrir a Yahoo.",

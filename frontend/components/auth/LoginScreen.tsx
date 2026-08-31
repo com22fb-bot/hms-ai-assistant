@@ -18,6 +18,10 @@ import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { loginText } from "@/lib/i18n/loginMessages";
 import { gateNextAfterResolve } from "@/lib/loginGate";
 import {
+  isBrowserNetworkError,
+  postPublicHms,
+} from "@/lib/publicHms";
+import {
   isValidSignupEmail,
   resolveMailboxProviderFromEmail,
   suggestKnownMailbox,
@@ -35,8 +39,6 @@ export type GateThemeId =
 
 const TERMS_URL = "https://www.donexto.com/terminos.html";
 const PRIVACY_URL = "https://www.donexto.com/privacidad.html";
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "/api/hms";
 
 type LoginScreenProps = {
   theme: GateThemeId;
@@ -171,6 +173,23 @@ export function LoginScreen({
     window.history.replaceState({}, "", cleaned || "/");
   }, []);
 
+  useEffect(() => {
+    if (!confirmingSignup) {
+      return;
+    }
+    document.getElementById("dx-auth-title")?.scrollIntoView({
+      block: "start",
+      behavior: "smooth",
+    });
+  }, [confirmingSignup]);
+
+  function friendlyError(error: unknown, fallback: string): string {
+    if (isBrowserNetworkError(error)) {
+      return L("networkFailed");
+    }
+    return error instanceof Error ? error.message : fallback;
+  }
+
   function resetAlerts() {
     setError(null);
     setMessage(null);
@@ -221,9 +240,7 @@ export function LoginScreen({
             : provider === "yahoo"
               ? L("yahooOpenFailed")
               : L("googleOpenFailed");
-      setError(
-        requestError instanceof Error ? requestError.message : fallback,
-      );
+      setError(friendlyError(requestError, fallback));
       setBusy(false);
       setOauthBusy(null);
     }
@@ -289,14 +306,11 @@ export function LoginScreen({
     setBusy(true);
     resetAlerts();
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login/resolve`, {
-        method: "POST",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: address }),
+      const resolved = await postPublicHms("/auth/login/resolve", {
+        email: address,
       });
-      const payload = (await response.json()) as ResolvePayload;
-      if (!response.ok) {
+      const payload = (resolved.payload || {}) as ResolvePayload;
+      if (!resolved.ok) {
         const detail = payload.detail;
         throw new Error(
           typeof detail === "string"
@@ -360,11 +374,7 @@ export function LoginScreen({
       setOauthBusy(null);
       setError(L("noAccount"));
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : L("continueFailed"),
-      );
+      setError(friendlyError(requestError, L("continueFailed")));
       setBusy(false);
       setOauthBusy(null);
     }
@@ -425,14 +435,11 @@ export function LoginScreen({
     setBusy(true);
     resetAlerts();
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login/resolve`, {
-        method: "POST",
-        cache: "no-store",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: clean }),
+      const resolved = await postPublicHms("/auth/login/resolve", {
+        email: clean,
       });
-      const payload = (await response.json()) as ResolvePayload;
-      if (!response.ok) {
+      const payload = (resolved.payload || {}) as ResolvePayload;
+      if (!resolved.ok) {
         const detail = payload.detail;
         throw new Error(
           typeof detail === "string"
@@ -457,11 +464,7 @@ export function LoginScreen({
       }
       await continueWithProvider(clean, "signup");
     } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : L("confirmFailed"),
-      );
+      setError(friendlyError(requestError, L("confirmFailed")));
       setBusy(false);
       setOauthBusy(null);
     }
@@ -507,7 +510,11 @@ export function LoginScreen({
   }
 
   return (
-    <main className="dx-auth">
+    <main
+      className={
+        confirmingSignup ? "dx-auth dx-auth--confirm" : "dx-auth"
+      }
+    >
       <aside className="dx-auth__hero">
         <div className="dx-auth__hero-inner">
           {/* eslint-disable-next-line @next/next/no-img-element */}
