@@ -66,7 +66,25 @@ export type LoginMessageKey =
   | "recoverNeedEmail"
   | "promise"
   | "wantedToSay"
-  | "emailPlaceholder";
+  | "emailPlaceholder"
+  | "availableNow"
+  | "comingSoonBadge"
+  | "chipOutlook"
+  | "chipHotmail"
+  | "chipLive"
+  | "chipMsn"
+  | "chipM365"
+  | "chipGmail"
+  | "chipWorkspace"
+  | "chipYahoo"
+  | "chipIcloud"
+  | "waitlistTitle"
+  | "waitlistBody"
+  | "waitlistNotify"
+  | "waitlistLater"
+  | "waitlistThanks"
+  | "companyImapWaitlist"
+  | "languageLabel";
 
 const microsoftDomainLine = MICROSOFT_LOGIN_DOMAINS.join(" · ");
 
@@ -75,14 +93,14 @@ const es: Record<LoginMessageKey, string> = {
   helper: "Escribe el correo del buzón que quieres monitorear.",
   body: "Escribe el correo del buzón que quieres monitorear.",
   noPasswordNote:
-    "Al continuar, firmarás en Yahoo, Outlook o Gmail. Donexto no pide la contraseña de tu correo.",
+    "Al continuar, firmarás en Microsoft. Donexto no pide la contraseña de Outlook ni de Hotmail.",
   helperYahoo:
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   helperMicrosoft:
     "Microsoft identifica el correo en su sitio. Donexto no pide la contraseña de Outlook.",
   confirmTitle: "¿Usamos este correo en Donexto?",
   confirmHelper:
-    "Ese correo es el buzón que Donexto va a monitorear. Tiene que ser Yahoo, Outlook/Hotmail o Gmail, no otro mail de login.",
+    "Ese correo es el buzón que Donexto va a monitorear. Hoy leemos Outlook, Hotmail, Live, MSN y Microsoft 365.",
   emailLabel: "Correo del buzón",
   confirmEmailLabel: "Correo que Donexto va a monitorear",
   continueCta: "Continuar",
@@ -96,13 +114,13 @@ const es: Record<LoginMessageKey, string> = {
   changeEmail: "Cambiar correo",
   later: "Más tarde",
   changeEmailExplain:
-    "El correo tiene que ser el buzón (Yahoo, Outlook o Gmail) que Donexto va a monitorear. Si pones otro, no podemos dar el servicio sobre el correo que te importa.",
+    "El correo tiene que ser el buzón que Donexto puede leer ahora: Outlook, Hotmail, Live, MSN o Microsoft 365.",
   icloudUnavailable:
-    "iCloud aún no está disponible. Por ahora usa Yahoo, Outlook/Hotmail o Gmail.",
+    "iCloud aún no está disponible. Si quieres, te avisamos a este correo cuando Donexto pueda monitorearlo.",
   mustUseKnownMailbox:
-    "Por ahora el buzón tiene que ser Yahoo, Outlook/Hotmail o Gmail. Si pones otro, no podemos dar el servicio sobre el correo que te importa.",
+    "Hoy Donexto lee Outlook, Hotmail, Live, MSN y Microsoft 365. Gmail, Yahoo e iCloud van a llegar.",
   gmailPending:
-    "Las cuentas nuevas de Gmail aún están en revisión de Google. Si ya entras a Donexto con este Gmail, Continuar te lleva a Google. Si es la primera vez, usa Yahoo u Outlook/Hotmail.",
+    "Gmail aún no se puede monitorear. Si ya entras a Donexto con este Gmail, Continuar te identifica. Si es la primera vez, te podemos avisar cuando esté listo.",
   confirmYahoo:
     "Ese correo es el buzón que Donexto va a monitorear. Al continuar, firmas en Yahoo. Donexto no pide la contraseña de tu correo.",
   confirmMicrosoft:
@@ -110,7 +128,7 @@ const es: Record<LoginMessageKey, string> = {
   confirmGmail:
     "Ese correo es el buzón que Donexto va a monitorear. Al continuar, Google te identifica. Donexto no pide la contraseña de Gmail.",
   confirmOther:
-    "Ese correo es el buzón que Donexto va a monitorear. Tiene que ser Yahoo, Outlook/Hotmail o Gmail.",
+    "Ese correo es el buzón que Donexto va a monitorear. Hoy tiene que ser Outlook, Hotmail o Microsoft 365.",
   havePassword: "Tengo contraseña de Donexto",
   enterWithLink: "Entrar con enlace al correo",
   forgotPassword: "Olvidé mi contraseña",
@@ -123,10 +141,10 @@ const es: Record<LoginMessageKey, string> = {
   legalAnd: "y la",
   privacy: "Privacidad",
   legalAfter: "de Donexto.",
-  servicesKicker: "Servicios en Donexto",
-  servicesActive: "Activos",
-  serviceGoogle: "Google (Gmail) — acceso en revisión",
-  serviceYahoo: "Yahoo",
+  servicesKicker: "Qué buzones puede leer Donexto",
+  servicesActive: "Disponible ahora",
+  serviceGoogle: "Gmail — Próximamente",
+  serviceYahoo: "Yahoo — Próximamente",
   serviceMicrosoftTitle: "Outlook, Hotmail, Live, MSN y Microsoft 365",
   serviceMicrosoftDomains: microsoftDomainLine,
   useSuggested: "Usar este correo",
@@ -143,14 +161,34 @@ const es: Record<LoginMessageKey, string> = {
   googleOpenFailed: "No fue posible abrir el inicio de sesión de Google.",
   appleOpenFailed: "iCloud aún no está disponible.",
   noActiveService:
-    "Por ahora el buzón tiene que ser Yahoo, Outlook/Hotmail o Gmail.",
+    "Hoy Donexto lee Outlook, Hotmail, Live, MSN y Microsoft 365.",
   passwordMin: "La contraseña de Donexto usa al menos 8 caracteres.",
   donextoSigninFailed: "No fue posible iniciar sesión en Donexto.",
   resetSent: "Enviamos un enlace para restablecer la contraseña de Donexto.",
   recoverNeedEmail: "Escribe primero el correo de tu cuenta Donexto.",
   promise: "Do Next To…\nLo siguiente que sí importa. El resto espera.",
-  wantedToSay: "Ese dominio no es un correo activo. ¿Quisiste decir",
-  emailPlaceholder: "tu@correo.com",
+  wantedToSay: "Ese dominio no es un correo que podamos leer ahora. ¿Quisiste decir",
+  emailPlaceholder: "tu@hotmail.com",
+  availableNow: "Disponible ahora",
+  comingSoonBadge: "Pronto",
+  chipOutlook: "Outlook",
+  chipHotmail: "Hotmail",
+  chipLive: "Live",
+  chipMsn: "MSN",
+  chipM365: "Microsoft 365",
+  chipGmail: "Gmail",
+  chipWorkspace: "Google Workspace",
+  chipYahoo: "Yahoo",
+  chipIcloud: "iCloud",
+  waitlistTitle: "Próximamente",
+  waitlistBody:
+    "Próximamente. Si quieres, te avisamos a este correo cuando Donexto pueda monitorear {provider}.",
+  waitlistNotify: "Avísame",
+  waitlistLater: "Ahora no",
+  waitlistThanks: "Listo. Te avisamos a este correo cuando el buzón esté disponible.",
+  companyImapWaitlist:
+    "Donexto solo monitorea Microsoft 365 y (pronto) Google Workspace. Otros servidores de empresa aún no se pueden leer. Si quieres, te avisamos a este correo.",
+  languageLabel: "Idioma",
 };
 
 const en: Record<LoginMessageKey, string> = {
@@ -231,8 +269,28 @@ const en: Record<LoginMessageKey, string> = {
   resetSent: "We sent a link to reset your Donexto password.",
   recoverNeedEmail: "Enter your Donexto account email first.",
   promise: "Do Next To…\nThe next thing that actually matters. Everything else waits.",
-  wantedToSay: "That domain is not an active mailbox. Did you mean",
-  emailPlaceholder: "you@email.com",
+  wantedToSay: "That domain is not a mailbox we can read yet. Did you mean",
+  emailPlaceholder: "you@hotmail.com",
+  availableNow: "Available now",
+  comingSoonBadge: "Soon",
+  chipOutlook: "Outlook",
+  chipHotmail: "Hotmail",
+  chipLive: "Live",
+  chipMsn: "MSN",
+  chipM365: "Microsoft 365",
+  chipGmail: "Gmail",
+  chipWorkspace: "Google Workspace",
+  chipYahoo: "Yahoo",
+  chipIcloud: "iCloud",
+  waitlistTitle: "Coming soon",
+  waitlistBody:
+    "Coming soon. If you want, we will email this address when Donexto can monitor {provider}.",
+  waitlistNotify: "Notify me",
+  waitlistLater: "Not now",
+  waitlistThanks: "Done. We will email you when that mailbox is available.",
+  companyImapWaitlist:
+    "Donexto only monitors Microsoft 365 and (soon) Google Workspace. Other company servers cannot be read yet. We can notify this address if you want.",
+  languageLabel: "Language",
 };
 
 const fr: Record<LoginMessageKey, string> = {
@@ -314,8 +372,28 @@ const fr: Record<LoginMessageKey, string> = {
   resetSent: "Nous avons envoyé un lien pour réinitialiser le mot de passe Donexto.",
   recoverNeedEmail: "Saisissez d’abord l’e-mail de votre compte Donexto.",
   promise: "Do Next To…\nLa prochaine chose qui compte vraiment. Le reste attend.",
-  wantedToSay: "Ce domaine n’est pas une boîte active. Vouliez-vous dire",
-  emailPlaceholder: "vous@email.com",
+  wantedToSay: "Ce domaine n’est pas une boîte que nous pouvons lire. Vouliez-vous dire",
+  emailPlaceholder: "vous@hotmail.com",
+  availableNow: "Disponible maintenant",
+  comingSoonBadge: "Bientôt",
+  chipOutlook: "Outlook",
+  chipHotmail: "Hotmail",
+  chipLive: "Live",
+  chipMsn: "MSN",
+  chipM365: "Microsoft 365",
+  chipGmail: "Gmail",
+  chipWorkspace: "Google Workspace",
+  chipYahoo: "Yahoo",
+  chipIcloud: "iCloud",
+  waitlistTitle: "Bientôt",
+  waitlistBody:
+    "Bientôt. Si vous voulez, nous préviendrons cet e-mail lorsque Donexto pourra surveiller {provider}.",
+  waitlistNotify: "Prévenez-moi",
+  waitlistLater: "Pas maintenant",
+  waitlistThanks: "C’est noté. Nous vous préviendrons lorsque cette boîte sera disponible.",
+  companyImapWaitlist:
+    "Donexto ne surveille que Microsoft 365 et (bientôt) Google Workspace. Les autres serveurs d’entreprise ne peuvent pas encore être lus. Nous pouvons prévenir cet e-mail si vous voulez.",
+  languageLabel: "Langue",
 };
 
 const it: Record<LoginMessageKey, string> = {
@@ -397,8 +475,28 @@ const it: Record<LoginMessageKey, string> = {
   resetSent: "Abbiamo inviato un link per reimpostare la password Donexto.",
   recoverNeedEmail: "Inserisci prima l’email del tuo account Donexto.",
   promise: "Do Next To…\nLa prossima cosa che conta davvero. Il resto aspetta.",
-  wantedToSay: "Quel dominio non è una casella attiva. Intendevi",
-  emailPlaceholder: "tu@email.com",
+  wantedToSay: "Quel dominio non è una casella che possiamo leggere ora. Intendevi",
+  emailPlaceholder: "tu@hotmail.com",
+  availableNow: "Disponibile ora",
+  comingSoonBadge: "Presto",
+  chipOutlook: "Outlook",
+  chipHotmail: "Hotmail",
+  chipLive: "Live",
+  chipMsn: "MSN",
+  chipM365: "Microsoft 365",
+  chipGmail: "Gmail",
+  chipWorkspace: "Google Workspace",
+  chipYahoo: "Yahoo",
+  chipIcloud: "iCloud",
+  waitlistTitle: "Prossimamente",
+  waitlistBody:
+    "Prossimamente. Se vuoi, ti avvisiamo a questa email quando Donexto potrà monitorare {provider}.",
+  waitlistNotify: "Avvisami",
+  waitlistLater: "Adesso no",
+  waitlistThanks: "Fatto. Ti avvisiamo quando quella casella sarà disponibile.",
+  companyImapWaitlist:
+    "Donexto monitora solo Microsoft 365 e (presto) Google Workspace. Altri server aziendali non si possono ancora leggere. Possiamo avvisare questa email se vuoi.",
+  languageLabel: "Lingua",
 };
 
 const pt: Record<LoginMessageKey, string> = {
@@ -480,8 +578,28 @@ const pt: Record<LoginMessageKey, string> = {
   resetSent: "Enviámos uma ligação para repor a palavra-passe Donexto.",
   recoverNeedEmail: "Escreva primeiro o correio da sua conta Donexto.",
   promise: "Do Next To…\nO que segue e importa. O resto espera.",
-  wantedToSay: "Esse domínio não é um correio ativo. Quis dizer",
-  emailPlaceholder: "voce@email.com",
+  wantedToSay: "Esse domínio não é um correio que possamos ler agora. Quis dizer",
+  emailPlaceholder: "voce@hotmail.com",
+  availableNow: "Disponível agora",
+  comingSoonBadge: "Em breve",
+  chipOutlook: "Outlook",
+  chipHotmail: "Hotmail",
+  chipLive: "Live",
+  chipMsn: "MSN",
+  chipM365: "Microsoft 365",
+  chipGmail: "Gmail",
+  chipWorkspace: "Google Workspace",
+  chipYahoo: "Yahoo",
+  chipIcloud: "iCloud",
+  waitlistTitle: "Em breve",
+  waitlistBody:
+    "Em breve. Se quiser, avisamos neste correio quando o Donexto puder monitorizar {provider}.",
+  waitlistNotify: "Avise-me",
+  waitlistLater: "Agora não",
+  waitlistThanks: "Feito. Avisamos quando essa caixa estiver disponível.",
+  companyImapWaitlist:
+    "O Donexto só monitoriza Microsoft 365 e (em breve) Google Workspace. Outros servidores da empresa ainda não se podem ler. Podemos avisar este correio se quiser.",
+  languageLabel: "Idioma",
 };
 
 export const LOGIN_MESSAGES: Record<
@@ -500,4 +618,16 @@ export function loginText(
   key: LoginMessageKey,
 ): string {
   return LOGIN_MESSAGES[language][key] || LOGIN_MESSAGES.es[key];
+}
+
+export function loginTextReplace(
+  language: AppLanguage,
+  key: LoginMessageKey,
+  vars: Record<string, string>,
+): string {
+  let text = loginText(language, key);
+  for (const [name, value] of Object.entries(vars)) {
+    text = text.replaceAll(`{${name}}`, value);
+  }
+  return text;
 }

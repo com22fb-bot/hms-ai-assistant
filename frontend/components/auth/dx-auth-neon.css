@@ -1,103 +1,105 @@
-/* Ventana oscura + botón teal→magenta (captura dueño). Encima de hms-gate. */
+/* Producto claro: aire, una CTA, acento teal/navy. Encima de hms-gate. */
 
 .dx-auth {
-  --dx-ink: #f2f6f7;
-  --dx-muted: #9aa8ae;
-  --dx-soft: #6d7c82;
-  --dx-line: rgba(255, 255, 255, 0.1);
-  --dx-surface: #161c22;
-  --dx-field: #10161b;
-  --dx-teal: #2ee6d6;
-  --dx-sky: #070d12;
-  color: #f2f6f7;
-  background: #070d12;
+  --dx-ink: #122027;
+  --dx-muted: #5b6d73;
+  --dx-soft: #7a8b91;
+  --dx-line: #d7e2e6;
+  --dx-surface: #ffffff;
+  --dx-field: #f7fafb;
+  --dx-teal: #0f6f6a;
+  --dx-navy: #12324a;
+  --dx-sky: #f4f1ea;
+  color: #122027;
+  background: #f4f1ea;
 }
 
-.dx-auth__panel {
-  background: #070d12;
+.dx-auth__panel,
+.dx-auth__hero {
+  background: transparent;
 }
 
 .dx-auth__card {
-  background: #161c22;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 18px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  background: #ffffff;
+  border: 1px solid #d7e2e6;
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(18, 50, 74, 0.08);
 }
 
 .dx-auth__title,
 .dx-auth__brand {
-  color: #f4fafb;
+  color: #12324a;
 }
 
 .dx-auth__slogan,
 .dx-auth__promise,
 .dx-auth__note {
-  color: #9aa8ae;
+  color: #5b6d73;
 }
 
 .dx-auth__boundary,
 .dx-auth__field > span,
 .dx-auth__help-text {
-  color: #9aa8ae;
+  color: #5b6d73;
 }
 
 .dx-auth__control {
-  background: #10161b;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
+  background: #f7fafb;
+  border: 1px solid #d7e2e6;
+  border-radius: 10px;
 }
 
 .dx-auth__control:focus-within {
-  border-color: rgba(46, 230, 214, 0.55);
-  box-shadow: 0 0 0 3px rgba(46, 230, 214, 0.12);
-  background: #10161b;
+  border-color: rgba(15, 111, 106, 0.55);
+  box-shadow: 0 0 0 3px rgba(15, 111, 106, 0.12);
+  background: #fff;
 }
 
 .dx-auth__control input {
-  color: #f2f6f7;
+  color: #122027;
 }
 
 .dx-auth__control input::placeholder {
-  color: #6d7c82;
+  color: #8a9ca3;
 }
 
 .dx-auth__control svg,
 .dx-auth__eye {
-  color: #8a9ca3;
+  color: #7a8b91;
 }
 
 .dx-auth__link {
-  color: #9aa8ae;
+  color: #5b6d73;
   text-align: right;
   justify-self: end;
 }
 
 .dx-auth__submit {
-  border-radius: 999px;
-  background: linear-gradient(90deg, #2ee6d6 0%, #c44dff 100%);
-  color: #0a0a0a;
-  font-weight: 800;
+  border-radius: 10px;
+  background: #0f6f6a;
+  color: #ffffff;
+  font-weight: 700;
 }
 
 .dx-auth__submit:hover:not(:disabled) {
-  background: linear-gradient(90deg, #2ee6d6 0%, #c44dff 100%);
-  filter: brightness(1.06);
+  background: #0c5c58;
+  filter: none;
 }
 
 .dx-auth__secondary {
   background: transparent;
-  border-color: rgba(255, 255, 255, 0.12);
-  color: #f2f6f7;
-  border-radius: 999px;
+  border-color: #d7e2e6;
+  color: #12324a;
+  border-radius: 10px;
 }
 
 .dx-auth__secondary:hover:not(:disabled) {
-  border-color: rgba(46, 230, 214, 0.45);
-  color: #2ee6d6;
+  border-color: #0f6f6a;
+  color: #0f6f6a;
 }
 
 .dx-auth__divider {
-  color: #6d7c82;
+  color: #7a8b91;
 }
 
 .dx-auth__p0 {
@@ -105,88 +107,104 @@
   font-size: 0.82rem;
   line-height: 1.4;
   text-align: center;
-  color: #9aa8ae;
+  color: #5b6d73;
 }
 
 .dx-auth__p0 strong {
-  color: #e8eef0;
+  color: #12324a;
 }
 
 .dx-auth__bottom-mode button {
-  color: #9aa8ae;
+  color: #5b6d73;
 }
 
 .dx-auth__bottom-mode button:hover:not(:disabled),
 .dx-auth__later:hover:not(:disabled) {
-  color: #2ee6d6;
+  color: #0f6f6a;
 }
 
 .dx-auth__later {
-  color: #9aa8ae;
+  color: #5b6d73;
 }
 
 .dx-auth__alert.is-error {
-  color: #f5c4c4;
-  background: rgba(228, 107, 107, 0.12);
-  border: 1px solid rgba(228, 107, 107, 0.35);
+  color: #8a2a2a;
+  background: #fdecec;
+  border: 1px solid #f3c4c4;
 }
 
 .dx-auth__alert.is-ok {
-  color: #b7efd4;
-  background: rgba(61, 187, 138, 0.12);
-  border: 1px solid rgba(61, 187, 138, 0.35);
+  color: #1c6b4a;
+  background: #e8f7ef;
+  border: 1px solid #b7e0cc;
 }
 
 .dx-auth__secure {
-  color: #9aa8ae;
+  color: #5b6d73;
 }
 
 .dx-auth__secure strong {
-  color: #e8eef0;
+  color: #12324a;
 }
 
 .dx-auth__legal {
-  color: #6d7c82;
+  color: #7a8b91;
 }
 
 .dx-auth__legal-agree {
-  color: #6d7c82;
+  color: #7a8b91;
 }
 
 .dx-auth__legal-agree a {
-  color: #2ee6d6;
+  color: #0f6f6a;
 }
 
 .dx-auth__services {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(16, 22, 27, 0.72);
+  border-color: #d7e2e6;
+  background: #f7fafb;
 }
 
 .dx-auth__services-kicker {
-  color: #6d7c82;
+  color: #7a8b91;
 }
 
 .dx-auth__services-kicker span {
-  color: #2ee6d6;
+  color: #0f6f6a;
 }
 
 .dx-auth__service {
-  background: #10161b;
-  border-color: rgba(255, 255, 255, 0.08);
-  color: #9aa8ae;
+  background: #f7fafb;
+  border-color: #d7e2e6;
+  color: #5b6d73;
 }
 
 .dx-auth__provider--gmail {
-  background: linear-gradient(90deg, #2ee6d6 0%, #c44dff 100%);
-  color: #0a0a0a;
+  background: #0f6f6a;
+  color: #ffffff;
 }
 
 .dx-auth__signup-copy,
 .dx-auth__back {
-  color: #9aa8ae;
+  color: #5b6d73;
 }
 
 .dx-auth__signup-copy a,
 .dx-auth__back:hover:not(:disabled) {
-  color: #2ee6d6;
+  color: #0f6f6a;
+}
+
+.dx-auth__confirm-email {
+  border: 1px solid #d7e2e6;
+  background: #f7fafb;
+  color: #12324a;
+}
+
+.dx-auth__logo {
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(18, 50, 74, 0.08);
+}
+
+.dx-lang-strip--gate.dx-lang-strip--compact {
+  margin-left: auto;
+  margin-right: auto;
 }

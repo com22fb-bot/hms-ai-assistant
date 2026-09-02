@@ -22,6 +22,7 @@ _PROTECTED_PREFIXES = (
     "/gmail",
     "/ai",
     "/dashboard",
+    "/billing",
     "/auth/google/start",
     "/auth/google/status",
     "/auth/google/disconnect",
@@ -38,6 +39,7 @@ _PUBLIC_PATHS = {
     "/auth/microsoft/login",
     "/auth/microsoft/callback",
     "/auth/login/resolve",
+    "/auth/login/waitlist",
 }
 
 

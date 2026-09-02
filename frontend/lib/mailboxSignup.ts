@@ -1,7 +1,8 @@
 /**
  * Ruteo de alta por dominio del buzón que el usuario quiere monitorear.
  * Gmail → Google OAuth. Hotmail/Outlook → Azure. Apple → Apple.
- * Yahoo → un paso: te llevamos al sitio de Yahoo (OAuth). No hay clave en Donexto.
+ * Yahoo / Gmail / iCloud: identidad posible; lectura de buzón aún no.
+ * Hotmail/Outlook/M365 → Azure. Apple → lista de aviso.
  */
 
 export type MailboxConnectMode = "gmail" | "yahoo" | "microsoft" | "choose";
@@ -137,8 +138,7 @@ export function suggestKnownMailbox(email: string): string | null {
 }
 
 export function isKnownActiveMailbox(email: string): boolean {
-  const provider = resolveMailboxProviderFromEmail(email);
-  return provider === "yahoo" || provider === "hotmail";
+  return resolveMailboxProviderFromEmail(email) === "hotmail";
 }
 
 export function isValidSignupEmail(email: string): boolean {
