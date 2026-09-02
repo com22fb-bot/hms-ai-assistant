@@ -4,7 +4,7 @@
 **Dueño:** Héctor M. Salcido Roacho  
 **Repo:** `com22fb-bot/hms-ai-assistant` · producto **Donexto** (Do Next To…)  
 **Trabajo de código:** GitHub Codespace `/workspaces/hms-ai-assistant`. Nunca la laptop `C:\Users\hsalc\hms-ai-assistant`.  
-**Este archivo:** pegar el bloque de la sección “Primer mensaje” en el chat nuevo y leer este doc + `docs/ops/PLAN-ORIGINAL-PASOS.md`.
+**Este archivo:** pegar el bloque de la sección “Primer mensaje” en el chat nuevo y leer este doc + `docs/ops/PLAN-ORIGINAL-PASOS.md` + `docs/ops/MATRIZ-BUZONES.md` (P1 2 sep).
 
 ---
 
@@ -18,16 +18,17 @@ Eres el agente de Donexto (com22fb-bot/hms-ai-assistant, main). Dueño: Héctor 
 Lee primero y no recortes:
 - docs/ops/DONEX-SEPTEMBER.md
 - docs/ops/PLAN-ORIGINAL-PASOS.md
+- docs/ops/MATRIZ-BUZONES.md (P1 personal / empresa / gobierno MX; no perder)
 
 Plan original completo (no usar listas cortas de infra):
-P0 cuenta ≠ buzón → P1 matriz buzones → P2 verificar buzón → P3 conteos → P4 sample 20+20 → P5 top 10 atención → P6 modal 90 días → P7 add-ons 180/365 → P8 Stripe Test Normal $19.99 → P9 sync full → P10 Home N1 → P11 Free (después) → P12 admin con datos reales.
+P0 cuenta ≠ buzón → P1 matriz buzones (Microsoft ya; Google pronto; Proofpoint/propio waitlist; .mx no es el proveedor) → P2 verificar buzón → P3 conteos → P4 sample 20+20 → P5 top 10 atención → P6 modal 90 días → P7 add-ons 180/365 → P8 Stripe Test Normal $19.99 → P9 sync full → P10 Home N1 → P11 Free (después) → P12 admin con datos reales.
 En paralelo: Logística 1 (import 6 meses), push+PWA en celular/tablet/PC/laptop, video 40 s de la landing, P00 (Banamex, catálogo, idiomas, Yahoo OAuth, cuatro frentes).
 
 Septiembre: barato. Railway Hobby $5 es obligatorio o la API se pausa. Cloudflare Pages+Worker y Supabase Free. No migrar FastAPI a Workers. No Cloud Agents largos. Código en Codespace; Cursor Windows solo chat. Deploy Worker: CLOUDFLARE_API_TOKEN + cd frontend && npm run deploy. Landing: bash landing/donexto/deploy-production.sh --branch main. No Vercel.
 
 Yahoo: no pedir contraseña. mail-r aún no; no pongas YAHOO_MAIL_READ_ENABLED=true. Verify-email Donexto (#31) no se salta con login Yahoo/Microsoft. iCloud: decisión abierta.
 
-Confirma que leíste ambos docs y espera instrucción de Héctor.
+Confirma que leíste los tres docs y espera instrucción de Héctor.
 ```
 
 ---
@@ -58,6 +59,49 @@ Continuar = usuario que **ya existe**. Suscribirse = alta nueva Yahoo/Outlook. G
 
 ---
 
+## Pendientes actualizados 2 sep 2026 — matriz P1 (personal, empresa, gobierno)
+
+**No perder.** P1 no es “nunca corporativo ni gobierno”. Es: **Microsoft ya**; **Google pronto**; Proofpoint / Trend Micro / servidores propios = **waitlist** (o más adelante IMAP/OAuth que **ellos** autoricen). Donexto **no** pide password de buzón. **No** activar `YAHOO_MAIL_READ_ENABLED`.
+
+Canónico: [`docs/ops/MATRIZ-BUZONES.md`](./MATRIZ-BUZONES.md).
+
+### El TLD no es el proveedor
+
+`.mx` / `.gob.mx` / `.com.mx` = país o tipo de dominio, **no** quién da el correo. El usuario escribe el correo y pulsa **Continuar**; el backend mira los **MX**.
+
+### Disponible ahora (Microsoft 365 / Outlook / Hotmail)
+
+Firma en Microsoft. A veces el admin de la org debe autorizar la app.
+
+- Hotmail, Outlook, Live, MSN (prueba: `donexto@hotmail.com`, `hsalcidolapdell@outlook.com`)
+- `@televisa.com.mx` (MX Outlook)
+- `@cfe.mx` (MX Outlook)
+
+### Próximamente (Google Workspace / Gmail)
+
+Misma fila cuando Google suelte la app (hoy Testing). No pedir contraseña.
+
+- Gmail personal (`hmcelinfo@gmail.com` es ops/admin, no el camino de lectura aún)
+- `@liverpool.com.mx`
+- `@televisa.com`
+- `@cdmx.gob.mx` (MX Google)
+
+### Hoy no (waitlist, no pedir contraseña)
+
+- `@tvazteca.com.mx` — Proofpoint `pphosted`
+- `@telcel.com` y `hsalcidor@mail.telcel.com` — `mail.telcel.com` MX `pphosted`; el subdominio `mail.` **no** lo vuelve Gmail
+- SAT, IMSS, Hacienda, Función Pública — servidores propios
+- ISSSTE / SEGOB — Trend Micro
+- Banxico — servidores propios
+
+Gobierno: muchas dependencias **prohíben** apps de terceros aunque el MX sea Microsoft. El usuario puede usar correo **personal** Outlook/Hotmail.
+
+Yahoo (`hsalcidor@yahoo.com`, `donexto@yahoo.com`): identidad sí, inbox no (`mail-r`). Sigue sin `YAHOO_MAIL_READ_ENABLED`.
+
+Pendiente de producto esta semana (además de la matriz): Héctor mergea PR #35 (P0b login claro) si aún no está en `main`. Este texto de ops debe quedar encima de #35, no revertirlo.
+
+---
+
 ## Septiembre — cotización y opciones
 
 | Escenario | USD / mes | Qué |
@@ -79,6 +123,7 @@ Barato: apagar este Cloud Agent; Codespace en el navegador (cupo se reinicia 1 s
 1. **P12 Admin** — `/admin`, datos reales, `ADMIN_EMAILS`.
 2. **Video 40 s** — landing, Do-NEX-to, no Donextu, `promo.mp4` cuando Héctor grabe.
 3. **Push** — celular, tablet, PC, laptop + PWA + campana; solo N1; al tocar, el caso.
+4. **P1 matriz buzones MX** — personal / empresa / gobierno; `.mx` no es el proveedor; `docs/ops/MATRIZ-BUZONES.md`.
 
 Fuentes: `docs/ops/PLAN-ORIGINAL-PASOS.md`.
 
@@ -87,7 +132,7 @@ Fuentes: `docs/ops/PLAN-ORIGINAL-PASOS.md`.
 ## Estado al 31 ago 2026 (resumen)
 
 - P0 código OK; **validación dueño en prod pendiente**.
-- P1 parcial: Outlook Mail.Read sí; Yahoo identidad sí, inbox no (`mail-r`); Gmail nuevo pending; iCloud sin decidir.
+- P1 parcial: Outlook Mail.Read sí; Yahoo identidad sí, inbox no (`mail-r`); Gmail nuevo pending; iCloud sin decidir. **2 sep:** matriz personal/empresa/gobierno en `docs/ops/MATRIZ-BUZONES.md` (no recortar).
 - P2 en parte sustituido por verify-email Donexto (PR #31). Falta `mailbox_verified` formal.
 - P3–P11 pendientes como en el plan original.
 - P12 admin: UI/API base; falta allowlist en Railway + migración + datos/cobros reales.
