@@ -1,18 +1,30 @@
 export type AuthGateIntent = "login" | "signup";
 export type AuthGateNext =
   | "provider_login"
-  | "confirm_signup"
-  | "stay_subscribe"
+  | "confirm_first_time"
   | "fix_domain"
   | "pending_review"
-  | "unsupported";
+  | "unsupported"
+  | "icloud_unavailable";
 
-/** Continuar solo entra si ya hay cuenta. Suscribirse confirma el correo en Donexto. */
+export type AuthGateOAuth = "google" | "azure" | "apple" | "yahoo";
+
+/**
+ * Email-first gate: one Continuar.
+ * Existence + routing come from POST /auth/login/resolve
+ * (`{ exists, next, provider, message }`). The extra fields are needed to
+ * tell pending_review / typo / unsupported apart from a first-time Yahoo
+ * or Outlook mailbox. On network failure the client stays on Screen 1.
+ */
 export function gateNextAfterResolve(
-  intent: AuthGateIntent,
+  _intent: AuthGateIntent,
   exists: boolean,
   next?: string,
+  provider?: string,
 ): AuthGateNext {
+  if (provider === "apple" || next === "apple_oauth") {
+    return "icloud_unavailable";
+  }
   if (next === "fix_domain" || next === "typo" || next === "invalid_domain") {
     return "fix_domain";
   }
@@ -25,14 +37,24 @@ export function gateNextAfterResolve(
   if (exists) {
     return "provider_login";
   }
-  if (next === "signup" && intent === "signup") {
-    return "confirm_signup";
-  }
-  if (next === "signup" && intent === "login") {
-    return "stay_subscribe";
-  }
-  if (intent === "signup" && (next === undefined || next === "")) {
-    return "confirm_signup";
+  if (next === "signup" || next === undefined || next === "") {
+    return "confirm_first_time";
   }
   return "fix_domain";
+}
+
+export function oauthFromResolveNext(next?: string): AuthGateOAuth | null {
+  if (next === "yahoo_oauth") {
+    return "yahoo";
+  }
+  if (next === "google_oauth") {
+    return "google";
+  }
+  if (next === "azure_oauth") {
+    return "azure";
+  }
+  if (next === "apple_oauth") {
+    return "apple";
+  }
+  return null;
 }

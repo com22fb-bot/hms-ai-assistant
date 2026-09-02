@@ -3,9 +3,6 @@
 import {
   AlertTriangle,
   CheckCircle2,
-  Eye,
-  EyeOff,
-  KeyRound,
   LoaderCircle,
   Mail,
 } from "lucide-react";
@@ -16,7 +13,10 @@ import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import type { AuthOAuthProvider, YahooAuthIntent } from "@/hooks/useAppAuth";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { loginText } from "@/lib/i18n/loginMessages";
-import { gateNextAfterResolve } from "@/lib/loginGate";
+import {
+  gateNextAfterResolve,
+  oauthFromResolveNext,
+} from "@/lib/loginGate";
 import {
   isBrowserNetworkError,
   postPublicHms,
@@ -25,7 +25,6 @@ import {
   isValidSignupEmail,
   resolveMailboxProviderFromEmail,
   suggestKnownMailbox,
-  type MailboxSignupProvider,
 } from "@/lib/mailboxSignup";
 
 import "./hms-gate.css";
@@ -67,133 +66,132 @@ type LoginScreenProps = {
   onResetPassword: (email: string) => Promise<void>;
 };
 
-function ProviderMark({
-  provider,
-}: {
-  provider: MailboxSignupProvider;
-}) {
-  const letter =
-    provider === "gmail"
-      ? "G"
-      : provider === "yahoo"
-        ? "Y"
-        : provider === "hotmail"
-          ? "M"
-          : provider === "apple"
-            ? ""
-            : "@";
+type GateStep = "email" | "confirm";
 
-  return (
-    <span
-      className={`dx-auth__mark dx-auth__mark--${provider}`}
-      aria-hidden
-    >
-      {provider === "apple" ? (
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
-          <path d="M16.7 12.6c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.2-2.8.9-3.5.9s-1.8-.8-3-.8c-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7 2-.1 2.9-2.3c.7-1.1 1-2.1 1-2.2-.1 0-1.9-.7-1.9-3.2zM14.8 6.4c.6-.8 1.1-1.8.9-2.9-1 .1-2.1.7-2.8 1.5-.6.7-1.2 1.8-1 2.8 1.1.1 2.2-.6 2.9-1.4z" />
-        </svg>
-      ) : (
-        letter
-      )}
-    </span>
-  );
-}
+type ResolvePayload = {
+  next?: string;
+  exists?: boolean;
+  provider?: string;
+  message?: string;
+  suggested_email?: string | null;
+  detail?: { message?: string } | string;
+};
 
 /**
- * Acceso Donexto.
- * Yahoo: te llevamos al sitio de Yahoo (OAuth). Donexto no pide la clave.
- * Gmail: Google OAuth; la contraseña de Gmail no se pide aquí.
+ * Acceso Donexto: un correo (el buzón) y un Continuar.
+ * Yahoo/Microsoft: OAuth en su sitio (backend). Gmail: Google OAuth.
+ * Donexto no pide contraseña de correo ni de cuenta.
  */
 export function LoginScreen({
-  theme: _theme,
-  setTheme: _setTheme,
-  onSignIn,
-  onSignUp: _onSignUp,
   onSignInWithGoogle,
   onSignInWithYahoo,
   onSignInWithMicrosoft,
   onSignInWithProvider,
-  onMagicLink,
-  onResetPassword,
 }: LoginScreenProps) {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [usePassword, setUsePassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [oauthBusy, setOauthBusy] = useState<AuthOAuthProvider | null>(null);
-  const [confirmingSignup, setConfirmingSignup] = useState(false);
+  const [step, setStep] = useState<GateStep>("email");
   const [suggestedEmail, setSuggestedEmail] = useState<string | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
-  const passwordRef = useRef<HTMLInputElement>(null);
   const { language } = useLanguage();
   const L = (key: Parameters<typeof loginText>[1]) => loginText(language, key);
-  const typedProvider = resolveMailboxProviderFromEmail(email);
-  const loginHelper =
-    typedProvider === "hotmail"
-      ? L("helperMicrosoft")
-      : typedProvider === "yahoo"
-        ? L("helperYahoo")
-        : L("helper");
-  const confirmNote =
-    typedProvider === "hotmail"
-      ? L("confirmMicrosoft")
-      : typedProvider === "gmail"
-        ? L("confirmGmail")
-        : typedProvider === "yahoo"
-          ? L("confirmYahoo")
-          : L("confirmOther");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const flag = params.get("donexto");
-    if (flag === "microsoft_error") {
-      setError(
-        params.get("reason")
-        || L("microsoftOpenFailed"),
-      );
-    }
-    if (flag === "signup") {
-      const hinted = (params.get("email") || "").trim().toLowerCase();
-      if (isValidSignupEmail(hinted)) {
-        setEmail(hinted);
-        setConfirmingSignup(true);
-      }
-    }
     if (!flag) {
       return;
     }
+    const hinted = (params.get("email") || "").trim().toLowerCase();
+    const reason = params.get("reason");
     const url = new URL(window.location.href);
     url.searchParams.delete("donexto");
     url.searchParams.delete("reason");
     url.searchParams.delete("email");
     const cleaned = `${url.pathname}${url.search}${url.hash}`;
     window.history.replaceState({}, "", cleaned || "/");
-  }, []);
+    const frame = window.requestAnimationFrame(() => {
+      if (flag === "microsoft_error") {
+        setError(reason || loginText(language, "microsoftOpenFailed"));
+      }
+      if (flag === "signup" && isValidSignupEmail(hinted)) {
+        setEmail(hinted);
+        setStep("confirm");
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [language]);
 
   useEffect(() => {
-    if (!confirmingSignup) {
+    if (step !== "confirm") {
       return;
     }
     document.getElementById("dx-auth-title")?.scrollIntoView({
       block: "start",
       behavior: "smooth",
     });
-  }, [confirmingSignup]);
+  }, [step]);
 
-  function friendlyError(error: unknown, fallback: string): string {
-    if (isBrowserNetworkError(error)) {
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) {
+      return;
+    }
+    const syncKeyboardGap = () => {
+      const covered = Math.max(
+        0,
+        window.innerHeight - viewport.height - viewport.offsetTop,
+      );
+      document.documentElement.style.setProperty(
+        "--dx-keyboard-gap",
+        `${covered}px`,
+      );
+    };
+    syncKeyboardGap();
+    viewport.addEventListener("resize", syncKeyboardGap);
+    viewport.addEventListener("scroll", syncKeyboardGap);
+    return () => {
+      viewport.removeEventListener("resize", syncKeyboardGap);
+      viewport.removeEventListener("scroll", syncKeyboardGap);
+      document.documentElement.style.removeProperty("--dx-keyboard-gap");
+    };
+  }, []);
+
+  function friendlyError(requestError: unknown, fallback: string): string {
+    if (isBrowserNetworkError(requestError)) {
       return L("networkFailed");
     }
-    return error instanceof Error ? error.message : fallback;
+    return requestError instanceof Error ? requestError.message : fallback;
   }
 
   function resetAlerts() {
     setError(null);
     setMessage(null);
     setSuggestedEmail(null);
+  }
+
+  function focusEmail() {
+    window.requestAnimationFrame(() => {
+      emailRef.current?.focus();
+      emailRef.current?.select();
+    });
+  }
+
+  function showStayOnEmail(text: string, asError: boolean) {
+    setStep("email");
+    setBusy(false);
+    setOauthBusy(null);
+    if (asError) {
+      setMessage(null);
+      setError(text);
+    } else {
+      setError(null);
+      setMessage(text);
+    }
+    focusEmail();
   }
 
   function blockUnknownMailbox(address: string): boolean {
@@ -205,11 +203,12 @@ export function LoginScreen({
       return false;
     }
     setSuggestedEmail(suggested);
-    setConfirmingSignup(false);
+    setStep("email");
     setError(
       `${L("wantedToSay")} ${suggested}? ${ACCOUNT_VS_MAILBOX.domainFixFallback}`,
     );
     setMessage(null);
+    focusEmail();
     return true;
   }
 
@@ -218,6 +217,10 @@ export function LoginScreen({
     address: string,
     yahooIntent: YahooAuthIntent = "login",
   ) {
+    if (provider === "apple") {
+      showStayOnEmail(L("icloudUnavailable"), false);
+      return;
+    }
     resetAlerts();
     setBusy(true);
     setOauthBusy(provider);
@@ -235,24 +238,14 @@ export function LoginScreen({
       const fallback =
         provider === "azure"
           ? L("microsoftOpenFailed")
-          : provider === "apple"
-            ? L("appleOpenFailed")
-            : provider === "yahoo"
-              ? L("yahooOpenFailed")
-              : L("googleOpenFailed");
+          : provider === "yahoo"
+            ? L("yahooOpenFailed")
+            : L("googleOpenFailed");
       setError(friendlyError(requestError, fallback));
       setBusy(false);
       setOauthBusy(null);
     }
   }
-
-  type ResolvePayload = {
-    next?: string;
-    exists?: boolean;
-    message?: string;
-    suggested_email?: string | null;
-    detail?: { message?: string } | string;
-  };
 
   function stopWithDomain(payload: ResolvePayload, asError: boolean) {
     const text =
@@ -261,16 +254,7 @@ export function LoginScreen({
         ? ACCOUNT_VS_MAILBOX.domainFixFallback
         : ACCOUNT_VS_MAILBOX.domainPendingFallback);
     setSuggestedEmail(payload.suggested_email || null);
-    setConfirmingSignup(false);
-    setBusy(false);
-    setOauthBusy(null);
-    if (asError) {
-      setMessage(null);
-      setError(text);
-    } else {
-      setError(null);
-      setMessage(text);
-    }
+    showStayOnEmail(text, asError);
   }
 
   async function continueWithProvider(
@@ -286,97 +270,86 @@ export function LoginScreen({
       await startOAuth("azure", address, yahooIntent);
       return;
     }
-    if (provider === "gmail" || provider === "apple") {
-      stopWithDomain(
-        { message: ACCOUNT_VS_MAILBOX.domainPendingFallback },
-        false,
-      );
+    if (provider === "gmail") {
+      showStayOnEmail(L("gmailPending"), false);
       return;
     }
-    stopWithDomain(
-      { message: ACCOUNT_VS_MAILBOX.domainUnsupportedFallback },
-      false,
-    );
+    if (provider === "apple") {
+      showStayOnEmail(L("icloudUnavailable"), false);
+      return;
+    }
+    showStayOnEmail(L("mustUseKnownMailbox"), false);
   }
 
-  async function resolveAndContinue(
-    address: string,
-    intent: "login" | "signup",
-  ) {
+  async function resolvePayload(address: string): Promise<ResolvePayload> {
+    const resolved = await postPublicHms("/auth/login/resolve", {
+      email: address,
+    });
+    const payload = (resolved.payload || {}) as ResolvePayload;
+    if (!resolved.ok) {
+      const detail = payload.detail;
+      throw new Error(
+        typeof detail === "string"
+          ? detail
+          : detail?.message || L("reviewFailed"),
+      );
+    }
+    return payload;
+  }
+
+  async function resolveAndContinue(address: string) {
     setBusy(true);
     resetAlerts();
     try {
-      const resolved = await postPublicHms("/auth/login/resolve", {
-        email: address,
-      });
-      const payload = (resolved.payload || {}) as ResolvePayload;
-      if (!resolved.ok) {
-        const detail = payload.detail;
-        throw new Error(
-          typeof detail === "string"
-            ? detail
-            : detail?.message || L("reviewFailed"),
-        );
+      if (resolveMailboxProviderFromEmail(address) === "apple") {
+        showStayOnEmail(L("icloudUnavailable"), false);
+        return;
       }
+      const payload = await resolvePayload(address);
       const exists = Boolean(payload.exists) && payload.next !== "signup";
-      const gate = gateNextAfterResolve(intent, exists, payload.next);
+      const gate = gateNextAfterResolve(
+        exists ? "login" : "signup",
+        exists,
+        payload.next,
+        payload.provider,
+      );
+      if (gate === "icloud_unavailable") {
+        showStayOnEmail(L("icloudUnavailable"), false);
+        return;
+      }
       if (gate === "fix_domain") {
         stopWithDomain(payload, true);
         return;
       }
-      if (gate === "pending_review" || gate === "unsupported") {
-        stopWithDomain(payload, false);
+      if (gate === "pending_review") {
+        showStayOnEmail(payload.message || L("gmailPending"), false);
         return;
       }
-      if (gate === "stay_subscribe") {
-        setBusy(false);
-        setOauthBusy(null);
-        setConfirmingSignup(false);
-        setMessage(null);
-        setError(L("noAccount"));
+      if (gate === "unsupported") {
+        showStayOnEmail(payload.message || L("mustUseKnownMailbox"), false);
         return;
       }
-      if (gate === "confirm_signup") {
+      if (gate === "confirm_first_time") {
         setBusy(false);
         setOauthBusy(null);
         setError(null);
         setMessage(null);
-        setConfirmingSignup(true);
-        setUsePassword(false);
+        setStep("confirm");
         return;
       }
-      if (exists) {
-        if (payload.next === "yahoo_oauth") {
-          await startOAuth("yahoo", address, "login");
-          return;
-        }
-        if (payload.next === "google_oauth") {
-          await startOAuth("google", address);
-          return;
-        }
-        if (payload.next === "azure_oauth") {
-          await startOAuth("azure", address);
-          return;
-        }
-        if (payload.next === "apple_oauth") {
-          await startOAuth("apple", address);
-          return;
-        }
-        stopWithDomain(
-          {
-            message: L("noActiveService"),
-          },
-          true,
-        );
+      const oauth = oauthFromResolveNext(payload.next);
+      if (oauth) {
+        await startOAuth(oauth, address, "login");
         return;
       }
-      setBusy(false);
-      setOauthBusy(null);
-      setError(L("noAccount"));
+      showStayOnEmail(L("noActiveService"), true);
     } catch (requestError) {
+      // Existence check failed: stay on Screen 1. Do not guess Screen 2
+      // (that would start OAuth / create an account for an unknown mailbox).
       setError(friendlyError(requestError, L("continueFailed")));
       setBusy(false);
       setOauthBusy(null);
+      setStep("email");
     }
   }
 
@@ -387,46 +360,28 @@ export function LoginScreen({
     }
     const clean = email.trim().toLowerCase();
     if (!isValidSignupEmail(clean)) {
-      setError(
-        L("invalidEmail"),
-      );
+      setError(L("invalidEmail"));
+      focusEmail();
       return;
+    }
+    if (email !== clean) {
+      setEmail(clean);
     }
     if (blockUnknownMailbox(clean)) {
       return;
     }
-    if (usePassword) {
-      if (password.length < 8) {
-        setError(L("passwordMin"));
-        return;
-      }
-      setBusy(true);
-      resetAlerts();
-      try {
-        await onSignIn(clean, password);
-      } catch (requestError) {
-        setError(
-          requestError instanceof Error
-            ? requestError.message
-            : L("donextoSigninFailed"),
-        );
-      } finally {
-        setBusy(false);
-      }
-      return;
-    }
-    await resolveAndContinue(clean, "login");
+    await resolveAndContinue(clean);
   }
 
-  async function confirmSignupOnDonexto() {
+  async function confirmFirstTime() {
     if (busy) {
       return;
     }
     const clean = email.trim().toLowerCase();
     if (!isValidSignupEmail(clean)) {
-      setError(
-        L("invalidEmail"),
-      );
+      setError(L("invalidEmail"));
+      setStep("email");
+      focusEmail();
       return;
     }
     if (blockUnknownMailbox(clean)) {
@@ -435,31 +390,33 @@ export function LoginScreen({
     setBusy(true);
     resetAlerts();
     try {
-      const resolved = await postPublicHms("/auth/login/resolve", {
-        email: clean,
-      });
-      const payload = (resolved.payload || {}) as ResolvePayload;
-      if (!resolved.ok) {
-        const detail = payload.detail;
-        throw new Error(
-          typeof detail === "string"
-            ? detail
-            : detail?.message || L("reviewFailed"),
-        );
-      }
+      const payload = await resolvePayload(clean);
       const exists = Boolean(payload.exists) && payload.next !== "signup";
-      const gate = gateNextAfterResolve("signup", exists, payload.next);
+      const gate = gateNextAfterResolve(
+        "signup",
+        exists,
+        payload.next,
+        payload.provider,
+      );
+      if (gate === "icloud_unavailable") {
+        showStayOnEmail(L("icloudUnavailable"), false);
+        return;
+      }
       if (gate === "fix_domain") {
         stopWithDomain(payload, true);
         return;
       }
-      if (gate === "pending_review" || gate === "unsupported") {
-        stopWithDomain(payload, false);
+      if (gate === "pending_review") {
+        showStayOnEmail(payload.message || L("gmailPending"), false);
+        return;
+      }
+      if (gate === "unsupported") {
+        showStayOnEmail(payload.message || L("mustUseKnownMailbox"), false);
         return;
       }
       if (exists) {
-        setConfirmingSignup(false);
-        await resolveAndContinue(clean, "login");
+        setStep("email");
+        await resolveAndContinue(clean);
         return;
       }
       await continueWithProvider(clean, "signup");
@@ -470,49 +427,26 @@ export function LoginScreen({
     }
   }
 
-  async function subscribeWithEmail() {
-    if (busy) {
-      return;
-    }
-    const clean = email.trim().toLowerCase();
-    if (!isValidSignupEmail(clean)) {
-      setError(
-        L("invalidEmail"),
-      );
-      return;
-    }
-    if (blockUnknownMailbox(clean)) {
-      return;
-    }
-    await resolveAndContinue(clean, "signup");
+  function goChangeEmail() {
+    resetAlerts();
+    setStep("email");
+    setError(L("changeEmailExplain"));
+    focusEmail();
   }
 
-  async function recoverPassword() {
-    const clean = email.trim().toLowerCase();
-    if (!isValidSignupEmail(clean)) {
-      setError(L("recoverNeedEmail"));
-      return;
-    }
-    setBusy(true);
+  function goLater() {
     resetAlerts();
-    try {
-      await onResetPassword(clean);
-      setMessage(L("resetSent"));
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : L("recoverNeedEmail"),
-      );
-    } finally {
-      setBusy(false);
-    }
+    setStep("email");
+    focusEmail();
   }
+
+  const confirming = step === "confirm";
+  const displayEmail = email.trim().toLowerCase();
 
   return (
     <main
       className={
-        confirmingSignup ? "dx-auth dx-auth--confirm" : "dx-auth"
+        confirming ? "dx-auth dx-auth--confirm" : "dx-auth"
       }
     >
       <aside className="dx-auth__hero">
@@ -535,11 +469,16 @@ export function LoginScreen({
         <div className="dx-auth__card" aria-labelledby="dx-auth-title">
           <header className="dx-auth__heading">
             <h2 id="dx-auth-title" className="dx-auth__title">
-              {confirmingSignup ? L("confirmTitle") : L("title")}
+              {confirming ? L("confirmTitle") : L("title")}
             </h2>
-            <p className="dx-auth__slogan">
-              {confirmingSignup ? L("confirmHelper") : loginHelper}
-            </p>
+            {confirming ? (
+              <p className="dx-auth__slogan">{L("confirmHelper")}</p>
+            ) : (
+              <>
+                <p className="dx-auth__slogan">{L("body")}</p>
+                <p className="dx-auth__note">{L("noPasswordNote")}</p>
+              </>
+            )}
           </header>
 
           {error ? (
@@ -555,8 +494,9 @@ export function LoginScreen({
               disabled={busy}
               onClick={() => {
                 setEmail(suggestedEmail);
-                setConfirmingSignup(false);
+                setStep("email");
                 resetAlerts();
+                focusEmail();
               }}
             >
               {L("useSuggested")}: {suggestedEmail}
@@ -573,177 +513,86 @@ export function LoginScreen({
             className="dx-auth__form"
             onSubmit={(event) => {
               event.preventDefault();
-              if (confirmingSignup) {
-                void confirmSignupOnDonexto();
+              if (confirming) {
+                void confirmFirstTime();
                 return;
               }
               void continueWithEmail(event);
             }}
             noValidate
           >
-            {confirmingSignup ? (
-              <p className="dx-auth__confirm-email">{email.trim().toLowerCase()}</p>
-            ) : null}
-            <label className="dx-auth__field">
-              <span>
-                {confirmingSignup ? L("confirmEmailLabel") : L("emailLabel")}
-              </span>
-              <div className="dx-auth__control">
-                <Mail size={18} aria-hidden />
-                <input
-                  ref={emailRef}
-                  type="email"
-                  name="email"
-                  value={email}
-                  inputMode="email"
-                  autoComplete="email"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  placeholder={L("emailPlaceholder")}
-                  disabled={busy}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-              </div>
-            </label>
-
-            {usePassword ? (
+            {confirming ? (
+              <p className="dx-auth__confirm-email">{displayEmail}</p>
+            ) : (
               <label className="dx-auth__field">
-                <span>{L("passwordLabel")}</span>
+                <span>{L("emailLabel")}</span>
                 <div className="dx-auth__control">
-                  <KeyRound size={18} aria-hidden />
+                  <Mail size={18} aria-hidden />
                   <input
-                    ref={passwordRef}
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    value={password}
-                    autoComplete="current-password"
+                    ref={emailRef}
+                    type="email"
+                    name="email"
+                    value={email}
+                    inputMode="email"
+                    autoComplete="email"
                     autoCapitalize="none"
+                    autoCorrect="off"
                     spellCheck={false}
-                    placeholder={L("passwordPlaceholder")}
+                    placeholder={L("emailPlaceholder")}
                     disabled={busy}
-                    onChange={(event) => setPassword(event.target.value)}
+                    onChange={(event) => setEmail(event.target.value)}
                   />
-                  <button
-                    type="button"
-                    className="dx-auth__eye"
-                    aria-label={
-                      showPassword ? L("hidePassword") : L("showPassword")
-                    }
-                    onClick={() => setShowPassword((value) => !value)}
-                  >
-                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
                 </div>
               </label>
-            ) : null}
+            )}
 
-            {confirmingSignup ? (
-              <>
-                <p className="dx-auth__signup-copy">{confirmNote}</p>
+            {confirming ? (
+              <div className="dx-auth__actions">
                 <button type="submit" className="dx-auth__submit" disabled={busy}>
                   {busy ? (
                     <>
                       <LoaderCircle className="dx-auth__spin" size={18} />
-                      {L("confirming")}
+                      {oauthBusy ? L("openingMailbox") : L("confirming")}
                     </>
                   ) : (
-                    L("confirmCta")
+                    L("yesContinue")
                   )}
                 </button>
                 <button
                   type="button"
                   className="dx-auth__secondary"
                   disabled={busy}
-                  onClick={() => {
-                    setConfirmingSignup(false);
-                    resetAlerts();
-                  }}
+                  onClick={goChangeEmail}
                 >
-                  {L("confirmBack")}
+                  {L("changeEmail")}
                 </button>
-              </>
+                <button
+                  type="button"
+                  className="dx-auth__later"
+                  disabled={busy}
+                  onClick={goLater}
+                >
+                  {L("later")}
+                </button>
+              </div>
             ) : (
-              <>
-            <button type="submit" className="dx-auth__submit" disabled={busy}>
-              {busy && oauthBusy === null ? (
-                <>
-                  <LoaderCircle className="dx-auth__spin" size={18} />
-                  {L("continuing")}
-                </>
-              ) : oauthBusy ? (
-                <>
-                  <LoaderCircle className="dx-auth__spin" size={18} />
-                  {L("openingMailbox")}
-                </>
-              ) : (
-                L("continueCta")
-              )}
-            </button>
-            <button
-              type="button"
-              className="dx-auth__secondary"
-              disabled={busy}
-              onClick={() => void subscribeWithEmail()}
-            >
-              {L("subscribeCta")}
-            </button>
-              </>
+              <button type="submit" className="dx-auth__submit" disabled={busy}>
+                {busy && oauthBusy === null ? (
+                  <>
+                    <LoaderCircle className="dx-auth__spin" size={18} />
+                    {L("continuing")}
+                  </>
+                ) : oauthBusy ? (
+                  <>
+                    <LoaderCircle className="dx-auth__spin" size={18} />
+                    {L("openingMailbox")}
+                  </>
+                ) : (
+                  L("continueCta")
+                )}
+              </button>
             )}
           </form>
-
-          {confirmingSignup ? null : (
-          <div className="dx-auth__alt">
-            <button
-              type="button"
-              className="dx-auth__link"
-              disabled={busy}
-              onClick={() => {
-                setUsePassword((value) => !value);
-                resetAlerts();
-              }}
-            >
-              {usePassword ? L("enterWithLink") : L("havePassword")}
-            </button>
-            {usePassword ? (
-              <button
-                type="button"
-                className="dx-auth__link"
-                disabled={busy}
-                onClick={() => void recoverPassword()}
-              >
-                {L("forgotPassword")}
-              </button>
-            ) : null}
-          </div>
-          )}
-
-          <div
-            className="dx-auth__services"
-            aria-label={`${L("servicesKicker")} ${L("servicesActive")}`}
-          >
-            <p className="dx-auth__services-kicker">
-              {L("servicesKicker")}{" "}
-              <span>{L("servicesActive")}</span>
-            </p>
-            <ul className="dx-auth__services-list">
-              <li className="dx-auth__service">
-                <ProviderMark provider="yahoo" />
-                <span>{L("serviceYahoo")}</span>
-              </li>
-              <li className="dx-auth__service dx-auth__service--microsoft">
-                <ProviderMark provider="hotmail" />
-                <span>
-                  <strong>{L("serviceMicrosoftTitle")}</strong>
-                  <small>{L("serviceMicrosoftDomains")}</small>
-                </span>
-              </li>
-              <li className="dx-auth__service">
-                <ProviderMark provider="gmail" />
-                <span>{L("serviceGoogle")}</span>
-              </li>
-            </ul>
-          </div>
 
           <LanguageStrip />
 

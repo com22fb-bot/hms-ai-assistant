@@ -4,6 +4,8 @@ import { MICROSOFT_LOGIN_DOMAINS } from "@/lib/mailboxSignup";
 export type LoginMessageKey =
   | "title"
   | "helper"
+  | "body"
+  | "noPasswordNote"
   | "helperYahoo"
   | "helperMicrosoft"
   | "confirmTitle"
@@ -17,6 +19,13 @@ export type LoginMessageKey =
   | "confirming"
   | "confirmCta"
   | "confirmBack"
+  | "yesContinue"
+  | "changeEmail"
+  | "later"
+  | "changeEmailExplain"
+  | "icloudUnavailable"
+  | "mustUseKnownMailbox"
+  | "gmailPending"
   | "confirmYahoo"
   | "confirmMicrosoft"
   | "confirmGmail"
@@ -63,31 +72,45 @@ const microsoftDomainLine = MICROSOFT_LOGIN_DOMAINS.join(" · ");
 
 const es: Record<LoginMessageKey, string> = {
   title: "Entrar a Donexto",
-  helper: "Escribe tu correo. Yahoo u Outlook/Hotmail firman en su sitio.",
+  helper: "Escribe el correo del buzón que quieres monitorear.",
+  body: "Escribe el correo del buzón que quieres monitorear.",
+  noPasswordNote:
+    "Al continuar, firmarás en Yahoo, Outlook o Gmail. Donexto no pide la contraseña de tu correo.",
   helperYahoo:
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   helperMicrosoft:
-    "Microsoft identifica el correo en su sitio. Después Donexto te escribe a ese mismo correo: sin el clic no entras.",
-  confirmTitle: "Confirma el correo de Donexto",
+    "Microsoft identifica el correo en su sitio. Donexto no pide la contraseña de Outlook.",
+  confirmTitle: "¿Usamos este correo en Donexto?",
   confirmHelper:
-    "Confirma el correo que vas a utilizar para el servicio Donexto. Revísalo antes de seguir.",
-  emailLabel: "Correo",
-  confirmEmailLabel: "Confirma o corrige el correo",
+    "Ese correo es el buzón que Donexto va a monitorear. Tiene que ser Yahoo, Outlook/Hotmail o Gmail, no otro mail de login.",
+  emailLabel: "Correo del buzón",
+  confirmEmailLabel: "Correo que Donexto va a monitorear",
   continueCta: "Continuar",
-  subscribeCta: "Suscribirse",
+  subscribeCta: "Continuar",
   continuing: "Continuando…",
   openingMailbox: "Abriendo tu correo…",
-  confirming: "Confirmando…",
-  confirmCta: "Sí, este es el correo de mi cuenta Donexto",
-  confirmBack: "Usar otro correo",
+  confirming: "Continuando…",
+  confirmCta: "Sí, continuar",
+  confirmBack: "Cambiar correo",
+  yesContinue: "Sí, continuar",
+  changeEmail: "Cambiar correo",
+  later: "Más tarde",
+  changeEmailExplain:
+    "El correo tiene que ser el buzón (Yahoo, Outlook o Gmail) que Donexto va a monitorear. Si pones otro, no podemos dar el servicio sobre el correo que te importa.",
+  icloudUnavailable:
+    "iCloud aún no está disponible. Por ahora usa Yahoo, Outlook/Hotmail o Gmail.",
+  mustUseKnownMailbox:
+    "Por ahora el buzón tiene que ser Yahoo, Outlook/Hotmail o Gmail. Si pones otro, no podemos dar el servicio sobre el correo que te importa.",
+  gmailPending:
+    "Las cuentas nuevas de Gmail aún están en revisión de Google. Si ya entras a Donexto con este Gmail, Continuar te lleva a Google. Si es la primera vez, usa Yahoo u Outlook/Hotmail.",
   confirmYahoo:
-    "Al confirmar, Donexto usará este correo. Después firmas en Yahoo. Luego te escribimos a ese mismo correo: sin el clic no entras.",
+    "Ese correo es el buzón que Donexto va a monitorear. Al continuar, firmas en Yahoo. Donexto no pide la contraseña de tu correo.",
   confirmMicrosoft:
-    "Al confirmar, Donexto usará este correo. Después firmas en Microsoft. Luego te escribimos a ese mismo correo: sin el clic no entras.",
+    "Ese correo es el buzón que Donexto va a monitorear. Al continuar, firmas en Microsoft. Donexto no pide la contraseña de Outlook.",
   confirmGmail:
-    "Al confirmar, Donexto usará este correo. Después Google te identifica.",
+    "Ese correo es el buzón que Donexto va a monitorear. Al continuar, Google te identifica. Donexto no pide la contraseña de Gmail.",
   confirmOther:
-    "Al confirmar, Donexto usará este correo para tu cuenta y para vigilar ese mismo buzón.",
+    "Ese correo es el buzón que Donexto va a monitorear. Tiene que ser Yahoo, Outlook/Hotmail o Gmail.",
   havePassword: "Tengo contraseña de Donexto",
   enterWithLink: "Entrar con enlace al correo",
   forgotPassword: "Olvidé mi contraseña",
@@ -109,18 +132,18 @@ const es: Record<LoginMessageKey, string> = {
   useSuggested: "Usar este correo",
   invalidEmail:
     "Escribe un correo válido, con @ y un dominio real (ejemplo: nombre@hotmail.com).",
-  noAccount: "Ese correo no tiene cuenta Donexto. Pulsa Suscribirse.",
+  noAccount: "Ese correo no tiene cuenta Donexto todavía. Confirma si es el buzón a monitorear.",
   continueFailed: "No fue posible continuar con ese correo.",
-  confirmFailed: "No fue posible confirmar ese correo.",
+  confirmFailed: "No fue posible continuar con ese correo.",
   networkFailed:
     "No hay conexión con Donexto. Revisa la red e inténtalo de nuevo.",
   reviewFailed: "No fue posible revisar ese correo.",
   microsoftOpenFailed: "No fue posible abrir el inicio de sesión de Microsoft.",
   yahooOpenFailed: "No fue posible abrir Yahoo.",
   googleOpenFailed: "No fue posible abrir el inicio de sesión de Google.",
-  appleOpenFailed: "No fue posible abrir el inicio de sesión de Apple.",
+  appleOpenFailed: "iCloud aún no está disponible.",
   noActiveService:
-    "Ese correo no usa un servicio activo en Donexto. Activos: Yahoo y Outlook/Hotmail (y los dominios Microsoft de la lista).",
+    "Por ahora el buzón tiene que ser Yahoo, Outlook/Hotmail o Gmail.",
   passwordMin: "La contraseña de Donexto usa al menos 8 caracteres.",
   donextoSigninFailed: "No fue posible iniciar sesión en Donexto.",
   resetSent: "Enviamos un enlace para restablecer la contraseña de Donexto.",
@@ -132,31 +155,45 @@ const es: Record<LoginMessageKey, string> = {
 
 const en: Record<LoginMessageKey, string> = {
   title: "Sign in to Donexto",
-  helper: "Enter your email. Yahoo or Outlook/Hotmail sign in on their own site.",
+  helper: "Enter the mailbox email you want Donexto to monitor.",
+  body: "Enter the mailbox email you want Donexto to monitor.",
+  noPasswordNote:
+    "When you continue, you will sign in at Yahoo, Outlook, or Gmail. Donexto does not ask for your mailbox password.",
   helperYahoo:
     "We take you to Yahoo’s site to sign in. Donexto does not ask for your password.",
   helperMicrosoft:
-    "Microsoft identifies the address on its site. Then Donexto emails that same inbox: without the click you do not enter.",
-  confirmTitle: "Confirm your Donexto email",
+    "Microsoft identifies the address on its site. Donexto does not ask for your Outlook password.",
+  confirmTitle: "Use this email in Donexto?",
   confirmHelper:
-    "Confirm the address you will use for Donexto. Check it before you continue.",
-  emailLabel: "Email",
-  confirmEmailLabel: "Confirm or correct the email",
+    "That address is the mailbox Donexto will monitor. It must be Yahoo, Outlook/Hotmail, or Gmail — not a different login email.",
+  emailLabel: "Mailbox email",
+  confirmEmailLabel: "Email Donexto will monitor",
   continueCta: "Continue",
-  subscribeCta: "Subscribe",
+  subscribeCta: "Continue",
   continuing: "Continuing…",
   openingMailbox: "Opening your mailbox…",
-  confirming: "Confirming…",
-  confirmCta: "Yes, this is my Donexto email",
-  confirmBack: "Use another email",
+  confirming: "Continuing…",
+  confirmCta: "Yes, continue",
+  confirmBack: "Change email",
+  yesContinue: "Yes, continue",
+  changeEmail: "Change email",
+  later: "Later",
+  changeEmailExplain:
+    "The email has to be the mailbox (Yahoo, Outlook, or Gmail) that Donexto will monitor. If you enter another address, we cannot serve the inbox that matters to you.",
+  icloudUnavailable:
+    "iCloud is not available yet. For now use Yahoo, Outlook/Hotmail, or Gmail.",
+  mustUseKnownMailbox:
+    "For now the mailbox has to be Yahoo, Outlook/Hotmail, or Gmail. If you enter another address, we cannot serve the inbox that matters to you.",
+  gmailPending:
+    "New Gmail accounts are still under Google review. If you already use this Gmail in Donexto, Continue takes you to Google. If this is the first time, use Yahoo or Outlook/Hotmail.",
   confirmYahoo:
-    "After you confirm, Donexto will use this address. Then you sign in on Yahoo. We then email that same inbox; without the click you do not enter.",
+    "That address is the mailbox Donexto will monitor. When you continue, you sign in at Yahoo. Donexto does not ask for your mailbox password.",
   confirmMicrosoft:
-    "After you confirm, Donexto will use this address. Then you sign in on Microsoft. We then email that same inbox; without the click you do not enter.",
+    "That address is the mailbox Donexto will monitor. When you continue, you sign in at Microsoft. Donexto does not ask for your Outlook password.",
   confirmGmail:
-    "After you confirm, Donexto will use this address. Then Google identifies you.",
+    "That address is the mailbox Donexto will monitor. When you continue, Google identifies you. Donexto does not ask for your Gmail password.",
   confirmOther:
-    "After you confirm, Donexto will use this address for your account and to watch that same mailbox.",
+    "That address is the mailbox Donexto will monitor. It must be Yahoo, Outlook/Hotmail, or Gmail.",
   havePassword: "I have a Donexto password",
   enterWithLink: "Sign in with an email link",
   forgotPassword: "Forgot my password",
@@ -178,17 +215,17 @@ const en: Record<LoginMessageKey, string> = {
   useSuggested: "Use this email",
   invalidEmail:
     "Enter a valid email, with @ and a real domain (example: name@hotmail.com).",
-  noAccount: "That email has no Donexto account. Tap Subscribe.",
+  noAccount: "That email has no Donexto account yet. Confirm it is the mailbox to monitor.",
   continueFailed: "We could not continue with that email.",
-  confirmFailed: "We could not confirm that email.",
+  confirmFailed: "We could not continue with that email.",
   networkFailed: "No connection to Donexto. Check the network and try again.",
   reviewFailed: "We could not check that email.",
   microsoftOpenFailed: "We could not open Microsoft sign-in.",
   yahooOpenFailed: "We could not open Yahoo.",
   googleOpenFailed: "We could not open Google sign-in.",
-  appleOpenFailed: "We could not open Apple sign-in.",
+  appleOpenFailed: "iCloud is not available yet.",
   noActiveService:
-    "That email is not an active Donexto service. Active: Yahoo and Outlook/Hotmail (and the Microsoft domains listed).",
+    "For now the mailbox has to be Yahoo, Outlook/Hotmail, or Gmail.",
   passwordMin: "The Donexto password uses at least 8 characters.",
   donextoSigninFailed: "We could not sign you in to Donexto.",
   resetSent: "We sent a link to reset your Donexto password.",
@@ -200,32 +237,45 @@ const en: Record<LoginMessageKey, string> = {
 
 const fr: Record<LoginMessageKey, string> = {
   title: "Connexion à Donexto",
-  helper:
-    "Saisissez votre e-mail. Yahoo ou Outlook/Hotmail se connectent sur leur site.",
+  helper: "Saisissez l’e-mail de la boîte que Donexto doit surveiller.",
+  body: "Saisissez l’e-mail de la boîte que Donexto doit surveiller.",
+  noPasswordNote:
+    "En continuant, vous vous connecterez sur Yahoo, Outlook ou Gmail. Donexto ne demande pas le mot de passe de votre messagerie.",
   helperYahoo:
     "Nous vous emmenons sur le site Yahoo pour vous connecter. Donexto ne demande pas votre mot de passe.",
   helperMicrosoft:
-    "Microsoft identifie l’adresse sur son site. Ensuite Donexto écrit à cette boîte : sans le clic vous n’entrez pas.",
-  confirmTitle: "Confirmez l’e-mail Donexto",
+    "Microsoft identifie l’adresse sur son site. Donexto ne demande pas le mot de passe Outlook.",
+  confirmTitle: "Utiliser cet e-mail dans Donexto ?",
   confirmHelper:
-    "Confirmez l’adresse que vous utiliserez pour Donexto. Vérifiez-la avant de continuer.",
-  emailLabel: "E-mail",
-  confirmEmailLabel: "Confirmez ou corrigez l’e-mail",
+    "Cette adresse est la boîte que Donexto va surveiller. Ce doit être Yahoo, Outlook/Hotmail ou Gmail, pas un autre e-mail de connexion.",
+  emailLabel: "E-mail de la boîte",
+  confirmEmailLabel: "E-mail que Donexto va surveiller",
   continueCta: "Continuer",
-  subscribeCta: "S’inscrire",
+  subscribeCta: "Continuer",
   continuing: "Suite…",
   openingMailbox: "Ouverture de votre messagerie…",
-  confirming: "Confirmation…",
-  confirmCta: "Oui, c’est l’e-mail de mon compte Donexto",
-  confirmBack: "Utiliser un autre e-mail",
+  confirming: "Suite…",
+  confirmCta: "Oui, continuer",
+  confirmBack: "Changer d’e-mail",
+  yesContinue: "Oui, continuer",
+  changeEmail: "Changer d’e-mail",
+  later: "Plus tard",
+  changeEmailExplain:
+    "L’e-mail doit être la boîte (Yahoo, Outlook ou Gmail) que Donexto va surveiller. Si vous en mettez un autre, nous ne pouvons pas servir la messagerie qui vous importe.",
+  icloudUnavailable:
+    "iCloud n’est pas encore disponible. Pour l’instant, utilisez Yahoo, Outlook/Hotmail ou Gmail.",
+  mustUseKnownMailbox:
+    "Pour l’instant, la boîte doit être Yahoo, Outlook/Hotmail ou Gmail. Si vous en mettez une autre, nous ne pouvons pas servir la messagerie qui vous importe.",
+  gmailPending:
+    "Les nouveaux comptes Gmail sont encore en revue chez Google. Si vous utilisez déjà ce Gmail dans Donexto, Continuer ouvre Google. Sinon, utilisez Yahoo ou Outlook/Hotmail.",
   confirmYahoo:
-    "Après confirmation, Donexto utilisera cette adresse. Ensuite vous vous connectez sur Yahoo. Puis nous écrivons à cette boîte : sans le clic vous n’entrez pas.",
+    "Cette adresse est la boîte que Donexto va surveiller. En continuant, vous vous connectez sur Yahoo. Donexto ne demande pas le mot de passe.",
   confirmMicrosoft:
-    "Après confirmation, Donexto utilisera cette adresse. Ensuite vous vous connectez chez Microsoft. Puis nous écrivons à cette boîte : sans le clic vous n’entrez pas.",
+    "Cette adresse est la boîte que Donexto va surveiller. En continuant, vous vous connectez chez Microsoft. Donexto ne demande pas le mot de passe Outlook.",
   confirmGmail:
-    "Après confirmation, Donexto utilisera cette adresse. Ensuite Google vous identifie.",
+    "Cette adresse est la boîte que Donexto va surveiller. En continuant, Google vous identifie. Donexto ne demande pas le mot de passe Gmail.",
   confirmOther:
-    "Après confirmation, Donexto utilisera cette adresse pour le compte et pour surveiller cette même boîte.",
+    "Cette adresse est la boîte que Donexto va surveiller. Ce doit être Yahoo, Outlook/Hotmail ou Gmail.",
   havePassword: "J’ai un mot de passe Donexto",
   enterWithLink: "Connexion par lien e-mail",
   forgotPassword: "Mot de passe oublié",
@@ -247,18 +297,18 @@ const fr: Record<LoginMessageKey, string> = {
   useSuggested: "Utiliser cet e-mail",
   invalidEmail:
     "Saisissez un e-mail valide, avec @ et un vrai domaine (exemple : nom@hotmail.com).",
-  noAccount: "Cet e-mail n’a pas de compte Donexto. Appuyez sur S’inscrire.",
+  noAccount: "Cet e-mail n’a pas encore de compte Donexto. Confirmez que c’est la boîte à surveiller.",
   continueFailed: "Impossible de continuer avec cet e-mail.",
-  confirmFailed: "Impossible de confirmer cet e-mail.",
+  confirmFailed: "Impossible de continuer avec cet e-mail.",
   networkFailed:
     "Pas de connexion à Donexto. Vérifiez le réseau et réessayez.",
   reviewFailed: "Impossible de vérifier cet e-mail.",
   microsoftOpenFailed: "Impossible d’ouvrir la connexion Microsoft.",
   yahooOpenFailed: "Impossible d’ouvrir Yahoo.",
   googleOpenFailed: "Impossible d’ouvrir la connexion Google.",
-  appleOpenFailed: "Impossible d’ouvrir la connexion Apple.",
+  appleOpenFailed: "iCloud n’est pas encore disponible.",
   noActiveService:
-    "Cet e-mail n’est pas un service actif Donexto. Actifs : Yahoo et Outlook/Hotmail (et les domaines Microsoft listés).",
+    "Pour l’instant, la boîte doit être Yahoo, Outlook/Hotmail ou Gmail.",
   passwordMin: "Le mot de passe Donexto comporte au moins 8 caractères.",
   donextoSigninFailed: "Impossible de vous connecter à Donexto.",
   resetSent: "Nous avons envoyé un lien pour réinitialiser le mot de passe Donexto.",
@@ -270,31 +320,45 @@ const fr: Record<LoginMessageKey, string> = {
 
 const it: Record<LoginMessageKey, string> = {
   title: "Accedi a Donexto",
-  helper: "Scrivi la tua email. Yahoo o Outlook/Hotmail accedono sul loro sito.",
+  helper: "Scrivi l’email della casella che Donexto deve monitorare.",
+  body: "Scrivi l’email della casella che Donexto deve monitorare.",
+  noPasswordNote:
+    "Continuando, accederai su Yahoo, Outlook o Gmail. Donexto non chiede la password della casella.",
   helperYahoo:
     "Ti portiamo sul sito Yahoo per accedere. Donexto non chiede la password.",
   helperMicrosoft:
-    "Microsoft identifica l’indirizzo sul suo sito. Poi Donexto scrive a quella casella: senza il clic non entri.",
-  confirmTitle: "Conferma l’email Donexto",
+    "Microsoft identifica l’indirizzo sul suo sito. Donexto non chiede la password di Outlook.",
+  confirmTitle: "Usiamo questa email in Donexto?",
   confirmHelper:
-    "Conferma l’indirizzo che userai per Donexto. Controllalo prima di continuare.",
-  emailLabel: "Email",
-  confirmEmailLabel: "Conferma o correggi l’email",
+    "Quell’indirizzo è la casella che Donexto monitorerà. Deve essere Yahoo, Outlook/Hotmail o Gmail, non un’altra email di login.",
+  emailLabel: "Email della casella",
+  confirmEmailLabel: "Email che Donexto monitorerà",
   continueCta: "Continua",
-  subscribeCta: "Iscriviti",
+  subscribeCta: "Continua",
   continuing: "Attendi…",
   openingMailbox: "Apertura della casella…",
-  confirming: "Conferma…",
-  confirmCta: "Sì, questa è l’email del mio account Donexto",
-  confirmBack: "Usa un’altra email",
+  confirming: "Attendi…",
+  confirmCta: "Sì, continua",
+  confirmBack: "Cambia email",
+  yesContinue: "Sì, continua",
+  changeEmail: "Cambia email",
+  later: "Più tardi",
+  changeEmailExplain:
+    "L’email deve essere la casella (Yahoo, Outlook o Gmail) che Donexto monitorerà. Se ne inserisci un’altra, non possiamo servire la casella che ti importa.",
+  icloudUnavailable:
+    "iCloud non è ancora disponibile. Per ora usa Yahoo, Outlook/Hotmail o Gmail.",
+  mustUseKnownMailbox:
+    "Per ora la casella deve essere Yahoo, Outlook/Hotmail o Gmail. Se ne inserisci un’altra, non possiamo servire la casella che ti importa.",
+  gmailPending:
+    "I nuovi account Gmail sono ancora in revisione da Google. Se usi già questo Gmail in Donexto, Continua apre Google. Altrimenti usa Yahoo o Outlook/Hotmail.",
   confirmYahoo:
-    "Dopo la conferma, Donexto userà questo indirizzo. Poi accedi su Yahoo. Poi ti scriviamo a quella casella: senza il clic non entri.",
+    "Quell’indirizzo è la casella che Donexto monitorerà. Continuando, accedi su Yahoo. Donexto non chiede la password.",
   confirmMicrosoft:
-    "Dopo la conferma, Donexto userà questo indirizzo. Poi accedi su Microsoft. Poi ti scriviamo a quella casella: senza il clic non entri.",
+    "Quell’indirizzo è la casella che Donexto monitorerà. Continuando, accedi su Microsoft. Donexto non chiede la password di Outlook.",
   confirmGmail:
-    "Dopo la conferma, Donexto userà questo indirizzo. Poi Google ti identifica.",
+    "Quell’indirizzo è la casella che Donexto monitorerà. Continuando, Google ti identifica. Donexto non chiede la password di Gmail.",
   confirmOther:
-    "Dopo la conferma, Donexto userà questo indirizzo per l’account e per sorvegliare la stessa casella.",
+    "Quell’indirizzo è la casella che Donexto monitorerà. Deve essere Yahoo, Outlook/Hotmail o Gmail.",
   havePassword: "Ho una password Donexto",
   enterWithLink: "Accedi con link email",
   forgotPassword: "Password dimenticata",
@@ -316,18 +380,18 @@ const it: Record<LoginMessageKey, string> = {
   useSuggested: "Usa questa email",
   invalidEmail:
     "Scrivi un’email valida, con @ e un dominio reale (esempio: nome@hotmail.com).",
-  noAccount: "Questa email non ha un account Donexto. Tocca Iscriviti.",
+  noAccount: "Questa email non ha ancora un account Donexto. Conferma che è la casella da monitorare.",
   continueFailed: "Impossibile continuare con questa email.",
-  confirmFailed: "Impossibile confermare questa email.",
+  confirmFailed: "Impossibile continuare con questa email.",
   networkFailed:
     "Nessuna connessione a Donexto. Controlla la rete e riprova.",
   reviewFailed: "Impossibile verificare questa email.",
   microsoftOpenFailed: "Impossibile aprire l’accesso Microsoft.",
   yahooOpenFailed: "Impossibile aprire Yahoo.",
   googleOpenFailed: "Impossibile aprire l’accesso Google.",
-  appleOpenFailed: "Impossibile aprire l’accesso Apple.",
+  appleOpenFailed: "iCloud non è ancora disponibile.",
   noActiveService:
-    "Questa email non è un servizio attivo Donexto. Attivi: Yahoo e Outlook/Hotmail (e i domini Microsoft in elenco).",
+    "Per ora la casella deve essere Yahoo, Outlook/Hotmail o Gmail.",
   passwordMin: "La password Donexto ha almeno 8 caratteri.",
   donextoSigninFailed: "Impossibile accedere a Donexto.",
   resetSent: "Abbiamo inviato un link per reimpostare la password Donexto.",
@@ -339,31 +403,45 @@ const it: Record<LoginMessageKey, string> = {
 
 const pt: Record<LoginMessageKey, string> = {
   title: "Entrar no Donexto",
-  helper: "Escreva o seu correio. Yahoo ou Outlook/Hotmail entram no próprio site.",
+  helper: "Escreva o correio da caixa que o Donexto deve monitorizar.",
+  body: "Escreva o correio da caixa que o Donexto deve monitorizar.",
+  noPasswordNote:
+    "Ao continuar, entra na Yahoo, Outlook ou Gmail. O Donexto não pede a palavra-passe do correio.",
   helperYahoo:
     "Levamo-lo ao site da Yahoo para entrar. O Donexto não pede a palavra-passe.",
   helperMicrosoft:
-    "A Microsoft identifica o correio no respectivo site. Depois o Donexto escreve para essa caixa: sem o clique não entra.",
-  confirmTitle: "Confirme o correio Donexto",
+    "A Microsoft identifica o correio no respectivo site. O Donexto não pede a palavra-passe do Outlook.",
+  confirmTitle: "Usamos este correio no Donexto?",
   confirmHelper:
-    "Confirme o endereço que vai usar no Donexto. Reveja-o antes de continuar.",
-  emailLabel: "Correio",
-  confirmEmailLabel: "Confirme ou corrija o correio",
+    "Esse endereço é a caixa que o Donexto vai monitorizar. Tem de ser Yahoo, Outlook/Hotmail ou Gmail, não outro correio de início de sessão.",
+  emailLabel: "Correio da caixa",
+  confirmEmailLabel: "Correio que o Donexto vai monitorizar",
   continueCta: "Continuar",
-  subscribeCta: "Subscrever",
+  subscribeCta: "Continuar",
   continuing: "A continuar…",
   openingMailbox: "A abrir o correio…",
-  confirming: "A confirmar…",
-  confirmCta: "Sim, este é o correio da minha conta Donexto",
-  confirmBack: "Usar outro correio",
+  confirming: "A continuar…",
+  confirmCta: "Sim, continuar",
+  confirmBack: "Mudar correio",
+  yesContinue: "Sim, continuar",
+  changeEmail: "Mudar correio",
+  later: "Mais tarde",
+  changeEmailExplain:
+    "O correio tem de ser a caixa (Yahoo, Outlook ou Gmail) que o Donexto vai monitorizar. Se puser outro, não podemos servir a caixa que lhe importa.",
+  icloudUnavailable:
+    "O iCloud ainda não está disponível. Por agora use Yahoo, Outlook/Hotmail ou Gmail.",
+  mustUseKnownMailbox:
+    "Por agora a caixa tem de ser Yahoo, Outlook/Hotmail ou Gmail. Se puser outra, não podemos servir a caixa que lhe importa.",
+  gmailPending:
+    "Novas contas Gmail ainda estão em revisão da Google. Se já usa este Gmail no Donexto, Continuar abre a Google. Se é a primeira vez, use Yahoo ou Outlook/Hotmail.",
   confirmYahoo:
-    "Ao confirmar, o Donexto usa este endereço. Depois entra na Yahoo. Depois escrevemos para essa caixa: sem o clique não entra.",
+    "Esse endereço é a caixa que o Donexto vai monitorizar. Ao continuar, entra na Yahoo. O Donexto não pede a palavra-passe.",
   confirmMicrosoft:
-    "Ao confirmar, o Donexto usa este endereço. Depois entra na Microsoft. Depois escrevemos para essa caixa: sem o clique não entra.",
+    "Esse endereço é a caixa que o Donexto vai monitorizar. Ao continuar, entra na Microsoft. O Donexto não pede a palavra-passe do Outlook.",
   confirmGmail:
-    "Ao confirmar, o Donexto usa este endereço. Depois o Google identifica-o.",
+    "Esse endereço é a caixa que o Donexto vai monitorizar. Ao continuar, o Google identifica-o. O Donexto não pede a palavra-passe do Gmail.",
   confirmOther:
-    "Ao confirmar, o Donexto usa este endereço para a conta e para vigiar a mesma caixa.",
+    "Esse endereço é a caixa que o Donexto vai monitorizar. Tem de ser Yahoo, Outlook/Hotmail ou Gmail.",
   havePassword: "Tenho palavra-passe Donexto",
   enterWithLink: "Entrar com ligação no correio",
   forgotPassword: "Esqueci a palavra-passe",
@@ -385,18 +463,18 @@ const pt: Record<LoginMessageKey, string> = {
   useSuggested: "Usar este correio",
   invalidEmail:
     "Escreva um correio válido, com @ e um domínio real (exemplo: nome@hotmail.com).",
-  noAccount: "Esse correio não tem conta Donexto. Toque em Subscrever.",
+  noAccount: "Esse correio ainda não tem conta Donexto. Confirme se é a caixa a monitorizar.",
   continueFailed: "Não foi possível continuar com esse correio.",
-  confirmFailed: "Não foi possível confirmar esse correio.",
+  confirmFailed: "Não foi possível continuar com esse correio.",
   networkFailed:
     "Sem ligação ao Donexto. Verifique a rede e tente novamente.",
   reviewFailed: "Não foi possível verificar esse correio.",
   microsoftOpenFailed: "Não foi possível abrir o início de sessão da Microsoft.",
   yahooOpenFailed: "Não foi possível abrir a Yahoo.",
   googleOpenFailed: "Não foi possível abrir o início de sessão do Google.",
-  appleOpenFailed: "Não foi possível abrir o início de sessão da Apple.",
+  appleOpenFailed: "O iCloud ainda não está disponível.",
   noActiveService:
-    "Esse correio não é um serviço ativo no Donexto. Ativos: Yahoo e Outlook/Hotmail (e os domínios Microsoft da lista).",
+    "Por agora a caixa tem de ser Yahoo, Outlook/Hotmail ou Gmail.",
   passwordMin: "A palavra-passe Donexto tem pelo menos 8 caracteres.",
   donextoSigninFailed: "Não foi possível iniciar sessão no Donexto.",
   resetSent: "Enviámos uma ligação para repor a palavra-passe Donexto.",

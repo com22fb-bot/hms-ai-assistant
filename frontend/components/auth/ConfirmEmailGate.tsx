@@ -18,7 +18,7 @@ type ConfirmEmailGateProps = {
 /**
  * Bloquea el dashboard hasta `user_metadata.donexto_verified === true`
  * (clic en el mail Donexto con `?donexto_verify=1`).
- * `email_confirmed_at` de Google o identities no dan acceso.
+ * Identidad OAuth (Yahoo / Google / Microsoft) no usa esta pantalla.
  */
 export function ConfirmEmailGate({
   email,
