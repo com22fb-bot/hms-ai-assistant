@@ -83,16 +83,10 @@ type ResolvePayload = {
  * Donexto no pide contraseña de correo ni de cuenta.
  */
 export function LoginScreen({
-  theme: _theme,
-  setTheme: _setTheme,
-  onSignIn: _onSignIn,
-  onSignUp: _onSignUp,
   onSignInWithGoogle,
   onSignInWithYahoo,
   onSignInWithMicrosoft,
   onSignInWithProvider,
-  onMagicLink: _onMagicLink,
-  onResetPassword: _onResetPassword,
 }: LoginScreenProps) {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -108,29 +102,28 @@ export function LoginScreen({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const flag = params.get("donexto");
-    if (flag === "microsoft_error") {
-      setError(
-        params.get("reason")
-        || L("microsoftOpenFailed"),
-      );
-    }
-    if (flag === "signup") {
-      const hinted = (params.get("email") || "").trim().toLowerCase();
-      if (isValidSignupEmail(hinted)) {
-        setEmail(hinted);
-        setStep("confirm");
-      }
-    }
     if (!flag) {
       return;
     }
+    const hinted = (params.get("email") || "").trim().toLowerCase();
+    const reason = params.get("reason");
     const url = new URL(window.location.href);
     url.searchParams.delete("donexto");
     url.searchParams.delete("reason");
     url.searchParams.delete("email");
     const cleaned = `${url.pathname}${url.search}${url.hash}`;
     window.history.replaceState({}, "", cleaned || "/");
-  }, []);
+    const frame = window.requestAnimationFrame(() => {
+      if (flag === "microsoft_error") {
+        setError(reason || loginText(language, "microsoftOpenFailed"));
+      }
+      if (flag === "signup" && isValidSignupEmail(hinted)) {
+        setEmail(hinted);
+        setStep("confirm");
+      }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [language]);
 
   useEffect(() => {
     if (step !== "confirm") {

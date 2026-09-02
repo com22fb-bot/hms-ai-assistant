@@ -399,6 +399,9 @@ export function useAppAuth() {
   const signInWithProvider = useCallback(
     async (provider: AuthOAuthProvider, email?: string) => {
       // supabase-js no tipa `yahoo` como Provider de Auth.
+      // Yahoo identity uses POST /auth/yahoo/login (signInWithYahoo), not
+      // supabase.auth.signInWithOAuth("yahoo"). Keep this guard so the
+      // generic helper cannot send people into a missing Supabase provider.
       if (provider === "yahoo") {
         throw new Error("Falta activar Yahoo en Supabase Auth");
       }
