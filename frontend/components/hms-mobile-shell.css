@@ -1,5 +1,92 @@
 /* Shell móvil post-login: una columna legible, sin ruido de evaluación */
 
+.app-mobile-signout {
+  display: none;
+}
+
+.app-plan-card {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1rem 1.05rem;
+  border: 1px solid rgba(15, 111, 106, 0.28);
+  border-radius: 14px;
+  background: rgba(15, 111, 106, 0.08);
+}
+
+.app-plan-card strong,
+.app-plan-card p {
+  margin: 0;
+}
+
+.app-plan-card p {
+  color: var(--ui-muted, #93a8b0);
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.app-plan-card button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border: 0;
+  border-radius: 10px;
+  background: #0f6f6a;
+  color: #fff;
+  font-weight: 700;
+}
+
+.app-read-banner {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem;
+  align-items: start;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid rgba(212, 160, 23, 0.35);
+  background: rgba(212, 160, 23, 0.1);
+}
+
+@media (max-width: 980px) {
+  .app-mobile-overlay {
+    z-index: 70 !important;
+  }
+
+  .app-sidebar {
+    z-index: 80 !important;
+    padding-bottom: calc(92px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .app-sidebar-bottom {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    padding-bottom: 8px;
+    background: inherit;
+  }
+
+  .app-mobile-nav {
+    z-index: 55 !important;
+    pointer-events: auto !important;
+    isolation: isolate;
+  }
+
+  .app-mobile-nav button {
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 1;
+  }
+
+  .app-shell.is-drawer-open .app-mobile-nav {
+    pointer-events: none;
+  }
+
+  .app-shell.is-drawer-open .app-mobile-overlay.is-visible {
+    pointer-events: auto;
+  }
+}
+
 @media (max-width: 740px) {
   .app-shell {
     width: 100%;
@@ -44,6 +131,7 @@
   .app-quick-actions {
     grid-template-columns: 1fr 1fr !important;
     gap: 0.55rem !important;
+    z-index: 1 !important;
   }
 
   .app-quick-actions button strong {
@@ -54,4 +142,43 @@
     padding-left: 0.85rem !important;
     padding-right: 0.85rem !important;
   }
+
+  .app-top-actions {
+    display: none;
+  }
+
+  .app-mobile-signout {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-height: 43px;
+    padding: 0 0.75rem;
+    margin-left: auto;
+    border: 1px solid rgba(228, 107, 107, 0.4);
+    border-radius: 12px;
+    background: rgba(228, 107, 107, 0.12);
+    color: #ffb4b8;
+    font-size: 0.78rem;
+    font-weight: 700;
+    pointer-events: auto;
+    position: relative;
+    z-index: 40;
+  }
+
+  .app-logout {
+    min-height: 46px;
+    pointer-events: auto !important;
+  }
 }
+
+@media (max-width: 390px) {
+  .app-mobile-nav button span {
+    font-size: 0.62rem;
+  }
+
+  .app-mobile-signout span {
+    display: none;
+  }
+}
+

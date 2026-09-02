@@ -9,6 +9,7 @@ import {
   ChevronDown,
   ChevronRight,
   Clock3,
+  CreditCard,
   Eye,
   EyeOff,
   FileBarChart,
@@ -55,7 +56,7 @@ import { useGoogleStatus } from "@/hooks/useGoogleStatus";
 import { useAppAuth } from "@/hooks/useAppAuth";
 import { ACCOUNT_VS_MAILBOX, mailboxServiceLabel } from "@/lib/accountVsMailbox";
 import { mailboxConnectModeFromEmail } from "@/lib/mailboxSignup";
-import { hmsJson } from "@/lib/hmsApi";
+import { HmsApiError, hmsJson } from "@/lib/hmsApi";
 import type {
   CaseEvent,
   CasePriority,
@@ -743,6 +744,15 @@ function Dashboard({
   const microsoftMailPending =
     microsoftIdentityReady && !Boolean(connection?.connected);
   const yahooMailReadAvailable = Boolean(connection?.mail_read_available);
+  const gmailIdentityWithoutRead =
+    Boolean(session.email) &&
+    mailboxConnectModeFromEmail(session.email) === "gmail" &&
+    !isGoogleMailbox &&
+    !isMicrosoftMailbox;
+  const yahooIdentityWithoutRead =
+    mailboxConnectModeFromEmail(session.email) === "yahoo" &&
+    !isYahooMailbox &&
+    !isMicrosoftMailbox;
   const usesGuidedImport = Boolean(
     isGoogleMailbox || isYahooMailbox || isMicrosoftMailbox,
   );
@@ -775,6 +785,8 @@ function Dashboard({
   const [importFlowStatus, setImportFlowStatus] =
     useState<ImportFlowStatus | null>(null);
   const [initialFlowOpened, setInitialFlowOpened] = useState(false);
+  const [billingBusy, setBillingBusy] = useState(false);
+  const [planNotice, setPlanNotice] = useState<string | null>(null);
 
   // Tras verificar Donexto sin buzón: autorizar lectura del mismo correo.
   useEffect(() => {
@@ -849,6 +861,30 @@ function Dashboard({
     setProfileOpen(false);
   }
 
+  async function startNormalPlanCheckout() {
+    setBillingBusy(true);
+    setPlanNotice(null);
+    try {
+      const result = await hmsJson<{ checkout_url?: string; message?: string }>(
+        "/api/hms/billing/checkout",
+        { method: "POST" },
+      );
+      if (result.checkout_url) {
+        window.location.assign(result.checkout_url);
+        return;
+      }
+      setPlanNotice(result.message || ACCOUNT_VS_MAILBOX.planNormalMissingKey);
+    } catch (requestError) {
+      setPlanNotice(
+        requestError instanceof HmsApiError
+          ? requestError.message
+          : ACCOUNT_VS_MAILBOX.planNormalMissingKey,
+      );
+    } finally {
+      setBillingBusy(false);
+    }
+  }
+
   function openMailboxConnect() {
     setMailboxPickerOpen(true);
     setNotice(null);
@@ -914,6 +950,7 @@ function Dashboard({
     }
 
     if (view === "mail") {
+      setActiveView("mail");
       openMailView();
       return;
     }
@@ -925,7 +962,7 @@ function Dashboard({
     }
 
     if (view === "cases" || view === "tasks" || view === "activity") {
-      setActiveView("home");
+      setActiveView(view);
       setNotice(
         view === "cases"
           ? "Casos: se generan al clasificar el correo descargado."
@@ -938,7 +975,7 @@ function Dashboard({
     }
 
     if (view === "metrics" || view === "reports") {
-      setActiveView("home");
+      setActiveView(view);
       setNotice(
         "Las métricas se llenan con casos clasificados. Si ves ceros, descarga y clasifica correo primero.",
       );
@@ -947,12 +984,13 @@ function Dashboard({
     }
 
     if (view === "settings") {
+      setActiveView("settings");
       setSettingsOpen(true);
       setNotice(null);
       return;
     }
 
-    setActiveView("home");
+    setActiveView(view);
     setNotice(`${label} listo en el panel principal.`);
   }
 
@@ -1040,7 +1078,7 @@ function Dashboard({
     dashboard.recent_events.slice(0, 6);
 
   return (
-    <div className="app-shell" data-theme={theme}>
+    <div className={mobileOpen ? "app-shell is-drawer-open" : "app-shell"} data-theme={theme}>
       <button
         type="button"
         className={
@@ -1200,6 +1238,15 @@ function Dashboard({
               ) : null}
             </label>
 
+            <button
+              type="button"
+              className="app-mobile-signout"
+              onClick={onLogout}
+            >
+              <LogOut size={16} />
+              <span>{t("profileSignOut")}</span>
+            </button>
+
             <div className="app-top-actions">
               <div
                 className={
@@ -1270,6 +1317,45 @@ function Dashboard({
         </header>
 
         <div className="app-content">
+          {yahooIdentityWithoutRead ? (
+            <section className="app-read-banner" role="status">
+              <AlertTriangle size={18} />
+              <div>
+                <strong>{ACCOUNT_VS_MAILBOX.yahooWaitingMailTitle}</strong>
+                <p>{ACCOUNT_VS_MAILBOX.yahooWaitingMailBody}</p>
+              </div>
+            </section>
+          ) : null}
+
+          {gmailIdentityWithoutRead ? (
+            <section className="app-read-banner" role="status">
+              <AlertTriangle size={18} />
+              <div>
+                <strong>{ACCOUNT_VS_MAILBOX.gmailReadPendingTitle}</strong>
+                <p>{ACCOUNT_VS_MAILBOX.gmailReadPendingBody}</p>
+              </div>
+            </section>
+          ) : null}
+
+          {isMicrosoftMailbox ? (
+            <section className="app-plan-card" aria-label={ACCOUNT_VS_MAILBOX.planNormalTitle}>
+              <strong>
+                {ACCOUNT_VS_MAILBOX.planNormalTitle} · {ACCOUNT_VS_MAILBOX.planNormalPrice}
+              </strong>
+              <p>{planNotice || ACCOUNT_VS_MAILBOX.planNormalBody}</p>
+              <button
+                type="button"
+                disabled={billingBusy}
+                onClick={() => {
+                  void startNormalPlanCheckout();
+                }}
+              >
+                <CreditCard size={16} />
+                {billingBusy ? "Abriendo Stripe Test…" : ACCOUNT_VS_MAILBOX.planNormalCta}
+              </button>
+            </section>
+          ) : null}
+
           {usesGuidedImport && !importFlowStatus?.initial_import_complete ? (
             <section className="app-alert app-historical-alert" role="status">
               <Sparkles size={20} />
@@ -1278,7 +1364,11 @@ function Dashboard({
                   {importFlowStatus?.active
                     ? "Preparando tu correo…"
                     : `Importa tu buzón ${mailboxServiceLabel(
-                        connection?.provider === "yahoo" ? "yahoo" : "gmail",
+                        connection?.provider === "yahoo"
+                          ? "yahoo"
+                          : connection?.provider === "microsoft"
+                            ? "hotmail"
+                            : "gmail",
                       )}`}
                 </strong>
                 <span>
@@ -1535,7 +1625,7 @@ function Dashboard({
                   <span>
                     {connection?.connected
                       ? "Traer mensajes nuevos"
-                      : "Gmail o Yahoo"}
+                      : ACCOUNT_VS_MAILBOX.quickConnectHint}
                   </span>
                 </div>
               </button>
@@ -1547,7 +1637,7 @@ function Dashboard({
                 <Mail size={22} />
                 <div>
                   <strong>{ACCOUNT_VS_MAILBOX.changeMailboxLabel}</strong>
-                  <span>Otro Gmail o Yahoo</span>
+                  <span>{ACCOUNT_VS_MAILBOX.quickChangeHint}</span>
                 </div>
               </button>
 
@@ -1569,12 +1659,20 @@ function Dashboard({
         </div>
 
         <nav className="app-mobile-nav" aria-label={t("navMenu")}>
-          <button type="button" className="is-active" onClick={() => selectView("home", t("navHome"))}>
+          <button
+            type="button"
+            className={activeView === "home" ? "is-active" : undefined}
+            onClick={() => selectView("home", t("navHome"))}
+          >
             <Home size={23} />
             <span>{t("navHome")}</span>
           </button>
 
-          <button type="button" onClick={() => selectView("cases", t("navCases"))}>
+          <button
+            type="button"
+            className={activeView === "cases" ? "is-active" : undefined}
+            onClick={() => selectView("cases", t("navCases"))}
+          >
             <Inbox size={23} />
             <span>{t("navCases")}</span>
           </button>
@@ -1592,15 +1690,20 @@ function Dashboard({
 
           <button
             type="button"
+            className={activeView === "mail" ? "is-active" : undefined}
             onClick={() => {
-              openMailView();
+              selectView("mail", t("navMail"));
             }}
           >
             <Mail size={23} />
             <span>{t("navMail")}</span>
           </button>
 
-          <button type="button" onClick={() => setMobileOpen(true)}>
+          <button
+            type="button"
+            className={mobileOpen ? "is-active" : undefined}
+            onClick={() => setMobileOpen(true)}
+          >
             <Menu size={23} />
             <span>{t("navMenu")}</span>
           </button>
