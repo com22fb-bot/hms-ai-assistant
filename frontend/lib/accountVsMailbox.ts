@@ -1,10 +1,10 @@
 /**
- * Copy canónico: el correo de la cuenta Donexto ES el buzón a vigilar.
+ * Copy canónico: el correo de la cuenta Donexto ES el buzón a monitorear.
  * Una sola fuente para login, onboarding y conexión de mailbox.
  */
 export const ACCOUNT_VS_MAILBOX = {
   oneLiner:
-    "El correo con el que entras a Donexto es el mismo buzón que vigilamos. Nunca te pedimos la contraseña de Gmail aquí.",
+    "El correo con el que entras a Donexto es el mismo buzón que monitoreamos. Nunca te pedimos la contraseña de Gmail aquí.",
 
   loginEyebrow: "Cuenta Donexto",
   loginTitleSignIn: "Entrar a Donexto",
@@ -13,22 +13,22 @@ export const ACCOUNT_VS_MAILBOX = {
   loginEmailLabel: "Correo",
   loginPasswordLabel: "Contraseña de Donexto",
   signupFullNameLabel: "Nombre completo",
-  loginHelper: "Escribe tu correo.",
+  loginHelper: "Escribe el correo del buzón que quieres monitorear.",
   loginContinueCta: "Continuar",
-  loginSubscribeCta: "Suscribirse",
-  signupConfirmTitle: "Confirma el correo de Donexto",
+  loginSubscribeCta: "Continuar",
+  signupConfirmTitle: "¿Usamos este correo en Donexto?",
   signupConfirmHelper:
-    "Confirma el correo que vas a utilizar para el servicio Donexto. Revísalo antes de seguir.",
-  signupConfirmCta: "Sí, este es el correo de mi cuenta Donexto",
-  signupConfirmBack: "Usar otro correo",
+    "Ese correo es el buzón que Donexto va a monitorear. Tiene que ser Yahoo, Outlook/Hotmail o Gmail, no otro mail de login.",
+  signupConfirmCta: "Sí, continuar",
+  signupConfirmBack: "Cambiar correo",
   signupConfirmYahooNote:
-    "Al confirmar, Donexto usará este correo. Después firmas en Yahoo. Luego te escribimos a ese mismo correo: sin el clic no entras.",
+    "Ese correo es el buzón que Donexto va a monitorear. Al continuar, firmas en Yahoo. Donexto no pide la contraseña de tu correo.",
   signupConfirmMicrosoftNote:
-    "Al confirmar, Donexto usará este correo. Después firmas en Microsoft. Luego te escribimos a ese mismo correo: sin el clic no entras.",
+    "Ese correo es el buzón que Donexto va a monitorear. Al continuar, firmas en Microsoft. Donexto no pide la contraseña de Outlook.",
   signupConfirmGmailNote:
-    "Al confirmar, Donexto usará este correo. Después Google te identifica.",
+    "Ese correo es el buzón que Donexto va a monitorear. Al continuar, Google te identifica. Donexto no pide la contraseña de Gmail.",
   signupConfirmOtherNote:
-    "Al confirmar, Donexto usará este correo para tu cuenta y para vigilar ese mismo buzón.",
+    "Ese correo es el buzón que Donexto va a monitorear. Tiene que ser Yahoo, Outlook/Hotmail o Gmail.",
   loginHelperYahoo:
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   servicesActiveLabel: "Servicios en Donexto",
@@ -55,7 +55,7 @@ export const ACCOUNT_VS_MAILBOX = {
     "Te llevamos a Yahoo para firmar. No usamos un enlace ni tu clave aquí.",
   loginFoot: "Esta es tu cuenta de Donexto.",
   signupChooserBody:
-    "Elige el correo que vas a vigilar: será el mismo de tu cuenta Donexto. Te llevamos al inicio de sesión de ese proveedor.",
+    "Elige el correo que vas a monitorear: será el mismo de tu cuenta Donexto. Te llevamos al inicio de sesión de ese proveedor.",
   authSecurityTitle: "Seguridad y responsabilidad",
   authSecurityBody:
     "Donexto nunca te pide la contraseña de Gmail aquí. Si te das de alta con Gmail, te escribimos a ese mismo correo. Sin clic en ese mail no entras ni leemos el buzón. Las pantallas de Google son de Google; la confirmación de Donexto es el correo que nosotros enviamos.",
@@ -77,7 +77,7 @@ export const ACCOUNT_VS_MAILBOX = {
   signupApplePending:
     "Te llevamos al inicio de sesión de Apple.",
   signupOtherPrompt:
-    "Escribe la cuenta de correo que quieres vigilar. Si reconocemos el dominio, te llevamos a ese proveedor.",
+    "Escribe la cuenta de correo que quieres monitorear. Si reconocemos el dominio, te llevamos a ese proveedor.",
   signupOtherContinue: "Continuar",
   signupOtherUnrecognized:
     "No hay un portal OAuth de Donexto para ese dominio. Te enviamos un enlace mágico a ese mismo correo para crear la cuenta; luego autorizamos la lectura de ese buzón.",
@@ -227,12 +227,12 @@ export function oneLinerFor(email?: string): string {
   if (provider === "yahoo") {
     return (
       "Firma en el sitio de Yahoo. Donexto no pide tu clave: ese correo " +
-      "es el buzón que vigilamos."
+      "es el buzón que monitoreamos."
     );
   }
   const password = mailboxPasswordPhrase(provider);
   return (
-    "El correo con el que entras a Donexto es el mismo buzón que vigilamos. " +
+    "El correo con el que entras a Donexto es el mismo buzón que monitoreamos. " +
     `Nunca te pedimos la ${password} aquí.`
   );
 }

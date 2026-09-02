@@ -30,7 +30,8 @@
 }
 
 .dx-auth__slogan,
-.dx-auth__promise {
+.dx-auth__promise,
+.dx-auth__note {
   color: #9aa8ae;
 }
 
@@ -115,8 +116,13 @@
   color: #9aa8ae;
 }
 
-.dx-auth__bottom-mode button:hover:not(:disabled) {
+.dx-auth__bottom-mode button:hover:not(:disabled),
+.dx-auth__later:hover:not(:disabled) {
   color: #2ee6d6;
+}
+
+.dx-auth__later {
+  color: #9aa8ae;
 }
 
 .dx-auth__alert.is-error {

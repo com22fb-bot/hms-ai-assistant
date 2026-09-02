@@ -1,7 +1,6 @@
 /*
-  Gate Donexto — ventana oscura + botón teal→magenta (captura dueño).
-  Celular: logo arriba + tarjeta. La página crece y se recorre:
-  título, botones, idiomas y términos deben verse enteros.
+  Gate Donexto — una columna en todos los anchos.
+  Logo/promesa arriba del formulario. Continuar no queda bajo el teclado.
 */
 
 html:has(.dx-auth),
@@ -25,6 +24,7 @@ body:has(.dx-auth) {
   --dx-sky: #070d12;
   --dx-font: var(--font-hms-sans), "Segoe UI", system-ui, sans-serif;
   --dx-display: var(--font-hms-display), Georgia, "Times New Roman", serif;
+  --dx-keyboard-gap: 0px;
 
   box-sizing: border-box;
   width: 100%;
@@ -35,9 +35,11 @@ body:has(.dx-auth) {
   overflow: visible;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   font-family: var(--dx-font);
   color: var(--dx-ink);
   background: var(--dx-sky);
+  padding-bottom: var(--dx-keyboard-gap);
 }
 
 .dx-auth *,
@@ -142,12 +144,21 @@ body:has(.dx-auth) {
 
 .dx-auth__slogan {
   margin: 0.38rem auto 0;
-  max-width: 22em;
+  max-width: 26em;
   font-family: var(--dx-display);
   font-size: 0.84rem;
   font-weight: 500;
   letter-spacing: -0.015em;
-  line-height: 1.3;
+  line-height: 1.4;
+  color: var(--dx-muted);
+}
+
+.dx-auth__note {
+  margin: 0.45rem auto 0;
+  max-width: 28em;
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1.45;
   color: var(--dx-muted);
 }
 
@@ -297,11 +308,39 @@ body:has(.dx-auth) {
   justify-self: end;
 }
 
+.dx-auth__actions {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.dx-auth__later {
+  width: 100%;
+  min-height: 2.4rem;
+  border: 0;
+  background: transparent;
+  color: var(--dx-muted);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 650;
+  cursor: pointer;
+  padding: 0.2rem 0.4rem;
+}
+
+.dx-auth__later:hover:not(:disabled) {
+  color: var(--dx-teal);
+}
+
+.dx-auth__later:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+
 .dx-auth__submit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
+  width: 100%;
   min-height: 3rem;
   border: 0;
   border-radius: 999px;
@@ -726,150 +765,170 @@ body:has(.dx-auth) {
   font-size: 1.35rem;
 }
 
-@media (max-height: 720px) {
+/* Phone baseline (~360px) and 7" / 10" / 14" / desktop: one column. */
+@media (min-width: 360px) {
+  .dx-auth {
+    flex-direction: column;
+  }
+}
+@media (max-width: 430px) {
+  .dx-auth__hero {
+    padding:
+      max(0.35rem, env(safe-area-inset-top))
+      0.85rem
+      0.45rem;
+  }
+
   .dx-auth__logo {
-    width: min(9.5rem, 70%);
-    max-height: 6.25rem;
+    width: min(8.5rem, 62%);
+    max-height: 5.5rem;
   }
 
-  .dx-auth--signup .dx-auth__logo {
-    width: min(7.5rem, 64%);
-    max-height: 4.75rem;
+  .dx-auth__promise {
+    font-size: 0.8rem;
+    margin-top: 0.3rem;
   }
 
-  .dx-auth__heading {
-    margin-bottom: 0.45rem;
+  .dx-auth__panel {
+    padding: 0.45rem 0.85rem max(1.5rem, env(safe-area-inset-bottom));
+  }
+
+  .dx-auth__card {
+    width: min(100%, 24.5rem);
+    padding: 1.1rem 0.95rem 1rem;
   }
 
   .dx-auth__title {
-    font-size: 1.28rem;
+    font-size: 1.35rem;
   }
 
-  .dx-auth__slogan {
-    font-size: 0.78rem;
-    margin-top: 0.22rem;
-  }
-
-}
-
-@media (max-height: 760px) {
-  .dx-auth--signup .dx-auth__panel {
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    -webkit-overflow-scrolling: touch;
+  .dx-auth__submit {
+    position: sticky;
+    bottom: max(0.65rem, env(safe-area-inset-bottom));
+    z-index: 2;
   }
 }
 
 @media (max-height: 560px) {
-  .dx-auth__panel {
-    overflow: visible;
+  .dx-auth__logo {
+    width: min(7.5rem, 56%);
+    max-height: 4.75rem;
   }
 
-  .dx-auth__logo {
-    max-height: 5.5rem;
+  .dx-auth__submit {
+    position: sticky;
+    bottom: max(0.5rem, env(safe-area-inset-bottom));
+    z-index: 2;
   }
 }
 
-@media (min-width: 900px) {
-  .dx-auth {
-    display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(22rem, 0.95fr);
-    grid-template-rows: auto;
-    align-items: start;
-    min-height: 100dvh;
-    height: auto;
-    max-height: none;
-  }
-
+/* 7" tablet ~600–800px */
+@media (min-width: 600px) {
   .dx-auth__hero {
-    height: auto;
-    min-height: 100dvh;
-    position: sticky;
-    top: 0;
-    display: grid;
-    place-items: center;
-    text-align: left;
-    padding: 2.5rem 3rem;
-  }
-
-  .dx-auth__hero-inner {
-    width: min(100%, 28rem);
-    margin: 0;
-    align-items: flex-start;
+    padding: 1.1rem 1.5rem 0.85rem;
   }
 
   .dx-auth__logo {
-    width: min(16.5rem, 100%);
-    height: auto;
-    max-height: 13.25rem;
-    border-radius: 1.35rem;
-    object-fit: contain;
-    object-position: center;
-  }
-
-  .dx-auth__brand {
-    font-size: 2.55rem;
-    margin-top: 1rem;
-  }
-
-  .dx-auth__promise {
-    max-width: 28rem;
-    font-size: 1.15rem;
-    margin-top: 0.85rem;
-    color: #9aa8ae;
-    white-space: pre-line;
-  }
-
-  .dx-auth__heading {
-    margin-bottom: 0.95rem;
-  }
-
-  .dx-auth__title {
-    font-size: 1.85rem;
-  }
-
-  .dx-auth__slogan {
-    font-size: 0.95rem;
-    margin-top: 0.42rem;
-  }
-
-  .dx-auth__panel {
-    justify-content: flex-start;
-    align-self: start;
-    max-height: none;
-    overflow: visible;
-    padding: 1.35rem 2.25rem 2.25rem;
-    gap: 0.75rem;
+    width: min(12.5rem, 70%);
+    max-height: 8.5rem;
   }
 
   .dx-auth__card {
-    width: min(100%, 26rem);
-    padding: 1.45rem 1.4rem 1.25rem;
+    width: min(100%, 28rem);
+    padding: 1.5rem 1.35rem 1.3rem;
   }
 
-  .dx-auth--signup .dx-auth__logo {
-    width: min(16.5rem, 100%);
-    height: auto;
-    max-height: 13.25rem;
-    border-radius: 1.35rem;
-    object-fit: contain;
-    object-position: center;
+  .dx-auth__title {
+    font-size: 1.6rem;
+  }
+}
+
+/* 10" tablet */
+@media (min-width: 768px) {
+  .dx-auth {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
   }
 
-  .dx-auth--signup .dx-auth__brand {
-    font-size: 2.55rem;
+  .dx-auth__hero,
+  .dx-auth__panel {
+    width: min(100%, 40rem);
   }
 
-  .dx-auth--signup .dx-auth__hero {
-    padding: 2.5rem 3rem;
+  .dx-auth__hero-inner {
+    align-items: center;
+    text-align: center;
   }
 
-  .dx-auth--signup .dx-auth__heading {
-    margin-bottom: 0.95rem;
+  .dx-auth__logo {
+    width: min(13.5rem, 72%);
+    max-height: 9.5rem;
   }
 
-  .dx-auth--signup .dx-auth__title {
-    font-size: 1.85rem;
+  .dx-auth__promise {
+    font-size: 1rem;
+  }
+
+  .dx-auth__card {
+    width: min(100%, 30rem);
+  }
+}
+
+/* 14" laptop */
+@media (min-width: 1024px) {
+  .dx-auth__hero,
+  .dx-auth__panel {
+    width: min(100%, 44rem);
+  }
+
+  .dx-auth__hero {
+    padding: 1.75rem 2rem 1rem;
+  }
+
+  .dx-auth__logo {
+    width: min(14.5rem, 100%);
+    max-height: 10.5rem;
+  }
+
+  .dx-auth__promise {
+    font-size: 1.08rem;
+    max-width: 28rem;
+  }
+
+  .dx-auth__title {
+    font-size: 1.75rem;
+  }
+
+  .dx-auth__slogan,
+  .dx-auth__note {
+    font-size: 0.92rem;
+  }
+
+  .dx-auth__panel {
+    padding: 0.85rem 2rem 2.25rem;
+  }
+
+  .dx-auth__card {
+    width: min(100%, 32rem);
+    padding: 1.65rem 1.6rem 1.4rem;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1440px) {
+  .dx-auth__hero,
+  .dx-auth__panel {
+    width: min(100%, 48rem);
+  }
+
+  .dx-auth__logo {
+    width: min(15.5rem, 100%);
+    max-height: 11.25rem;
+  }
+
+  .dx-auth__card {
+    width: min(100%, 34rem);
   }
 }
 

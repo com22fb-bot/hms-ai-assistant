@@ -5,7 +5,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
 import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
+import { userHasOAuthIdentity } from "@/lib/oauthIdentity";
 import { isBrowserNetworkError, postPublicHms } from "@/lib/publicHms";
+
+export { userHasOAuthIdentity } from "@/lib/oauthIdentity";
 
 export type SignUpResult =
   | { kind: "signed_in" }
@@ -47,12 +50,15 @@ function yahooImapOwnsIdentity(user: User | null | undefined): boolean {
 }
 
 /**
- * Sin clic en el correo de verificación Donexto no hay dashboard.
- * Firmar en Yahoo o Microsoft no sustituye ese clic.
+ * Password / magic-link accounts still need the Donexto verify email.
+ * Signing in at Yahoo, Google, or Microsoft is the verification.
  */
 function sessionNeedsDonextoEmailConfirm(session: Session | null): boolean {
   const user = session?.user;
   if (!user) {
+    return false;
+  }
+  if (userHasOAuthIdentity(user)) {
     return false;
   }
   return !isDonextoVerified(user);
@@ -287,6 +293,29 @@ export function useAppAuth() {
           clearDonextoVerifyQuery();
         } catch (error) {
           console.error("No fue posible confirmar Donexto:", error);
+        } finally {
+          verifyBootstrapLock.current = false;
+        }
+        return;
+      }
+
+      if (userHasOAuthIdentity(currentUser)) {
+        if (isDonextoVerified(currentUser)) {
+          return;
+        }
+        verifyBootstrapLock.current = true;
+        try {
+          const { error } = await supabase.auth.updateUser({
+            data: { donexto_verified: true },
+          });
+          if (error) {
+            console.error("No fue posible marcar donexto_verified=true:", error);
+            return;
+          }
+          const { data: next } = await supabase.auth.getSession();
+          if (!cancelled) {
+            setRawSession(next.session ?? null);
+          }
         } finally {
           verifyBootstrapLock.current = false;
         }

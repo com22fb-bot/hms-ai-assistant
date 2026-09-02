@@ -1,5 +1,5 @@
 /**
- * Ruteo de alta por dominio del buzón que el usuario quiere vigilar.
+ * Ruteo de alta por dominio del buzón que el usuario quiere monitorear.
  * Gmail → Google OAuth. Hotmail/Outlook → Azure. Apple → Apple.
  * Yahoo → un paso: te llevamos al sitio de Yahoo (OAuth). No hay clave en Donexto.
  */

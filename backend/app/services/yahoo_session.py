@@ -237,10 +237,13 @@ def _ensure_yahoo_auth_user(
     allow_create: bool = True,
     signup_via: str = YAHOO_SIGNUP_VIA,
 ) -> tuple[str, str | None]:
-    """Localiza el usuario Auth. Solo crea uno si allow_create (alta explícita)."""
+    """Localiza el usuario Auth. Solo crea uno si allow_create (alta explícita).
+
+    Firmar en Yahoo o Microsoft prueba el correo: donexto_verified queda True.
+    """
 
     metadata = {
-        "donexto_verified": False,
+        "donexto_verified": True,
         "signup_via": signup_via,
     }
     existing = _find_user_by_email(client, email)
@@ -252,10 +255,7 @@ def _ensure_yahoo_auth_user(
         if not isinstance(previous, dict):
             previous = {}
         merged = {**previous, **metadata}
-        if previous.get("donexto_verified") is True:
-            merged["donexto_verified"] = True
-        else:
-            merged["donexto_verified"] = False
+        merged["donexto_verified"] = True
         try:
             client.auth.admin.update_user_by_id(
                 user_id,
