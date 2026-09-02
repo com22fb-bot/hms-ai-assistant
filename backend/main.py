@@ -22,6 +22,7 @@ from app.api.sync_jobs import router as sync_jobs_router
 from app.api.microsoft_mail import router as microsoft_mail_router
 from app.api.yahoo_mail import router as yahoo_mail_router
 from app.api.login_resolve import router as login_resolve_router
+from app.api.billing import router as billing_router
 from app.core.config import settings
 from app.middleware.authentication_context import AuthenticationContextMiddleware
 from app.middleware.incident_logging import IncidentLoggingMiddleware
@@ -180,6 +181,7 @@ app.include_router(auth_router)
 app.include_router(yahoo_mail_router)
 app.include_router(microsoft_mail_router)
 app.include_router(login_resolve_router)
+app.include_router(billing_router)
 app.include_router(gmail_router)
 app.include_router(guided_import_router)
 app.include_router(sync_jobs_router)

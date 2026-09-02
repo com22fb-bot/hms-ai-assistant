@@ -12,10 +12,13 @@ import { LanguageStrip } from "@/components/UserSettingsPanel";
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import type { AuthOAuthProvider, YahooAuthIntent } from "@/hooks/useAppAuth";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
-import { loginText } from "@/lib/i18n/loginMessages";
+import { loginText, loginTextReplace } from "@/lib/i18n/loginMessages";
 import {
+  comingSoonProviderLabel,
   gateNextAfterResolve,
+  isComingSoonGate,
   oauthFromResolveNext,
+  type AuthGateNext,
 } from "@/lib/loginGate";
 import {
   isBrowserNetworkError,
@@ -66,7 +69,7 @@ type LoginScreenProps = {
   onResetPassword: (email: string) => Promise<void>;
 };
 
-type GateStep = "email" | "confirm";
+type GateStep = "email" | "confirm" | "waitlist";
 
 type ResolvePayload = {
   next?: string;
@@ -77,9 +80,24 @@ type ResolvePayload = {
   detail?: { message?: string } | string;
 };
 
+const LIVE_CHIPS = [
+  { id: "outlook", labelKey: "chipOutlook" as const, tone: "live" },
+  { id: "hotmail", labelKey: "chipHotmail" as const, tone: "live" },
+  { id: "live", labelKey: "chipLive" as const, tone: "live" },
+  { id: "msn", labelKey: "chipMsn" as const, tone: "live" },
+  { id: "m365", labelKey: "chipM365" as const, tone: "live" },
+];
+
+const SOON_CHIPS = [
+  { id: "gmail", labelKey: "chipGmail" as const, tone: "gmail" },
+  { id: "workspace", labelKey: "chipWorkspace" as const, tone: "gmail" },
+  { id: "yahoo", labelKey: "chipYahoo" as const, tone: "yahoo" },
+  { id: "icloud", labelKey: "chipIcloud" as const, tone: "apple" },
+];
+
 /**
  * Acceso Donexto: un correo (el buzón) y un Continuar.
- * Yahoo/Microsoft: OAuth en su sitio (backend). Gmail: Google OAuth.
+ * Hoy leemos Outlook/Hotmail/M365. Gmail/Yahoo/iCloud: lista de aviso.
  * Donexto no pide contraseña de correo ni de cuenta.
  */
 export function LoginScreen({
@@ -95,6 +113,10 @@ export function LoginScreen({
   const [oauthBusy, setOauthBusy] = useState<AuthOAuthProvider | null>(null);
   const [step, setStep] = useState<GateStep>("email");
   const [suggestedEmail, setSuggestedEmail] = useState<string | null>(null);
+  const [waitlistProvider, setWaitlistProvider] = useState("Gmail");
+  const [waitlistKind, setWaitlistKind] = useState<"coming_soon" | "company">(
+    "coming_soon",
+  );
   const emailRef = useRef<HTMLInputElement>(null);
   const { language } = useLanguage();
   const L = (key: Parameters<typeof loginText>[1]) => loginText(language, key);
@@ -126,7 +148,7 @@ export function LoginScreen({
   }, [language]);
 
   useEffect(() => {
-    if (step !== "confirm") {
+    if (step === "email") {
       return;
     }
     document.getElementById("dx-auth-title")?.scrollIntoView({
@@ -194,6 +216,31 @@ export function LoginScreen({
     focusEmail();
   }
 
+  function openWaitlist(kind: "coming_soon" | "company", providerLabel: string) {
+    setWaitlistKind(kind);
+    setWaitlistProvider(providerLabel);
+    setBusy(false);
+    setOauthBusy(null);
+    setError(null);
+    setMessage(null);
+    setStep("waitlist");
+  }
+
+  function handleComingSoonGate(gate: AuthGateNext, payload: ResolvePayload) {
+    if (gate === "unsupported_imap_domain" || gate === "waitlist") {
+      openWaitlist("company", "Microsoft 365");
+      return true;
+    }
+    if (isComingSoonGate(gate) || gate === "icloud_unavailable") {
+      openWaitlist(
+        "coming_soon",
+        comingSoonProviderLabel(payload.next, payload.provider),
+      );
+      return true;
+    }
+    return false;
+  }
+
   function blockUnknownMailbox(address: string): boolean {
     if (resolveMailboxProviderFromEmail(address) !== "other") {
       return false;
@@ -218,7 +265,7 @@ export function LoginScreen({
     yahooIntent: YahooAuthIntent = "login",
   ) {
     if (provider === "apple") {
-      showStayOnEmail(L("icloudUnavailable"), false);
+      openWaitlist("coming_soon", "iCloud");
       return;
     }
     resetAlerts();
@@ -262,23 +309,23 @@ export function LoginScreen({
     yahooIntent: YahooAuthIntent,
   ) {
     const provider = resolveMailboxProviderFromEmail(address);
-    if (provider === "yahoo") {
-      await startOAuth("yahoo", address, yahooIntent);
-      return;
-    }
     if (provider === "hotmail") {
       await startOAuth("azure", address, yahooIntent);
       return;
     }
+    if (provider === "yahoo") {
+      openWaitlist("coming_soon", "Yahoo");
+      return;
+    }
     if (provider === "gmail") {
-      showStayOnEmail(L("gmailPending"), false);
+      openWaitlist("coming_soon", "Gmail");
       return;
     }
     if (provider === "apple") {
-      showStayOnEmail(L("icloudUnavailable"), false);
+      openWaitlist("coming_soon", "iCloud");
       return;
     }
-    showStayOnEmail(L("mustUseKnownMailbox"), false);
+    openWaitlist("company", "Microsoft 365");
   }
 
   async function resolvePayload(address: string): Promise<ResolvePayload> {
@@ -301,10 +348,6 @@ export function LoginScreen({
     setBusy(true);
     resetAlerts();
     try {
-      if (resolveMailboxProviderFromEmail(address) === "apple") {
-        showStayOnEmail(L("icloudUnavailable"), false);
-        return;
-      }
       const payload = await resolvePayload(address);
       const exists = Boolean(payload.exists) && payload.next !== "signup";
       const gate = gateNextAfterResolve(
@@ -313,20 +356,11 @@ export function LoginScreen({
         payload.next,
         payload.provider,
       );
-      if (gate === "icloud_unavailable") {
-        showStayOnEmail(L("icloudUnavailable"), false);
+      if (handleComingSoonGate(gate, payload)) {
         return;
       }
       if (gate === "fix_domain") {
         stopWithDomain(payload, true);
-        return;
-      }
-      if (gate === "pending_review") {
-        showStayOnEmail(payload.message || L("gmailPending"), false);
-        return;
-      }
-      if (gate === "unsupported") {
-        showStayOnEmail(payload.message || L("mustUseKnownMailbox"), false);
         return;
       }
       if (gate === "confirm_first_time") {
@@ -344,8 +378,6 @@ export function LoginScreen({
       }
       showStayOnEmail(L("noActiveService"), true);
     } catch (requestError) {
-      // Existence check failed: stay on Screen 1. Do not guess Screen 2
-      // (that would start OAuth / create an account for an unknown mailbox).
       setError(friendlyError(requestError, L("continueFailed")));
       setBusy(false);
       setOauthBusy(null);
@@ -398,20 +430,11 @@ export function LoginScreen({
         payload.next,
         payload.provider,
       );
-      if (gate === "icloud_unavailable") {
-        showStayOnEmail(L("icloudUnavailable"), false);
+      if (handleComingSoonGate(gate, payload)) {
         return;
       }
       if (gate === "fix_domain") {
         stopWithDomain(payload, true);
-        return;
-      }
-      if (gate === "pending_review") {
-        showStayOnEmail(payload.message || L("gmailPending"), false);
-        return;
-      }
-      if (gate === "unsupported") {
-        showStayOnEmail(payload.message || L("mustUseKnownMailbox"), false);
         return;
       }
       if (exists) {
@@ -424,6 +447,30 @@ export function LoginScreen({
       setError(friendlyError(requestError, L("confirmFailed")));
       setBusy(false);
       setOauthBusy(null);
+    }
+  }
+
+  async function joinWaitlist() {
+    if (busy) {
+      return;
+    }
+    const clean = email.trim().toLowerCase();
+    const provider = resolveMailboxProviderFromEmail(clean);
+    setBusy(true);
+    resetAlerts();
+    try {
+      const resolved = await postPublicHms("/auth/login/waitlist", {
+        email: clean,
+        provider: waitlistKind === "company" ? "other" : provider,
+      });
+      const payload = (resolved.payload || {}) as { message?: string };
+      setBusy(false);
+      setStep("email");
+      setMessage(payload.message || L("waitlistThanks"));
+      focusEmail();
+    } catch (requestError) {
+      setError(friendlyError(requestError, L("continueFailed")));
+      setBusy(false);
     }
   }
 
@@ -441,12 +488,19 @@ export function LoginScreen({
   }
 
   const confirming = step === "confirm";
+  const waiting = step === "waitlist";
   const displayEmail = email.trim().toLowerCase();
+  const waitlistBody =
+    waitlistKind === "company"
+      ? L("companyImapWaitlist")
+      : loginTextReplace(language, "waitlistBody", {
+          provider: waitlistProvider,
+        });
 
   return (
     <main
       className={
-        confirming ? "dx-auth dx-auth--confirm" : "dx-auth"
+        confirming || waiting ? "dx-auth dx-auth--confirm" : "dx-auth"
       }
     >
       <aside className="dx-auth__hero">
@@ -469,9 +523,15 @@ export function LoginScreen({
         <div className="dx-auth__card" aria-labelledby="dx-auth-title">
           <header className="dx-auth__heading">
             <h2 id="dx-auth-title" className="dx-auth__title">
-              {confirming ? L("confirmTitle") : L("title")}
+              {waiting
+                ? L("waitlistTitle")
+                : confirming
+                  ? L("confirmTitle")
+                  : L("title")}
             </h2>
-            {confirming ? (
+            {waiting ? (
+              <p className="dx-auth__slogan">{waitlistBody}</p>
+            ) : confirming ? (
               <p className="dx-auth__slogan">{L("confirmHelper")}</p>
             ) : (
               <>
@@ -513,6 +573,10 @@ export function LoginScreen({
             className="dx-auth__form"
             onSubmit={(event) => {
               event.preventDefault();
+              if (waiting) {
+                void joinWaitlist();
+                return;
+              }
               if (confirming) {
                 void confirmFirstTime();
                 return;
@@ -521,7 +585,7 @@ export function LoginScreen({
             }}
             noValidate
           >
-            {confirming ? (
+            {confirming || waiting ? (
               <p className="dx-auth__confirm-email">{displayEmail}</p>
             ) : (
               <label className="dx-auth__field">
@@ -546,7 +610,28 @@ export function LoginScreen({
               </label>
             )}
 
-            {confirming ? (
+            {waiting ? (
+              <div className="dx-auth__actions">
+                <button type="submit" className="dx-auth__submit" disabled={busy}>
+                  {busy ? (
+                    <>
+                      <LoaderCircle className="dx-auth__spin" size={18} />
+                      {L("continuing")}
+                    </>
+                  ) : (
+                    L("waitlistNotify")
+                  )}
+                </button>
+                <button
+                  type="button"
+                  className="dx-auth__later"
+                  disabled={busy}
+                  onClick={goLater}
+                >
+                  {L("waitlistLater")}
+                </button>
+              </div>
+            ) : confirming ? (
               <div className="dx-auth__actions">
                 <button type="submit" className="dx-auth__submit" disabled={busy}>
                   {busy ? (
@@ -594,7 +679,39 @@ export function LoginScreen({
             )}
           </form>
 
-          <LanguageStrip />
+          {step === "email" ? (
+            <div className="dx-auth__availability" aria-label={L("servicesKicker")}>
+              <p className="dx-auth__services-kicker">
+                {L("availableNow")}
+              </p>
+              <ul className="dx-auth__chips">
+                {LIVE_CHIPS.map((chip) => (
+                  <li
+                    key={chip.id}
+                    className={`dx-auth__chip dx-auth__chip--${chip.tone}`}
+                  >
+                    {L(chip.labelKey)}
+                  </li>
+                ))}
+              </ul>
+              <p className="dx-auth__services-kicker dx-auth__services-kicker--soon">
+                {L("comingSoonBadge")}
+              </p>
+              <ul className="dx-auth__chips">
+                {SOON_CHIPS.map((chip) => (
+                  <li
+                    key={chip.id}
+                    className={`dx-auth__chip dx-auth__chip--soon dx-auth__chip--${chip.tone}`}
+                  >
+                    {L(chip.labelKey)}
+                    <span>{L("comingSoonBadge")}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          <LanguageStrip compact className="dx-lang-strip--gate" />
 
           <p className="dx-auth__legal-agree">
             {L("legalBefore")}{" "}

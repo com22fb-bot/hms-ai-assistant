@@ -20,8 +20,9 @@ from app.services.yahoo_domains import YAHOO_MAIL_DOMAINS
 GMAIL_MAIL_DOMAINS = ("gmail.com", "googlemail.com")
 APPLE_MAIL_DOMAINS = ("icloud.com", "me.com", "mac.com")
 
-ACTIVE_OPTIONS_TEXT = "Yahoo y Outlook/Hotmail"
-PENDING_OPTIONS_TEXT = "Gmail e iCloud"
+# Solo leemos buzón cuando hay OAuth + Mail.Read en producción: Microsoft.
+ACTIVE_OPTIONS_TEXT = "Outlook, Hotmail, Live, MSN y Microsoft 365"
+PENDING_OPTIONS_TEXT = "Gmail, Google Workspace, Yahoo e iCloud"
 
 _LABEL = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$", re.I)
 
@@ -68,9 +69,23 @@ def _roots_for(*groups: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(seen)
 
 
-KNOWN_ACTIVE_DOMAINS = _roots_for(YAHOO_MAIL_DOMAINS, MICROSOFT_MAIL_DOMAINS)
-KNOWN_PENDING_DOMAINS = _roots_for(GMAIL_MAIL_DOMAINS, APPLE_MAIL_DOMAINS)
+KNOWN_ACTIVE_DOMAINS = _roots_for(MICROSOFT_MAIL_DOMAINS)
+KNOWN_PENDING_DOMAINS = _roots_for(
+    GMAIL_MAIL_DOMAINS, YAHOO_MAIL_DOMAINS, APPLE_MAIL_DOMAINS
+)
 KNOWN_MAIL_DOMAINS = _roots_for(KNOWN_ACTIVE_DOMAINS, KNOWN_PENDING_DOMAINS)
+
+MICROSOFT_MX_MARKERS = (
+    "mail.protection.outlook.com",
+    "olc.protection.outlook.com",
+    "outlook.com",
+    "hotmail.com",
+)
+GOOGLE_MX_MARKERS = (
+    "aspmx.l.google.com",
+    "googlemail.com",
+    "google.com",
+)
 
 
 def email_domain(email: str) -> str:
@@ -197,9 +212,146 @@ def domain_has_mail_records(
             return False
 
 
+def _mx_marker_hit(hosts: list[str], markers: tuple[str, ...]) -> bool:
+    return any(
+        any(host == marker or host.endswith("." + marker) for marker in markers)
+        for host in hosts
+    )
+
+
+def is_microsoft365_mx(hosts: list[str]) -> bool:
+    return _mx_marker_hit([h.lower().rstrip(".") for h in hosts], MICROSOFT_MX_MARKERS)
+
+
+def is_google_workspace_mx(hosts: list[str]) -> bool:
+    return _mx_marker_hit([h.lower().rstrip(".") for h in hosts], GOOGLE_MX_MARKERS)
+
+
+def lookup_mx_hosts(
+    domain: str,
+    timeout_seconds: float = 1.5,
+) -> list[str]:
+    """MX del dominio (minúsculas). Vacío si no hay respuesta o el lookup falla."""
+    if not is_plausible_hostname(domain):
+        return []
+
+    def _query() -> list[str]:
+        try:
+            import dns.resolver  # type: ignore[import-not-found]
+
+            answers = dns.resolver.resolve(domain, "MX", lifetime=timeout_seconds)
+            hosts = [
+                str(getattr(item, "exchange", "")).rstrip(".").lower()
+                for item in answers
+            ]
+            return [host for host in hosts if host]
+        except Exception:
+            return _lookup_mx_udp(domain, timeout_seconds)
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(_query)
+        try:
+            return list(future.result(timeout=timeout_seconds + 0.4))
+        except (FutureTimeout, OSError):
+            return []
+
+
+def _lookup_mx_udp(domain: str, timeout_seconds: float) -> list[str]:
+    """Consulta MX mínima (RFC 1035) a 8.8.8.8. Sin dependencias extra."""
+    import random
+    import struct
+
+    labels = domain.strip(".").split(".")
+    if not labels:
+        return []
+    query = struct.pack("!HHHHHH", random.randint(1, 65535), 0x0100, 1, 0, 0, 0)
+    for label in labels:
+        encoded = label.encode("idna", errors="ignore")
+        if not encoded or len(encoded) > 63:
+            return []
+        query += bytes([len(encoded)]) + encoded
+    query += b"\x00" + struct.pack("!HH", 15, 1)
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(timeout_seconds)
+        sock.sendto(query, ("8.8.8.8", 53))
+        data, _ = sock.recvfrom(512)
+        sock.close()
+    except OSError:
+        return []
+    if len(data) < 12:
+        return []
+    _, flags, qs, answers, _, _ = struct.unpack("!HHHHHH", data[:12])
+    if flags & 0x000F or qs != 1 or answers == 0:
+        return []
+
+    def _skip_name(buf: bytes, offset: int) -> int:
+        while offset < len(buf):
+            length = buf[offset]
+            if length == 0:
+                return offset + 1
+            if length & 0xC0 == 0xC0:
+                return offset + 2
+            offset += 1 + length
+        return offset
+
+    offset = _skip_name(data, 12) + 4
+    hosts: list[str] = []
+    for _ in range(answers):
+        offset = _skip_name(data, offset)
+        if offset + 10 > len(data):
+            break
+        rtype, _, _, rdlength = struct.unpack("!HHIH", data[offset : offset + 10])
+        offset += 10
+        rdata = data[offset : offset + rdlength]
+        offset += rdlength
+        if rtype != 15 or len(rdata) < 3:
+            continue
+        name_off = 2
+        parts: list[str] = []
+        jumped = False
+        cursor = name_off
+        hops = 0
+        while hops < 16 and cursor < len(rdata):
+            hops += 1
+            length = rdata[cursor]
+            if length == 0:
+                break
+            if length & 0xC0 == 0xC0:
+                pointer = ((length & 0x3F) << 8) + (rdata[cursor + 1] if cursor + 1 < len(rdata) else 0)
+                if not jumped:
+                    cursor = pointer
+                    jumped = True
+                    # Pointers refer to the full packet, not rdata.
+                    packet_cursor = pointer
+                    packet_parts: list[str] = []
+                    while packet_cursor < len(data) and hops < 16:
+                        hops += 1
+                        plen = data[packet_cursor]
+                        if plen == 0:
+                            break
+                        if plen & 0xC0 == 0xC0:
+                            packet_cursor = ((plen & 0x3F) << 8) + data[packet_cursor + 1]
+                            continue
+                        packet_parts.append(
+                            data[packet_cursor + 1 : packet_cursor + 1 + plen].decode(
+                                "ascii", errors="ignore"
+                            )
+                        )
+                        packet_cursor += 1 + plen
+                    parts.extend(packet_parts)
+                    break
+            parts.append(rdata[cursor + 1 : cursor + 1 + length].decode("ascii", errors="ignore"))
+            cursor += 1 + length
+        host = ".".join(p for p in parts if p).lower().rstrip(".")
+        if host:
+            hosts.append(host)
+    return hosts
+
+
 ACTIVE_OPTIONS_MESSAGE = (
-    f"Opciones activas: {ACTIVE_OPTIONS_TEXT}. "
-    f"{PENDING_OPTIONS_TEXT}: la solicitud de acceso está en revisión."
+    f"Ahora sí leemos: {ACTIVE_OPTIONS_TEXT}. "
+    f"{PENDING_OPTIONS_TEXT}: Pronto / Próximamente."
 )
 
 
@@ -217,23 +369,38 @@ def message_for_missing() -> str:
     )
 
 
+def provider_coming_soon_label(provider: str) -> str:
+    return {
+        "gmail": "Gmail",
+        "yahoo": "Yahoo",
+        "apple": "iCloud",
+    }.get(provider, "ese correo")
+
+
 def message_for_pending(provider: str) -> str:
-    label = "Gmail" if provider == "gmail" else "iCloud"
-    other = "iCloud" if provider == "gmail" else "Gmail"
+    label = provider_coming_soon_label(provider)
     return (
-        f"{label}: la solicitud de acceso está en revisión. "
-        f"Todavía no podemos completar el alta con ese correo. "
-        f"Opciones activas: {ACTIVE_OPTIONS_TEXT}. "
-        f"{other} también está en revisión."
+        f"Próximamente. Donexto todavía no puede monitorear {label}. "
+        f"Opciones activas ahora: {ACTIVE_OPTIONS_TEXT}. "
+        f"{PENDING_OPTIONS_TEXT}: te avisamos si te apuntas a la lista."
     )
 
 
 def message_for_unsupported() -> str:
     return (
-        "Ese dominio existe, pero Donexto aún no lo tiene integrado. "
-        "Ya avisamos a soporte para valorar el trámite. "
-        f"Mientras tanto {ACTIVE_OPTIONS_MESSAGE}"
+        "Donexto solo monitorea Microsoft 365 y (pronto) Google Workspace. "
+        "Otros servidores de empresa aún no se pueden leer. "
+        "Si quieres, te avisamos cuando haya soporte para ese dominio. "
+        f"Ahora sí leemos: {ACTIVE_OPTIONS_TEXT}."
     )
+
+
+def coming_soon_next(provider: str) -> str:
+    return {
+        "gmail": "coming_soon_gmail",
+        "yahoo": "coming_soon_yahoo",
+        "apple": "coming_soon_icloud",
+    }.get(provider, "waitlist")
 
 
 @dataclass(frozen=True)
@@ -250,25 +417,28 @@ class DomainVerdict:
         if self.status in {"typo", "missing"}:
             return "fix_domain"
         if self.status == "pending_review":
-            return "pending_review"
+            return coming_soon_next(self.provider)
         if self.status == "unsupported":
-            return "unsupported"
+            return "unsupported_imap_domain"
         return "signup"
 
 
 ProbeFn = Callable[[str], bool]
+MxProbeFn = Callable[[str], list[str]]
 
 
 def classify_mail_domain(
     email: str,
     *,
     probe: ProbeFn | None = None,
+    mx_probe: MxProbeFn | None = None,
 ) -> DomainVerdict:
     clean = (email or "").strip().lower()
     domain = email_domain(clean)
     local = email_local_part(clean)
     provider = provider_for_domain(domain)
     probe_fn = probe or domain_has_mail_records
+    mx_fn = mx_probe or lookup_mx_hosts
 
     if not domain or not local or not is_plausible_hostname(domain):
         return DomainVerdict(
@@ -280,7 +450,7 @@ def classify_mail_domain(
             message=message_for_missing(),
         )
 
-    if provider in {"yahoo", "hotmail"}:
+    if provider == "hotmail":
         return DomainVerdict(
             email=clean,
             domain=domain,
@@ -290,7 +460,7 @@ def classify_mail_domain(
             message="",
         )
 
-    if provider in {"gmail", "apple"}:
+    if provider in {"gmail", "yahoo", "apple"}:
         return DomainVerdict(
             email=clean,
             domain=domain,
@@ -310,6 +480,26 @@ def classify_mail_domain(
             status="typo",
             suggested_email=suggested_email,
             message=message_for_typo(suggested),
+        )
+
+    mx_hosts = mx_fn(domain)
+    if is_microsoft365_mx(mx_hosts):
+        return DomainVerdict(
+            email=clean,
+            domain=domain,
+            provider="hotmail",
+            status="active",
+            suggested_email=None,
+            message="",
+        )
+    if is_google_workspace_mx(mx_hosts):
+        return DomainVerdict(
+            email=clean,
+            domain=domain,
+            provider="gmail",
+            status="pending_review",
+            suggested_email=None,
+            message=message_for_pending("gmail"),
         )
 
     if probe_fn(domain):

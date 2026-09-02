@@ -77,6 +77,10 @@ def env_status() -> dict[str, Any]:
             "AZURE_CLIENT_ID": _env_is_set("AZURE_CLIENT_ID"),
             "AZURE_CLIENT_SECRET": _env_is_set("AZURE_CLIENT_SECRET"),
             "AZURE_REDIRECT_URI": _env_is_set("AZURE_REDIRECT_URI"),
+            "STRIPE_SECRET_KEY": _env_is_set("STRIPE_SECRET_KEY"),
+            "STRIPE_PRICE_NORMAL_MONTHLY": _env_is_set(
+                "STRIPE_PRICE_NORMAL_MONTHLY"
+            ),
             "SUPPORT_NOTIFY_EMAIL": _env_is_set("SUPPORT_NOTIFY_EMAIL"),
             "SUPPORT_SMTP_HOST": _env_is_set("SUPPORT_SMTP_HOST"),
         },

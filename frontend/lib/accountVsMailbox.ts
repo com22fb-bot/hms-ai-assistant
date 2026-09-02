@@ -4,7 +4,7 @@
  */
 export const ACCOUNT_VS_MAILBOX = {
   oneLiner:
-    "El correo con el que entras a Donexto es el mismo buzón que monitoreamos. Nunca te pedimos la contraseña de Gmail aquí.",
+    "El correo con el que entras a Donexto es el mismo buzón que monitoreamos. Nunca te pedimos la contraseña de Outlook ni de Hotmail aquí.",
 
   loginEyebrow: "Cuenta Donexto",
   loginTitleSignIn: "Entrar a Donexto",
@@ -18,7 +18,7 @@ export const ACCOUNT_VS_MAILBOX = {
   loginSubscribeCta: "Continuar",
   signupConfirmTitle: "¿Usamos este correo en Donexto?",
   signupConfirmHelper:
-    "Ese correo es el buzón que Donexto va a monitorear. Tiene que ser Yahoo, Outlook/Hotmail o Gmail, no otro mail de login.",
+    "Ese correo es el buzón que Donexto va a monitorear. Hoy leemos Outlook, Hotmail y Microsoft 365.",
   signupConfirmCta: "Sí, continuar",
   signupConfirmBack: "Cambiar correo",
   signupConfirmYahooNote:
@@ -28,7 +28,7 @@ export const ACCOUNT_VS_MAILBOX = {
   signupConfirmGmailNote:
     "Ese correo es el buzón que Donexto va a monitorear. Al continuar, Google te identifica. Donexto no pide la contraseña de Gmail.",
   signupConfirmOtherNote:
-    "Ese correo es el buzón que Donexto va a monitorear. Tiene que ser Yahoo, Outlook/Hotmail o Gmail.",
+    "Ese correo es el buzón que Donexto va a monitorear. Hoy tiene que ser Outlook, Hotmail o Microsoft 365.",
   loginHelperYahoo:
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   servicesActiveLabel: "Servicios en Donexto",
@@ -37,11 +37,11 @@ export const ACCOUNT_VS_MAILBOX = {
   servicesPendingLabel: "En revisión",
   useSuggestedEmail: "Usar este correo",
   domainFixFallback:
-    "Ese dominio no está activo. Opciones activas: Yahoo y Outlook/Hotmail. Gmail e iCloud: la solicitud de acceso está en revisión.",
+    "Ese dominio no está activo. Ahora leemos Outlook, Hotmail, Live, MSN y Microsoft 365. Gmail, Yahoo e iCloud: Pronto.",
   domainPendingFallback:
-    "Gmail e iCloud: la solicitud de acceso está en revisión. Opciones activas: Yahoo y Outlook/Hotmail.",
+    "Gmail, Yahoo e iCloud: Pronto. Ahora leemos Outlook, Hotmail, Live, MSN y Microsoft 365.",
   domainUnsupportedFallback:
-    "Ese dominio existe, pero Donexto aún no lo tiene integrado. Ya avisamos a soporte. Opciones activas: Yahoo y Outlook/Hotmail. Gmail e iCloud: la solicitud de acceso está en revisión.",
+    "Donexto solo monitorea Microsoft 365 y (pronto) Google Workspace. Otros servidores de empresa aún no se pueden leer. Ahora leemos Outlook, Hotmail, Live, MSN y Microsoft 365.",
   yahooWaitingMailTitle: "Ya firmaste en Yahoo",
   yahooWaitingMailBody:
     "Tu cuenta Donexto está lista. Yahoo todavía no autoriza a esta app a leer el buzón. No te volvemos a mandar a Yahoo: cuando Yahoo apruebe el permiso, Actualizar buzón traerá los correos.",
@@ -95,7 +95,7 @@ export const ACCOUNT_VS_MAILBOX = {
   connectBanner: "Esto no pide tu contraseña de Gmail · solo autoriza la lectura",
   connectChooserTitle: "Autoriza la lectura de tu correo",
   connectChooserBody:
-    "El buzón es el mismo correo de tu cuenta Donexto. Gmail autoriza lectura en Google; Yahoo, en el sitio de Yahoo. Donexto no pide claves de buzón.",
+    "El buzón es el mismo correo de tu cuenta Donexto. Outlook y Hotmail autorizan lectura en Microsoft. Gmail y Yahoo, cuando estén listos. Donexto no pide claves de buzón.",
   connectGmailBody:
     "Donexto nunca te pidió la contraseña de Gmail. Esta pantalla de Google es solo para autorizar la lectura de este mismo buzón.",
   connectGmailCta: "Autorizar lectura de este Gmail",
@@ -116,6 +116,18 @@ export const ACCOUNT_VS_MAILBOX = {
   mailboxConnected: "Buzón conectado",
   mailboxMissing: "Sin buzón",
   mailboxMissingHint: "Autoriza la lectura de este mismo correo",
+  gmailReadPendingTitle: "Gmail aún no se puede leer",
+  gmailReadPendingBody:
+    "Ya puedes entrar a Donexto con este Gmail, pero Google todavía no autoriza la lectura del buzón. Te avisamos cuando se pueda monitorear.",
+  planNormalTitle: "Plan Normal",
+  planNormalPrice: "$19.99 / mes",
+  planNormalBody:
+    "Cuando tu Outlook o Hotmail está conectado, el Plan Normal cubre la atención del buzón. Checkout en Stripe Test.",
+  planNormalCta: "Contratar Plan Normal $19.99",
+  planNormalMissingKey:
+    "Falta configurar Stripe Test en Railway (STRIPE_SECRET_KEY y STRIPE_PRICE_NORMAL_MONTHLY).",
+  quickConnectHint: "Outlook o Hotmail",
+  quickChangeHint: "Otro Outlook o Hotmail",
 } as const;
 
 import type { MailboxSignupProvider } from "@/lib/mailboxSignup";
@@ -132,7 +144,7 @@ export function mailboxServiceLabel(
       return "Yahoo";
     case "hotmail":
     case "microsoft":
-      return "Outlook";
+      return "Outlook / Hotmail";
     case "apple":
       return "iCloud";
     default:

@@ -2,13 +2,44 @@
 
 import { Check, Globe, Languages, LogOut, X } from "lucide-react";
 
-import { LANGUAGE_OPTIONS } from "@/lib/i18n/languages";
+import { LANGUAGE_OPTIONS, isAppLanguage } from "@/lib/i18n/languages";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 import "./user-settings.css";
 
-export function LanguageStrip({ className }: { className?: string }) {
+export function LanguageStrip({
+  className,
+  compact = false,
+}: {
+  className?: string;
+  compact?: boolean;
+}) {
   const { language, setLanguage, t } = useLanguage();
+
+  if (compact) {
+    return (
+      <label className={["dx-lang-strip", "dx-lang-strip--compact", className].filter(Boolean).join(" ")}>
+        <Languages size={14} aria-hidden />
+        <span className="dx-lang-strip__sr">{t("language")}</span>
+        <select
+          className="dx-lang-strip__select"
+          value={language}
+          aria-label={t("language")}
+          onChange={(event) => {
+            void setLanguage(
+              isAppLanguage(event.target.value) ? event.target.value : language,
+            );
+          }}
+        >
+          {LANGUAGE_OPTIONS.map((option) => (
+            <option key={option.code} value={option.code}>
+              {option.nativeName}
+            </option>
+          ))}
+        </select>
+      </label>
+    );
+  }
 
   return (
     <div
