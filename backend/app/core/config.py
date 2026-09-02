@@ -135,6 +135,16 @@ class Settings:
             "AZURE_REDIRECT_URI"
         )
     )
+    stripe_secret_key: str = field(
+        default_factory=lambda: get_environment_variable(
+            "STRIPE_SECRET_KEY"
+        )
+    )
+    stripe_price_normal_monthly: str = field(
+        default_factory=lambda: get_environment_variable(
+            "STRIPE_PRICE_NORMAL_MONTHLY"
+        )
+    )
 
     frontend_origins: list[str] = field(
         default_factory=lambda: get_list_environment_variable(
