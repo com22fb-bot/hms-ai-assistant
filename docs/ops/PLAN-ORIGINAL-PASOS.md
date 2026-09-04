@@ -52,7 +52,7 @@ Activación: `mailbox_ok` ∧ (`trialing` ∨ `active`).
 | ID | Entrega |
 |----|---------|
 | **P0** | Cuenta ≠ buzón: copy, alta con nombre, gate Paso 2, banners. Validar en https://app.donexto.com |
-| **P1** | Matriz de buzones: Gmail, Yahoo, Outlook, Apple, dominio privado (IMAP) |
+| **P1** | Matriz de buzones: Gmail, Yahoo, Outlook, Apple, dominio privado (IMAP). **Actualizado 2 sep 2026:** personal + empresa + gobierno MX — ver abajo. |
 | **P2** | Conectar + **verificar** buzón (`mailbox_verified` / `mailbox_ok`) |
 | **P3** | Conteos exactos INBOX / Sent |
 | **P4** | Sample ~20 INBOX + ~20 Sent |
@@ -64,6 +64,18 @@ Activación: `mailbox_ok` ∧ (`trialing` ∨ `active`).
 | **P10** | Home N1 post-sync (AttentionHome; no conteo de correos) |
 | **P11** | Free restringido (después de Normal) |
 | **P12** | **Admin con datos reales** (usuarios, cobros, feedback, promociones, sistema) |
+
+### P1 — puntero 2 sep 2026 (no reescribe el plan)
+
+La fila de arriba sigue siendo el P1 original. El detalle que no se debe perder:
+
+- `.mx` / `.gob.mx` / `.com.mx` **no** son el proveedor: Continuar + MX.
+- Microsoft (Hotmail/Outlook/Live/MSN, `@televisa.com.mx`, `@cfe.mx`) **ya**.
+- Google (Gmail, `@liverpool.com.mx`, `@televisa.com`, `@cdmx.gob.mx`) **pronto**.
+- Proofpoint / Trend Micro / servidores propios (TV Azteca, Telcel, SAT, IMSS, Hacienda, Función Pública, ISSSTE, SEGOB, Banxico) = waitlist. Sin password de buzón. Sin `YAHOO_MAIL_READ_ENABLED`.
+- P1 **no** es “nunca empresa ni gobierno”.
+
+Canónico: `docs/ops/MATRIZ-BUZONES.md`. Pendientes: `docs/ops/DONEX-SEPTEMBER.md` (2 sep).
 
 ### P0 — criterios originales
 
