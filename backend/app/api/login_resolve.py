@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from app.security.rate_limit import allow_request
 from app.services.mail_domain import (
     classify_mail_domain,
     coming_soon_next,
@@ -17,6 +18,14 @@ router = APIRouter(prefix="/auth/login", tags=["Login"])
 
 ACTIVE_OPTIONS = ["hotmail"]
 PENDING_OPTIONS = ["gmail", "yahoo", "apple"]
+ACCOUNT_EXISTS_NEXT = frozenset(
+    {
+        "yahoo_oauth",
+        "google_oauth",
+        "azure_oauth",
+        "apple_oauth",
+    }
+)
 
 
 class LoginResolveRequest(BaseModel):
@@ -55,7 +64,17 @@ def next_for_unknown(verdict) -> str:
 
 
 @router.post("/resolve")
-def resolve_login(payload: LoginResolveRequest) -> dict[str, object]:
+def resolve_login(payload: LoginResolveRequest, request: Request) -> dict[str, object]:
+    client_host = getattr(getattr(request, "client", None), "host", None) or "unknown"
+    if not allow_request(f"login-resolve:{client_host}"):
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "status": "rate_limited",
+                "message": "Demasiados intentos seguidos. Espera un momento.",
+            },
+        )
+
     email = payload.email.strip().lower()
     verdict = classify_mail_domain(email)
     if "@" not in email or not verdict.domain:
@@ -91,10 +110,9 @@ def resolve_login(payload: LoginResolveRequest) -> dict[str, object]:
     return {
         "status": "ok",
         "email": email,
-        "exists": exists,
         "provider": verdict.provider,
         "domain": verdict.domain,
-        "domain_status": verdict.status if not exists else "active",
+        "domain_status": verdict.status if nxt not in ACCOUNT_EXISTS_NEXT else "active",
         "next": nxt,
         "suggested_email": verdict.suggested_email,
         "message": message,

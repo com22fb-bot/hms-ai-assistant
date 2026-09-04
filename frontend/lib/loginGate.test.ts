@@ -5,6 +5,7 @@ import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
 import {
+  accountExistsFromResolveNext,
   comingSoonProviderLabel,
   gateNextAfterResolve,
   isComingSoonGate,
@@ -12,6 +13,14 @@ import {
 } from "./loginGate.ts";
 import { userHasOAuthIdentity } from "./oauthIdentity.ts";
 import { isKnownActiveMailbox, resolveMailboxProviderFromEmail } from "./mailboxSignup.ts";
+
+describe("accountExistsFromResolveNext", () => {
+  it("detects existing accounts from oauth next values", () => {
+    assert.equal(accountExistsFromResolveNext("yahoo_oauth"), true);
+    assert.equal(accountExistsFromResolveNext("signup"), false);
+    assert.equal(accountExistsFromResolveNext("coming_soon_gmail"), false);
+  });
+});
 
 describe("gateNextAfterResolve", () => {
   it("names Hotmail as live Microsoft and sends existing testers to identity login", () => {

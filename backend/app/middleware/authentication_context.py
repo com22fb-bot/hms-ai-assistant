@@ -13,6 +13,11 @@ from app.security.identity import (
     set_request_context,
 )
 
+_DONEXTO_EXEMPT_SUFFIXES = (
+    "/identity/me",
+    "/identity/confirm-donexto",
+)
+
 
 _PROTECTED_PREFIXES = (
     "/identity",
@@ -77,6 +82,20 @@ class AuthenticationContextMiddleware(BaseHTTPMiddleware):
                 request,
                 user,
             )
+            path = request.url.path.rstrip("/") or "/"
+            if not any(path == item or path.startswith(item + "/") for item in _DONEXTO_EXEMPT_SUFFIXES):
+                if not context.user.donexto_verified and not context.user.has_oauth_identity:
+                    return JSONResponse(
+                        status_code=403,
+                        content={
+                            "detail": {
+                                "status": "donexto_unverified",
+                                "message": (
+                                    "Confirma tu correo Donexto antes de continuar."
+                                ),
+                            }
+                        },
+                    )
             request.state.hms_context = context
             context_token = set_request_context(context)
             return await call_next(request)

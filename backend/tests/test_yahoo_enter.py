@@ -134,11 +134,15 @@ class YahooOAuthGateTests(unittest.TestCase):
 
     def test_sanitize_return_to_stays_on_donexto(self) -> None:
         with patch(
-            "app.services.yahoo_oauth.settings"
+            "app.security.redirect.settings"
         ) as settings:
             settings.frontend_origins = ["https://app.donexto.com"]
             self.assertEqual(
                 sanitize_return_to("https://evil.example/phish"),
+                "https://app.donexto.com/",
+            )
+            self.assertEqual(
+                sanitize_return_to("https://falsodonexto.com/phish"),
                 "https://app.donexto.com/",
             )
             self.assertEqual(

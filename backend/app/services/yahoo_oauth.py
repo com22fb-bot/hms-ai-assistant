@@ -5,12 +5,15 @@ from __future__ import annotations
 import base64
 import logging
 from typing import Any
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode
 
 import httpx
 from fastapi import HTTPException
 
 from app.core.config import settings
+from app.security.redirect import YAHOO_DEFAULT_RETURN, sanitize_return_to
+
+__all__ = ["sanitize_return_to", "YAHOO_DEFAULT_RETURN"]
 
 
 logger = logging.getLogger(__name__)
@@ -19,9 +22,6 @@ YAHOO_AUTHORIZE_URL = "https://api.login.yahoo.com/oauth2/request_auth"
 YAHOO_TOKEN_URL = "https://api.login.yahoo.com/oauth2/get_token"
 YAHOO_USERINFO_URL = "https://api.login.yahoo.com/openid/v1/userinfo"
 YAHOO_DEFAULT_SCOPES = "openid email profile"
-YAHOO_DEFAULT_RETURN = "https://app.donexto.com/"
-
-
 class YahooOAuthError(RuntimeError):
     """Fallo al hablar con Yahoo OAuth."""
 
@@ -91,24 +91,6 @@ def yahoo_intent_from_state(state: str) -> str:
     if separator and prefix in YAHOO_OAUTH_INTENTS:
         return prefix
     return "login"
-
-
-def sanitize_return_to(value: str | None) -> str:
-    allowed = {item.rstrip("/") for item in settings.frontend_origins}
-    if value:
-        try:
-            parsed = urlparse(value)
-        except ValueError:
-            parsed = None
-        if parsed and parsed.scheme in {"http", "https"} and parsed.netloc:
-            origin = f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
-            host = (parsed.hostname or "").lower()
-            if origin in allowed or host.endswith("donexto.com"):
-                return origin + "/"
-    for item in settings.frontend_origins:
-        if "donexto.com" in item.lower() and item.startswith("https://"):
-            return item.rstrip("/") + "/"
-    return YAHOO_DEFAULT_RETURN
 
 
 def sanitize_login_hint(value: str | None) -> str | None:

@@ -4,6 +4,7 @@ import type { Session, User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/lib/supabase";
+import { hmsJson } from "@/lib/hmsApi";
 import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
 import { userHasOAuthIdentity } from "@/lib/oauthIdentity";
 import { isBrowserNetworkError, postPublicHms } from "@/lib/publicHms";
@@ -33,9 +34,28 @@ type AppSession = {
 };
 
 const DONEXTO_VERIFY_QUERY = "donexto_verify";
+const HMS_API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "/api/hms";
 
 function isDonextoVerified(user: User | null | undefined): boolean {
-  return user?.user_metadata?.donexto_verified === true;
+  if (user?.app_metadata?.donexto_verified === true) {
+    return true;
+  }
+  // Legacy flag in user_metadata is ignored for authorization; backend is source of truth.
+  return false;
+}
+
+async function confirmDonextoWithBackend(): Promise<boolean> {
+  try {
+    const result = await hmsJson<{ donexto_verified?: boolean }>(
+      `${HMS_API_BASE}/identity/confirm-donexto`,
+      { method: "POST" },
+    );
+    return result.donexto_verified === true;
+  } catch (error) {
+    console.error("No fue posible confirmar Donexto en el servidor:", error);
+    return false;
+  }
 }
 
 function yahooImapOwnsIdentity(user: User | null | undefined): boolean {
@@ -275,47 +295,23 @@ export function useAppAuth() {
         return;
       }
 
-      if (isDonextoVerifyReturn()) {
+      if (userHasOAuthIdentity(currentUser) || isDonextoVerifyReturn()) {
         verifyBootstrapLock.current = true;
         try {
           if (!isDonextoVerified(currentUser)) {
-            const { error } = await supabase.auth.updateUser({
-              data: { donexto_verified: true },
-            });
-            if (error) {
-              throw error;
-            }
-            const { data: next } = await supabase.auth.getSession();
-            if (!cancelled) {
-              setRawSession(next.session ?? null);
+            const confirmed = await confirmDonextoWithBackend();
+            if (confirmed) {
+              const { data: next } = await supabase.auth.refreshSession();
+              if (!cancelled) {
+                setRawSession(next.session ?? null);
+              }
             }
           }
-          clearDonextoVerifyQuery();
+          if (isDonextoVerifyReturn()) {
+            clearDonextoVerifyQuery();
+          }
         } catch (error) {
           console.error("No fue posible confirmar Donexto:", error);
-        } finally {
-          verifyBootstrapLock.current = false;
-        }
-        return;
-      }
-
-      if (userHasOAuthIdentity(currentUser)) {
-        if (isDonextoVerified(currentUser)) {
-          return;
-        }
-        verifyBootstrapLock.current = true;
-        try {
-          const { error } = await supabase.auth.updateUser({
-            data: { donexto_verified: true },
-          });
-          if (error) {
-            console.error("No fue posible marcar donexto_verified=true:", error);
-            return;
-          }
-          const { data: next } = await supabase.auth.getSession();
-          if (!cancelled) {
-            setRawSession(next.session ?? null);
-          }
         } finally {
           verifyBootstrapLock.current = false;
         }
@@ -328,23 +324,6 @@ export function useAppAuth() {
 
       verifyBootstrapLock.current = true;
       try {
-        if (currentUser.user_metadata?.donexto_verified !== false) {
-          const { error } = await supabase.auth.updateUser({
-            data: { donexto_verified: false },
-          });
-          if (error) {
-            console.error(
-              "No fue posible marcar donexto_verified=false:",
-              error,
-            );
-          } else {
-            const { data: next } = await supabase.auth.getSession();
-            if (!cancelled && next.session) {
-              setRawSession(next.session);
-            }
-          }
-        }
-
         const sentKey = `donexto_verify_sent:${accountEmail}`;
         try {
           if (sessionStorage.getItem(sentKey) === "1") {
@@ -660,8 +639,15 @@ export function useAppAuth() {
       throw new Error(translateAuthError(error.message));
     }
 
+    if (
+      data.user
+      && sessionNeedsDonextoEmailConfirm({ user: data.user } as Session)
+    ) {
+      await confirmDonextoWithBackend();
+    }
+
     const { data: next, error: sessionError } =
-      await supabase.auth.getSession();
+      await supabase.auth.refreshSession();
     if (sessionError) {
       throw new Error(translateAuthError(sessionError.message));
     }
