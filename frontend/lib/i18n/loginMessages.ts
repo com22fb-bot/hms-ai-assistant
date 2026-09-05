@@ -65,6 +65,8 @@ export type LoginMessageKey =
   | "resetSent"
   | "recoverNeedEmail"
   | "promise"
+  | "heroHeadline"
+  | "heroSubline"
   | "wantedToSay"
   | "emailPlaceholder"
   | "availableNow"
@@ -167,6 +169,9 @@ const es: Record<LoginMessageKey, string> = {
   resetSent: "Enviamos un enlace para restablecer la contraseña de Donexto.",
   recoverNeedEmail: "Escribe primero el correo de tu cuenta Donexto.",
   promise: "Do Next To…\nLo siguiente que sí importa. El resto espera.",
+  heroHeadline: "Tu correo. Tu siguiente paso.",
+  heroSubline:
+    "Correos importantes, tareas y pendientes en un solo lugar.",
   wantedToSay: "Ese dominio no es un correo que podamos leer ahora. ¿Quisiste decir",
   emailPlaceholder: "tu@hotmail.com",
   availableNow: "Disponible ahora",
@@ -269,6 +274,8 @@ const en: Record<LoginMessageKey, string> = {
   resetSent: "We sent a link to reset your Donexto password.",
   recoverNeedEmail: "Enter your Donexto account email first.",
   promise: "Do Next To…\nThe next thing that actually matters. Everything else waits.",
+  heroHeadline: "Your email. Your next step.",
+  heroSubline: "Important mail, tasks, and to-dos in one place.",
   wantedToSay: "That domain is not a mailbox we can read yet. Did you mean",
   emailPlaceholder: "you@hotmail.com",
   availableNow: "Available now",
@@ -372,6 +379,9 @@ const fr: Record<LoginMessageKey, string> = {
   resetSent: "Nous avons envoyé un lien pour réinitialiser le mot de passe Donexto.",
   recoverNeedEmail: "Saisissez d’abord l’e-mail de votre compte Donexto.",
   promise: "Do Next To…\nLa prochaine chose qui compte vraiment. Le reste attend.",
+  heroHeadline: "Votre e-mail. Votre prochaine étape.",
+  heroSubline:
+    "Courriers importants, tâches et suivis au même endroit.",
   wantedToSay: "Ce domaine n’est pas une boîte que nous pouvons lire. Vouliez-vous dire",
   emailPlaceholder: "vous@hotmail.com",
   availableNow: "Disponible maintenant",
@@ -475,6 +485,9 @@ const it: Record<LoginMessageKey, string> = {
   resetSent: "Abbiamo inviato un link per reimpostare la password Donexto.",
   recoverNeedEmail: "Inserisci prima l’email del tuo account Donexto.",
   promise: "Do Next To…\nLa prossima cosa che conta davvero. Il resto aspetta.",
+  heroHeadline: "La tua email. Il tuo prossimo passo.",
+  heroSubline:
+    "Email importanti, attività e pendenti in un solo posto.",
   wantedToSay: "Quel dominio non è una casella che possiamo leggere ora. Intendevi",
   emailPlaceholder: "tu@hotmail.com",
   availableNow: "Disponibile ora",
@@ -578,6 +591,9 @@ const pt: Record<LoginMessageKey, string> = {
   resetSent: "Enviámos uma ligação para repor a palavra-passe Donexto.",
   recoverNeedEmail: "Escreva primeiro o correio da sua conta Donexto.",
   promise: "Do Next To…\nO que segue e importa. O resto espera.",
+  heroHeadline: "O teu correio. O teu próximo passo.",
+  heroSubline:
+    "Correios importantes, tarefas e pendências num só lugar.",
   wantedToSay: "Esse domínio não é um correio que possamos ler agora. Quis dizer",
   emailPlaceholder: "voce@hotmail.com",
   availableNow: "Disponível agora",
