@@ -14,6 +14,7 @@ from urllib.parse import parse_qs, urlparse
 from fastapi import HTTPException
 
 from app.database.supabase import get_supabase_client
+from app.security.donexto_verified import verified_app_metadata_patch
 from app.security.identity import bootstrap_workspace_for_user
 
 
@@ -239,13 +240,12 @@ def _ensure_yahoo_auth_user(
 ) -> tuple[str, str | None]:
     """Localiza el usuario Auth. Solo crea uno si allow_create (alta explícita).
 
-    Firmar en Yahoo o Microsoft prueba el correo: donexto_verified queda True.
+    Firmar en Yahoo o Microsoft prueba el correo: donexto_verified queda True
+    en app_metadata (solo service role), no en user_metadata editable.
     """
 
-    metadata = {
-        "donexto_verified": True,
-        "signup_via": signup_via,
-    }
+    user_metadata = {"signup_via": signup_via}
+    app_metadata = verified_app_metadata_patch()
     existing = _find_user_by_email(client, email)
     created_password: str | None = None
 
@@ -254,14 +254,14 @@ def _ensure_yahoo_auth_user(
         previous = existing.get("user_metadata") or {}
         if not isinstance(previous, dict):
             previous = {}
-        merged = {**previous, **metadata}
-        merged["donexto_verified"] = True
+        merged_user = {**previous, **user_metadata}
         try:
             client.auth.admin.update_user_by_id(
                 user_id,
                 {
                     "email_confirm": True,
-                    "user_metadata": merged,
+                    "user_metadata": merged_user,
+                    "app_metadata": app_metadata,
                 },
             )
         except Exception:
@@ -278,7 +278,8 @@ def _ensure_yahoo_auth_user(
                 "email": email,
                 "email_confirm": True,
                 "password": created_password,
-                "user_metadata": metadata,
+                "user_metadata": user_metadata,
+                "app_metadata": app_metadata,
             }
         )
         payload = _unwrap_user(created)

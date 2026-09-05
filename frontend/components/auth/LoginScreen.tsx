@@ -14,6 +14,7 @@ import type { AuthOAuthProvider, YahooAuthIntent } from "@/hooks/useAppAuth";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { loginText, loginTextReplace } from "@/lib/i18n/loginMessages";
 import {
+  accountExistsFromResolveNext,
   comingSoonProviderLabel,
   gateNextAfterResolve,
   isComingSoonGate,
@@ -73,7 +74,6 @@ type GateStep = "email" | "confirm" | "waitlist";
 
 type ResolvePayload = {
   next?: string;
-  exists?: boolean;
   provider?: string;
   message?: string;
   suggested_email?: string | null;
@@ -349,7 +349,7 @@ export function LoginScreen({
     resetAlerts();
     try {
       const payload = await resolvePayload(address);
-      const exists = Boolean(payload.exists) && payload.next !== "signup";
+      const exists = accountExistsFromResolveNext(payload.next);
       const gate = gateNextAfterResolve(
         exists ? "login" : "signup",
         exists,
@@ -423,7 +423,7 @@ export function LoginScreen({
     resetAlerts();
     try {
       const payload = await resolvePayload(clean);
-      const exists = Boolean(payload.exists) && payload.next !== "signup";
+      const exists = accountExistsFromResolveNext(payload.next);
       const gate = gateNextAfterResolve(
         "signup",
         exists,

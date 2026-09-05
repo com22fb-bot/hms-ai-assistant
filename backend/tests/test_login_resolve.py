@@ -26,11 +26,14 @@ from app.services.mail_domain import (
 
 
 class _FakeRequest:
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str, host: str = "127.0.0.1") -> None:
         self.method = "POST"
         self.url = type("U", (), {"path": path})()
-        self.client = type("C", (), {"host": "127.0.0.1"})()
+        self.client = type("C", (), {"host": host})()
         self.headers = {}
+
+
+_RESOLVE_REQUEST = _FakeRequest("/auth/login/resolve")
 
 
 class LoginResolveTests(unittest.TestCase):
@@ -41,6 +44,12 @@ class LoginResolveTests(unittest.TestCase):
         )
         self.addCleanup(mx_patch.stop)
         mx_patch.start()
+
+    def _resolve(self, email: str, host: str = "127.0.0.1") -> dict[str, object]:
+        return resolve_login(
+            LoginResolveRequest(email=email),
+            _FakeRequest("/auth/login/resolve", host=host),
+        )
     def test_resolve_is_public(self) -> None:
         request = _FakeRequest("/auth/login/resolve")
         self.assertFalse(
@@ -86,9 +95,7 @@ class LoginResolveTests(unittest.TestCase):
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=False
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="donexto@hotmailer.cox")
-            )
+            result = self._resolve("donexto@hotmailer.cox")
         self.assertEqual(result["next"], "fix_domain")
         self.assertEqual(result["suggested_email"], "donexto@hotmail.com")
         self.assertNotEqual(result["next"], "signup")
@@ -97,21 +104,15 @@ class LoginResolveTests(unittest.TestCase):
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=True
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="persona@yahoo.com.mx")
-            )
-        self.assertTrue(result["exists"])
-        self.assertEqual(result["provider"], "yahoo")
+            result = self._resolve("persona@yahoo.com.mx")
         self.assertEqual(result["next"], "yahoo_oauth")
+        self.assertEqual(result["provider"], "yahoo")
 
     def test_yahoo_com_mx_unknown_is_coming_soon(self) -> None:
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=False
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="nuevo@yahoo.com.mx")
-            )
-        self.assertFalse(result["exists"])
+            result = self._resolve("nuevo@yahoo.com.mx")
         self.assertEqual(result["provider"], "yahoo")
         self.assertEqual(result["next"], "coming_soon_yahoo")
         self.assertIn("yahoo", result["pending_options"])
@@ -121,20 +122,14 @@ class LoginResolveTests(unittest.TestCase):
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=True
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="hsalcidor@yahoo.com")
-            )
-        self.assertTrue(result["exists"])
+            result = self._resolve("hsalcidor@yahoo.com")
         self.assertEqual(result["next"], "yahoo_oauth")
 
     def test_unknown_yahoo_is_coming_soon_not_oauth(self) -> None:
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=False
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="melgibson@yahoo.com")
-            )
-        self.assertFalse(result["exists"])
+            result = self._resolve("melgibson@yahoo.com")
         self.assertEqual(result["next"], "coming_soon_yahoo")
         self.assertEqual(result["provider"], "yahoo")
         self.assertFalse(result["read_available"])
@@ -143,10 +138,7 @@ class LoginResolveTests(unittest.TestCase):
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=False
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="nuevo@gmail.com")
-            )
-        self.assertFalse(result["exists"])
+            result = self._resolve("nuevo@gmail.com")
         self.assertEqual(result["next"], "coming_soon_gmail")
         self.assertEqual(result["domain_status"], "pending_review")
         self.assertIn("Próximamente", result["message"])
@@ -155,9 +147,7 @@ class LoginResolveTests(unittest.TestCase):
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=False
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="nuevo@icloud.com")
-            )
+            result = self._resolve("nuevo@icloud.com")
         self.assertEqual(result["next"], "coming_soon_icloud")
         self.assertEqual(result["provider"], "apple")
 
@@ -165,18 +155,14 @@ class LoginResolveTests(unittest.TestCase):
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=True
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="ya@gmail.com")
-            )
+            result = self._resolve("ya@gmail.com")
         self.assertEqual(result["next"], "google_oauth")
 
     def test_typo_hotmail_cox_asks_to_fix_domain(self) -> None:
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=False
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="donexto@hotmail.cox")
-            )
+            result = self._resolve("donexto@hotmail.cox")
         self.assertEqual(result["next"], "fix_domain")
         self.assertEqual(result["suggested_email"], "donexto@hotmail.com")
         self.assertFalse(result["notified_support"])
@@ -185,9 +171,7 @@ class LoginResolveTests(unittest.TestCase):
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=False
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="donexto@hotmil.com")
-            )
+            result = self._resolve("donexto@hotmil.com")
         self.assertEqual(result["next"], "fix_domain")
         self.assertEqual(result["suggested_email"], "donexto@hotmail.com")
         self.assertFalse(result["notified_support"])
@@ -203,9 +187,7 @@ class LoginResolveTests(unittest.TestCase):
                 return_value=False,
             ),
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="alguien@sinservidor.test")
-            )
+            result = self._resolve("alguien@sinservidor.test")
         self.assertEqual(result["next"], "fix_domain")
         self.assertEqual(result["domain_status"], "missing")
         self.assertFalse(result["notified_support"])
@@ -225,9 +207,7 @@ class LoginResolveTests(unittest.TestCase):
                 return_value=True,
             ) as notify,
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="ana@empresa.mx")
-            )
+            result = self._resolve("ana@empresa.mx")
         self.assertEqual(result["next"], "unsupported_imap_domain")
         self.assertEqual(result["domain_status"], "unsupported")
         self.assertTrue(result["notified_support"])
@@ -237,16 +217,17 @@ class LoginResolveTests(unittest.TestCase):
 
     def test_rejects_bad_email(self) -> None:
         with self.assertRaises(HTTPException) as caught:
-            resolve_login(LoginResolveRequest(email="not-an-email"))
+            resolve_login(
+                LoginResolveRequest(email="not-an-email"),
+                _RESOLVE_REQUEST,
+            )
         self.assertEqual(caught.exception.status_code, 400)
 
     def test_hotmail_named_is_live_azure(self) -> None:
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=False
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="donexto@hotmail.com")
-            )
+            result = self._resolve("donexto@hotmail.com")
         self.assertEqual(result["next"], "signup")
         self.assertEqual(result["provider"], "hotmail")
         self.assertTrue(result["read_available"])
@@ -261,7 +242,7 @@ class LoginResolveTests(unittest.TestCase):
                 "ana@live.com",
                 "ana@msn.com",
             ):
-                result = resolve_login(LoginResolveRequest(email=address))
+                result = self._resolve(address)
                 self.assertEqual(result["next"], "signup", address)
                 self.assertEqual(result["provider"], "hotmail", address)
                 self.assertTrue(result["read_available"], address)
@@ -270,9 +251,7 @@ class LoginResolveTests(unittest.TestCase):
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=False
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="ana@contoso.onmicrosoft.com")
-            )
+            result = self._resolve("ana@contoso.onmicrosoft.com")
         self.assertEqual(result["provider"], "hotmail")
         self.assertEqual(result["next"], "signup")
         self.assertTrue(result["read_available"])
@@ -287,9 +266,7 @@ class LoginResolveTests(unittest.TestCase):
                 return_value=["contoso.mail.protection.outlook.com"],
             ),
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="ana@empresa.mx")
-            )
+            result = self._resolve("ana@empresa.mx")
         self.assertEqual(result["provider"], "hotmail")
         self.assertEqual(result["next"], "signup")
         self.assertTrue(result["read_available"])
@@ -304,9 +281,7 @@ class LoginResolveTests(unittest.TestCase):
                 return_value=True,
             ),
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="ana@empresa.mx")
-            )
+            result = self._resolve("ana@empresa.mx")
         self.assertEqual(result["next"], "unsupported_imap_domain")
         self.assertFalse(result["read_available"])
         self.assertIn("Microsoft 365", result["message"])
@@ -315,9 +290,7 @@ class LoginResolveTests(unittest.TestCase):
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=True
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="hmcelinfo@gmail.com")
-            )
+            result = self._resolve("hmcelinfo@gmail.com")
         self.assertEqual(result["next"], "google_oauth")
         self.assertFalse(result["read_available"])
 
@@ -325,11 +298,26 @@ class LoginResolveTests(unittest.TestCase):
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=True
         ):
-            result = resolve_login(
-                LoginResolveRequest(email="hsalcidor@yahoo.com")
-            )
+            result = self._resolve("hsalcidor@yahoo.com")
         self.assertEqual(result["next"], "yahoo_oauth")
         self.assertFalse(result["read_available"])
+
+    def test_response_omits_exists_flag(self) -> None:
+        with patch(
+            "app.api.login_resolve.auth_user_exists", return_value=True
+        ):
+            result = self._resolve("hsalcidor@yahoo.com")
+        self.assertNotIn("exists", result)
+
+    def test_rate_limits_repeated_resolve(self) -> None:
+        with patch(
+            "app.api.login_resolve.auth_user_exists", return_value=False
+        ):
+            for _ in range(30):
+                self._resolve("probe@hotmail.com", host="10.0.0.99")
+            with self.assertRaises(HTTPException) as caught:
+                self._resolve("probe@hotmail.com", host="10.0.0.99")
+        self.assertEqual(caught.exception.status_code, 429)
 
     def test_waitlist_is_public(self) -> None:
         request = _FakeRequest("/auth/login/waitlist")

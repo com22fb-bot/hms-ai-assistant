@@ -14,6 +14,16 @@ export type AuthGateNext =
 
 export type AuthGateOAuth = "google" | "azure" | "apple" | "yahoo";
 
+/** Backend encodes account presence in `next`, not a separate exists flag. */
+export function accountExistsFromResolveNext(next?: string): boolean {
+  return (
+    next === "yahoo_oauth"
+    || next === "google_oauth"
+    || next === "azure_oauth"
+    || next === "apple_oauth"
+  );
+}
+
 function comingSoonFromNext(next?: string, provider?: string): AuthGateNext | null {
   if (next === "coming_soon_gmail" || next === "coming_soon_yahoo" || next === "coming_soon_icloud") {
     return next;
@@ -28,8 +38,7 @@ function comingSoonFromNext(next?: string, provider?: string): AuthGateNext | nu
 
 /**
  * Email-first gate: one Continuar.
- * Existence + routing come from POST /auth/login/resolve
- * (`{ exists, next, provider, message }`).
+ * Routing comes from POST /auth/login/resolve (`{ next, provider, message }`).
  * Hotmail/Outlook/M365 can enter and we can read mail.
  * Gmail/Yahoo/iCloud first-time go to waitlist; existing testers
  * still get identity login.
@@ -40,8 +49,9 @@ export function gateNextAfterResolve(
   next?: string,
   provider?: string,
 ): AuthGateNext {
+  const hasAccount = exists || accountExistsFromResolveNext(next);
   if (provider === "apple" || next === "apple_oauth" || next === "coming_soon_icloud") {
-    if (exists && next === "apple_oauth") {
+    if (hasAccount && next === "apple_oauth") {
       return "icloud_unavailable";
     }
     return "coming_soon_icloud";
@@ -54,15 +64,15 @@ export function gateNextAfterResolve(
   }
   const comingSoon = comingSoonFromNext(next, provider);
   if (comingSoon) {
-    if (exists && (provider === "gmail" || provider === "yahoo")) {
+    if (hasAccount && (provider === "gmail" || provider === "yahoo")) {
       return "provider_login";
     }
     return comingSoon;
   }
-  if (!exists && next === "unsupported") {
+  if (!hasAccount && next === "unsupported") {
     return "unsupported_imap_domain";
   }
-  if (exists) {
+  if (hasAccount) {
     return "provider_login";
   }
   if (next === "azure_oauth" || next === "signup" || next === undefined || next === "") {

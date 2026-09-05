@@ -32,7 +32,7 @@ class YahooVerifiedIdentityTests(unittest.TestCase):
         self.assertEqual(user_id, "user-1")
         self.assertIsNone(password)
         payload = admin.update_user_by_id.call_args.args[1]
-        self.assertTrue(payload["user_metadata"]["donexto_verified"])
+        self.assertTrue(payload["app_metadata"]["donexto_verified"])
         self.assertEqual(payload["user_metadata"]["signup_via"], "yahoo_oauth")
         self.assertEqual(payload["user_metadata"]["full_name"], "Héctor")
 
@@ -57,4 +57,4 @@ class YahooVerifiedIdentityTests(unittest.TestCase):
         self.assertEqual(user_id, "user-2")
         self.assertTrue(password)
         created_payload = admin.create_user.call_args.args[0]
-        self.assertTrue(created_payload["user_metadata"]["donexto_verified"])
+        self.assertTrue(created_payload["app_metadata"]["donexto_verified"])

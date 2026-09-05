@@ -8,6 +8,10 @@ from uuid import UUID
 from fastapi import HTTPException, Request
 
 from app.database.supabase import get_supabase_client
+from app.security.donexto_verified import (
+    read_donexto_verified,
+    user_has_oauth_identity,
+)
 
 
 @dataclass(frozen=True)
@@ -18,6 +22,9 @@ class AuthenticatedUser:
     email: str
     full_name: str
     raw_user_metadata: dict[str, Any]
+    raw_app_metadata: dict[str, Any]
+    donexto_verified: bool
+    has_oauth_identity: bool
 
 
 @dataclass(frozen=True)
@@ -125,9 +132,12 @@ def authenticate_request(request: Request) -> AuthenticatedUser:
     user_id = str(_user_value(user, "id", "") or "").strip()
     email = str(_user_value(user, "email", "") or "").strip().lower()
     metadata = _user_value(user, "user_metadata", {}) or {}
+    app_metadata = _user_value(user, "app_metadata", {}) or {}
 
     if not isinstance(metadata, dict):
         metadata = {}
+    if not isinstance(app_metadata, dict):
+        app_metadata = {}
 
     if not user_id or not email:
         raise HTTPException(
@@ -150,12 +160,20 @@ def authenticate_request(request: Request) -> AuthenticatedUser:
         ) from error
 
     full_name = str(metadata.get("full_name") or "").strip()
+    oauth_identity = user_has_oauth_identity(
+        identities=_user_value(user, "identities"),
+        user_metadata=metadata,
+        app_metadata=app_metadata,
+    )
 
     return AuthenticatedUser(
         id=user_id,
         email=email,
         full_name=full_name,
         raw_user_metadata=metadata,
+        raw_app_metadata=app_metadata,
+        donexto_verified=read_donexto_verified(app_metadata),
+        has_oauth_identity=oauth_identity,
     )
 
 
@@ -455,6 +473,9 @@ def bootstrap_workspace_for_user(
         email=email.strip().lower(),
         full_name=full_name.strip(),
         raw_user_metadata={},
+        raw_app_metadata={},
+        donexto_verified=False,
+        has_oauth_identity=False,
     )
     _ensure_profile(user)
     _ensure_personal_workspace(user)
