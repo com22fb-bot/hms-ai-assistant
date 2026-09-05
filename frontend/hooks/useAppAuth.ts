@@ -232,7 +232,25 @@ export function useAppAuth() {
   useEffect(() => {
     let mounted = true;
 
-    void supabase.auth.getSession().then(({ data, error }) => {
+    async function loadSession() {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+
+      if (!mounted) {
+        return;
+      }
+
+      if (userError || !userData.user) {
+        // Stale local JWT (p. ej. usuario borrado en Supabase) — limpiar storage.
+        if (userError) {
+          console.warn("Sesión local inválida:", userError.message);
+        }
+        await supabase.auth.signOut({ scope: "local" });
+        setRawSession(null);
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase.auth.getSession();
       if (!mounted) {
         return;
       }
@@ -243,7 +261,9 @@ export function useAppAuth() {
 
       setRawSession(data.session ?? null);
       setLoading(false);
-    });
+    }
+
+    void loadSession();
 
     const {
       data: { subscription },

@@ -22,10 +22,13 @@ from app.services.oauth_storage import (
 from app.services.yahoo_oauth import (
     YahooOAuthError,
     build_yahoo_authorization_url,
+    encode_login_hint_in_state_prefix,
     exchange_yahoo_code,
     fetch_yahoo_userinfo,
     granted_mail_read,
+    login_hint_from_oauth_state,
     normalize_yahoo_intent,
+    oauth_email_mismatch_message,
     require_yahoo_oauth_config,
     sanitize_login_hint,
     sanitize_return_to,
@@ -221,7 +224,7 @@ def yahoo_login(
             provider="yahoo",
             ttl_minutes=15,
             return_to=return_to,
-            state_prefix=intent,
+            state_prefix=encode_login_hint_in_state_prefix(intent, hint),
         )
     except OAuthStorageError as error:
         raise HTTPException(
@@ -320,6 +323,15 @@ def yahoo_callback(request: Request) -> HTMLResponse | RedirectResponse:
         address = yahoo_email_from_userinfo(userinfo)
     except YahooOAuthError as error:
         return _callback_error_page("No fue posible conectar Yahoo", str(error))
+
+    expected_hint = login_hint_from_oauth_state(state)
+    mismatch = oauth_email_mismatch_message(
+        expected_hint,
+        address,
+        provider_label="Yahoo",
+    )
+    if mismatch:
+        return _callback_error_page("Correo distinto al que pediste", mismatch)
 
     intent = yahoo_intent_from_state(state)
     return_to = sanitize_return_to(str(state_context.get("return_to") or ""))

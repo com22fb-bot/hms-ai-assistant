@@ -123,7 +123,9 @@ def build_microsoft_authorization_url(
         "response_mode": "query",
         "scope": microsoft_authorize_scopes(),
         "state": state,
-        "prompt": "select_account",
+        # With login_hint, force re-auth so an existing MS SSO session cannot
+        # silently pick another account. Without hint, show the account picker.
+        "prompt": "login" if hint else "select_account",
     }
     if hint:
         query["login_hint"] = hint
