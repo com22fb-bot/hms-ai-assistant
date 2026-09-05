@@ -1,27 +1,27 @@
-/* Producto claro: aire, una CTA, acento teal/navy. Encima de hms-gate. */
+/* Ventana oscura + botón teal→magenta (diseño dueño). Encima de hms-gate. */
 
 .dx-auth {
-  --dx-ink: #122027;
-  --dx-muted: #5b6d73;
-  --dx-soft: #7a8b91;
-  --dx-line: #d7e2e6;
-  --dx-surface: #ffffff;
-  --dx-field: #f7fafb;
-  --dx-teal: #0f6f6a;
+  --dx-ink: #f2f6f7;
+  --dx-muted: #9aa8ae;
+  --dx-soft: #6d7c82;
+  --dx-line: rgba(255, 255, 255, 0.1);
+  --dx-surface: #161c22;
+  --dx-field: #10161b;
+  --dx-teal: #2ee6d6;
   --dx-navy: #12324a;
-  --dx-sky: #f4f1ea;
-  color: #122027;
-  background: #f4f1ea;
+  --dx-sky: #070d12;
+  color: #f2f6f7;
+  background: #070d12;
 }
 
 .dx-auth__panel {
-  background: transparent;
+  background: #070d12;
 }
 
 .dx-auth__hero {
   background:
-    radial-gradient(120% 80% at 18% 12%, rgba(46, 230, 214, 0.18), transparent 55%),
-    radial-gradient(90% 70% at 82% 18%, rgba(196, 77, 255, 0.16), transparent 58%),
+    radial-gradient(120% 80% at 18% 12%, rgba(46, 230, 214, 0.12), transparent 55%),
+    radial-gradient(90% 70% at 82% 18%, rgba(196, 77, 255, 0.1), transparent 58%),
     linear-gradient(160deg, #060b12 0%, #0d1524 42%, #120a1c 100%);
 }
 
@@ -34,86 +34,94 @@
 }
 
 .dx-auth__card {
-  background: #ffffff;
-  border: 1px solid #d7e2e6;
-  border-radius: 16px;
-  box-shadow: 0 16px 40px rgba(18, 50, 74, 0.08);
+  background: #161c22;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
 }
 
 .dx-auth__title,
 .dx-auth__brand {
-  color: #12324a;
+  color: #f4fafb;
 }
 
 .dx-auth__slogan,
 .dx-auth__promise,
 .dx-auth__note {
-  color: #5b6d73;
+  color: #9aa8ae;
 }
 
 .dx-auth__boundary,
 .dx-auth__field > span,
 .dx-auth__help-text {
-  color: #5b6d73;
+  color: #9aa8ae;
 }
 
 .dx-auth__control {
-  background: #f7fafb;
-  border: 1px solid #d7e2e6;
-  border-radius: 10px;
+  background: #10161b;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
 }
 
 .dx-auth__control:focus-within {
-  border-color: rgba(15, 111, 106, 0.55);
-  box-shadow: 0 0 0 3px rgba(15, 111, 106, 0.12);
-  background: #fff;
+  border-color: rgba(196, 77, 255, 0.45);
+  box-shadow: 0 0 0 3px rgba(196, 77, 255, 0.12);
+  background: #10161b;
 }
 
 .dx-auth__control input {
-  color: #122027;
+  color: #f2f6f7;
 }
 
 .dx-auth__control input::placeholder {
-  color: #8a9ca3;
+  color: #6d7c82;
 }
 
 .dx-auth__control svg,
 .dx-auth__eye {
-  color: #7a8b91;
+  color: #8a9ca3;
 }
 
 .dx-auth__link {
-  color: #5b6d73;
+  color: #9aa8ae;
   text-align: right;
   justify-self: end;
 }
 
 .dx-auth__submit {
-  border-radius: 10px;
-  background: #0f6f6a;
-  color: #ffffff;
-  font-weight: 700;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2ee6d6 0%, #c44dff 100%);
+  color: #0a0a0a;
+  font-weight: 800;
 }
 
 .dx-auth__submit:hover:not(:disabled) {
-  background: #0c5c58;
-  filter: none;
+  background: linear-gradient(90deg, #2ee6d6 0%, #c44dff 100%);
+  filter: brightness(1.06);
 }
 
 .dx-auth__secondary {
   background: transparent;
-  border-color: #d7e2e6;
-  color: #12324a;
-  border-radius: 10px;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #f2f6f7;
+  border-radius: 999px;
 }
 
 .dx-auth__secondary:hover:not(:disabled) {
-  border-color: #0f6f6a;
-  color: #0f6f6a;
+  border-color: rgba(196, 77, 255, 0.45);
+  color: #c44dff;
+}
+
+.dx-auth__later {
+  color: #9aa8ae;
+}
+
+.dx-auth__later:hover:not(:disabled) {
+  color: #c44dff;
 }
 
 .dx-auth__divider {
-  color: #7a8b91;
+  color: #6d7c82;
 }
 
 .dx-auth__p0 {
@@ -121,101 +129,120 @@
   font-size: 0.82rem;
   line-height: 1.4;
   text-align: center;
-  color: #5b6d73;
+  color: #9aa8ae;
 }
 
 .dx-auth__p0 strong {
-  color: #12324a;
+  color: #e8eef0;
 }
 
 .dx-auth__bottom-mode button {
-  color: #5b6d73;
+  color: #9aa8ae;
 }
 
-.dx-auth__bottom-mode button:hover:not(:disabled),
-.dx-auth__later:hover:not(:disabled) {
-  color: #0f6f6a;
-}
-
-.dx-auth__later {
-  color: #5b6d73;
+.dx-auth__bottom-mode button:hover:not(:disabled) {
+  color: #2ee6d6;
 }
 
 .dx-auth__alert.is-error {
-  color: #8a2a2a;
-  background: #fdecec;
-  border: 1px solid #f3c4c4;
+  color: #f5c4c4;
+  background: rgba(228, 107, 107, 0.12);
+  border: 1px solid rgba(228, 107, 107, 0.35);
 }
 
 .dx-auth__alert.is-ok {
-  color: #1c6b4a;
-  background: #e8f7ef;
-  border: 1px solid #b7e0cc;
+  color: #b7efd4;
+  background: rgba(61, 187, 138, 0.12);
+  border: 1px solid rgba(61, 187, 138, 0.35);
 }
 
 .dx-auth__secure {
-  color: #5b6d73;
+  color: #9aa8ae;
 }
 
 .dx-auth__secure strong {
-  color: #12324a;
+  color: #e8eef0;
 }
 
 .dx-auth__legal {
-  color: #7a8b91;
+  color: #6d7c82;
 }
 
 .dx-auth__legal-agree {
-  color: #7a8b91;
+  color: #6d7c82;
 }
 
 .dx-auth__legal-agree a {
-  color: #0f6f6a;
+  color: #2ee6d6;
 }
 
 .dx-auth__services {
-  border-color: #d7e2e6;
-  background: #f7fafb;
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(16, 22, 27, 0.72);
 }
 
 .dx-auth__services-kicker {
-  color: #7a8b91;
+  color: #6d7c82;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  font-weight: 600;
 }
 
 .dx-auth__services-kicker span {
-  color: #0f6f6a;
+  color: #2ee6d6;
 }
 
 .dx-auth__service {
-  background: #f7fafb;
-  border-color: #d7e2e6;
-  color: #5b6d73;
+  background: #10161b;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #9aa8ae;
 }
 
 .dx-auth__provider--gmail {
-  background: #0f6f6a;
-  color: #ffffff;
+  background: linear-gradient(90deg, #2ee6d6 0%, #c44dff 100%);
+  color: #0a0a0a;
 }
 
 .dx-auth__signup-copy,
 .dx-auth__back {
-  color: #5b6d73;
+  color: #9aa8ae;
 }
 
 .dx-auth__signup-copy a,
 .dx-auth__back:hover:not(:disabled) {
-  color: #0f6f6a;
+  color: #2ee6d6;
 }
 
 .dx-auth__confirm-email {
-  border: 1px solid #d7e2e6;
-  background: #f7fafb;
-  color: #12324a;
+  border: 1px solid rgba(196, 77, 255, 0.28);
+  background: rgba(8, 24, 28, 0.72);
+  color: #f2f6f7;
+}
+
+.dx-auth__chip--live {
+  background: rgba(46, 230, 214, 0.12);
+  color: #9aa8ae;
+  border: 1px solid rgba(46, 230, 214, 0.28);
+}
+
+.dx-auth__chip--soon {
+  opacity: 0.78;
+  filter: none;
+}
+
+.dx-auth__chip--gmail,
+.dx-auth__chip--yahoo,
+.dx-auth__chip--apple {
+  background: rgba(255, 255, 255, 0.06);
+  color: #8a9ca3;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .dx-auth__logo {
-  background: #fff;
-  box-shadow: 0 8px 24px rgba(18, 50, 74, 0.08);
+  background: #0a1620;
+  box-shadow:
+    0 10px 24px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(46, 230, 214, 0.18);
 }
 
 .dx-lang-strip--gate.dx-lang-strip--compact {

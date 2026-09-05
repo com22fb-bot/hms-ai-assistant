@@ -1,5 +1,5 @@
 /*
-  Gate Donexto — móvil: columna; desktop: split hero cinematográfico + formulario.
+  Gate Donexto — móvil: columna; desktop: split hero estudio + formulario oscuro.
 */
 
 html:has(.dx-auth),
@@ -12,16 +12,16 @@ body:has(.dx-auth) {
 }
 
 .dx-auth {
-  --dx-ink: #122027;
-  --dx-muted: #5b6d73;
-  --dx-soft: #7a8b91;
-  --dx-line: #d7e2e6;
-  --dx-surface: #ffffff;
-  --dx-field: #f7fafb;
-  --dx-teal: #0f6f6a;
+  --dx-ink: #f2f6f7;
+  --dx-muted: #9aa8ae;
+  --dx-soft: #6d7c82;
+  --dx-line: rgba(255, 255, 255, 0.1);
+  --dx-surface: #161c22;
+  --dx-field: #10161b;
+  --dx-teal: #2ee6d6;
   --dx-navy: #12324a;
-  --dx-accent: #0f6f6a;
-  --dx-sky: #f4f1ea;
+  --dx-accent: #c44dff;
+  --dx-sky: #070d12;
   --dx-hero-ink: #f4f8fb;
   --dx-hero-muted: rgba(228, 238, 245, 0.88);
   --dx-font: var(--font-hms-sans), "Segoe UI", system-ui, sans-serif;
@@ -89,7 +89,7 @@ body:has(.dx-auth) {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: center 38%;
+  object-position: 42% center;
 }
 
 .dx-auth__hero-scrim {
@@ -233,9 +233,9 @@ body:has(.dx-auth) {
   overflow: visible;
   background: var(--dx-surface);
   border: 1px solid var(--dx-line);
-  border-radius: 16px;
+  border-radius: 18px;
   padding: 1.35rem 1.15rem 1.2rem;
-  box-shadow: 0 16px 40px rgba(18, 50, 74, 0.08);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
 }
 
 .dx-auth__form,
@@ -315,8 +315,8 @@ body:has(.dx-auth) {
 }
 
 .dx-auth__control:focus-within {
-  border-color: rgba(15, 111, 106, 0.55);
-  box-shadow: 0 0 0 3px rgba(15, 111, 106, 0.12);
+  border-color: rgba(196, 77, 255, 0.45);
+  box-shadow: 0 0 0 3px rgba(196, 77, 255, 0.12);
 }
 
 .dx-auth__control input {
@@ -381,7 +381,7 @@ body:has(.dx-auth) {
 }
 
 .dx-auth__later:hover:not(:disabled) {
-  color: var(--dx-teal);
+  color: #c44dff;
 }
 
 .dx-auth__later:disabled {
@@ -397,12 +397,12 @@ body:has(.dx-auth) {
   width: 100%;
   min-height: 3rem;
   border: 0;
-  border-radius: 10px;
-  background: #0f6f6a;
-  color: #ffffff;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2ee6d6 0%, #c44dff 100%);
+  color: #0a0a0a;
   font: inherit;
   font-size: 0.98rem;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
   text-align: center;
   text-decoration: none;
@@ -555,7 +555,7 @@ body:has(.dx-auth) {
 }
 
 .dx-auth__legal-agree a {
-  color: var(--dx-teal);
+  color: #2ee6d6;
   text-underline-offset: 2px;
 }
 
@@ -591,10 +591,10 @@ body:has(.dx-auth) {
 
 .dx-auth__services-kicker {
   margin: 0 0 0.5rem;
-  font-size: 0.68rem;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
   color: var(--dx-soft);
   text-align: center;
 }
@@ -780,40 +780,30 @@ body:has(.dx-auth) {
 }
 
 .dx-auth__chip--live {
-  background: #0078d4;
-  color: #fff;
-  border: 1px solid #0078d4;
+  background: rgba(46, 230, 214, 0.12);
+  color: var(--dx-muted);
+  border: 1px solid rgba(46, 230, 214, 0.28);
 }
 
 .dx-auth__chip--soon {
-  opacity: 0.72;
-  filter: grayscale(0.35);
+  opacity: 0.78;
+  filter: none;
 }
 
 .dx-auth__chip--soon span {
   font-size: 0.62rem;
-  font-weight: 650;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  opacity: 0.85;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  opacity: 0.75;
 }
 
-.dx-auth__chip--gmail {
-  background: #f1f3f4;
-  color: #5f6368;
-  border: 1px solid #dadce0;
-}
-
-.dx-auth__chip--yahoo {
-  background: #f3eef8;
-  color: #6b5b7a;
-  border: 1px solid #ddd0e8;
-}
-
+.dx-auth__chip--gmail,
+.dx-auth__chip--yahoo,
 .dx-auth__chip--apple {
-  background: #f2f2f2;
-  color: #6e6e73;
-  border: 1px solid #e5e5ea;
+  background: rgba(255, 255, 255, 0.06);
+  color: #8a9ca3;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .dx-auth__services-kicker--soon {
