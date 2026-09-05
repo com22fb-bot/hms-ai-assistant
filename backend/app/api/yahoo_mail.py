@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from html import escape
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
@@ -258,62 +257,59 @@ def _yahoo_callback_error_message(error: str, description: str) -> str:
     return description or "Yahoo rechazó la autorización."
 
 
-def _callback_error_page(title: str, message: str) -> HTMLResponse:
-    return HTMLResponse(
-        status_code=400,
-        content=f"""
-        <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{escape(title)}</title></head><body>
-        <h1>{escape(title)}</h1>
-        <p>{escape(message)}</p>
-        <p><a href="https://app.donexto.com/">Volver a Donexto</a></p>
-        </body></html>
-        """,
+def _callback_error_page(
+    title: str,
+    message: str,
+    return_to: str | None = None,
+) -> RedirectResponse:
+    """Mismo patrón que Microsoft: volver a Donexto con ?donexto=yahoo_error."""
+    del title  # conservado por compatibilidad con llamadas existentes
+    home = sanitize_return_to(return_to) or "https://app.donexto.com/"
+    query = urlencode(
+        {
+            "donexto": "yahoo_error",
+            "reason": message[:180],
+        }
     )
+    return RedirectResponse(url=f"{home.rstrip('/')}?{query}", status_code=302)
 
 
 @router.get("/callback", response_model=None)
-def yahoo_callback(request: Request) -> HTMLResponse | RedirectResponse:
+def yahoo_callback(request: Request) -> RedirectResponse:
     oauth_error = request.query_params.get("error")
     if oauth_error:
         description = _yahoo_callback_error_message(
             oauth_error,
             request.query_params.get("error_description") or "",
         )
-        return _callback_error_page("No fue posible conectar Yahoo", description)
+        return _callback_error_page(
+            "No fue posible conectar Yahoo",
+            description,
+        )
 
     state = request.query_params.get("state")
     code = request.query_params.get("code")
     if not state or not code:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "error",
-                "message": "Yahoo no devolvió un código de autorización.",
-            },
+        return _callback_error_page(
+            "No fue posible conectar Yahoo",
+            "Yahoo no devolvió un código de autorización. Vuelve a Donexto y pulsa Continuar.",
         )
 
     try:
-        state_context = oauth_storage.consume_oauth_state(state, "yahoo")
-    except OAuthStateError as error:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "error",
-                "message": "El inicio de sesión de Yahoo expiró. Inténtalo de nuevo.",
-                "technical_detail": str(error),
-            },
-        ) from error
-    except OAuthStorageError as error:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "status": "error",
-                "message": "No fue posible validar el inicio de sesión de Yahoo.",
-                "technical_detail": str(error),
-            },
-        ) from error
+        state_context = oauth_storage.load_oauth_state(state, "yahoo")
+    except OAuthStateError:
+        return _callback_error_page(
+            "No fue posible conectar Yahoo",
+            "El inicio de sesión de Yahoo expiró o esa ventana ya se usó. "
+            "Vuelve a Donexto y pulsa Continuar.",
+        )
+    except OAuthStorageError:
+        return _callback_error_page(
+            "No fue posible conectar Yahoo",
+            "No fue posible validar el inicio de sesión de Yahoo. Inténtalo de nuevo.",
+        )
+
+    return_to = sanitize_return_to(str(state_context.get("return_to") or ""))
 
     try:
         token_payload = exchange_yahoo_code(code)
@@ -322,7 +318,12 @@ def yahoo_callback(request: Request) -> HTMLResponse | RedirectResponse:
         userinfo = fetch_yahoo_userinfo(access)
         address = yahoo_email_from_userinfo(userinfo)
     except YahooOAuthError as error:
-        return _callback_error_page("No fue posible conectar Yahoo", str(error))
+        oauth_storage.delete_oauth_state(state)
+        return _callback_error_page(
+            "No fue posible conectar Yahoo",
+            str(error),
+            return_to,
+        )
 
     expected_hint = login_hint_from_oauth_state(state)
     mismatch = oauth_email_mismatch_message(
@@ -331,10 +332,16 @@ def yahoo_callback(request: Request) -> HTMLResponse | RedirectResponse:
         provider_label="Yahoo",
     )
     if mismatch:
-        return _callback_error_page("Correo distinto al que pediste", mismatch)
+        oauth_storage.delete_oauth_state(state)
+        return _callback_error_page(
+            "Correo distinto al que pediste",
+            mismatch,
+            return_to,
+        )
+
+    oauth_storage.delete_oauth_state(state)
 
     intent = yahoo_intent_from_state(state)
-    return_to = sanitize_return_to(str(state_context.get("return_to") or ""))
     exists = auth_user_exists(address)
     if intent != "signup" and not exists:
         return _signup_redirect(return_to, address)

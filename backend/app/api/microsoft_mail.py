@@ -157,7 +157,7 @@ def _callback_error_page(
     title: str,
     message: str,
     return_to: str | None = None,
-) -> HTMLResponse | RedirectResponse:
+) -> RedirectResponse:
     home = sanitize_return_to(return_to) or "https://app.donexto.com/"
     query = urlencode(
         {

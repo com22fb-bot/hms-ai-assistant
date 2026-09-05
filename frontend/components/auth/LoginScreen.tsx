@@ -136,8 +136,14 @@ export function LoginScreen({
     const cleaned = `${url.pathname}${url.search}${url.hash}`;
     window.history.replaceState({}, "", cleaned || "/");
     const frame = window.requestAnimationFrame(() => {
-      if (flag === "microsoft_error") {
-        setError(reason || loginText(language, "microsoftOpenFailed"));
+      if (flag === "microsoft_error" || flag === "yahoo_error") {
+        setError(
+          reason
+          || loginText(
+            language,
+            flag === "yahoo_error" ? "yahooOpenFailed" : "microsoftOpenFailed",
+          ),
+        );
       }
       if (flag === "signup" && isValidSignupEmail(hinted)) {
         setEmail(hinted);
