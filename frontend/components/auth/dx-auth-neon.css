@@ -14,9 +14,23 @@
   background: #f4f1ea;
 }
 
-.dx-auth__panel,
-.dx-auth__hero {
+.dx-auth__panel {
   background: transparent;
+}
+
+.dx-auth__hero {
+  background:
+    radial-gradient(120% 80% at 18% 12%, rgba(46, 230, 214, 0.18), transparent 55%),
+    radial-gradient(90% 70% at 82% 18%, rgba(196, 77, 255, 0.16), transparent 58%),
+    linear-gradient(160deg, #060b12 0%, #0d1524 42%, #120a1c 100%);
+}
+
+.dx-auth__hero-headline {
+  color: #f4f8fb;
+}
+
+.dx-auth__hero-subline {
+  color: rgba(228, 238, 245, 0.88);
 }
 
 .dx-auth__card {

@@ -503,19 +503,21 @@ export function LoginScreen({
         confirming || waiting ? "dx-auth dx-auth--confirm" : "dx-auth"
       }
     >
-      <aside className="dx-auth__hero">
-        <div className="dx-auth__hero-inner">
+      <aside className="dx-auth__hero" aria-label="Donexto">
+        <div className="dx-auth__hero-media" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            className="dx-auth__logo"
-            src="/brand/donexto-logo-official.png"
-            width={1024}
-            height={1024}
-            alt="Donexto — Do Next To…"
+            src="/brand/donexto-logo-official-hero.png"
+            alt=""
             decoding="async"
+            fetchPriority="high"
           />
+        </div>
+        <div className="dx-auth__hero-scrim" aria-hidden="true" />
+        <div className="dx-auth__hero-inner">
           <h1 className="dx-auth__sr">Donexto</h1>
-          <p className="dx-auth__promise">{L("promise")}</p>
+          <p className="dx-auth__hero-headline">{L("heroHeadline")}</p>
+          <p className="dx-auth__hero-subline">{L("heroSubline")}</p>
         </div>
       </aside>
 

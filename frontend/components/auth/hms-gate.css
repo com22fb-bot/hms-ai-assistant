@@ -1,6 +1,5 @@
 /*
-  Gate Donexto — una columna en todos los anchos.
-  Logo/promesa arriba del formulario. Continuar no queda bajo el teclado.
+  Gate Donexto — móvil: columna; desktop: split hero cinematográfico + formulario.
 */
 
 html:has(.dx-auth),
@@ -23,6 +22,8 @@ body:has(.dx-auth) {
   --dx-navy: #12324a;
   --dx-accent: #0f6f6a;
   --dx-sky: #f4f1ea;
+  --dx-hero-ink: #f4f8fb;
+  --dx-hero-muted: rgba(228, 238, 245, 0.88);
   --dx-font: var(--font-hms-sans), "Segoe UI", system-ui, sans-serif;
   --dx-display: var(--font-hms-display), Georgia, "Times New Roman", serif;
   --dx-keyboard-gap: 0px;
@@ -62,21 +63,84 @@ body:has(.dx-auth) {
 }
 
 .dx-auth__hero {
-  background: transparent;
-  color: var(--dx-ink);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: clamp(10.5rem, 34vw, 14rem);
+  color: var(--dx-hero-ink);
   text-align: center;
   padding:
-    max(0.45rem, env(safe-area-inset-top))
+    max(0.55rem, env(safe-area-inset-top))
     1rem
-    0.7rem;
+    1rem;
+  background:
+    radial-gradient(120% 80% at 18% 12%, rgba(46, 230, 214, 0.18), transparent 55%),
+    radial-gradient(90% 70% at 82% 18%, rgba(196, 77, 255, 0.16), transparent 58%),
+    linear-gradient(160deg, #060b12 0%, #0d1524 42%, #120a1c 100%);
+}
+
+.dx-auth__hero-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.dx-auth__hero-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 38%;
+}
+
+.dx-auth__hero-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(6, 11, 18, 0.08) 0%,
+      rgba(6, 11, 18, 0.42) 58%,
+      rgba(6, 11, 18, 0.82) 100%
+    );
 }
 
 .dx-auth__hero-inner {
+  position: relative;
+  z-index: 2;
   width: min(100%, 26rem);
   margin: 0 auto;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  padding-top: 0.35rem;
+}
+
+.dx-auth__hero-headline {
+  margin: 0;
+  max-width: 16em;
+  font-family: var(--dx-display);
+  font-size: clamp(1.15rem, 4.8vw, 1.45rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: var(--dx-hero-ink);
+  text-wrap: balance;
+}
+
+.dx-auth__hero-subline {
+  margin: 0;
+  max-width: 24em;
+  font-family: var(--dx-display);
+  font-size: clamp(0.78rem, 3.2vw, 0.92rem);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.4;
+  color: var(--dx-hero-muted);
+  text-wrap: balance;
 }
 
 .dx-auth__logo {
@@ -154,6 +218,7 @@ body:has(.dx-auth) {
   min-height: 0;
   overflow: visible;
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
@@ -824,28 +889,26 @@ body:has(.dx-auth) {
   font-size: 1.35rem;
 }
 
-/* Phone baseline (~360px) and 7" / 10" / 14" / desktop: one column. */
-@media (min-width: 360px) {
-  .dx-auth {
-    flex-direction: column;
-  }
-}
+/* Phone baseline (~360px) */
 @media (max-width: 430px) {
   .dx-auth__hero {
+    min-height: clamp(9.5rem, 32vw, 12rem);
     padding:
       max(0.35rem, env(safe-area-inset-top))
       0.85rem
-      0.45rem;
+      0.85rem;
   }
 
-  .dx-auth__logo {
-    width: min(8.5rem, 62%);
-    max-height: 5.5rem;
+  .dx-auth__hero-media img {
+    object-position: center 42%;
   }
 
-  .dx-auth__promise {
-    font-size: 0.8rem;
-    margin-top: 0.3rem;
+  .dx-auth__hero-headline {
+    font-size: 1.08rem;
+  }
+
+  .dx-auth__hero-subline {
+    font-size: 0.76rem;
   }
 
   .dx-auth__panel {
@@ -869,9 +932,12 @@ body:has(.dx-auth) {
 }
 
 @media (max-height: 560px) {
-  .dx-auth__logo {
-    width: min(7.5rem, 56%);
-    max-height: 4.75rem;
+  .dx-auth__hero {
+    min-height: 8.5rem;
+  }
+
+  .dx-auth__hero-subline {
+    display: none;
   }
 
   .dx-auth__submit {
@@ -884,12 +950,8 @@ body:has(.dx-auth) {
 /* 7" tablet ~600–800px */
 @media (min-width: 600px) {
   .dx-auth__hero {
-    padding: 1.1rem 1.5rem 0.85rem;
-  }
-
-  .dx-auth__logo {
-    width: min(12.5rem, 70%);
-    max-height: 8.5rem;
+    min-height: clamp(11rem, 28vw, 15rem);
+    padding: 1rem 1.5rem 1.1rem;
   }
 
   .dx-auth__card {
@@ -902,31 +964,27 @@ body:has(.dx-auth) {
   }
 }
 
-/* 10" tablet */
+/* 10" tablet — sigue en columna, hero más alto */
 @media (min-width: 768px) {
   .dx-auth {
-    display: flex;
     flex-direction: column;
-    align-items: center;
   }
 
-  .dx-auth__hero,
-  .dx-auth__panel {
-    width: min(100%, 40rem);
+  .dx-auth__hero {
+    min-height: clamp(12rem, 24vw, 16rem);
+    padding: 1.15rem 2rem 1.35rem;
   }
 
   .dx-auth__hero-inner {
-    align-items: center;
-    text-align: center;
+    width: min(100%, 34rem);
   }
 
-  .dx-auth__logo {
-    width: min(13.5rem, 72%);
-    max-height: 9.5rem;
+  .dx-auth__hero-headline {
+    font-size: clamp(1.35rem, 2.4vw, 1.75rem);
   }
 
-  .dx-auth__promise {
-    font-size: 1rem;
+  .dx-auth__hero-subline {
+    font-size: clamp(0.88rem, 1.5vw, 1rem);
   }
 
   .dx-auth__card {
@@ -934,25 +992,91 @@ body:has(.dx-auth) {
   }
 }
 
-/* 14" laptop */
+/* Desktop split — hero cinematográfico izquierda, formulario derecha */
 @media (min-width: 1024px) {
-  .dx-auth__hero,
-  .dx-auth__panel {
-    width: min(100%, 44rem);
+  html:has(.dx-auth),
+  body:has(.dx-auth) {
+    overflow: hidden !important;
+  }
+
+  .dx-auth {
+    flex-direction: row;
+    align-items: stretch;
+    min-height: 100dvh;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+    padding-bottom: 0;
   }
 
   .dx-auth__hero {
-    padding: 1.75rem 2rem 1rem;
+    flex: 1 1 52%;
+    min-width: 0;
+    min-height: 100%;
+    padding:
+      max(2rem, env(safe-area-inset-top))
+      clamp(1.75rem, 3vw, 3rem)
+      clamp(2rem, 4vw, 3.25rem);
+    text-align: left;
   }
 
-  .dx-auth__logo {
-    width: min(14.5rem, 100%);
-    max-height: 10.5rem;
+  .dx-auth__hero-media img {
+    object-position: center center;
   }
 
-  .dx-auth__promise {
-    font-size: 1.08rem;
+  .dx-auth__hero-scrim {
+    background:
+      linear-gradient(
+        90deg,
+        rgba(6, 11, 18, 0.18) 0%,
+        rgba(6, 11, 18, 0.34) 48%,
+        rgba(6, 11, 18, 0.72) 100%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(6, 11, 18, 0.05) 0%,
+        rgba(6, 11, 18, 0.55) 100%
+      );
+  }
+
+  .dx-auth__hero-inner {
+    width: min(100%, 28rem);
+    margin: 0;
+    margin-left: 0;
+    margin-right: auto;
+    align-items: flex-start;
+    justify-content: flex-end;
+    min-height: 100%;
+    gap: 0.55rem;
+    padding-top: 0;
+  }
+
+  .dx-auth__hero-headline {
+    font-size: clamp(1.65rem, 2.2vw, 2.35rem);
+    max-width: 11em;
+  }
+
+  .dx-auth__hero-subline {
+    font-size: clamp(0.95rem, 1.15vw, 1.08rem);
+    max-width: 24em;
+  }
+
+  .dx-auth__panel {
+    flex: 0 0 min(48%, 28rem);
+    width: min(48%, 28rem);
     max-width: 28rem;
+    min-height: 100%;
+    overflow-y: auto;
+    justify-content: center;
+    padding:
+      max(1.5rem, env(safe-area-inset-top))
+      clamp(1.25rem, 2.5vw, 2rem)
+      max(1.75rem, env(safe-area-inset-bottom));
+  }
+
+  .dx-auth__card {
+    width: min(100%, 24.5rem);
+    padding: 1.65rem 1.6rem 1.4rem;
   }
 
   .dx-auth__title {
@@ -963,31 +1087,26 @@ body:has(.dx-auth) {
   .dx-auth__note {
     font-size: 0.92rem;
   }
-
-  .dx-auth__panel {
-    padding: 0.85rem 2rem 2.25rem;
-  }
-
-  .dx-auth__card {
-    width: min(100%, 32rem);
-    padding: 1.65rem 1.6rem 1.4rem;
-  }
 }
 
-/* Desktop */
+/* Desktop ancho */
 @media (min-width: 1440px) {
-  .dx-auth__hero,
-  .dx-auth__panel {
-    width: min(100%, 48rem);
+  .dx-auth__hero {
+    flex-basis: 55%;
   }
 
-  .dx-auth__logo {
-    width: min(15.5rem, 100%);
-    max-height: 11.25rem;
+  .dx-auth__panel {
+    flex-basis: min(45%, 32rem);
+    width: min(45%, 32rem);
+    max-width: 32rem;
+  }
+
+  .dx-auth__hero-inner {
+    width: min(100%, 32rem);
   }
 
   .dx-auth__card {
-    width: min(100%, 34rem);
+    width: min(100%, 26rem);
   }
 }
 
