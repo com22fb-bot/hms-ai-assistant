@@ -148,11 +148,12 @@ export function LoginScreen({
   }, [language]);
 
   useEffect(() => {
-    if (step === "email") {
+    const desktop = window.matchMedia("(min-width: 1024px)").matches;
+    if (desktop) {
+      document.querySelector<HTMLElement>(".dx-auth__panel")?.scrollTo(0, 0);
       return;
     }
-    // Solo móvil: en desktop el panel ya arranca arriba; scrollIntoView recortaba el título.
-    if (window.matchMedia("(min-width: 768px)").matches) {
+    if (step === "email") {
       return;
     }
     document.getElementById("dx-auth-title")?.scrollIntoView({

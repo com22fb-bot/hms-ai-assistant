@@ -1020,9 +1020,13 @@ body:has(.dx-auth) {
 @media (min-width: 1024px) {
   html:has(.dx-auth),
   body:has(.dx-auth) {
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    min-height: 100dvh !important;
     overflow: hidden !important;
   }
 
+  main.dx-auth,
   .dx-auth {
     flex-direction: row;
     align-items: stretch;
@@ -1095,32 +1099,94 @@ body:has(.dx-auth) {
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     justify-content: flex-start;
+    align-items: center;
+    gap: 0.35rem;
     padding:
-      max(1.75rem, env(safe-area-inset-top))
+      max(1.25rem, env(safe-area-inset-top))
       clamp(1.25rem, 2.5vw, 2rem)
-      max(1.75rem, env(safe-area-inset-bottom));
+      max(1.25rem, env(safe-area-inset-bottom));
   }
 
   .dx-auth__card {
     width: min(100%, 24.5rem);
-    padding: 1.65rem 1.6rem 1.4rem;
+    flex-shrink: 0;
+    padding: 1.45rem 1.45rem 1.15rem;
   }
 
   .dx-auth__heading {
-    scroll-margin-top: max(1.5rem, env(safe-area-inset-top));
+    scroll-margin-top: max(1.25rem, env(safe-area-inset-top));
+    margin-bottom: 0.65rem;
   }
 
   .dx-auth__title {
-    font-size: 1.75rem;
+    font-size: 1.65rem;
+    line-height: 1.28;
   }
 
   .dx-auth__slogan,
   .dx-auth__note {
-    font-size: 0.92rem;
+    font-size: 0.88rem;
+    margin-top: 0.32rem;
+  }
+
+  .dx-auth__note {
+    margin-top: 0.38rem;
+  }
+
+  .dx-auth__availability {
+    margin-top: 0.75rem;
+    gap: 0.32rem;
+  }
+
+  .dx-auth__services-kicker {
+    margin-bottom: 0.35rem;
+    font-size: 0.64rem;
+  }
+
+  .dx-auth__services-kicker--soon {
+    margin-top: 0.3rem;
+  }
+
+  .dx-auth__chips {
+    gap: 0.32rem;
+  }
+
+  .dx-auth__chip {
+    min-height: 1.5rem;
+    padding: 0.1rem 0.48rem;
+    font-size: 0.68rem;
+  }
+
+  .dx-auth__legal-agree {
+    margin-top: 0.6rem;
+    font-size: 0.68rem;
+    line-height: 1.4;
+  }
+
+  .dx-auth__footer {
+    flex-shrink: 0;
+  }
+
+  .dx-auth__legal {
+    font-size: 0.62rem;
   }
 
   .dx-auth--confirm .dx-auth__availability {
     display: none;
+  }
+
+  .dx-auth--confirm .dx-auth__card {
+    padding: 1.35rem 1.4rem 1.05rem;
+  }
+
+  .dx-auth--confirm .dx-auth__actions {
+    gap: 0.45rem;
+  }
+
+  .dx-auth--confirm .dx-auth__confirm-email {
+    margin-bottom: 0.45rem;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.98rem;
   }
 }
 
