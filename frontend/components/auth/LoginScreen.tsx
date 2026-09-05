@@ -148,11 +148,16 @@ export function LoginScreen({
   }, [language]);
 
   useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 1024px)").matches;
+    if (desktop) {
+      document.querySelector<HTMLElement>(".dx-auth__panel")?.scrollTo(0, 0);
+      return;
+    }
     if (step === "email") {
       return;
     }
     document.getElementById("dx-auth-title")?.scrollIntoView({
-      block: "start",
+      block: "nearest",
       behavior: "smooth",
     });
   }, [step]);
