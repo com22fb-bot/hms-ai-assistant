@@ -103,6 +103,58 @@ def sanitize_login_hint(value: str | None) -> str | None:
     return clean
 
 
+HINT_STATE_MARKER = "h"
+
+
+def encode_login_hint_in_state_prefix(
+    prefix: str,
+    login_hint: str | None,
+) -> str:
+    """Embed the expected mailbox email in the OAuth state for callback checks."""
+    hint = sanitize_login_hint(login_hint)
+    if not hint:
+        return prefix
+    encoded = base64.urlsafe_b64encode(hint.encode()).decode().rstrip("=")
+    return f"{prefix}.{HINT_STATE_MARKER}.{encoded}"
+
+
+def login_hint_from_oauth_state(state: str) -> str | None:
+    parts = (state or "").split(".")
+    for index, part in enumerate(parts[:-1]):
+        if part != HINT_STATE_MARKER:
+            continue
+        encoded = parts[index + 1] if index + 1 < len(parts) else ""
+        if not encoded:
+            return None
+        try:
+            padding = "=" * (-len(encoded) % 4)
+            decoded = base64.urlsafe_b64decode(f"{encoded}{padding}").decode("utf-8")
+        except (ValueError, UnicodeDecodeError):
+            return None
+        return sanitize_login_hint(decoded)
+    return None
+
+
+def oauth_email_mismatch_message(
+    expected_hint: str | None,
+    actual_email: str,
+    *,
+    provider_label: str = "el proveedor",
+) -> str | None:
+    """Return a user-facing error when OAuth identity != email typed in Donexto."""
+    expected = sanitize_login_hint(expected_hint)
+    if not expected:
+        return None
+    actual = (actual_email or "").strip().lower()
+    if actual == expected:
+        return None
+    return (
+        f"Firmaste con {actual}, pero en Donexto pediste {expected}. "
+        f"Cierra sesión en {provider_label} (o usa una ventana privada) "
+        "y vuelve a pulsar Continuar."
+    )
+
+
 def build_yahoo_authorization_url(
     state: str,
     login_hint: str | None = None,

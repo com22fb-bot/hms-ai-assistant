@@ -26,6 +26,7 @@ from app.services.microsoft_oauth import (
     microsoft_oauth_tenant,
     microsoft_tenant_from_state,
 )
+from app.services.yahoo_oauth import encode_login_hint_in_state_prefix
 
 
 class _FakeRequest:
@@ -95,7 +96,19 @@ class MicrosoftOAuthTests(unittest.TestCase):
         self.assertIn("client_id=azure-id", url)
         self.assertIn("Mail.Read", url)
         self.assertIn("login_hint=ana%40outlook.com.mx", url)
+        self.assertIn("prompt=login", url)
+
+    def test_authorization_url_without_hint_shows_account_picker(self) -> None:
+        with patch("app.services.microsoft_oauth.settings") as settings:
+            settings.azure_client_id = "azure-id"
+            settings.azure_client_secret = "secret"
+            settings.azure_redirect_uri = (
+                "https://hms-ai-assistant-production.up.railway.app"
+                "/auth/microsoft/callback"
+            )
+            url = build_microsoft_authorization_url("login.state-token")
         self.assertIn("prompt=select_account", url)
+        self.assertNotIn("login_hint=", url)
 
     def test_requires_entra_app(self) -> None:
         from app.api.microsoft_mail import microsoft_login
@@ -222,6 +235,56 @@ class MicrosoftOAuthTests(unittest.TestCase):
         location = str(response.headers.get("location") or response.url)
         self.assertIsInstance(response, RedirectResponse)
         self.assertIn("donexto=microsoft_error", location)
+
+    def test_callback_rejects_email_mismatch(self) -> None:
+        from fastapi.responses import RedirectResponse
+        from app.api.microsoft_mail import microsoft_callback
+
+        state = encode_login_hint_in_state_prefix(
+            "login.consumers",
+            "hector@hotmail.com",
+        ) + ".token"
+        request = SimpleNamespace(
+            query_params={
+                "state": state,
+                "code": "auth-code",
+            }
+        )
+        with (
+            patch("app.api.microsoft_mail.oauth_storage") as storage,
+            patch(
+                "app.api.microsoft_mail.exchange_microsoft_code",
+                return_value={
+                    "access_token": "ms-at",
+                    "refresh_token": "ms-rt",
+                    "expires_in": 3600,
+                    "scope": "openid Mail.Read User.Read",
+                },
+            ),
+            patch(
+                "app.api.microsoft_mail.fetch_microsoft_profile",
+                return_value={"mail": "otra@outlook.com"},
+            ),
+            patch(
+                "app.api.microsoft_mail.microsoft_email_from_profile",
+                return_value="otra@outlook.com",
+            ),
+            patch(
+                "app.api.microsoft_mail.sanitize_return_to",
+                return_value="https://app.donexto.com/",
+            ),
+        ):
+            storage.load_oauth_state.return_value = {
+                "return_to": "https://app.donexto.com/",
+            }
+            response = microsoft_callback(request)  # type: ignore[arg-type]
+
+        self.assertIsInstance(response, RedirectResponse)
+        location = str(response.headers.get("location") or response.url)
+        self.assertIn("donexto=microsoft_error", location)
+        self.assertIn("hector%40hotmail.com", location)
+        storage.delete_oauth_state.assert_called_once_with(state)
+        storage.load_oauth_state.assert_called_once()
 
     def test_callback_login_existing_deletes_state_after_token(self) -> None:
         from fastapi.responses import RedirectResponse

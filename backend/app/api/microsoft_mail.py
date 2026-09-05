@@ -31,7 +31,13 @@ from app.services.microsoft_oauth import (
     sanitize_login_hint,
     sanitize_return_to,
 )
-from app.services.yahoo_oauth import normalize_yahoo_intent, yahoo_intent_from_state
+from app.services.yahoo_oauth import (
+    encode_login_hint_in_state_prefix,
+    login_hint_from_oauth_state,
+    normalize_yahoo_intent,
+    oauth_email_mismatch_message,
+    yahoo_intent_from_state,
+)
 from app.services.yahoo_session import auth_user_exists, mint_yahoo_session_or_http
 
 
@@ -186,12 +192,16 @@ def microsoft_login(
         or request.headers.get("origin")
     )
     tenant = microsoft_oauth_tenant(hint)
+    state_prefix = encode_login_hint_in_state_prefix(
+        f"{intent}.{tenant}",
+        hint,
+    )
     try:
         state = oauth_storage.create_oauth_state(
             provider="microsoft",
             ttl_minutes=15,
             return_to=return_to,
-            state_prefix=f"{intent}.{tenant}",
+            state_prefix=state_prefix,
         )
     except OAuthStorageError as error:
         raise HTTPException(
@@ -260,6 +270,20 @@ def microsoft_callback(request: Request) -> RedirectResponse:
         return _callback_error_page(
             "No fue posible conectar Microsoft",
             str(error),
+            return_to,
+        )
+
+    expected_hint = login_hint_from_oauth_state(state)
+    mismatch = oauth_email_mismatch_message(
+        expected_hint,
+        address,
+        provider_label="Microsoft",
+    )
+    if mismatch:
+        oauth_storage.delete_oauth_state(state)
+        return _callback_error_page(
+            "Correo distinto al que pediste",
+            mismatch,
             return_to,
         )
 
