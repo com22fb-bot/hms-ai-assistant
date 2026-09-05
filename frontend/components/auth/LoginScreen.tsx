@@ -151,8 +151,12 @@ export function LoginScreen({
     if (step === "email") {
       return;
     }
+    // Solo móvil: en desktop el panel ya arranca arriba; scrollIntoView recortaba el título.
+    if (window.matchMedia("(min-width: 768px)").matches) {
+      return;
+    }
     document.getElementById("dx-auth-title")?.scrollIntoView({
-      block: "start",
+      block: "nearest",
       behavior: "smooth",
     });
   }, [step]);
