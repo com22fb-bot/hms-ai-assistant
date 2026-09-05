@@ -3,6 +3,12 @@
 import type { Session, User } from "@supabase/supabase-js";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  authEventMayCarrySession,
+  readLogoutQueryFlag,
+  shouldDeferAuthStateChange,
+  stripLogoutQueryParam,
+} from "@/lib/appAuthSession";
 import { supabase } from "@/lib/supabase";
 import { hmsJson } from "@/lib/hmsApi";
 import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
@@ -37,14 +43,6 @@ const DONEXTO_VERIFY_QUERY = "donexto_verify";
 const HMS_API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "/api/hms";
 
-function isDonextoVerified(user: User | null | undefined): boolean {
-  if (user?.app_metadata?.donexto_verified === true) {
-    return true;
-  }
-  // Legacy flag in user_metadata is ignored for authorization; backend is source of truth.
-  return false;
-}
-
 async function confirmDonextoWithBackend(): Promise<boolean> {
   try {
     const result = await hmsJson<{ donexto_verified?: boolean }>(
@@ -67,6 +65,13 @@ function yahooImapOwnsIdentity(user: User | null | undefined): boolean {
     return true;
   }
   return resolveMailboxProviderFromEmail(user.email) === "yahoo";
+}
+
+function isDonextoVerified(user: User | null | undefined): boolean {
+  if (user?.app_metadata?.donexto_verified === true) {
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -228,39 +233,109 @@ export function useAppAuth() {
   const [passwordRecovery, setPasswordRecovery] =
     useState(false);
   const verifyBootstrapLock = useRef(false);
+  const bootstrapComplete = useRef(false);
 
   useEffect(() => {
     let mounted = true;
 
-    async function loadSession() {
-      const { data: userData, error: userError } = await supabase.auth.getUser();
+    async function invalidateLocalSession() {
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        await supabase.auth.signOut({ scope: "local" });
+      }
+      if (mounted) {
+        setRawSession(null);
+      }
+    }
 
+    async function validateAndApplySession(nextSession: Session | null) {
+      if (!nextSession?.user) {
+        if (mounted) {
+          setRawSession(null);
+        }
+        return;
+      }
+
+      const { data: userData, error: userError } = await supabase.auth.getUser();
       if (!mounted) {
         return;
       }
 
       if (userError || !userData.user) {
-        // Stale local JWT (p. ej. usuario borrado en Supabase) — limpiar storage.
         if (userError) {
-          console.warn("Sesión local inválida:", userError.message);
+          console.warn("Sesión rechazada tras cambio de auth:", userError.message);
         }
-        await supabase.auth.signOut({ scope: "local" });
-        setRawSession(null);
-        setLoading(false);
+        await invalidateLocalSession();
         return;
       }
 
-      const { data, error } = await supabase.auth.getSession();
-      if (!mounted) {
-        return;
-      }
+      setRawSession(nextSession);
+    }
 
-      if (error) {
-        console.error("No fue posible leer la sesión:", error);
+    function clearVerifySentKeys() {
+      try {
+        for (const key of Object.keys(sessionStorage)) {
+          if (key.startsWith("donexto_verify_sent:")) {
+            sessionStorage.removeItem(key);
+          }
+        }
+      } catch {
+        // sessionStorage puede fallar en modo restringido
       }
+    }
 
-      setRawSession(data.session ?? null);
-      setLoading(false);
+    function handlePasswordRecovery(nextSession: Session | null) {
+      if (yahooImapOwnsIdentity(nextSession?.user)) {
+        setPasswordRecovery(false);
+      } else {
+        setPasswordRecovery(true);
+      }
+    }
+
+    async function loadSession() {
+      try {
+        if (typeof window !== "undefined" && readLogoutQueryFlag(window.location.search)) {
+          await invalidateLocalSession();
+          const nextPath = stripLogoutQueryParam(
+            window.location.pathname,
+            window.location.search,
+          );
+          window.history.replaceState({}, "", nextPath);
+          return;
+        }
+
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+
+        if (!mounted) {
+          return;
+        }
+
+        if (userError || !userData.user) {
+          // Stale local JWT (p. ej. usuario borrado en Supabase) — limpiar storage.
+          if (userError) {
+            console.warn("Sesión local inválida:", userError.message);
+          }
+          await invalidateLocalSession();
+          return;
+        }
+
+        const { data, error } = await supabase.auth.getSession();
+        if (!mounted) {
+          return;
+        }
+
+        if (error) {
+          console.error("No fue posible leer la sesión:", error);
+        }
+
+        setRawSession(data.session ?? null);
+      } finally {
+        if (mounted) {
+          bootstrapComplete.current = true;
+          setLoading(false);
+        }
+      }
     }
 
     void loadSession();
@@ -268,27 +343,34 @@ export function useAppAuth() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, nextSession) => {
-      setRawSession(nextSession);
-
-      if (event === "PASSWORD_RECOVERY") {
-        if (yahooImapOwnsIdentity(nextSession?.user)) {
-          setPasswordRecovery(false);
-        } else {
-          setPasswordRecovery(true);
+      if (shouldDeferAuthStateChange(event, bootstrapComplete.current)) {
+        if (event === "PASSWORD_RECOVERY") {
+          handlePasswordRecovery(nextSession);
         }
+        return;
       }
 
       if (event === "SIGNED_OUT") {
+        setRawSession(null);
         setPasswordRecovery(false);
-        try {
-          for (const key of Object.keys(sessionStorage)) {
-            if (key.startsWith("donexto_verify_sent:")) {
-              sessionStorage.removeItem(key);
-            }
+        clearVerifySentKeys();
+        setLoading(false);
+        return;
+      }
+
+      if (event === "PASSWORD_RECOVERY") {
+        handlePasswordRecovery(nextSession);
+        setLoading(false);
+        return;
+      }
+
+      if (authEventMayCarrySession(event)) {
+        void validateAndApplySession(nextSession).finally(() => {
+          if (mounted) {
+            setLoading(false);
           }
-        } catch {
-          // sessionStorage puede fallar en modo restringido
-        }
+        });
+        return;
       }
 
       setLoading(false);
