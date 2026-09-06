@@ -12,13 +12,13 @@ body:has(.dx-auth) {
 }
 
 .dx-auth {
-  --dx-ink: #f2f6f7;
-  --dx-muted: #9aa8ae;
-  --dx-soft: #6d7c82;
+  --dx-ink: #e8f6ff;
+  --dx-muted: #7ec8ff;
+  --dx-soft: #6eb8e0;
   --dx-line: rgba(255, 255, 255, 0.1);
   --dx-surface: #161c22;
   --dx-field: #10161b;
-  --dx-teal: #2ee6d6;
+  --dx-teal: #5ce1e6;
   --dx-navy: #12324a;
   --dx-accent: #c44dff;
   --dx-sky: #070d12;
@@ -203,7 +203,7 @@ body:has(.dx-auth) {
   font-weight: 500;
   letter-spacing: -0.015em;
   line-height: 1.4;
-  color: var(--dx-muted);
+  color: #7ec8ff;
 }
 
 .dx-auth__note {
@@ -212,7 +212,7 @@ body:has(.dx-auth) {
   font-size: 0.8rem;
   font-weight: 500;
   line-height: 1.45;
-  color: var(--dx-muted);
+  color: #6eb8e0;
 }
 
 .dx-auth__panel {
@@ -296,7 +296,7 @@ body:has(.dx-auth) {
 .dx-auth__field > span {
   font-size: 0.78rem;
   font-weight: 600;
-  color: var(--dx-muted);
+  color: #5ce1e6;
 }
 
 .dx-auth__control {
@@ -331,7 +331,7 @@ body:has(.dx-auth) {
 }
 
 .dx-auth__control input::placeholder {
-  color: #6d7c82;
+  color: #6eb8e0;
 }
 
 .dx-auth__control svg {
@@ -459,7 +459,7 @@ body:has(.dx-auth) {
 }
 
 .dx-auth__p0 strong {
-  color: #e8eef0;
+  color: #e8f6ff;
   font-weight: 700;
 }
 
@@ -472,7 +472,7 @@ body:has(.dx-auth) {
 }
 
 .dx-auth__secure strong {
-  color: #e8eef0;
+  color: #e8f6ff;
   font-weight: 700;
 }
 
@@ -595,12 +595,12 @@ body:has(.dx-auth) {
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: none;
-  color: var(--dx-soft);
+  color: #7ec8ff;
   text-align: center;
 }
 
 .dx-auth__services-kicker span {
-  color: #2ee6d6;
+  color: #5ce1e6;
   font-weight: 800;
   letter-spacing: 0.06em;
 }
@@ -630,14 +630,14 @@ body:has(.dx-auth) {
 .dx-auth__service--microsoft strong {
   font-size: 0.82rem;
   font-weight: 750;
-  color: #e8f4f6;
+  color: #e8f6ff;
 }
 
 .dx-auth__service--microsoft small {
   display: block;
   font-size: 0.68rem;
   line-height: 1.35;
-  color: #8aa0a8;
+  color: #6eb8e0;
   word-break: break-word;
 }
 
@@ -780,13 +780,13 @@ body:has(.dx-auth) {
 }
 
 .dx-auth__chip--live {
-  background: rgba(46, 230, 214, 0.12);
-  color: var(--dx-muted);
-  border: 1px solid rgba(46, 230, 214, 0.28);
+  background: rgba(92, 225, 230, 0.14);
+  color: #5ce1e6;
+  border: 1px solid rgba(92, 225, 230, 0.42);
 }
 
 .dx-auth__chip--soon {
-  opacity: 0.78;
+  opacity: 1;
   filter: none;
 }
 
@@ -795,19 +795,21 @@ body:has(.dx-auth) {
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: none;
-  opacity: 0.75;
+  color: #7ec8ff;
+  opacity: 1;
 }
 
 .dx-auth__chip--gmail,
 .dx-auth__chip--yahoo,
 .dx-auth__chip--apple {
-  background: rgba(255, 255, 255, 0.06);
-  color: #8a9ca3;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(126, 200, 255, 0.1);
+  color: #7ec8ff;
+  border: 1px solid rgba(126, 200, 255, 0.28);
 }
 
 .dx-auth__services-kicker--soon {
   margin-top: 0.45rem;
+  color: #5ce1e6;
 }
 
 .dx-auth__signup-copy {
