@@ -89,7 +89,8 @@ body:has(.dx-auth) {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 42% center;
+  /* Banner móvil/tablet: recorte lateral OK; 42% Y deja el letrero al centro. */
+  object-position: 50% 42%;
 }
 
 .dx-auth__hero-scrim {
@@ -1054,7 +1055,8 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero-media img {
-    object-position: 48% center;
+    /* Split alto: cover recorta laterales. 26% X prioriza cámara + letrero. */
+    object-position: 26% 58%;
   }
 
   .dx-auth__hero-scrim {
@@ -1199,6 +1201,11 @@ body:has(.dx-auth) {
 @media (min-width: 1440px) {
   .dx-auth__hero {
     flex-basis: 55%;
+  }
+
+  .dx-auth__hero-media img {
+    /* Más ancho: caben cámara + letrero + escritorio; 18% X evita recortar la cámara. */
+    object-position: 18% 52%;
   }
 
   .dx-auth__panel {
