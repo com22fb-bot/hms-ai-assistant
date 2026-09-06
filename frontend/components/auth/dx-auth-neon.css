@@ -199,23 +199,23 @@
 }
 
 .dx-auth__services-kicker {
-  color: #ff2d8a;
+  color: #3dff9a;
   text-transform: none;
   letter-spacing: 0.02em;
   font-weight: 700;
 }
 
 .dx-auth__services-kicker--soon {
-  color: #5ce1e6;
-  font-weight: 400;
+  color: #ff2d8a;
+  font-weight: 700;
 }
 
 .dx-auth__services-kicker--soon span {
-  font-weight: 400;
+  font-weight: 700;
 }
 
 .dx-auth__services-kicker span {
-  color: #5ce1e6;
+  color: #3dff9a;
 }
 
 .dx-auth__service {
@@ -254,32 +254,32 @@
 }
 
 .dx-auth__chip--live {
-  background: rgba(255, 45, 138, 0.12);
-  color: #ff2d8a;
-  border: 1px solid rgba(255, 45, 138, 0.48);
+  background: rgba(61, 255, 154, 0.12);
+  color: #3dff9a;
+  border: 1px solid rgba(61, 255, 154, 0.48);
   font-weight: 700;
 }
 
 .dx-auth__chip--soon {
   opacity: 1;
   filter: none;
-  background: rgba(92, 225, 230, 0.14);
-  color: #5ce1e6;
-  border: 1px solid rgba(92, 225, 230, 0.42);
-  font-weight: 400;
+  background: rgba(255, 45, 138, 0.12);
+  color: #ff2d8a;
+  border: 1px solid rgba(255, 45, 138, 0.42);
+  font-weight: 700;
 }
 
 .dx-auth__chip--soon span {
-  color: #5ce1e6;
-  font-weight: 400;
+  color: #ff2d8a;
+  font-weight: 700;
 }
 
 .dx-auth__chip--soon.dx-auth__chip--gmail,
 .dx-auth__chip--soon.dx-auth__chip--yahoo,
 .dx-auth__chip--soon.dx-auth__chip--apple {
-  background: rgba(92, 225, 230, 0.14);
-  color: #5ce1e6;
-  border: 1px solid rgba(92, 225, 230, 0.42);
+  background: rgba(255, 45, 138, 0.12);
+  color: #ff2d8a;
+  border: 1px solid rgba(255, 45, 138, 0.42);
 }
 
 .dx-auth__logo {
@@ -290,6 +290,8 @@
 }
 
 .dx-lang-strip--gate.dx-lang-strip--compact {
-  margin-left: auto;
-  margin-right: auto;
+  margin: 0 0 0.75rem auto;
+  font-size: 0.72rem;
+  transform: scale(0.92);
+  transform-origin: top right;
 }

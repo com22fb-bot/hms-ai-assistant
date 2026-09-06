@@ -95,7 +95,7 @@ const es: Record<LoginMessageKey, string> = {
   helper: "Ingresa tu correo para continuar a Donexto.",
   body: "Ingresa tu correo para continuar a Donexto.",
   noPasswordNote:
-    "Al continuar, firmarás en Microsoft. Donexto no pide la contraseña de Outlook ni de Hotmail.",
+    "Al continuar, te llevamos a iniciar sesión en tu correo. Donexto nunca te pide la contraseña de tu buzón.",
   helperYahoo:
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   helperMicrosoft:
@@ -175,7 +175,7 @@ const es: Record<LoginMessageKey, string> = {
   wantedToSay: "Ese dominio no es un correo que podamos leer ahora. ¿Quisiste decir",
   emailPlaceholder: "tu@correo.com",
   availableNow: "Disponible ahora",
-  comingSoonBadge: "Próximamente",
+  comingSoonBadge: "Pronto",
   chipOutlook: "Outlook",
   chipHotmail: "Hotmail",
   chipLive: "Live",
@@ -201,7 +201,7 @@ const en: Record<LoginMessageKey, string> = {
   helper: "Enter your email to continue to Donexto.",
   body: "Enter your email to continue to Donexto.",
   noPasswordNote:
-    "When you continue, you will sign in at Yahoo, Outlook, or Gmail. Donexto does not ask for your mailbox password.",
+    "When you continue, we take you to sign in to your mailbox. Donexto never asks for your email password.",
   helperYahoo:
     "We take you to Yahoo’s site to sign in. Donexto does not ask for your password.",
   helperMicrosoft:
@@ -279,7 +279,7 @@ const en: Record<LoginMessageKey, string> = {
   wantedToSay: "That domain is not a mailbox we can read yet. Did you mean",
   emailPlaceholder: "you@email.com",
   availableNow: "Available now",
-  comingSoonBadge: "Coming soon",
+  comingSoonBadge: "Soon",
   chipOutlook: "Outlook",
   chipHotmail: "Hotmail",
   chipLive: "Live",
@@ -305,7 +305,7 @@ const fr: Record<LoginMessageKey, string> = {
   helper: "Saisissez votre e-mail pour continuer vers Donexto.",
   body: "Saisissez votre e-mail pour continuer vers Donexto.",
   noPasswordNote:
-    "En continuant, vous vous connecterez sur Yahoo, Outlook ou Gmail. Donexto ne demande pas le mot de passe de votre messagerie.",
+    "En continuant, nous vous emmenons vous connecter à votre messagerie. Donexto ne demande jamais le mot de passe de votre boîte.",
   helperYahoo:
     "Nous vous emmenons sur le site Yahoo pour vous connecter. Donexto ne demande pas votre mot de passe.",
   helperMicrosoft:
@@ -385,7 +385,7 @@ const fr: Record<LoginMessageKey, string> = {
   wantedToSay: "Ce domaine n’est pas une boîte que nous pouvons lire. Vouliez-vous dire",
   emailPlaceholder: "vous@email.com",
   availableNow: "Disponible maintenant",
-  comingSoonBadge: "Prochainement",
+  comingSoonBadge: "Bientôt",
   chipOutlook: "Outlook",
   chipHotmail: "Hotmail",
   chipLive: "Live",
@@ -411,7 +411,7 @@ const it: Record<LoginMessageKey, string> = {
   helper: "Inserisci la tua email per continuare su Donexto.",
   body: "Inserisci la tua email per continuare su Donexto.",
   noPasswordNote:
-    "Continuando, accederai su Yahoo, Outlook o Gmail. Donexto non chiede la password della casella.",
+    "Continuando, ti portiamo ad accedere alla tua casella. Donexto non chiede mai la password della casella.",
   helperYahoo:
     "Ti portiamo sul sito Yahoo per accedere. Donexto non chiede la password.",
   helperMicrosoft:
@@ -491,7 +491,7 @@ const it: Record<LoginMessageKey, string> = {
   wantedToSay: "Quel dominio non è una casella che possiamo leggere ora. Intendevi",
   emailPlaceholder: "tu@email.com",
   availableNow: "Disponibile ora",
-  comingSoonBadge: "Prossimamente",
+  comingSoonBadge: "Presto",
   chipOutlook: "Outlook",
   chipHotmail: "Hotmail",
   chipLive: "Live",
@@ -517,7 +517,7 @@ const pt: Record<LoginMessageKey, string> = {
   helper: "Introduza o seu correio para continuar no Donexto.",
   body: "Introduza o seu correio para continuar no Donexto.",
   noPasswordNote:
-    "Ao continuar, entra na Yahoo, Outlook ou Gmail. O Donexto não pede a palavra-passe do correio.",
+    "Ao continuar, levamo-lo a iniciar sessão no seu correio. O Donexto nunca pede a palavra-passe da sua caixa.",
   helperYahoo:
     "Levamo-lo ao site da Yahoo para entrar. O Donexto não pede a palavra-passe.",
   helperMicrosoft:
