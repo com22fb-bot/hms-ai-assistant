@@ -97,6 +97,7 @@ body:has(.dx-auth) {
   object-fit: cover;
   /* Banner móvil/tablet: recorte lateral OK; 42% Y deja el letrero al centro. */
   object-position: 50% 42%;
+  filter: brightness(1.08) contrast(1.05) saturate(1.08);
 }
 
 .dx-auth__hero-scrim {
@@ -106,9 +107,9 @@ body:has(.dx-auth) {
   background:
     linear-gradient(
       180deg,
-      rgba(6, 11, 18, 0.08) 0%,
-      rgba(6, 11, 18, 0.42) 58%,
-      rgba(6, 11, 18, 0.82) 100%
+      rgba(6, 11, 18, 0.02) 0%,
+      rgba(6, 11, 18, 0.14) 58%,
+      rgba(6, 11, 18, 0.32) 100%
     );
 }
 
@@ -333,12 +334,14 @@ body:has(.dx-auth) {
   background: transparent;
   font: inherit;
   font-size: 1rem;
-  color: var(--dx-ink);
+  color: #fff;
+  caret-color: #fff;
   outline: none;
 }
 
 .dx-auth__control input::placeholder {
-  color: #6eb8e0;
+  color: rgba(255, 255, 255, 0.75);
+  opacity: 1;
 }
 
 .dx-auth__control svg {
@@ -599,16 +602,16 @@ body:has(.dx-auth) {
 .dx-auth__services-kicker {
   margin: 0 0 0.5rem;
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: none;
-  color: #7ec8ff;
+  color: #ff2d8a;
   text-align: center;
 }
 
 .dx-auth__services-kicker span {
   color: #5ce1e6;
-  font-weight: 800;
+  font-weight: 700;
   letter-spacing: 0.06em;
 }
 
@@ -787,36 +790,46 @@ body:has(.dx-auth) {
 }
 
 .dx-auth__chip--live {
-  background: rgba(92, 225, 230, 0.14);
-  color: #5ce1e6;
-  border: 1px solid rgba(92, 225, 230, 0.42);
+  background: rgba(255, 45, 138, 0.12);
+  color: #ff2d8a;
+  border: 1px solid rgba(255, 45, 138, 0.48);
+  font-weight: 700;
 }
 
 .dx-auth__chip--soon {
   opacity: 1;
   filter: none;
+  background: rgba(92, 225, 230, 0.14);
+  color: #5ce1e6;
+  border: 1px solid rgba(92, 225, 230, 0.42);
+  font-weight: 400;
 }
 
 .dx-auth__chip--soon span {
   font-size: 0.62rem;
-  font-weight: 600;
+  font-weight: 400;
   letter-spacing: 0.02em;
   text-transform: none;
-  color: #7ec8ff;
+  color: #5ce1e6;
   opacity: 1;
 }
 
-.dx-auth__chip--gmail,
-.dx-auth__chip--yahoo,
-.dx-auth__chip--apple {
-  background: rgba(126, 200, 255, 0.1);
-  color: #7ec8ff;
-  border: 1px solid rgba(126, 200, 255, 0.28);
+.dx-auth__chip--soon.dx-auth__chip--gmail,
+.dx-auth__chip--soon.dx-auth__chip--yahoo,
+.dx-auth__chip--soon.dx-auth__chip--apple {
+  background: rgba(92, 225, 230, 0.14);
+  color: #5ce1e6;
+  border: 1px solid rgba(92, 225, 230, 0.42);
 }
 
 .dx-auth__services-kicker--soon {
   margin-top: 0.45rem;
   color: #5ce1e6;
+  font-weight: 400;
+}
+
+.dx-auth__services-kicker--soon span {
+  font-weight: 400;
 }
 
 .dx-auth__signup-copy {
@@ -903,9 +916,9 @@ body:has(.dx-auth) {
     background:
       linear-gradient(
         180deg,
-        rgba(6, 11, 18, 0.12) 0%,
-        rgba(6, 11, 18, 0.55) 52%,
-        rgba(6, 11, 18, 0.92) 100%
+        rgba(6, 11, 18, 0.04) 0%,
+        rgba(6, 11, 18, 0.18) 52%,
+        rgba(6, 11, 18, 0.36) 100%
       );
   }
 
@@ -1063,22 +1076,23 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero-media img {
-    /* Split alto: cover recorta laterales. 26% X prioriza cámara + letrero. */
-    object-position: 26% 58%;
+    /* Y alto = más escritorio/cámara abajo; menos recorte inferior. */
+    object-position: 30% 72%;
   }
 
   .dx-auth__hero-scrim {
     background:
       linear-gradient(
         90deg,
-        rgba(6, 11, 18, 0.18) 0%,
-        rgba(6, 11, 18, 0.34) 48%,
-        rgba(6, 11, 18, 0.72) 100%
+        rgba(6, 11, 18, 0.02) 0%,
+        rgba(6, 11, 18, 0.08) 55%,
+        rgba(6, 11, 18, 0.18) 100%
       ),
       linear-gradient(
         180deg,
-        rgba(6, 11, 18, 0.05) 0%,
-        rgba(6, 11, 18, 0.55) 100%
+        rgba(6, 11, 18, 0) 0%,
+        rgba(6, 11, 18, 0.04) 58%,
+        rgba(6, 11, 18, 0.20) 100%
       );
   }
 
@@ -1212,8 +1226,8 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero-media img {
-    /* Más ancho: caben cámara + letrero + escritorio; 18% X evita recortar la cámara. */
-    object-position: 18% 52%;
+    /* Ancho: cámara a la izquierda, escritorio más visible abajo. */
+    object-position: 26% 70%;
   }
 
   .dx-auth__panel {

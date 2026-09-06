@@ -76,11 +76,22 @@
 }
 
 .dx-auth__control input {
-  color: #f2f6f7;
+  color: #fff;
+  caret-color: #fff;
 }
 
 .dx-auth__control input::placeholder {
-  color: #6eb8e0;
+  color: rgba(255, 255, 255, 0.75);
+  opacity: 1;
+}
+
+.dx-auth__control input:-webkit-autofill,
+.dx-auth__control input:-webkit-autofill:hover,
+.dx-auth__control input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #fff;
+  caret-color: #fff;
+  box-shadow: inset 0 0 0 1000px #10161b;
+  transition: background-color 9999s ease-out;
 }
 
 .dx-auth__control svg,
@@ -188,14 +199,19 @@
 }
 
 .dx-auth__services-kicker {
-  color: #7ec8ff;
+  color: #ff2d8a;
   text-transform: none;
   letter-spacing: 0.02em;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .dx-auth__services-kicker--soon {
   color: #5ce1e6;
+  font-weight: 400;
+}
+
+.dx-auth__services-kicker--soon span {
+  font-weight: 400;
 }
 
 .dx-auth__services-kicker span {
@@ -238,26 +254,32 @@
 }
 
 .dx-auth__chip--live {
-  background: rgba(92, 225, 230, 0.14);
-  color: #5ce1e6;
-  border: 1px solid rgba(92, 225, 230, 0.42);
+  background: rgba(255, 45, 138, 0.12);
+  color: #ff2d8a;
+  border: 1px solid rgba(255, 45, 138, 0.48);
+  font-weight: 700;
 }
 
 .dx-auth__chip--soon {
   opacity: 1;
   filter: none;
+  background: rgba(92, 225, 230, 0.14);
+  color: #5ce1e6;
+  border: 1px solid rgba(92, 225, 230, 0.42);
+  font-weight: 400;
 }
 
 .dx-auth__chip--soon span {
-  color: #7ec8ff;
+  color: #5ce1e6;
+  font-weight: 400;
 }
 
-.dx-auth__chip--gmail,
-.dx-auth__chip--yahoo,
-.dx-auth__chip--apple {
-  background: rgba(126, 200, 255, 0.1);
-  color: #7ec8ff;
-  border: 1px solid rgba(126, 200, 255, 0.28);
+.dx-auth__chip--soon.dx-auth__chip--gmail,
+.dx-auth__chip--soon.dx-auth__chip--yahoo,
+.dx-auth__chip--soon.dx-auth__chip--apple {
+  background: rgba(92, 225, 230, 0.14);
+  color: #5ce1e6;
+  border: 1px solid rgba(92, 225, 230, 0.42);
 }
 
 .dx-auth__logo {
