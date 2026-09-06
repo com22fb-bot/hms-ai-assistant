@@ -289,9 +289,20 @@
     0 0 0 1px rgba(46, 230, 214, 0.18);
 }
 
+.dx-lang-strip-host--gate {
+  display: flex;
+  width: 100%;
+  justify-content: flex-end;
+  margin: 0 0 0.65rem 0;
+  font-size: 0.7rem;
+  line-height: 1.2;
+}
+
 .dx-lang-strip--gate.dx-lang-strip--compact {
-  margin: 0 0 0.75rem auto;
-  font-size: 0.72rem;
-  transform: scale(0.92);
-  transform-origin: top right;
+  display: flex;
+  width: auto;
+  justify-content: flex-end;
+  margin: 0;
+  font-size: 0.7rem;
+  line-height: 1.2;
 }

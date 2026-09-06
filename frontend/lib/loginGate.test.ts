@@ -173,17 +173,53 @@ describe("userHasOAuthIdentity", () => {
 });
 
 describe("login CSS breakpoints", () => {
-  it("declares 360 / 768 / 1024 / 1440 media queries", () => {
-    const cssPath = join(
+  const cssPath = join(
+    dirname(fileURLToPath(import.meta.url)),
+    "..",
+    "components",
+    "auth",
+    "hms-gate.css",
+  );
+
+  it("declares 768 / 1024 / 1440 media queries", () => {
+    const css = readFileSync(cssPath, "utf8");
+    for (const width of ["768px", "1024px", "1440px"]) {
+      assert.match(css, new RegExp(`@media \\(min-width: ${width}\\)`));
+    }
+  });
+
+  it("right-aligns the compact gate language strip", () => {
+    const css = readFileSync(cssPath, "utf8");
+    assert.match(css, /\.dx-lang-strip-host--gate\s*\{[^}]*justify-content:\s*flex-end/);
+    assert.match(css, /\.dx-lang-strip--gate\.dx-lang-strip--compact\s*\{[^}]*justify-content:\s*flex-end/);
+  });
+
+  it("uses bottom-weighted hero crop and wider hero on desktop", () => {
+    const css = readFileSync(cssPath, "utf8");
+    assert.match(css, /object-position:\s*42%\s*92%/);
+    assert.match(css, /object-position:\s*38%\s*90%/);
+    assert.match(css, /flex:\s*1 1 58%/);
+    assert.match(
+      css,
+      /filter:\s*brightness\(1\.04\)\s*contrast\(1\.04\)\s*saturate\(1\.05\)/,
+    );
+  });
+});
+
+describe("login hero sizes", () => {
+  it("biases desktop toward larger studio assets", () => {
+    const loginPath = join(
       dirname(fileURLToPath(import.meta.url)),
       "..",
       "components",
       "auth",
-      "hms-gate.css",
+      "LoginScreen.tsx",
     );
-    const css = readFileSync(cssPath, "utf8");
-    for (const width of ["360px", "768px", "1024px", "1440px"]) {
-      assert.match(css, new RegExp(`@media \\(min-width: ${width}\\)`));
+    const source = readFileSync(loginPath, "utf8");
+    const sizes = source.match(/sizes="[^"]+"/g) ?? [];
+    assert.ok(sizes.length >= 2);
+    for (const attr of sizes) {
+      assert.match(attr, /\(min-width: 1024px\) 1400px, 100vw/);
     }
   });
 });
