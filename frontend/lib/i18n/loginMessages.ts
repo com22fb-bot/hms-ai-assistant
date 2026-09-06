@@ -91,9 +91,9 @@ export type LoginMessageKey =
 const microsoftDomainLine = MICROSOFT_LOGIN_DOMAINS.join(" · ");
 
 const es: Record<LoginMessageKey, string> = {
-  title: "Entrar a Donexto",
-  helper: "Escribe el correo del buzón que quieres monitorear.",
-  body: "Escribe el correo del buzón que quieres monitorear.",
+  title: "Bienvenido",
+  helper: "Ingresa tu correo para continuar a Donexto.",
+  body: "Ingresa tu correo para continuar a Donexto.",
   noPasswordNote:
     "Al continuar, firmarás en Microsoft. Donexto no pide la contraseña de Outlook ni de Hotmail.",
   helperYahoo:
@@ -103,7 +103,7 @@ const es: Record<LoginMessageKey, string> = {
   confirmTitle: "¿Usamos este correo en Donexto?",
   confirmHelper:
     "Ese correo es el buzón que Donexto va a monitorear. Hoy leemos Outlook, Hotmail, Live, MSN y Microsoft 365.",
-  emailLabel: "Correo del buzón",
+  emailLabel: "Correo electrónico",
   confirmEmailLabel: "Correo que Donexto va a monitorear",
   continueCta: "Continuar",
   subscribeCta: "Continuar",
@@ -173,9 +173,9 @@ const es: Record<LoginMessageKey, string> = {
   heroSubline:
     "Correos importantes, tareas y pendientes en un solo lugar.",
   wantedToSay: "Ese dominio no es un correo que podamos leer ahora. ¿Quisiste decir",
-  emailPlaceholder: "tu@hotmail.com",
+  emailPlaceholder: "tu@correo.com",
   availableNow: "Disponible ahora",
-  comingSoonBadge: "Pronto",
+  comingSoonBadge: "Próximamente",
   chipOutlook: "Outlook",
   chipHotmail: "Hotmail",
   chipLive: "Live",
@@ -197,9 +197,9 @@ const es: Record<LoginMessageKey, string> = {
 };
 
 const en: Record<LoginMessageKey, string> = {
-  title: "Sign in to Donexto",
-  helper: "Enter the mailbox email you want Donexto to monitor.",
-  body: "Enter the mailbox email you want Donexto to monitor.",
+  title: "Welcome",
+  helper: "Enter your email to continue to Donexto.",
+  body: "Enter your email to continue to Donexto.",
   noPasswordNote:
     "When you continue, you will sign in at Yahoo, Outlook, or Gmail. Donexto does not ask for your mailbox password.",
   helperYahoo:
@@ -209,7 +209,7 @@ const en: Record<LoginMessageKey, string> = {
   confirmTitle: "Use this email in Donexto?",
   confirmHelper:
     "That address is the mailbox Donexto will monitor. It must be Yahoo, Outlook/Hotmail, or Gmail — not a different login email.",
-  emailLabel: "Mailbox email",
+  emailLabel: "Email address",
   confirmEmailLabel: "Email Donexto will monitor",
   continueCta: "Continue",
   subscribeCta: "Continue",
@@ -277,9 +277,9 @@ const en: Record<LoginMessageKey, string> = {
   heroHeadline: "Your email. Your next step.",
   heroSubline: "Important mail, tasks, and to-dos in one place.",
   wantedToSay: "That domain is not a mailbox we can read yet. Did you mean",
-  emailPlaceholder: "you@hotmail.com",
+  emailPlaceholder: "you@email.com",
   availableNow: "Available now",
-  comingSoonBadge: "Soon",
+  comingSoonBadge: "Coming soon",
   chipOutlook: "Outlook",
   chipHotmail: "Hotmail",
   chipLive: "Live",
@@ -301,9 +301,9 @@ const en: Record<LoginMessageKey, string> = {
 };
 
 const fr: Record<LoginMessageKey, string> = {
-  title: "Connexion à Donexto",
-  helper: "Saisissez l’e-mail de la boîte que Donexto doit surveiller.",
-  body: "Saisissez l’e-mail de la boîte que Donexto doit surveiller.",
+  title: "Bienvenue",
+  helper: "Saisissez votre e-mail pour continuer vers Donexto.",
+  body: "Saisissez votre e-mail pour continuer vers Donexto.",
   noPasswordNote:
     "En continuant, vous vous connecterez sur Yahoo, Outlook ou Gmail. Donexto ne demande pas le mot de passe de votre messagerie.",
   helperYahoo:
@@ -313,7 +313,7 @@ const fr: Record<LoginMessageKey, string> = {
   confirmTitle: "Utiliser cet e-mail dans Donexto ?",
   confirmHelper:
     "Cette adresse est la boîte que Donexto va surveiller. Ce doit être Yahoo, Outlook/Hotmail ou Gmail, pas un autre e-mail de connexion.",
-  emailLabel: "E-mail de la boîte",
+  emailLabel: "Adresse e-mail",
   confirmEmailLabel: "E-mail que Donexto va surveiller",
   continueCta: "Continuer",
   subscribeCta: "Continuer",
@@ -383,9 +383,9 @@ const fr: Record<LoginMessageKey, string> = {
   heroSubline:
     "Courriers importants, tâches et suivis au même endroit.",
   wantedToSay: "Ce domaine n’est pas une boîte que nous pouvons lire. Vouliez-vous dire",
-  emailPlaceholder: "vous@hotmail.com",
+  emailPlaceholder: "vous@email.com",
   availableNow: "Disponible maintenant",
-  comingSoonBadge: "Bientôt",
+  comingSoonBadge: "Prochainement",
   chipOutlook: "Outlook",
   chipHotmail: "Hotmail",
   chipLive: "Live",
@@ -407,9 +407,9 @@ const fr: Record<LoginMessageKey, string> = {
 };
 
 const it: Record<LoginMessageKey, string> = {
-  title: "Accedi a Donexto",
-  helper: "Scrivi l’email della casella che Donexto deve monitorare.",
-  body: "Scrivi l’email della casella che Donexto deve monitorare.",
+  title: "Benvenuto",
+  helper: "Inserisci la tua email per continuare su Donexto.",
+  body: "Inserisci la tua email per continuare su Donexto.",
   noPasswordNote:
     "Continuando, accederai su Yahoo, Outlook o Gmail. Donexto non chiede la password della casella.",
   helperYahoo:
@@ -419,7 +419,7 @@ const it: Record<LoginMessageKey, string> = {
   confirmTitle: "Usiamo questa email in Donexto?",
   confirmHelper:
     "Quell’indirizzo è la casella che Donexto monitorerà. Deve essere Yahoo, Outlook/Hotmail o Gmail, non un’altra email di login.",
-  emailLabel: "Email della casella",
+  emailLabel: "Indirizzo email",
   confirmEmailLabel: "Email che Donexto monitorerà",
   continueCta: "Continua",
   subscribeCta: "Continua",
@@ -489,9 +489,9 @@ const it: Record<LoginMessageKey, string> = {
   heroSubline:
     "Email importanti, attività e pendenti in un solo posto.",
   wantedToSay: "Quel dominio non è una casella che possiamo leggere ora. Intendevi",
-  emailPlaceholder: "tu@hotmail.com",
+  emailPlaceholder: "tu@email.com",
   availableNow: "Disponibile ora",
-  comingSoonBadge: "Presto",
+  comingSoonBadge: "Prossimamente",
   chipOutlook: "Outlook",
   chipHotmail: "Hotmail",
   chipLive: "Live",
@@ -513,9 +513,9 @@ const it: Record<LoginMessageKey, string> = {
 };
 
 const pt: Record<LoginMessageKey, string> = {
-  title: "Entrar no Donexto",
-  helper: "Escreva o correio da caixa que o Donexto deve monitorizar.",
-  body: "Escreva o correio da caixa que o Donexto deve monitorizar.",
+  title: "Bem-vindo",
+  helper: "Introduza o seu correio para continuar no Donexto.",
+  body: "Introduza o seu correio para continuar no Donexto.",
   noPasswordNote:
     "Ao continuar, entra na Yahoo, Outlook ou Gmail. O Donexto não pede a palavra-passe do correio.",
   helperYahoo:
@@ -525,7 +525,7 @@ const pt: Record<LoginMessageKey, string> = {
   confirmTitle: "Usamos este correio no Donexto?",
   confirmHelper:
     "Esse endereço é a caixa que o Donexto vai monitorizar. Tem de ser Yahoo, Outlook/Hotmail ou Gmail, não outro correio de início de sessão.",
-  emailLabel: "Correio da caixa",
+  emailLabel: "Correio eletrónico",
   confirmEmailLabel: "Correio que o Donexto vai monitorizar",
   continueCta: "Continuar",
   subscribeCta: "Continuar",
@@ -595,7 +595,7 @@ const pt: Record<LoginMessageKey, string> = {
   heroSubline:
     "Correios importantes, tarefas e pendências num só lugar.",
   wantedToSay: "Esse domínio não é um correio que possamos ler agora. Quis dizer",
-  emailPlaceholder: "voce@hotmail.com",
+  emailPlaceholder: "voce@email.com",
   availableNow: "Disponível agora",
   comingSoonBadge: "Em breve",
   chipOutlook: "Outlook",

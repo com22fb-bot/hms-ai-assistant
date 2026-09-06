@@ -5,8 +5,9 @@
 | Archivo | Uso |
 |---------|-----|
 | **`donexto-3d-2026.png`** | Placa cuadrada in-app / favicon: Do Next To + @ morada sobre los 3 puntos |
-| **`donexto-logo-official.png`** | Banner / login hero (escena completa) |
-| **`donexto-logo-official-hero.png`** | Banner / login hero |
+| **`donexto-login-hero-studio.jpg`** | **Login hero (usar este)** — estudio cyberpunk, letrero 3D sobre escritorio |
+| **`donexto-logo-official-hero.png`** | Legacy — @donexto gigante + sobres (no usar en login) |
+| **`donexto-logo-official.png`** | Legacy — variante @donexto + sobres (no usar en login) |
 | Legal micro | `© HMSR · MR` + Héctor M. Salcido Roacho |
 
 Ver: `docs/recovery/CONTINUIDAD_DONEXTO_2026-08-11.md`
