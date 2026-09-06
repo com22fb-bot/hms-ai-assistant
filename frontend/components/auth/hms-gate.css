@@ -890,16 +890,18 @@ body:has(.dx-auth) {
       0.85rem;
   }
 
+  .dx-auth__hero-scrim {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(6, 11, 18, 0.12) 0%,
+        rgba(6, 11, 18, 0.55) 52%,
+        rgba(6, 11, 18, 0.92) 100%
+      );
+  }
+
   .dx-auth__hero-media img {
-    object-position: center 42%;
-  }
-
-  .dx-auth__hero-headline {
-    font-size: 1.08rem;
-  }
-
-  .dx-auth__hero-subline {
-    font-size: 0.76rem;
+    object-position: 50% 38%;
   }
 
   .dx-auth__panel {
@@ -935,6 +937,19 @@ body:has(.dx-auth) {
     position: sticky;
     bottom: max(0.5rem, env(safe-area-inset-bottom));
     z-index: 2;
+  }
+}
+
+/* Tablet/móvil (< desktop split): sin copy sobre el hero — la imagen ya lleva marca */
+@media (max-width: 1023px) {
+  .dx-auth__hero-headline,
+  .dx-auth__hero-subline {
+    display: none;
+  }
+
+  .dx-auth__hero-inner {
+    min-height: 0;
+    padding-top: 0;
   }
 }
 
@@ -1039,7 +1054,7 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero-media img {
-    object-position: center center;
+    object-position: 48% center;
   }
 
   .dx-auth__hero-scrim {

@@ -512,7 +512,7 @@ export function LoginScreen({
         <div className="dx-auth__hero-media" aria-hidden="true">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/brand/donexto-logo-official-hero.png"
+            src="/brand/donexto-login-hero-studio.jpg"
             alt=""
             decoding="async"
             fetchPriority="high"
