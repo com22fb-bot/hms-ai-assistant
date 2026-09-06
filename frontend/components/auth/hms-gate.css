@@ -85,6 +85,12 @@ body:has(.dx-auth) {
   z-index: 0;
 }
 
+.dx-auth__hero-media picture {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
 .dx-auth__hero-media img {
   width: 100%;
   height: 100%;
