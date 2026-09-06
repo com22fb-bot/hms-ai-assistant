@@ -219,7 +219,7 @@ describe("login hero sizes", () => {
     const sizes = source.match(/sizes="[^"]+"/g) ?? [];
     assert.ok(sizes.length >= 2);
     for (const attr of sizes) {
-      assert.match(attr, /\(min-width: 1024px\) 70vw, 100vw/);
+      assert.match(attr, /\(min-width: 1024px\) 1400px, 100vw/);
     }
   });
 });
