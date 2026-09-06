@@ -194,20 +194,49 @@ describe("login CSS breakpoints", () => {
     assert.match(css, /\.dx-lang-strip--gate\.dx-lang-strip--compact\s*\{[^}]*justify-content:\s*flex-end/);
   });
 
-  it("uses bottom-weighted hero crop and wider hero on desktop", () => {
+  it("caps tablet/desktop hero near half the viewport, not a full-height split", () => {
     const css = readFileSync(cssPath, "utf8");
-    assert.match(css, /object-position:\s*42%\s*92%/);
-    assert.match(css, /object-position:\s*38%\s*90%/);
-    assert.match(css, /flex:\s*1 1 58%/);
+    assert.match(css, /@media \(min-width: 768px\)[\s\S]*?max-height:\s*50dvh/);
+    assert.match(css, /@media \(min-width: 1024px\)[\s\S]*?max-height:\s*50dvh/);
+    assert.match(css, /@media \(min-width: 1024px\)[\s\S]*?flex-direction:\s*column/);
+    assert.doesNotMatch(css, /flex:\s*1 1 58%/);
     assert.match(
       css,
       /filter:\s*brightness\(1\.04\)\s*contrast\(1\.04\)\s*saturate\(1\.05\)/,
     );
   });
+
+  it("gives the desktop card more space above the email field", () => {
+    const css = readFileSync(cssPath, "utf8");
+    assert.match(
+      css,
+      /@media \(min-width: 1024px\)[\s\S]*?\.dx-auth__availability\s*\{[^}]*margin:\s*1\.05rem 0 1\.35rem/,
+    );
+    assert.match(
+      css,
+      /@media \(min-width: 1024px\)[\s\S]*?\.dx-auth__card\s*\{[^}]*padding:\s*1\.85rem 1\.75rem 1\.65rem/,
+    );
+  });
+
+  it("keeps the compact gate language strip small and right-aligned", () => {
+    const css = readFileSync(cssPath, "utf8");
+    assert.match(
+      css,
+      /\.dx-lang-strip--gate\.dx-lang-strip--compact\s*\{[^}]*font-size:\s*0\.65rem/,
+    );
+    assert.match(
+      css,
+      /\.dx-lang-strip--gate \.dx-lang-strip__select\s*\{[^}]*font-size:\s*0\.65rem/,
+    );
+    assert.match(
+      css,
+      /\.dx-lang-strip--gate \.dx-lang-strip__select\s*\{[^}]*min-height:\s*1\.25rem/,
+    );
+  });
 });
 
 describe("login hero sizes", () => {
-  it("biases desktop toward larger studio assets", () => {
+  it("loads the full-width banner from the viewport width", () => {
     const loginPath = join(
       dirname(fileURLToPath(import.meta.url)),
       "..",
@@ -219,7 +248,7 @@ describe("login hero sizes", () => {
     const sizes = source.match(/sizes="[^"]+"/g) ?? [];
     assert.ok(sizes.length >= 2);
     for (const attr of sizes) {
-      assert.match(attr, /\(min-width: 1024px\) 1400px, 100vw/);
+      assert.match(attr, /sizes="100vw"/);
     }
   });
 });

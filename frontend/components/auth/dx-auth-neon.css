@@ -293,16 +293,31 @@
   display: flex;
   width: 100%;
   justify-content: flex-end;
-  margin: 0 0 0.65rem 0;
-  font-size: 0.7rem;
-  line-height: 1.2;
+  margin: 0 0 0.85rem 0;
+  font-size: 0.65rem;
+  line-height: 1.15;
 }
 
 .dx-lang-strip--gate.dx-lang-strip--compact {
   display: flex;
   width: auto;
   justify-content: flex-end;
+  align-items: center;
   margin: 0;
-  font-size: 0.7rem;
-  line-height: 1.2;
+  gap: 0.2rem;
+  padding: 0.05rem 0.22rem 0.05rem 0.38rem;
+  font-size: 0.65rem;
+  line-height: 1.15;
+}
+
+.dx-lang-strip--gate .dx-lang-strip__select {
+  font-size: 0.65rem;
+  font-weight: 600;
+  min-height: 1.25rem;
+  padding: 0.05rem 0.15rem 0.05rem 0;
+}
+
+.dx-lang-strip--gate svg {
+  width: 11px;
+  height: 11px;
 }
