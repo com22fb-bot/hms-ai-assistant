@@ -202,11 +202,16 @@
   color: #ff2d8a;
   text-transform: none;
   letter-spacing: 0.02em;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .dx-auth__services-kicker--soon {
   color: #5ce1e6;
+  font-weight: 400;
+}
+
+.dx-auth__services-kicker--soon span {
+  font-weight: 400;
 }
 
 .dx-auth__services-kicker span {
