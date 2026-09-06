@@ -510,13 +510,24 @@ export function LoginScreen({
     >
       <aside className="dx-auth__hero" aria-label="Donexto">
         <div className="dx-auth__hero-media" aria-hidden="true">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/brand/donexto-login-hero-studio.jpg"
-            alt=""
-            decoding="async"
-            fetchPriority="high"
-          />
+          <picture>
+            <source
+              type="image/webp"
+              srcSet="/brand/donexto-login-hero-studio-1280.webp 1280w, /brand/donexto-login-hero-studio-1920.webp 1920w, /brand/donexto-login-hero-studio-2560.webp 2560w"
+              sizes="(min-width: 1440px) calc(100vw - 32rem), (min-width: 1024px) calc(100vw - 28rem), 100vw"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand/donexto-login-hero-studio.jpg"
+              srcSet="/brand/donexto-login-hero-studio-1280.jpg 1280w, /brand/donexto-login-hero-studio.jpg 1920w, /brand/donexto-login-hero-studio-2560.jpg 2560w"
+              sizes="(min-width: 1440px) calc(100vw - 32rem), (min-width: 1024px) calc(100vw - 28rem), 100vw"
+              width={2560}
+              height={1428}
+              alt=""
+              decoding="async"
+              fetchPriority="high"
+            />
+          </picture>
         </div>
         <div className="dx-auth__hero-scrim" aria-hidden="true" />
         <div className="dx-auth__hero-inner">
