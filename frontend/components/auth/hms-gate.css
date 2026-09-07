@@ -1,7 +1,9 @@
 /*
   Gate Donexto — columna fluida: banner con la foto de escritorio completo.
-  El hero se encoge si la altura aprieta; correo + Continuar quedan visibles
-  sin scroll del panel. No cambiar el sizing del hero en <768 (móvil ya ok).
+  La placa neon + base Donexto™ deben verse; el slogan no las tapa.
+  En laptop bajo se compacta el formulario, no se aplasta el hero a una franja.
+  Correo + Continuar quedan visibles sin scroll del panel.
+  No cambiar el sizing del hero en <768 (móvil ya ok).
 */
 
 html:has(.dx-auth),
@@ -97,8 +99,8 @@ body:has(.dx-auth) {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* Banner móvil/tablet: leve ajuste para no cortar el escritorio de forma rara. */
-  object-position: 48% 40%;
+  /* Banner móvil/tablet: centro de placa + base Donexto™. */
+  object-position: 50% 50%;
   filter: brightness(1.08) contrast(1.05) saturate(1.08);
 }
 
@@ -127,6 +129,35 @@ body:has(.dx-auth) {
   justify-content: flex-end;
   gap: 0.35rem;
   padding-top: 0.35rem;
+}
+
+/*
+  Foto de estudio: slogan arriba con velo suave. La placa (centro) queda libre.
+  ConfirmEmailGate sigue usando .dx-auth__hero sin este modificador.
+*/
+.dx-auth__hero--studio .dx-auth__hero-scrim {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(6, 11, 18, 0.46) 0%,
+      rgba(6, 11, 18, 0.14) 22%,
+      rgba(6, 11, 18, 0) 40%,
+      rgba(6, 11, 18, 0.1) 100%
+    );
+}
+
+.dx-auth__hero--studio .dx-auth__hero-inner {
+  justify-content: flex-start;
+  min-height: 0;
+  width: min(100%, 34rem);
+  padding-top: 0.2rem;
+}
+
+.dx-auth__hero--studio .dx-auth__hero-headline,
+.dx-auth__hero--studio .dx-auth__hero-subline {
+  text-shadow:
+    0 1px 10px rgba(6, 11, 18, 0.92),
+    0 0 16px rgba(6, 11, 18, 0.55);
 }
 
 .dx-auth__hero-headline {
@@ -925,7 +956,7 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero-media img {
-    object-position: 46% 36%;
+    object-position: 50% 48%;
   }
 
   .dx-auth__panel {
@@ -1024,9 +1055,14 @@ body:has(.dx-auth) {
     padding: 1.15rem 2rem 1.35rem;
   }
 
+  .dx-auth__hero--studio {
+    min-height: clamp(16rem, 34dvh, 22rem);
+    padding: 0.85rem 2rem 1.1rem;
+  }
+
   .dx-auth__hero-media img {
     object-fit: cover;
-    object-position: 50% 56%;
+    object-position: 50% 50%;
   }
 
   .dx-auth__panel {
@@ -1110,9 +1146,17 @@ body:has(.dx-auth) {
     text-align: center;
   }
 
+  .dx-auth__hero--studio {
+    min-height: clamp(17rem, 34dvh, 23rem);
+    padding:
+      max(0.7rem, env(safe-area-inset-top))
+      clamp(1.5rem, 3vw, 2.5rem)
+      0.85rem;
+  }
+
   .dx-auth__hero-media img {
     object-fit: cover;
-    object-position: 50% 54%;
+    object-position: 50% 50%;
     filter: brightness(1.04) contrast(1.04) saturate(1.05);
   }
 
@@ -1126,6 +1170,17 @@ body:has(.dx-auth) {
       );
   }
 
+  .dx-auth__hero--studio .dx-auth__hero-scrim {
+    background:
+      linear-gradient(
+        180deg,
+        rgba(6, 11, 18, 0.5) 0%,
+        rgba(6, 11, 18, 0.16) 18%,
+        rgba(6, 11, 18, 0) 36%,
+        rgba(6, 11, 18, 0.08) 100%
+      );
+  }
+
   .dx-auth__hero-inner {
     width: min(100%, 38rem);
     margin: 0 auto;
@@ -1134,6 +1189,13 @@ body:has(.dx-auth) {
     min-height: 100%;
     gap: 0.45rem;
     padding-top: 0;
+  }
+
+  .dx-auth__hero--studio .dx-auth__hero-inner {
+    justify-content: flex-start;
+    min-height: 0;
+    width: min(100%, 40rem);
+    padding-top: 0.15rem;
   }
 
   .dx-auth__hero-headline {
@@ -1256,6 +1318,10 @@ body:has(.dx-auth) {
     height: auto;
   }
 
+  .dx-auth__hero--studio {
+    min-height: clamp(20rem, 36dvh, 26rem);
+  }
+
   .dx-auth__hero-media img {
     object-position: 50% 50%;
     filter: brightness(1.04) contrast(1.04) saturate(1.05);
@@ -1285,7 +1351,7 @@ body:has(.dx-auth) {
   }
 }
 
-/* Laptop / tablet bajos: el hero cede; el formulario no se esconde */
+/* Laptop / tablet bajos: se compacta la card; el hero de estudio no se aplasta */
 @media (min-width: 768px) and (max-height: 800px) {
   .dx-auth__hero {
     flex: 1 1 auto;
@@ -1295,8 +1361,23 @@ body:has(.dx-auth) {
     padding: 0.7rem 1.5rem 0.75rem;
   }
 
+  .dx-auth__hero--studio {
+    min-height: clamp(15.5rem, 38dvh, 20rem);
+    padding: 0.45rem 1.5rem 0.55rem;
+  }
+
   .dx-auth__hero-media img {
-    object-position: 50% 62%;
+    object-position: 50% 50%;
+  }
+
+  .dx-auth__hero--studio .dx-auth__hero-inner {
+    justify-content: flex-start;
+    min-height: 0;
+  }
+
+  .dx-auth__hero--studio .dx-auth__hero-headline {
+    font-size: clamp(1.05rem, 1.8vw, 1.25rem);
+    max-width: 28em;
   }
 
   .dx-auth__hero-subline {

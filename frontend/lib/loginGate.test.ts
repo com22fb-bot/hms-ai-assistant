@@ -214,6 +214,31 @@ describe("login CSS breakpoints", () => {
     );
   });
 
+  it("keeps the studio plaque in frame and the slogan off the neon", () => {
+    const css = readFileSync(cssPath, "utf8");
+    assert.match(css, /\.dx-auth__hero--studio \.dx-auth__hero-inner\s*\{[^}]*justify-content:\s*flex-start/);
+    assert.match(
+      css,
+      /@media \(min-width: 768px\) and \(max-height: 800px\)[\s\S]*?\.dx-auth__hero--studio\s*\{[\s\S]*?min-height:\s*clamp\(15\.5rem/,
+    );
+    assert.doesNotMatch(
+      css,
+      /@media \(min-width: 768px\) and \(max-height: 800px\)[\s\S]*?\.dx-auth__hero--studio\s*\{[\s\S]*?min-height:\s*clamp\(7\.25rem/,
+    );
+    assert.match(
+      css,
+      /@media \(min-width: 1024px\)[\s\S]*?\.dx-auth__hero--studio\s*\{[\s\S]*?min-height:\s*clamp\(17rem/,
+    );
+    assert.match(
+      css,
+      /@media \(min-width: 768px\)[\s\S]*?\.dx-auth__hero-media img\s*\{[\s\S]*?object-position:\s*50% 50%/,
+    );
+    assert.doesNotMatch(
+      css,
+      /@media \(min-width: 768px\) and \(max-height: 800px\)[\s\S]*?object-position:\s*50% 62%/,
+    );
+  });
+
   it("keeps AI as the login hero concept in ES and EN", () => {
     const messagesPath = join(
       dirname(fileURLToPath(import.meta.url)),
@@ -271,5 +296,8 @@ describe("login hero sizes", () => {
     for (const attr of sizes) {
       assert.match(attr, /sizes="100vw"/);
     }
+    assert.match(source, /dx-auth__hero--studio/);
+    assert.match(source, /heroHeadline/);
+    assert.match(source, /heroSubline/);
   });
 });
