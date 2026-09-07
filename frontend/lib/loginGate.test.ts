@@ -223,8 +223,8 @@ describe("login CSS breakpoints", () => {
     const source = readFileSync(messagesPath, "utf8");
     assert.match(source, /IA que te dice qué hacer después con tu correo/);
     assert.match(source, /AI that tells you what to do next with your email/);
-    assert.match(source, /Cargos, pedidos, seguridad y familia/);
-    assert.match(source, /Charges, orders, security, and family/);
+    assert.match(source, /Un enunciado por correo: cargos, pedidos, seguridad, familia/);
+    assert.match(source, /One line per email: charges, orders, security, family/);
   });
 
   it("gives the desktop card more space above the email field", () => {
