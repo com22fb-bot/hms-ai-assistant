@@ -508,7 +508,7 @@ export function LoginScreen({
         confirming || waiting ? "dx-auth dx-auth--confirm" : "dx-auth"
       }
     >
-      <aside className="dx-auth__hero" aria-label="Donexto">
+      <aside className="dx-auth__hero dx-auth__hero--studio" aria-label="Donexto">
         <div className="dx-auth__hero-media" aria-hidden="true">
           <picture>
             <source

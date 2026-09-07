@@ -202,7 +202,11 @@ describe("login CSS breakpoints", () => {
     assert.match(css, /@media \(min-width: 1024px\)[\s\S]*?flex-direction:\s*column/);
     assert.match(
       css,
-      /@media \(min-width: 768px\)[\s\S]*?\.dx-auth__hero\s*\{[\s\S]*?min-height:\s*clamp\(/,
+      /@media \(min-width: 768px\)[\s\S]*?\.dx-auth\s*\{[\s\S]*?overflow:\s*hidden/,
+    );
+    assert.match(
+      css,
+      /@media \(min-width: 768px\)[\s\S]*?\.dx-auth__hero--studio\s*\{[\s\S]*?flex:\s*1 1 0/,
     );
     assert.match(
       css,
@@ -212,6 +216,45 @@ describe("login CSS breakpoints", () => {
       css,
       /filter:\s*brightness\(1\.04\)\s*contrast\(1\.04\)\s*saturate\(1\.05\)/,
     );
+  });
+
+  it("keeps the studio plaque in frame and the slogan off the neon", () => {
+    const css = readFileSync(cssPath, "utf8");
+    assert.match(css, /\.dx-auth__hero--studio \.dx-auth__hero-inner\s*\{[^}]*justify-content:\s*flex-start/);
+    assert.match(
+      css,
+      /@media \(min-width: 768px\) and \(max-height: 800px\)[\s\S]*?\.dx-auth__hero--studio\s*\{[\s\S]*?min-height:\s*12rem/,
+    );
+    assert.doesNotMatch(
+      css,
+      /@media \(min-width: 768px\) and \(max-height: 800px\)[\s\S]*?\.dx-auth__hero--studio\s*\{[\s\S]*?min-height:\s*clamp\(7\.25rem/,
+    );
+    assert.match(
+      css,
+      /@media \(min-width: 1024px\)[\s\S]*?\.dx-auth__hero--studio\s*\{[\s\S]*?min-height:\s*13\.5rem/,
+    );
+    assert.match(
+      css,
+      /@media \(min-width: 768px\)[\s\S]*?\.dx-auth__hero-media img\s*\{[\s\S]*?object-position:\s*50% 50%/,
+    );
+    assert.doesNotMatch(
+      css,
+      /@media \(min-width: 768px\) and \(max-height: 800px\)[\s\S]*?object-position:\s*50% 62%/,
+    );
+  });
+
+  it("locks the 14-inch login to the viewport without panel scroll", () => {
+    const css = readFileSync(cssPath, "utf8");
+    const short = css.match(
+      /@media \(min-width: 768px\) and \(max-height: 800px\)\{[\s\S]*?\n\}/,
+    );
+    const block = short
+      ? short[0]
+      : css.slice(css.indexOf("@media (min-width: 768px) and (max-height: 800px)"));
+    assert.match(block, /overflow:\s*hidden/);
+    assert.match(block, /\.dx-auth__panel\s*\{[\s\S]*?overflow:\s*visible/);
+    assert.match(block, /\.dx-auth__hero--studio \.dx-auth__hero-headline/);
+    assert.doesNotMatch(block, /48dvh|50dvh/);
   });
 
   it("keeps AI as the login hero concept in ES and EN", () => {
@@ -271,5 +314,8 @@ describe("login hero sizes", () => {
     for (const attr of sizes) {
       assert.match(attr, /sizes="100vw"/);
     }
+    assert.match(source, /dx-auth__hero--studio/);
+    assert.match(source, /heroHeadline/);
+    assert.match(source, /heroSubline/);
   });
 });
