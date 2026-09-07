@@ -194,16 +194,37 @@ describe("login CSS breakpoints", () => {
     assert.match(css, /\.dx-lang-strip--gate\.dx-lang-strip--compact\s*\{[^}]*justify-content:\s*flex-end/);
   });
 
-  it("caps tablet/desktop hero near half the viewport, not a full-height split", () => {
+  it("uses a fluid full-desk hero banner, not a half-viewport lock", () => {
     const css = readFileSync(cssPath, "utf8");
-    assert.match(css, /@media \(min-width: 768px\)[\s\S]*?max-height:\s*50dvh/);
-    assert.match(css, /@media \(min-width: 1024px\)[\s\S]*?max-height:\s*50dvh/);
-    assert.match(css, /@media \(min-width: 1024px\)[\s\S]*?flex-direction:\s*column/);
+    assert.doesNotMatch(css, /height:\s*48dvh/);
+    assert.doesNotMatch(css, /max-height:\s*50dvh/);
     assert.doesNotMatch(css, /flex:\s*1 1 58%/);
+    assert.match(css, /@media \(min-width: 1024px\)[\s\S]*?flex-direction:\s*column/);
+    assert.match(
+      css,
+      /@media \(min-width: 768px\)[\s\S]*?\.dx-auth__hero\s*\{[\s\S]*?min-height:\s*clamp\(/,
+    );
+    assert.match(
+      css,
+      /@media \(min-width: 768px\)[\s\S]*?\.dx-auth__panel\s*\{[\s\S]*?overflow:\s*visible/,
+    );
     assert.match(
       css,
       /filter:\s*brightness\(1\.04\)\s*contrast\(1\.04\)\s*saturate\(1\.05\)/,
     );
+  });
+
+  it("keeps AI as the login hero concept in ES and EN", () => {
+    const messagesPath = join(
+      dirname(fileURLToPath(import.meta.url)),
+      "i18n",
+      "loginMessages.ts",
+    );
+    const source = readFileSync(messagesPath, "utf8");
+    assert.match(source, /IA que te dice qué hacer después con tu correo/);
+    assert.match(source, /AI that tells you what to do next with your email/);
+    assert.match(source, /Un enunciado por correo: cargos, pedidos, seguridad, familia/);
+    assert.match(source, /One line per email: charges, orders, security, family/);
   });
 
   it("gives the desktop card more space above the email field", () => {
