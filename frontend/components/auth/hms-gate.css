@@ -1072,14 +1072,6 @@ body:has(.dx-auth) {
   }
 }
 
-/* Laptop bajo: hero un poco menos de la mitad para que la card respire */
-@media (min-width: 768px) and (max-height: 800px) {
-  .dx-auth__hero {
-    height: 44dvh;
-    max-height: 46dvh;
-  }
-}
-
 /* Laptop/desktop — mismo banner ~media pantalla que tablet; card más ancha */
 @media (min-width: 1024px) {
   html:has(.dx-auth),
@@ -1289,6 +1281,15 @@ body:has(.dx-auth) {
 
   .dx-auth__availability {
     margin: 1.15rem 0 1.45rem;
+  }
+}
+
+/* Laptop bajo: gana sobre 1024/1440 para que la card quepa */
+@media (min-width: 768px) and (max-height: 800px) {
+  .dx-auth__hero {
+    height: 42dvh;
+    max-height: 44dvh;
+    min-height: 12rem;
   }
 }
 
