@@ -241,6 +241,14 @@ describe("login CSS breakpoints", () => {
     );
     assert.match(
       css,
+      /@media \(min-width: 768px\)[\s\S]*?\.dx-auth__hero--studio \.dx-auth__hero-media img\s*\{[\s\S]*?object-fit:\s*contain/,
+    );
+    assert.match(
+      css,
+      /@media \(min-width: 1024px\)[\s\S]*?\.dx-auth__hero--studio \.dx-auth__hero-media img\s*\{[\s\S]*?object-fit:\s*contain/,
+    );
+    assert.match(
+      css,
       /@media \(min-width: 768px\)[\s\S]*?\.dx-auth__hero-media img\s*\{[\s\S]*?object-position:\s*50% 50%/,
     );
     assert.doesNotMatch(
@@ -249,11 +257,35 @@ describe("login CSS breakpoints", () => {
     );
   });
 
+  it("shows the full studio photograph with contain on laptop, cover on phone", () => {
+    const css = readFileSync(cssPath, "utf8");
+    const start768 = css.indexOf("@media (min-width: 768px) {");
+    assert.ok(start768 >= 0);
+    const block768 = css.slice(start768, css.indexOf("@media (min-width: 1024px)", start768));
+    assert.match(block768, /\.dx-auth__hero--studio \.dx-auth__hero-media img\s*\{[\s\S]*?object-fit:\s*contain/);
+    assert.match(block768, /\.dx-auth__hero-media img\s*\{[\s\S]*?object-fit:\s*cover/);
+
+    const startShort = css.indexOf("@media (min-width: 768px) and (max-height: 800px)");
+    const short = css.slice(startShort, startShort + 2800);
+    assert.match(
+      short,
+      /\.dx-auth__hero--studio \.dx-auth__hero-headline,\s*\.dx-auth__hero--studio \.dx-auth__hero-subline\s*\{[\s\S]*?display:\s*none/,
+    );
+    assert.match(short, /\.dx-auth__hero--studio \.dx-auth__hero-media img\s*\{[\s\S]*?object-fit:\s*contain/);
+
+    const before768 = css.slice(0, start768);
+    assert.match(before768, /\.dx-auth__hero-media img\s*\{[\s\S]*?object-fit:\s*cover/);
+    assert.doesNotMatch(
+      before768,
+      /\.dx-auth__hero--studio \.dx-auth__hero-media img\s*\{[\s\S]*?object-fit:\s*contain/,
+    );
+  });
+
   it("locks the 14-inch login to the viewport without panel scroll", () => {
     const css = readFileSync(cssPath, "utf8");
     const start = css.indexOf("@media (min-width: 768px) and (max-height: 800px)");
     assert.ok(start >= 0);
-    const block = css.slice(start, start + 2200);
+    const block = css.slice(start, start + 2800);
     assert.match(block, /overflow:\s*hidden/);
     assert.match(block, /\.dx-auth__panel\s*\{[\s\S]*?overflow:\s*visible/);
     assert.match(block, /\.dx-auth__hero--studio \.dx-auth__hero-headline/);

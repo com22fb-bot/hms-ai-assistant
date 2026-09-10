@@ -1,10 +1,12 @@
 /*
   Gate Donexto — columna: banner de estudio + card, sin split lateral.
-  Laptop/tablet (≥768): `.dx-auth__hero--studio` reserva ~42–48dvh (look PR #49)
-  para que la placa neon se lea. El panel llena el resto. Cero scroll de
-  página y de panel: en alto bajo se compacta la card, no se achica el hero.
-  Slogan de IA arriba con velo local (chico en alto ≤800px).
-  No cambiar el sizing del hero en <768 (móvil ya ok).
+  Laptop/tablet (≥768): `.dx-auth__hero--studio` reserva ~42–48dvh y usa
+  object-fit: contain (NO cover) para que se vea la foto completa: cámara,
+  placa Do Next To, base Donexto™, discos, audífonos. Letterbox/pillarbox
+  con el fondo oscuro del hero (sin barras blancas). El panel llena el resto.
+  Cero scroll de página y de panel: en alto bajo se compacta la card.
+  Slogan de IA muy chico arriba; en alto ≤800px se oculta para no tapar la placa.
+  Móvil <768 conserva object-fit: cover (contain se ve peor en banner angosto).
 */
 
 html:has(.dx-auth),
@@ -103,6 +105,7 @@ body:has(.dx-auth) {
   /* Banner móvil/tablet: centro de placa + base Donexto™. */
   object-position: 50% 50%;
   filter: brightness(1.08) contrast(1.05) saturate(1.08);
+  background: transparent;
 }
 
 .dx-auth__hero-scrim {
@@ -140,10 +143,10 @@ body:has(.dx-auth) {
   background:
     linear-gradient(
       180deg,
-      rgba(6, 11, 18, 0.46) 0%,
-      rgba(6, 11, 18, 0.14) 22%,
-      rgba(6, 11, 18, 0) 40%,
-      rgba(6, 11, 18, 0.1) 100%
+      rgba(6, 11, 18, 0.28) 0%,
+      rgba(6, 11, 18, 0.08) 14%,
+      rgba(6, 11, 18, 0) 28%,
+      rgba(6, 11, 18, 0) 100%
     );
 }
 
@@ -159,6 +162,11 @@ body:has(.dx-auth) {
   text-shadow:
     0 1px 10px rgba(6, 11, 18, 0.92),
     0 0 16px rgba(6, 11, 18, 0.55);
+}
+
+.dx-auth__hero--studio .dx-auth__hero-media,
+.dx-auth__hero--studio .dx-auth__hero-media picture {
+  background: transparent;
 }
 
 .dx-auth__hero-headline {
@@ -1070,6 +1078,13 @@ body:has(.dx-auth) {
     object-position: 50% 50%;
   }
 
+  /* Foto completa en laptop/tablet: contain, no recorte. Barras = fondo oscuro. */
+  .dx-auth__hero--studio .dx-auth__hero-media img {
+    object-fit: contain;
+    object-position: 50% 50%;
+    background: transparent;
+  }
+
   .dx-auth__panel {
     flex: 1 1 auto;
     min-height: 0;
@@ -1088,7 +1103,7 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero--studio .dx-auth__hero-headline {
-    font-size: clamp(1.05rem, 1.8vw, 1.35rem);
+    font-size: 0.82rem;
     max-width: 36em;
   }
 
@@ -1097,7 +1112,7 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero--studio .dx-auth__hero-subline {
-    font-size: clamp(0.78rem, 1.2vw, 0.9rem);
+    font-size: 0.7rem;
   }
 
   .dx-auth__heading {
@@ -1178,6 +1193,13 @@ body:has(.dx-auth) {
     filter: brightness(1.04) contrast(1.04) saturate(1.05);
   }
 
+  .dx-auth__hero--studio .dx-auth__hero-media img {
+    object-fit: contain;
+    object-position: 50% 50%;
+    background: transparent;
+    filter: brightness(1.04) contrast(1.04) saturate(1.05);
+  }
+
   .dx-auth__hero-scrim {
     background:
       linear-gradient(
@@ -1192,10 +1214,10 @@ body:has(.dx-auth) {
     background:
       linear-gradient(
         180deg,
-        rgba(6, 11, 18, 0.5) 0%,
-        rgba(6, 11, 18, 0.16) 18%,
-        rgba(6, 11, 18, 0) 36%,
-        rgba(6, 11, 18, 0.08) 100%
+        rgba(6, 11, 18, 0.32) 0%,
+        rgba(6, 11, 18, 0.08) 12%,
+        rgba(6, 11, 18, 0) 24%,
+        rgba(6, 11, 18, 0) 100%
       );
   }
 
@@ -1222,7 +1244,8 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero--studio .dx-auth__hero-headline {
-    font-size: clamp(1.02rem, 1.5vw, 1.28rem);
+    font-size: 0.78rem;
+    line-height: 1.25;
     max-width: 36em;
   }
 
@@ -1232,7 +1255,7 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero--studio .dx-auth__hero-subline {
-    font-size: clamp(0.76rem, 0.95vw, 0.88rem);
+    font-size: 0.68rem;
   }
 
   .dx-auth__panel {
@@ -1370,6 +1393,12 @@ body:has(.dx-auth) {
     filter: brightness(1.04) contrast(1.04) saturate(1.05);
   }
 
+  .dx-auth__hero--studio .dx-auth__hero-media img {
+    object-fit: contain;
+    object-position: 50% 50%;
+    background: transparent;
+  }
+
   .dx-auth__panel {
     width: 100%;
     max-width: none;
@@ -1431,27 +1460,25 @@ body:has(.dx-auth) {
     object-position: 50% 50%;
   }
 
+  .dx-auth__hero--studio .dx-auth__hero-media img {
+    object-fit: contain;
+    object-position: 50% 50%;
+    background: transparent;
+  }
+
   .dx-auth__hero--studio .dx-auth__hero-inner {
     justify-content: flex-start;
     min-height: 0;
-    padding-top: 0.1rem;
+    padding-top: 0;
   }
 
-  .dx-auth__hero--studio .dx-auth__hero-headline {
-    font-size: 0.98rem;
-    line-height: 1.2;
-    max-width: 36em;
+  .dx-auth__hero--studio .dx-auth__hero-headline,
+  .dx-auth__hero--studio .dx-auth__hero-subline {
+    display: none;
   }
 
   .dx-auth__hero--studio .dx-auth__hero-scrim {
-    background:
-      linear-gradient(
-        180deg,
-        rgba(6, 11, 18, 0.42) 0%,
-        rgba(6, 11, 18, 0.1) 16%,
-        rgba(6, 11, 18, 0) 32%,
-        rgba(6, 11, 18, 0.06) 100%
-      );
+    background: transparent;
   }
 
   .dx-auth__hero-subline {
