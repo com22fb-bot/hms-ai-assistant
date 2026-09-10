@@ -514,13 +514,13 @@ export function LoginScreen({
             <source
               type="image/webp"
               srcSet="/brand/donexto-login-hero-studio-1280.webp 1280w, /brand/donexto-login-hero-studio-1920.webp 1920w, /brand/donexto-login-hero-studio-2560.webp 2560w"
-              sizes="100vw"
+              sizes="(min-width: 768px) 50vw, 100vw"
             />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/brand/donexto-login-hero-studio.jpg"
               srcSet="/brand/donexto-login-hero-studio-1280.jpg 1280w, /brand/donexto-login-hero-studio.jpg 1920w, /brand/donexto-login-hero-studio-2560.jpg 2560w"
-              sizes="100vw"
+              sizes="(min-width: 768px) 50vw, 100vw"
               width={2560}
               height={1428}
               alt=""
