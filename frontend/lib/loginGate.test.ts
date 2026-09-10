@@ -194,10 +194,8 @@ describe("login CSS breakpoints", () => {
     assert.match(css, /\.dx-lang-strip--gate\.dx-lang-strip--compact\s*\{[^}]*justify-content:\s*flex-end/);
   });
 
-  it("uses a fluid full-desk hero banner, not a half-viewport lock", () => {
+  it("gives the studio hero a ~half-screen share without a side split", () => {
     const css = readFileSync(cssPath, "utf8");
-    assert.doesNotMatch(css, /height:\s*48dvh/);
-    assert.doesNotMatch(css, /max-height:\s*50dvh/);
     assert.doesNotMatch(css, /flex:\s*1 1 58%/);
     assert.match(css, /@media \(min-width: 1024px\)[\s\S]*?flex-direction:\s*column/);
     assert.match(
@@ -206,7 +204,11 @@ describe("login CSS breakpoints", () => {
     );
     assert.match(
       css,
-      /@media \(min-width: 768px\)[\s\S]*?\.dx-auth__hero--studio\s*\{[\s\S]*?flex:\s*1 1 0/,
+      /@media \(min-width: 768px\)[\s\S]*?\.dx-auth__hero--studio\s*\{[\s\S]*?flex:\s*0 0 46dvh/,
+    );
+    assert.match(
+      css,
+      /@media \(min-width: 768px\)[\s\S]*?\.dx-auth__hero--studio\s*\{[\s\S]*?height:\s*46dvh/,
     );
     assert.match(
       css,
@@ -221,6 +223,10 @@ describe("login CSS breakpoints", () => {
   it("keeps the studio plaque in frame and the slogan off the neon", () => {
     const css = readFileSync(cssPath, "utf8");
     assert.match(css, /\.dx-auth__hero--studio \.dx-auth__hero-inner\s*\{[^}]*justify-content:\s*flex-start/);
+    assert.match(
+      css,
+      /@media \(min-width: 768px\) and \(max-height: 800px\)[\s\S]*?\.dx-auth__hero--studio\s*\{[\s\S]*?height:\s*42dvh/,
+    );
     assert.match(
       css,
       /@media \(min-width: 768px\) and \(max-height: 800px\)[\s\S]*?\.dx-auth__hero--studio\s*\{[\s\S]*?min-height:\s*12rem/,
@@ -245,15 +251,13 @@ describe("login CSS breakpoints", () => {
 
   it("locks the 14-inch login to the viewport without panel scroll", () => {
     const css = readFileSync(cssPath, "utf8");
-    const short = css.match(
-      /@media \(min-width: 768px\) and \(max-height: 800px\)\{[\s\S]*?\n\}/,
-    );
-    const block = short
-      ? short[0]
-      : css.slice(css.indexOf("@media (min-width: 768px) and (max-height: 800px)"));
+    const start = css.indexOf("@media (min-width: 768px) and (max-height: 800px)");
+    assert.ok(start >= 0);
+    const block = css.slice(start, start + 2200);
     assert.match(block, /overflow:\s*hidden/);
     assert.match(block, /\.dx-auth__panel\s*\{[\s\S]*?overflow:\s*visible/);
     assert.match(block, /\.dx-auth__hero--studio \.dx-auth__hero-headline/);
+    assert.match(block, /height:\s*42dvh/);
     assert.doesNotMatch(block, /48dvh|50dvh/);
   });
 
@@ -270,15 +274,15 @@ describe("login CSS breakpoints", () => {
     assert.match(source, /One line per email: charges, orders, security, family/);
   });
 
-  it("gives the desktop card more space above the email field", () => {
+  it("compacts the desktop card so Continuar stays on-screen under a ~half hero", () => {
     const css = readFileSync(cssPath, "utf8");
     assert.match(
       css,
-      /@media \(min-width: 1024px\)[\s\S]*?\.dx-auth__availability\s*\{[^}]*margin:\s*1\.05rem 0 1\.35rem/,
+      /@media \(min-width: 1024px\)[\s\S]*?\.dx-auth__availability\s*\{[^}]*margin:\s*0\.35rem 0 0\.45rem/,
     );
     assert.match(
       css,
-      /@media \(min-width: 1024px\)[\s\S]*?\.dx-auth__card\s*\{[^}]*padding:\s*1\.85rem 1\.75rem 1\.65rem/,
+      /@media \(min-width: 1024px\)[\s\S]*?\.dx-auth__card\s*\{[^}]*padding:\s*0\.95rem 1\.35rem 0\.85rem/,
     );
   });
 
