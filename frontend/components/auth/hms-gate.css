@@ -1,10 +1,10 @@
 /*
   Gate Donexto — login clásico.
   Móvil <768: columna (foto arriba, card abajo). object-fit: cover.
-  Laptop/tablet ≥768: split horizontal. Foto estudio IZQUIERDA (~62–68% ancho,
-  100dvh) — la foto domina. Panel DERECHA (~32–38%) con card de login tamaño
-  normal (contenido, no estirada a lo alto/ancho de la columna). Card centrada
-  en la franja; footer al pie. object-fit: cover + position 50% 50% para que
+  Laptop/tablet ≥768: split horizontal clásico ~50/50. Foto estudio IZQUIERDA
+  (50% ancho, 100dvh). Panel DERECHA (50%) con card de login tamaño normal
+  (~28–32rem, contenido — no full-bleed ni franja estrecha). Card centrada
+  en el panel; footer al pie. object-fit: cover + position 50% 50% para que
   la placa neon "Do Next To" se lea.
   Cero scroll de página: overflow hidden; en alto bajo se compacta la card.
   En el split, copy blanco compacto arriba a la izquierda (no tapa la placa neon).
@@ -1078,10 +1078,10 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__hero--studio {
-    flex: 0 0 62%;
+    flex: 0 0 50%;
     flex-shrink: 0;
-    width: 62%;
-    max-width: 68%;
+    width: 50%;
+    max-width: 50%;
     height: 100%;
     min-height: 0;
     max-height: none;
@@ -1150,8 +1150,8 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__panel {
-    flex: 1 1 38%;
-    width: 38%;
+    flex: 1 1 50%;
+    width: 50%;
     min-width: 0;
     height: 100%;
     overflow: hidden;
@@ -1159,7 +1159,7 @@ body:has(.dx-auth) {
     justify-content: center;
     align-items: center;
     gap: 0.55rem;
-    padding: 0.75rem 0.85rem 2.1rem;
+    padding: 0.85rem 1.15rem 2.1rem;
   }
 
   .dx-auth__hero-inner {
@@ -1201,7 +1201,7 @@ body:has(.dx-auth) {
     width: min(100%, 28rem);
     max-width: 28rem;
     flex: 0 0 auto;
-    padding: 0.95rem 1.2rem 0.85rem;
+    padding: 1rem 1.25rem 0.9rem;
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__footer {
@@ -1214,7 +1214,7 @@ body:has(.dx-auth) {
   }
 }
 
-/* Laptop/desktop — foto ~66%; card normal centrada para que Continuar quepa */
+/* Laptop/desktop — split 50/50; card normal centrada para que Continuar quepa */
 @media (min-width: 1024px) {
   html:has(.dx-auth),
   body:has(.dx-auth) {
@@ -1257,10 +1257,10 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__hero--studio {
-    flex: 0 0 66%;
+    flex: 0 0 50%;
     flex-shrink: 0;
-    width: 66%;
-    max-width: 70%;
+    width: 50%;
+    max-width: 50%;
     height: 100%;
     min-height: 0;
     max-height: none;
@@ -1368,8 +1368,8 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__panel {
-    flex: 1 1 34%;
-    width: 34%;
+    flex: 1 1 50%;
+    width: 50%;
     min-width: 0;
     height: 100%;
     overflow: hidden;
@@ -1377,7 +1377,7 @@ body:has(.dx-auth) {
     justify-content: center;
     align-items: center;
     gap: 0.55rem;
-    padding: 0.75rem 1rem 2.15rem;
+    padding: 0.9rem 1.35rem 2.15rem;
   }
 
   .dx-auth__card {
@@ -1387,11 +1387,11 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
-    width: min(100%, 28rem);
-    max-width: 28rem;
+    width: min(100%, 30rem);
+    max-width: 30rem;
     flex: 0 0 auto;
     flex-shrink: 0;
-    padding: 1rem 1.35rem 0.85rem;
+    padding: 1.05rem 1.45rem 0.95rem;
   }
 
   .dx-auth__heading {
@@ -1487,7 +1487,7 @@ body:has(.dx-auth) {
   }
 }
 
-/* Desktop ancho — foto ~68%; card normal un poco más ancha */
+/* Desktop ancho — split 50/50; card normal un poco más ancha */
 @media (min-width: 1440px) {
   .dx-auth__hero {
     min-height: clamp(14rem, 32dvh, 24rem);
@@ -1496,9 +1496,9 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__hero--studio {
-    flex: 0 0 68%;
-    width: 68%;
-    max-width: 72%;
+    flex: 0 0 50%;
+    width: 50%;
+    max-width: 50%;
     height: 100%;
     min-height: 0;
     max-height: none;
@@ -1522,15 +1522,15 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__panel {
-    flex: 1 1 32%;
-    width: 32%;
+    flex: 1 1 50%;
+    width: 50%;
     height: 100%;
     overflow: hidden;
     position: relative;
     justify-content: center;
     align-items: center;
     gap: 0.55rem;
-    padding: 0.85rem 1.1rem 2.2rem;
+    padding: 1rem 1.5rem 2.2rem;
   }
 
   .dx-auth__hero-inner {
@@ -1543,8 +1543,8 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
-    width: min(100%, 30rem);
-    max-width: 30rem;
+    width: min(100%, 32rem);
+    max-width: 32rem;
     flex: 0 0 auto;
   }
 
@@ -1587,10 +1587,10 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__hero--studio {
-    flex: 0 0 64%;
+    flex: 0 0 50%;
     flex-shrink: 0;
-    width: 64%;
-    max-width: 68%;
+    width: 50%;
+    max-width: 50%;
     height: 100%;
     min-height: 0;
     max-height: none;
@@ -1665,8 +1665,8 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__panel {
-    flex: 1 1 36%;
-    width: 36%;
+    flex: 1 1 50%;
+    width: 50%;
     min-width: 0;
     height: 100%;
     overflow: hidden;
@@ -1674,7 +1674,7 @@ body:has(.dx-auth) {
     justify-content: center;
     align-items: center;
     gap: 0.3rem;
-    padding: 0.4rem 0.7rem 1.7rem;
+    padding: 0.45rem 1.1rem 1.7rem;
   }
 
   .dx-auth__card {
@@ -1682,10 +1682,10 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
-    width: min(100%, 26rem);
-    max-width: 26rem;
+    width: min(100%, 28rem);
+    max-width: 28rem;
     flex: 0 0 auto;
-    padding: 0.55rem 0.95rem 0.5rem;
+    padding: 0.6rem 1.15rem 0.55rem;
   }
 
   .dx-lang-strip-host--gate {
