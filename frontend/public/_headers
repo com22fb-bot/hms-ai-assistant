@@ -1,4 +1,11 @@
 # https://developers.cloudflare.com/workers/static-assets/headers
 # https://opennext.js.org/cloudflare/caching#static-assets-caching
+#
+# The Worker does not run in front of Static Assets. HTML / RSC for `/` and
+# `/admin` are served by OpenNext (Next server), not this file. Those documents
+# must not use a year-long CDN TTL — see `app/layout.tsx` (`force-dynamic`)
+# and `next.config.ts` headers.
+#
+# Last matching rule wins. Keep the hashed-chunk rule after any document rules.
 /_next/static/*
   Cache-Control: public,max-age=31536000,immutable

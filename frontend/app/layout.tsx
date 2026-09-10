@@ -17,6 +17,13 @@ const hmsDisplay = Fraunces({
   display: "swap",
 });
 
+// App documents (login `/`, `/admin`, RSC navigations) change every deploy and
+// reference hashed `/_next/static/*` chunks. Next.js SSG would emit
+// `Cache-Control: s-maxage=31536000`, so Cloudflare keeps serving old HTML.
+// Request-time rendering makes Next send `private, no-cache, no-store`.
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   title: "Donexto — Do Next To…",
