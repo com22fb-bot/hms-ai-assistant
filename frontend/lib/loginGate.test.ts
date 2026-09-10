@@ -312,6 +312,53 @@ describe("login CSS breakpoints", () => {
     );
   });
 
+  it("fills the studio right column with the login card instead of a floating island", () => {
+    const css = readFileSync(cssPath, "utf8");
+    const start768 = css.indexOf("@media (min-width: 768px) {");
+    assert.ok(start768 >= 0);
+    const block768 = css.slice(start768, css.indexOf("@media (min-width: 1024px)", start768));
+    assert.match(
+      block768,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__panel\s*\{[\s\S]*?align-items:\s*stretch/,
+    );
+    assert.match(
+      block768,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__panel\s*\{[\s\S]*?padding:\s*0\.4rem 0\.45rem/,
+    );
+    assert.match(
+      block768,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[\s\S]*?width:\s*100%/,
+    );
+    assert.match(
+      block768,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[\s\S]*?flex:\s*1 1 auto/,
+    );
+    assert.match(
+      block768,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__legal-agree\s*\{[\s\S]*?margin-top:\s*auto/,
+    );
+    assert.doesNotMatch(
+      block768,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[\s\S]*?width:\s*min\(100%, 28rem\)/,
+    );
+
+    const start1024 = css.indexOf("@media (min-width: 1024px) {");
+    assert.ok(start1024 >= 0);
+    const block1024 = css.slice(start1024, css.indexOf("@media (min-width: 1440px)", start1024));
+    assert.match(
+      block1024,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__panel\s*\{[\s\S]*?align-items:\s*stretch/,
+    );
+    assert.match(
+      block1024,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[\s\S]*?width:\s*100%/,
+    );
+    assert.doesNotMatch(
+      block1024,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__panel\s*\{[\s\S]*?justify-content:\s*center/,
+    );
+  });
+
   it("keeps the compact gate language strip small and right-aligned", () => {
     const css = readFileSync(cssPath, "utf8");
     assert.match(
