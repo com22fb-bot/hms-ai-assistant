@@ -5,6 +5,8 @@
   100dvh). Panel/card DERECHA (~52%). object-fit: cover + position 50% 50%
   para que la placa neon "Do Next To" se lea (la columna es más alta que
   ancha: se recortan lados, no techo ni escritorio).
+  La card llena casi toda la columna derecha (ancho + alto); gutters negros
+  mínimos; footer al pie de la card/columna. Columnas a tope, sin franja negra.
   Cero scroll de página: overflow hidden; en alto bajo se compacta la card.
   En el split, copy blanco compacto arriba a la izquierda (no tapa la placa neon).
   ConfirmEmailGate (hero sin --studio) sigue en columna.
@@ -1154,9 +1156,10 @@ body:has(.dx-auth) {
     min-width: 0;
     height: 100%;
     overflow: hidden;
-    justify-content: center;
-    align-items: center;
-    padding: 0.65rem 1.1rem max(0.65rem, env(safe-area-inset-bottom));
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 0.32rem;
+    padding: 0.4rem 0.45rem max(0.4rem, env(safe-area-inset-bottom));
   }
 
   .dx-auth__hero-inner {
@@ -1195,8 +1198,22 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
-    width: min(100%, 28rem);
-    padding: 0.95rem 1.2rem 0.85rem;
+    width: 100%;
+    max-width: none;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0.95rem 1.15rem 0.75rem;
+  }
+
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__legal-agree {
+    margin-top: auto;
+  }
+
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__footer {
+    flex-shrink: 0;
+    width: 100%;
   }
 }
 
@@ -1359,17 +1376,30 @@ body:has(.dx-auth) {
     min-width: 0;
     height: 100%;
     overflow: hidden;
-    justify-content: center;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 0.3rem;
     padding:
-      0.55rem
-      clamp(1.1rem, 2.2vw, 1.85rem)
-      max(0.55rem, env(safe-area-inset-bottom));
+      0.4rem
+      0.5rem
+      max(0.4rem, env(safe-area-inset-bottom));
   }
 
   .dx-auth__card {
     width: min(100%, 30rem);
     flex-shrink: 0;
     padding: 0.95rem 1.35rem 0.85rem;
+  }
+
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
+    width: 100%;
+    max-width: none;
+    flex: 1 1 auto;
+    flex-shrink: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 1rem 1.35rem 0.85rem;
   }
 
   .dx-auth__heading {
@@ -1504,8 +1534,10 @@ body:has(.dx-auth) {
     width: 50%;
     height: 100%;
     overflow: hidden;
-    justify-content: center;
-    padding-top: 0.75rem;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 0.35rem;
+    padding: 0.5rem 0.55rem max(0.45rem, env(safe-area-inset-bottom));
   }
 
   .dx-auth__hero-inner {
@@ -1518,7 +1550,12 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
-    width: min(100%, 30rem);
+    width: 100%;
+    max-width: none;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 
   .dx-auth__heading {
@@ -1643,12 +1680,24 @@ body:has(.dx-auth) {
     min-width: 0;
     height: 100%;
     overflow: hidden;
-    justify-content: center;
-    padding: 0.4rem 0.9rem 0.4rem;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 0.2rem;
+    padding: 0.28rem 0.38rem 0.28rem;
   }
 
   .dx-auth__card {
     padding: 0.55rem 1.05rem 0.5rem;
+  }
+
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
+    width: 100%;
+    max-width: none;
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0.55rem 0.9rem 0.45rem;
   }
 
   .dx-lang-strip-host--gate {
