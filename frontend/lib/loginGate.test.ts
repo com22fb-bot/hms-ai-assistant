@@ -206,11 +206,11 @@ describe("login CSS breakpoints", () => {
     );
     assert.match(
       css,
-      /@media \(min-width: 768px\)[\s\S]*?\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__hero--studio\s*\{[\s\S]*?flex:\s*0 0 48%/,
+      /@media \(min-width: 768px\)[\s\S]*?\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__hero--studio\s*\{[\s\S]*?flex:\s*0 0 62%/,
     );
     assert.match(
       css,
-      /@media \(min-width: 768px\)[\s\S]*?\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__panel\s*\{[\s\S]*?flex:\s*1 1 52%/,
+      /@media \(min-width: 768px\)[\s\S]*?\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__panel\s*\{[\s\S]*?flex:\s*1 1 38%/,
     );
     assert.match(
       css,
@@ -282,7 +282,7 @@ describe("login CSS breakpoints", () => {
     const block = css.slice(start, start + 3200);
     assert.match(block, /overflow:\s*hidden/);
     assert.match(block, /flex-direction:\s*row/);
-    assert.match(block, /flex:\s*0 0 46%/);
+    assert.match(block, /flex:\s*0 0 64%/);
     assert.match(block, /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__panel\s*\{[\s\S]*?overflow:\s*hidden/);
     assert.doesNotMatch(block, /42dvh|46dvh|48dvh/);
   });
@@ -312,34 +312,38 @@ describe("login CSS breakpoints", () => {
     );
   });
 
-  it("fills the studio right column with the login card instead of a floating island", () => {
+  it("lets the studio photo dominate and keeps a content-sized login card", () => {
     const css = readFileSync(cssPath, "utf8");
     const start768 = css.indexOf("@media (min-width: 768px) {");
     assert.ok(start768 >= 0);
     const block768 = css.slice(start768, css.indexOf("@media (min-width: 1024px)", start768));
     assert.match(
       block768,
-      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__panel\s*\{[\s\S]*?align-items:\s*stretch/,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__hero--studio\s*\{[\s\S]*?flex:\s*0 0 62%/,
     );
     assert.match(
       block768,
-      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__panel\s*\{[\s\S]*?padding:\s*0\.4rem 0\.45rem/,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__panel\s*\{[\s\S]*?justify-content:\s*center/,
     );
     assert.match(
       block768,
-      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[\s\S]*?width:\s*100%/,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__panel\s*\{[\s\S]*?align-items:\s*center/,
     );
     assert.match(
       block768,
-      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[\s\S]*?flex:\s*1 1 auto/,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[\s\S]*?width:\s*min\(100%, 28rem\)/,
     );
     assert.match(
       block768,
-      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__legal-agree\s*\{[\s\S]*?margin-top:\s*auto/,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[\s\S]*?flex:\s*0 0 auto/,
     );
     assert.doesNotMatch(
       block768,
-      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[\s\S]*?width:\s*min\(100%, 28rem\)/,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[\s\S]*?flex:\s*1 1 auto/,
+    );
+    assert.doesNotMatch(
+      block768,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[^}]*width:\s*100%/,
     );
 
     const start1024 = css.indexOf("@media (min-width: 1024px) {");
@@ -347,15 +351,23 @@ describe("login CSS breakpoints", () => {
     const block1024 = css.slice(start1024, css.indexOf("@media (min-width: 1440px)", start1024));
     assert.match(
       block1024,
-      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__panel\s*\{[\s\S]*?align-items:\s*stretch/,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__hero--studio\s*\{[\s\S]*?flex:\s*0 0 66%/,
     );
     assert.match(
       block1024,
-      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[\s\S]*?width:\s*100%/,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__panel\s*\{[\s\S]*?justify-content:\s*center/,
+    );
+    assert.match(
+      block1024,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[\s\S]*?width:\s*min\(100%, 28rem\)/,
     );
     assert.doesNotMatch(
       block1024,
-      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__panel\s*\{[\s\S]*?justify-content:\s*center/,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[\s\S]*?flex:\s*1 1 auto/,
+    );
+    assert.doesNotMatch(
+      block1024,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__panel\s*\{[\s\S]*?align-items:\s*stretch/,
     );
   });
 
