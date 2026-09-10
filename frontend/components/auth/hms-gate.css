@@ -1,12 +1,12 @@
 /*
-  Gate Donexto — columna: banner de estudio + card, sin split lateral.
-  Laptop/tablet (≥768): `.dx-auth__hero--studio` reserva ~42–48dvh y usa
-  object-fit: contain (NO cover) para que se vea la foto completa: cámara,
-  placa Do Next To, base Donexto™, discos, audífonos. Letterbox/pillarbox
-  con el fondo oscuro del hero (sin barras blancas). El panel llena el resto.
-  Cero scroll de página y de panel: en alto bajo se compacta la card.
-  Slogan de IA muy chico arriba; en alto ≤800px se oculta para no tapar la placa.
-  Móvil <768 conserva object-fit: cover (contain se ve peor en banner angosto).
+  Gate Donexto — login clásico.
+  Móvil <768: columna (foto arriba, card abajo). object-fit: cover.
+  Laptop/tablet ≥768: split horizontal. Foto estudio IZQUIERDA (~48% ancho,
+  100dvh). Panel/card DERECHA (~52%). object-fit: cover + position 50% 50%
+  para que la placa neon "Do Next To" se lea (la columna es más alta que
+  ancha: se recortan lados, no techo ni escritorio).
+  Cero scroll de página: overflow hidden; en alto bajo se compacta la card.
+  ConfirmEmailGate (hero sin --studio) sigue en columna.
 */
 
 html:has(.dx-auth),
@@ -1034,7 +1034,7 @@ body:has(.dx-auth) {
   }
 }
 
-/* 10" tablet — columna; studio ~media pantalla; panel llena el resto sin scroll */
+/* 10" tablet+ — split: foto izquierda, form derecha. ConfirmEmailGate sigue columna. */
 @media (min-width: 768px) {
   html:has(.dx-auth),
   body:has(.dx-auth) {
@@ -1054,6 +1054,11 @@ body:has(.dx-auth) {
     padding-bottom: 0;
   }
 
+  .dx-auth:has(> .dx-auth__hero--studio) {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
   .dx-auth__hero {
     flex: 1 1 0;
     flex-shrink: 1;
@@ -1064,13 +1069,15 @@ body:has(.dx-auth) {
     padding: 1.15rem 2rem 1.35rem;
   }
 
-  .dx-auth__hero--studio {
-    flex: 0 0 46dvh;
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__hero--studio {
+    flex: 0 0 48%;
     flex-shrink: 0;
-    height: 46dvh;
-    min-height: 13rem;
-    max-height: 48dvh;
-    padding: 0.55rem 2rem 0.65rem;
+    width: 48%;
+    max-width: 50%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    padding: 0;
   }
 
   .dx-auth__hero-media img {
@@ -1078,11 +1085,23 @@ body:has(.dx-auth) {
     object-position: 50% 50%;
   }
 
-  /* Foto completa en laptop/tablet: contain, no recorte. Barras = fondo oscuro. */
   .dx-auth__hero--studio .dx-auth__hero-media img {
-    object-fit: contain;
+    object-fit: cover;
     object-position: 50% 50%;
-    background: transparent;
+  }
+
+  .dx-auth__hero--studio .dx-auth__hero-headline,
+  .dx-auth__hero--studio .dx-auth__hero-subline {
+    display: none;
+  }
+
+  .dx-auth__hero--studio .dx-auth__hero-scrim {
+    background: linear-gradient(
+      90deg,
+      rgba(6, 11, 18, 0) 0%,
+      rgba(6, 11, 18, 0) 72%,
+      rgba(7, 13, 18, 0.28) 100%
+    );
   }
 
   .dx-auth__panel {
@@ -1091,6 +1110,17 @@ body:has(.dx-auth) {
     overflow: visible;
     justify-content: flex-start;
     padding: 0.55rem 1.5rem max(0.7rem, env(safe-area-inset-bottom));
+  }
+
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__panel {
+    flex: 1 1 52%;
+    width: 52%;
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+    justify-content: center;
+    align-items: center;
+    padding: 0.65rem 1.1rem max(0.65rem, env(safe-area-inset-bottom));
   }
 
   .dx-auth__hero-inner {
@@ -1102,17 +1132,8 @@ body:has(.dx-auth) {
     max-width: 22em;
   }
 
-  .dx-auth__hero--studio .dx-auth__hero-headline {
-    font-size: 0.82rem;
-    max-width: 36em;
-  }
-
   .dx-auth__hero-subline {
     font-size: clamp(0.88rem, 1.5vw, 1rem);
-  }
-
-  .dx-auth__hero--studio .dx-auth__hero-subline {
-    font-size: 0.7rem;
   }
 
   .dx-auth__heading {
@@ -1136,9 +1157,14 @@ body:has(.dx-auth) {
     width: min(100%, 32rem);
     padding: 1.1rem 1.35rem 1rem;
   }
+
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
+    width: min(100%, 28rem);
+    padding: 0.95rem 1.2rem 0.85rem;
+  }
 }
 
-/* Laptop/desktop — studio ~media pantalla; card compacta para que Continuar quepa */
+/* Laptop/desktop — split 48/52; card compacta para que Continuar quepa */
 @media (min-width: 1024px) {
   html:has(.dx-auth),
   body:has(.dx-auth) {
@@ -1160,6 +1186,11 @@ body:has(.dx-auth) {
     padding-bottom: 0;
   }
 
+  .dx-auth:has(> .dx-auth__hero--studio) {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
   .dx-auth__hero {
     flex: 1 1 0;
     flex-shrink: 1;
@@ -1175,16 +1206,15 @@ body:has(.dx-auth) {
     text-align: center;
   }
 
-  .dx-auth__hero--studio {
-    flex: 0 0 46dvh;
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__hero--studio {
+    flex: 0 0 48%;
     flex-shrink: 0;
-    height: 46dvh;
-    min-height: 13.5rem;
-    max-height: 48dvh;
-    padding:
-      max(0.45rem, env(safe-area-inset-top))
-      clamp(1.5rem, 3vw, 2.5rem)
-      0.5rem;
+    width: 48%;
+    max-width: 50%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    padding: 0;
   }
 
   .dx-auth__hero-media img {
@@ -1194,9 +1224,8 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero--studio .dx-auth__hero-media img {
-    object-fit: contain;
+    object-fit: cover;
     object-position: 50% 50%;
-    background: transparent;
     filter: brightness(1.04) contrast(1.04) saturate(1.05);
   }
 
@@ -1211,14 +1240,12 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero--studio .dx-auth__hero-scrim {
-    background:
-      linear-gradient(
-        180deg,
-        rgba(6, 11, 18, 0.32) 0%,
-        rgba(6, 11, 18, 0.08) 12%,
-        rgba(6, 11, 18, 0) 24%,
-        rgba(6, 11, 18, 0) 100%
-      );
+    background: linear-gradient(
+      90deg,
+      rgba(6, 11, 18, 0) 0%,
+      rgba(6, 11, 18, 0) 72%,
+      rgba(7, 13, 18, 0.28) 100%
+    );
   }
 
   .dx-auth__hero-inner {
@@ -1234,8 +1261,12 @@ body:has(.dx-auth) {
   .dx-auth__hero--studio .dx-auth__hero-inner {
     justify-content: flex-start;
     min-height: 0;
-    width: min(100%, 40rem);
-    padding-top: 0.1rem;
+    padding-top: 0;
+  }
+
+  .dx-auth__hero--studio .dx-auth__hero-headline,
+  .dx-auth__hero--studio .dx-auth__hero-subline {
+    display: none;
   }
 
   .dx-auth__hero-headline {
@@ -1243,19 +1274,9 @@ body:has(.dx-auth) {
     max-width: 22em;
   }
 
-  .dx-auth__hero--studio .dx-auth__hero-headline {
-    font-size: 0.78rem;
-    line-height: 1.25;
-    max-width: 36em;
-  }
-
   .dx-auth__hero-subline {
     font-size: clamp(0.88rem, 1.1vw, 1.02rem);
     max-width: 28em;
-  }
-
-  .dx-auth__hero--studio .dx-auth__hero-subline {
-    font-size: 0.68rem;
   }
 
   .dx-auth__panel {
@@ -1270,6 +1291,19 @@ body:has(.dx-auth) {
     padding:
       0.45rem
       clamp(1.5rem, 3vw, 2.5rem)
+      max(0.55rem, env(safe-area-inset-bottom));
+  }
+
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__panel {
+    flex: 1 1 52%;
+    width: 52%;
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+    justify-content: center;
+    padding:
+      0.55rem
+      clamp(1.1rem, 2.2vw, 1.85rem)
       max(0.55rem, env(safe-area-inset-bottom));
   }
 
@@ -1372,7 +1406,7 @@ body:has(.dx-auth) {
   }
 }
 
-/* Desktop ancho — studio ~media pantalla; card un poco más ancha */
+/* Desktop ancho — split 50/50, card un poco más ancha */
 @media (min-width: 1440px) {
   .dx-auth__hero {
     min-height: clamp(14rem, 32dvh, 24rem);
@@ -1380,12 +1414,14 @@ body:has(.dx-auth) {
     height: auto;
   }
 
-  .dx-auth__hero--studio {
-    flex: 0 0 48dvh;
-    flex-shrink: 0;
-    height: 48dvh;
-    min-height: 16rem;
-    max-height: 50dvh;
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__hero--studio {
+    flex: 0 0 50%;
+    width: 50%;
+    max-width: 50%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    padding: 0;
   }
 
   .dx-auth__hero-media img {
@@ -1394,15 +1430,23 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero--studio .dx-auth__hero-media img {
-    object-fit: contain;
+    object-fit: cover;
     object-position: 50% 50%;
-    background: transparent;
   }
 
   .dx-auth__panel {
     width: 100%;
     max-width: none;
     padding-top: 0.65rem;
+  }
+
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__panel {
+    flex: 1 1 50%;
+    width: 50%;
+    height: 100%;
+    overflow: hidden;
+    justify-content: center;
+    padding-top: 0.75rem;
   }
 
   .dx-auth__hero-inner {
@@ -1414,6 +1458,10 @@ body:has(.dx-auth) {
     padding: 1.15rem 1.55rem 1rem;
   }
 
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
+    width: min(100%, 30rem);
+  }
+
   .dx-auth__heading {
     margin-bottom: 0.5rem;
   }
@@ -1423,7 +1471,7 @@ body:has(.dx-auth) {
   }
 }
 
-/* 14" / tablet landscape: studio 42dvh (PR #49); card extra compacta. Cero scroll. */
+/* 14" / tablet landscape: split se mantiene; card extra compacta. Cero scroll. */
 @media (min-width: 768px) and (max-height: 800px) {
   html:has(.dx-auth),
   body:has(.dx-auth) {
@@ -1439,6 +1487,11 @@ body:has(.dx-auth) {
     overflow: hidden;
   }
 
+  .dx-auth:has(> .dx-auth__hero--studio) {
+    flex-direction: row;
+    align-items: stretch;
+  }
+
   .dx-auth__hero {
     flex: 1 1 0;
     height: auto;
@@ -1447,13 +1500,15 @@ body:has(.dx-auth) {
     padding: 0.4rem 1.25rem 0.45rem;
   }
 
-  .dx-auth__hero--studio {
-    flex: 0 0 42dvh;
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__hero--studio {
+    flex: 0 0 46%;
     flex-shrink: 0;
-    height: 42dvh;
-    min-height: 12rem;
-    max-height: 44dvh;
-    padding: 0.22rem 1.25rem 0.28rem;
+    width: 46%;
+    max-width: 50%;
+    height: 100%;
+    min-height: 0;
+    max-height: none;
+    padding: 0;
   }
 
   .dx-auth__hero-media img {
@@ -1461,9 +1516,8 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero--studio .dx-auth__hero-media img {
-    object-fit: contain;
+    object-fit: cover;
     object-position: 50% 50%;
-    background: transparent;
   }
 
   .dx-auth__hero--studio .dx-auth__hero-inner {
@@ -1478,7 +1532,12 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero--studio .dx-auth__hero-scrim {
-    background: transparent;
+    background: linear-gradient(
+      90deg,
+      rgba(6, 11, 18, 0) 0%,
+      rgba(6, 11, 18, 0) 72%,
+      rgba(7, 13, 18, 0.22) 100%
+    );
   }
 
   .dx-auth__hero-subline {
@@ -1490,6 +1549,16 @@ body:has(.dx-auth) {
     overflow: visible;
     gap: 0.22rem;
     padding: 0.28rem 1rem 0.32rem;
+  }
+
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__panel {
+    flex: 1 1 54%;
+    width: 54%;
+    min-width: 0;
+    height: 100%;
+    overflow: hidden;
+    justify-content: center;
+    padding: 0.4rem 0.9rem 0.4rem;
   }
 
   .dx-auth__card {
