@@ -250,17 +250,29 @@ describe("login CSS breakpoints", () => {
     );
   });
 
-  it("hides the studio slogan overlay on laptop so the plaque stays clear", () => {
+  it("shows compact white hero copy at the top of the left studio column", () => {
     const css = readFileSync(cssPath, "utf8");
     const start768 = css.indexOf("@media (min-width: 768px) {");
     assert.ok(start768 >= 0);
     const block768 = css.slice(start768, css.indexOf("@media (min-width: 1024px)", start768));
+    assert.match(block768, /flex-direction:\s*row/);
+    assert.match(block768, /object-fit:\s*cover/);
     assert.match(
+      block768,
+      /\.dx-auth__hero--studio \.dx-auth__hero-inner\s*\{[\s\S]*?justify-content:\s*flex-start/,
+    );
+    assert.match(
+      block768,
+      /\.dx-auth__hero--studio \.dx-auth__hero-headline,\s*\.dx-auth__hero--studio \.dx-auth__hero-subline\s*\{[\s\S]*?display:\s*block/,
+    );
+    assert.doesNotMatch(
       block768,
       /\.dx-auth__hero--studio \.dx-auth__hero-headline,\s*\.dx-auth__hero--studio \.dx-auth__hero-subline\s*\{[\s\S]*?display:\s*none/,
     );
-    assert.match(block768, /flex-direction:\s*row/);
-    assert.match(block768, /object-fit:\s*cover/);
+    assert.match(
+      css,
+      /\.dx-auth__hero--studio \.dx-auth__hero-headline,\s*\.dx-auth__hero--studio \.dx-auth__hero-subline\s*\{[\s\S]*?text-shadow:/,
+    );
   });
 
   it("locks the 14-inch login to the viewport without panel scroll", () => {
@@ -275,17 +287,17 @@ describe("login CSS breakpoints", () => {
     assert.doesNotMatch(block, /42dvh|46dvh|48dvh/);
   });
 
-  it("keeps AI as the login hero concept in ES and EN", () => {
+  it("keeps the cinematic login hero copy in ES and EN", () => {
     const messagesPath = join(
       dirname(fileURLToPath(import.meta.url)),
       "i18n",
       "loginMessages.ts",
     );
     const source = readFileSync(messagesPath, "utf8");
-    assert.match(source, /IA que te dice qué hacer después con tu correo/);
-    assert.match(source, /AI that tells you what to do next with your email/);
-    assert.match(source, /Un enunciado por correo: cargos, pedidos, seguridad, familia/);
-    assert.match(source, /One line per email: charges, orders, security, family/);
+    assert.match(source, /Tu correo\. Tu siguiente paso\./);
+    assert.match(source, /Your email\. Your next step\./);
+    assert.match(source, /Correos importantes, tareas y pendientes en un solo lugar\./);
+    assert.match(source, /Important mail, tasks, and to-dos in one place\./);
   });
 
   it("compacts the desktop card so Continuar stays on-screen in the right column", () => {

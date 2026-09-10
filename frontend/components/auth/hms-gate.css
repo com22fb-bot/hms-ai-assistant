@@ -6,6 +6,7 @@
   para que la placa neon "Do Next To" se lea (la columna es más alta que
   ancha: se recortan lados, no techo ni escritorio).
   Cero scroll de página: overflow hidden; en alto bajo se compacta la card.
+  En el split, copy blanco compacto arriba a la izquierda (no tapa la placa neon).
   ConfirmEmailGate (hero sin --studio) sigue en columna.
 */
 
@@ -152,9 +153,11 @@ body:has(.dx-auth) {
 
 .dx-auth__hero--studio .dx-auth__hero-inner {
   justify-content: flex-start;
+  align-items: center;
   min-height: 0;
   width: min(100%, 34rem);
   padding-top: 0.2rem;
+  gap: 0.22rem;
 }
 
 .dx-auth__hero--studio .dx-auth__hero-headline,
@@ -997,6 +1000,10 @@ body:has(.dx-auth) {
     display: none;
   }
 
+  .dx-auth__hero--studio .dx-auth__hero-subline {
+    display: block;
+  }
+
   .dx-auth__submit {
     position: sticky;
     bottom: max(0.5rem, env(safe-area-inset-bottom));
@@ -1077,7 +1084,7 @@ body:has(.dx-auth) {
     height: 100%;
     min-height: 0;
     max-height: none;
-    padding: 0;
+    padding: max(0.7rem, env(safe-area-inset-top)) 1.05rem 0.5rem;
   }
 
   .dx-auth__hero-media img {
@@ -1090,18 +1097,47 @@ body:has(.dx-auth) {
     object-position: 50% 50%;
   }
 
+  .dx-auth__hero--studio .dx-auth__hero-inner {
+    justify-content: flex-start;
+    align-items: center;
+    min-height: 0;
+    width: min(100%, 22rem);
+    padding-top: 0.15rem;
+    gap: 0.18rem;
+  }
+
   .dx-auth__hero--studio .dx-auth__hero-headline,
   .dx-auth__hero--studio .dx-auth__hero-subline {
-    display: none;
+    display: block;
+  }
+
+  .dx-auth__hero--studio .dx-auth__hero-headline {
+    font-size: clamp(1.02rem, 1.55vw, 1.28rem);
+    max-width: 14em;
+    line-height: 1.18;
+  }
+
+  .dx-auth__hero--studio .dx-auth__hero-subline {
+    font-size: clamp(0.7rem, 1.05vw, 0.84rem);
+    max-width: 22em;
+    line-height: 1.32;
   }
 
   .dx-auth__hero--studio .dx-auth__hero-scrim {
-    background: linear-gradient(
-      90deg,
-      rgba(6, 11, 18, 0) 0%,
-      rgba(6, 11, 18, 0) 72%,
-      rgba(7, 13, 18, 0.28) 100%
-    );
+    background:
+      linear-gradient(
+        180deg,
+        rgba(6, 11, 18, 0.5) 0%,
+        rgba(6, 11, 18, 0.16) 14%,
+        rgba(6, 11, 18, 0) 28%,
+        rgba(6, 11, 18, 0) 100%
+      ),
+      linear-gradient(
+        90deg,
+        rgba(6, 11, 18, 0) 0%,
+        rgba(6, 11, 18, 0) 78%,
+        rgba(7, 13, 18, 0.22) 100%
+      );
   }
 
   .dx-auth__panel {
@@ -1214,7 +1250,7 @@ body:has(.dx-auth) {
     height: 100%;
     min-height: 0;
     max-height: none;
-    padding: 0;
+    padding: max(0.8rem, env(safe-area-inset-top)) 1.2rem 0.6rem;
   }
 
   .dx-auth__hero-media img {
@@ -1240,12 +1276,20 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero--studio .dx-auth__hero-scrim {
-    background: linear-gradient(
-      90deg,
-      rgba(6, 11, 18, 0) 0%,
-      rgba(6, 11, 18, 0) 72%,
-      rgba(7, 13, 18, 0.28) 100%
-    );
+    background:
+      linear-gradient(
+        180deg,
+        rgba(6, 11, 18, 0.48) 0%,
+        rgba(6, 11, 18, 0.14) 14%,
+        rgba(6, 11, 18, 0) 28%,
+        rgba(6, 11, 18, 0) 100%
+      ),
+      linear-gradient(
+        90deg,
+        rgba(6, 11, 18, 0) 0%,
+        rgba(6, 11, 18, 0) 78%,
+        rgba(7, 13, 18, 0.22) 100%
+      );
   }
 
   .dx-auth__hero-inner {
@@ -1260,13 +1304,28 @@ body:has(.dx-auth) {
 
   .dx-auth__hero--studio .dx-auth__hero-inner {
     justify-content: flex-start;
+    align-items: center;
     min-height: 0;
-    padding-top: 0;
+    width: min(100%, 24rem);
+    padding-top: 0.2rem;
+    gap: 0.2rem;
   }
 
   .dx-auth__hero--studio .dx-auth__hero-headline,
   .dx-auth__hero--studio .dx-auth__hero-subline {
-    display: none;
+    display: block;
+  }
+
+  .dx-auth__hero--studio .dx-auth__hero-headline {
+    font-size: clamp(1.08rem, 1.45vw, 1.38rem);
+    max-width: 14em;
+    line-height: 1.18;
+  }
+
+  .dx-auth__hero--studio .dx-auth__hero-subline {
+    font-size: clamp(0.74rem, 0.95vw, 0.9rem);
+    max-width: 24em;
+    line-height: 1.32;
   }
 
   .dx-auth__hero-headline {
@@ -1508,7 +1567,7 @@ body:has(.dx-auth) {
     height: 100%;
     min-height: 0;
     max-height: none;
-    padding: 0;
+    padding: max(0.55rem, env(safe-area-inset-top)) 0.9rem 0.4rem;
   }
 
   .dx-auth__hero-media img {
@@ -1522,26 +1581,53 @@ body:has(.dx-auth) {
 
   .dx-auth__hero--studio .dx-auth__hero-inner {
     justify-content: flex-start;
+    align-items: center;
     min-height: 0;
-    padding-top: 0;
+    width: min(100%, 20rem);
+    padding-top: 0.1rem;
+    gap: 0.14rem;
   }
 
   .dx-auth__hero--studio .dx-auth__hero-headline,
   .dx-auth__hero--studio .dx-auth__hero-subline {
-    display: none;
+    display: block;
+  }
+
+  .dx-auth__hero--studio .dx-auth__hero-headline {
+    font-size: clamp(0.95rem, 1.35vw, 1.18rem);
+    max-width: 14em;
+    line-height: 1.16;
+  }
+
+  .dx-auth__hero--studio .dx-auth__hero-subline {
+    font-size: clamp(0.66rem, 0.95vw, 0.8rem);
+    max-width: 22em;
+    line-height: 1.28;
   }
 
   .dx-auth__hero--studio .dx-auth__hero-scrim {
-    background: linear-gradient(
-      90deg,
-      rgba(6, 11, 18, 0) 0%,
-      rgba(6, 11, 18, 0) 72%,
-      rgba(7, 13, 18, 0.22) 100%
-    );
+    background:
+      linear-gradient(
+        180deg,
+        rgba(6, 11, 18, 0.5) 0%,
+        rgba(6, 11, 18, 0.16) 12%,
+        rgba(6, 11, 18, 0) 24%,
+        rgba(6, 11, 18, 0) 100%
+      ),
+      linear-gradient(
+        90deg,
+        rgba(6, 11, 18, 0) 0%,
+        rgba(6, 11, 18, 0) 78%,
+        rgba(7, 13, 18, 0.18) 100%
+      );
   }
 
   .dx-auth__hero-subline {
     display: none;
+  }
+
+  .dx-auth__hero--studio .dx-auth__hero-subline {
+    display: block;
   }
 
   .dx-auth__panel {
