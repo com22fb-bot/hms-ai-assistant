@@ -2,10 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 
-import {
-  DOCUMENT_CACHE_CONTROL,
-  HASHED_STATIC_ASSET_CACHE_CONTROL,
-} from "./lib/httpCacheControl";
+import { DOCUMENT_CACHE_CONTROL } from "./lib/httpCacheControl";
 
 // Root must be this folder (frontend/), not the monorepo root.
 // A package-lock.json in the parent makes Next 16 mis-detect the root
@@ -32,12 +29,6 @@ const nextConfig: NextConfig = {
       {
         source: "/:path((?!_next/static|_next/image).*)",
         headers: documentCacheHeaders,
-      },
-      {
-        source: "/_next/static/:path*",
-        headers: [
-          { key: "Cache-Control", value: HASHED_STATIC_ASSET_CACHE_CONTROL },
-        ],
       },
     ];
   },

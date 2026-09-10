@@ -33,10 +33,9 @@ describe("document vs hashed-static cache policy", () => {
   it("sets document Cache-Control in next.config for Worker responses", () => {
     const config = readFileSync(join(frontendRoot, "next.config.ts"), "utf8");
     assert.match(config, /DOCUMENT_CACHE_CONTROL/);
-    assert.match(config, /HASHED_STATIC_ASSET_CACHE_CONTROL/);
     assert.match(config, /source: "\/"/);
     assert.match(config, /source: "\/:path\(\(\?!_next\/static\|_next\/image\).\*\)"/);
-    assert.match(config, /source: "\/_next\/static\/:path\*"/);
+    assert.doesNotMatch(config, /source: "\/_next\/static\/:path\*"/);
   });
 
   it("keeps Cloudflare Static Assets long-cache only for hashed chunks", () => {
