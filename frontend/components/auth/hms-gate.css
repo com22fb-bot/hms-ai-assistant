@@ -232,7 +232,7 @@ body:has(.dx-auth) {
 
 .dx-auth__heading {
   text-align: center;
-  margin: 0 0 0.75rem;
+  margin: 0;
   scroll-margin-top: max(1.25rem, env(safe-area-inset-top));
   overflow: visible;
 }
@@ -287,6 +287,9 @@ body:has(.dx-auth) {
   width: min(100%, 26rem);
   max-width: 26rem;
   overflow: visible;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
   background: var(--dx-surface);
   border: 1px solid var(--dx-line);
   border-radius: 18px;
@@ -605,7 +608,7 @@ body:has(.dx-auth) {
 }
 
 .dx-auth__legal-agree {
-  margin: 0.85rem 0 0;
+  margin: 0.15rem 0 0;
   font-size: 0.72rem;
   line-height: 1.45;
   color: var(--dx-soft);
@@ -808,7 +811,7 @@ body:has(.dx-auth) {
 }
 
 .dx-auth__availability {
-  margin: 0.55rem 0 0.85rem;
+  margin: 0;
   display: grid;
   gap: 0.45rem;
 }

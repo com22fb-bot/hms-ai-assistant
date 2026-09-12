@@ -591,37 +591,6 @@ export function LoginScreen({
             </div>
           ) : null}
 
-          {step === "email" ? (
-            <div className="dx-auth__availability" aria-label={L("servicesKicker")}>
-              <p className="dx-auth__services-kicker">
-                {L("availableNow")}
-              </p>
-              <ul className="dx-auth__chips">
-                {LIVE_CHIPS.map((chip) => (
-                  <li
-                    key={chip.id}
-                    className={`dx-auth__chip dx-auth__chip--${chip.tone}`}
-                  >
-                    {L(chip.labelKey)}
-                  </li>
-                ))}
-              </ul>
-              <p className="dx-auth__services-kicker dx-auth__services-kicker--soon">
-                {L("comingSoonBadge")}
-              </p>
-              <ul className="dx-auth__chips">
-                {SOON_CHIPS.map((chip) => (
-                  <li
-                    key={chip.id}
-                    className={`dx-auth__chip dx-auth__chip--soon dx-auth__chip--${chip.tone}`}
-                  >
-                    {L(chip.labelKey)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
           <form
             className="dx-auth__form"
             onSubmit={(event) => {
@@ -731,6 +700,37 @@ export function LoginScreen({
               </button>
             )}
           </form>
+
+          {step === "email" ? (
+            <div className="dx-auth__availability" aria-label={L("servicesKicker")}>
+              <p className="dx-auth__services-kicker">
+                {L("availableNow")}
+              </p>
+              <ul className="dx-auth__chips">
+                {LIVE_CHIPS.map((chip) => (
+                  <li
+                    key={chip.id}
+                    className={`dx-auth__chip dx-auth__chip--${chip.tone}`}
+                  >
+                    {L(chip.labelKey)}
+                  </li>
+                ))}
+              </ul>
+              <p className="dx-auth__services-kicker dx-auth__services-kicker--soon">
+                {L("comingSoonBadge")}
+              </p>
+              <ul className="dx-auth__chips">
+                {SOON_CHIPS.map((chip) => (
+                  <li
+                    key={chip.id}
+                    className={`dx-auth__chip dx-auth__chip--soon dx-auth__chip--${chip.tone}`}
+                  >
+                    {L(chip.labelKey)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           <p className="dx-auth__legal-agree">
             {L("legalBefore")}{" "}
