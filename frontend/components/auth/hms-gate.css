@@ -2,10 +2,10 @@
   Gate Donexto — login clásico.
   Móvil <768: columna (foto arriba, card abajo). object-fit: cover.
   Laptop/tablet ≥768: split horizontal clásico ~50/50. Foto estudio IZQUIERDA
-  (50% ancho, 100dvh). Panel DERECHA (50%) con card de login tamaño normal
-  (~28–32rem, contenido — no full-bleed ni franja estrecha). Card centrada
-  en el panel; footer al pie. object-fit: cover + position 50% 50% para que
-  la placa neon "Do Next To" se lea.
+  (50% ancho, 100dvh). Panel DERECHA (50%) con ventana de login (~36–40rem,
+  ~90% del panel). Card centrada en el panel, con padding generoso; footer
+  al pie. object-fit: cover + position 50% 50% para que la placa neon
+  "Do Next To" se lea.
   Cero scroll de página: overflow hidden; en alto bajo se compacta la card.
   En el split, copy blanco compacto arriba a la izquierda (no tapa la placa neon).
   ConfirmEmailGate (hero sin --studio) sigue en columna.
@@ -1216,10 +1216,14 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
-    width: min(100%, 27rem);
-    max-width: 27rem;
+    width: min(90%, 36rem);
+    max-width: 36rem;
+    min-height: min(62%, 34rem);
+    max-height: calc(100% - 2.25rem);
     flex: 0 0 auto;
-    padding: 1.05rem 1.3rem 0.95rem;
+    justify-content: center;
+    gap: 0.7rem;
+    padding: 1.45rem 1.65rem 1.3rem;
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__footer {
@@ -1232,7 +1236,7 @@ body:has(.dx-auth) {
   }
 }
 
-/* Laptop/desktop — split 50/50; card normal centrada para que Continuar quepa */
+/* Laptop/desktop — split 50/50; ventana de login ~38rem centrada, sin scroll */
 @media (min-width: 1024px) {
   html:has(.dx-auth),
   body:has(.dx-auth) {
@@ -1409,11 +1413,23 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
-    width: min(100%, 27.5rem);
-    max-width: 27.5rem;
+    width: min(90%, 38rem);
+    max-width: 38rem;
+    min-height: min(68%, 40rem);
+    max-height: calc(100% - 2.4rem);
     flex: 0 0 auto;
     flex-shrink: 0;
-    padding: 1.1rem 1.4rem 1rem;
+    justify-content: center;
+    gap: 0.85rem;
+    padding: 1.85rem 2.15rem 1.65rem;
+  }
+
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__control {
+    min-height: 2.95rem;
+  }
+
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__submit {
+    min-height: 3.05rem;
   }
 
   .dx-auth__heading {
@@ -1509,7 +1525,7 @@ body:has(.dx-auth) {
   }
 }
 
-/* Desktop ancho — split 50/50; card normal un poco más ancha */
+/* Desktop ancho — split 50/50; ventana de login ~40rem */
 @media (min-width: 1440px) {
   .dx-auth__hero {
     min-height: clamp(14rem, 32dvh, 24rem);
@@ -1566,10 +1582,13 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
-    width: min(100%, 29rem);
-    max-width: 29rem;
+    width: min(90%, 40rem);
+    max-width: 40rem;
+    min-height: min(70%, 42rem);
+    max-height: calc(100% - 2.5rem);
     flex: 0 0 auto;
-    padding: 1.15rem 1.5rem 1.05rem;
+    justify-content: center;
+    padding: 2.1rem 2.4rem 1.85rem;
   }
 
   .dx-auth__heading {
@@ -1707,10 +1726,14 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
-    width: min(100%, 26.5rem);
-    max-width: 26.5rem;
+    width: min(90%, 36rem);
+    max-width: 36rem;
+    min-height: 0;
+    max-height: calc(100% - 1.7rem);
     flex: 0 0 auto;
-    padding: 0.65rem 1.2rem 0.6rem;
+    justify-content: center;
+    gap: 0.4rem;
+    padding: 0.8rem 1.45rem 0.7rem;
   }
 
   .dx-lang-strip-host--gate {
