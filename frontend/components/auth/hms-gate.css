@@ -1812,6 +1812,57 @@ body:has(.dx-auth) {
   }
 }
 
+/*
+  Escritorio/laptop (≥768): foto más grande a la izquierda y tarjeta de login
+  que llena su columna (alta y ancha) para eliminar el espacio negro alrededor.
+  La foto crece hasta pegar con la tarjeta. Va al final para ganar en cascada a
+  los bloques compactos previos (incluido el de max-height:800).
+*/
+@media (min-width: 768px) {
+  .dx-auth:has(> .dx-auth__hero--studio) {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  }
+
+  /* La tarjeta llena su columna (ancho y alto): casi sin marco negro. */
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__panel {
+    justify-content: stretch;
+    align-items: stretch;
+    gap: 0.5rem;
+    padding: clamp(0.5rem, 1.4vh, 0.9rem)
+      clamp(0.75rem, 1.4vw, 1.25rem)
+      clamp(1.9rem, 2.8vh, 2.5rem);
+  }
+
+  /* Tarjeta que llena la pantalla, con el contenido centrado verticalmente. */
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
+    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.7rem;
+    padding: clamp(1.5rem, 4.5vh, 3rem) clamp(1.75rem, 3.5vw, 3.5rem);
+  }
+
+  /* El contenido se mantiene legible y centrado dentro de la tarjeta ancha. */
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card > * {
+    width: 100%;
+    max-width: 24rem;
+    margin-inline: auto;
+  }
+
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card .dx-auth__title {
+    font-size: clamp(1.6rem, 2.3vw, 2.05rem);
+  }
+
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card .dx-auth__submit,
+  .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card .dx-auth__control {
+    min-height: 3rem;
+  }
+}
+
 .hms-gate {
   display: contents;
 }
