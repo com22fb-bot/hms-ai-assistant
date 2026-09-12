@@ -384,7 +384,7 @@ describe("login CSS breakpoints", () => {
     );
     assert.match(
       block1440,
-      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[\s\S]*?width:\s*min\(90%, 40rem\)/,
+      /\.dx-auth:has\(> \.dx-auth__hero--studio\) \.dx-auth__card\s*\{[\s\S]*?width:\s*min\(88%, 40rem\)/,
     );
   });
 

@@ -1218,8 +1218,8 @@ body:has(.dx-auth) {
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
     width: min(90%, 36rem);
     max-width: 36rem;
-    min-height: min(62%, 34rem);
-    max-height: calc(100% - 2.25rem);
+    min-height: 32rem;
+    max-height: calc(100dvh - 2.5rem);
     flex: 0 0 auto;
     justify-content: center;
     gap: 0.7rem;
@@ -1415,8 +1415,8 @@ body:has(.dx-auth) {
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
     width: min(90%, 38rem);
     max-width: 38rem;
-    min-height: min(68%, 40rem);
-    max-height: calc(100% - 2.4rem);
+    min-height: 36rem;
+    max-height: calc(100dvh - 2.75rem);
     flex: 0 0 auto;
     flex-shrink: 0;
     justify-content: center;
@@ -1582,13 +1582,13 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
-    width: min(90%, 40rem);
+    width: min(88%, 40rem);
     max-width: 40rem;
-    min-height: min(70%, 42rem);
-    max-height: calc(100% - 2.5rem);
+    min-height: 38rem;
+    max-height: calc(100dvh - 2.75rem);
     flex: 0 0 auto;
     justify-content: center;
-    padding: 2.1rem 2.4rem 1.85rem;
+    padding: 2.15rem 2.5rem 1.95rem;
   }
 
   .dx-auth__heading {
