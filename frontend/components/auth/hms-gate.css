@@ -104,8 +104,8 @@ body:has(.dx-auth) {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* Banner móvil/tablet: centro de placa + base Donexto™. */
-  object-position: 50% 50%;
+  /* Banner móvil/tablet: placa + escritorio sin recortes bruscos. */
+  object-position: 50% 46%;
   filter: brightness(1.08) contrast(1.05) saturate(1.08);
   background: transparent;
 }
@@ -247,6 +247,7 @@ body:has(.dx-auth) {
   line-height: 1.3;
   color: var(--dx-ink);
   overflow: visible;
+  text-wrap: balance;
 }
 
 .dx-auth__slogan {
@@ -283,12 +284,13 @@ body:has(.dx-auth) {
 }
 
 .dx-auth__card {
-  width: min(100%, 24.5rem);
+  width: min(100%, 26rem);
+  max-width: 26rem;
   overflow: visible;
   background: var(--dx-surface);
   border: 1px solid var(--dx-line);
   border-radius: 18px;
-  padding: 1.35rem 1.15rem 1.2rem;
+  padding: 1.35rem 1.2rem 1.2rem;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
 }
 
@@ -977,8 +979,8 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__card {
-    width: min(100%, 24.5rem);
-    padding: 1.1rem 0.95rem 1rem;
+    width: min(100%, 26rem);
+    padding: 1.1rem 1rem 1rem;
   }
 
   .dx-auth__title {
@@ -1023,6 +1025,15 @@ body:has(.dx-auth) {
     min-height: 0;
     padding-top: 0;
   }
+
+  .dx-auth__hero--studio {
+    min-height: clamp(10rem, 34vw, 13rem);
+    max-height: min(38dvh, 14rem);
+  }
+
+  .dx-auth__hero--studio .dx-auth__hero-media img {
+    object-position: 50% 44%;
+  }
 }
 
 /* 7" tablet ~600–800px */
@@ -1063,7 +1074,9 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) {
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
     align-items: stretch;
   }
 
@@ -1078,10 +1091,10 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__hero--studio {
-    flex: 0 0 50%;
-    flex-shrink: 0;
-    width: 50%;
-    max-width: 50%;
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    max-width: none;
     height: 100%;
     min-height: 0;
     max-height: none;
@@ -1090,12 +1103,12 @@ body:has(.dx-auth) {
 
   .dx-auth__hero-media img {
     object-fit: cover;
-    object-position: 50% 50%;
+    object-position: 50% 46%;
   }
 
   .dx-auth__hero--studio .dx-auth__hero-media img {
     object-fit: cover;
-    object-position: 50% 50%;
+    object-position: 48% 46%;
   }
 
   .dx-auth__hero--studio .dx-auth__hero-inner {
@@ -1150,16 +1163,18 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__panel {
-    flex: 1 1 50%;
-    width: 50%;
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
     min-width: 0;
     height: 100%;
     overflow: hidden;
     position: relative;
     justify-content: center;
     align-items: center;
-    gap: 0.55rem;
-    padding: 0.85rem 1.15rem 2.1rem;
+    gap: 0.5rem;
+    padding: clamp(0.65rem, 1.8vh, 1rem) clamp(1rem, 2.2vw, 1.35rem)
+      clamp(2rem, 2.8vh, 2.25rem);
   }
 
   .dx-auth__hero-inner {
@@ -1198,10 +1213,10 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
-    width: min(100%, 28rem);
-    max-width: 28rem;
+    width: min(100%, 27rem);
+    max-width: 27rem;
     flex: 0 0 auto;
-    padding: 1rem 1.25rem 0.9rem;
+    padding: 1.05rem 1.3rem 0.95rem;
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__footer {
@@ -1237,7 +1252,9 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) {
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
     align-items: stretch;
   }
 
@@ -1257,25 +1274,25 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__hero--studio {
-    flex: 0 0 50%;
-    flex-shrink: 0;
-    width: 50%;
-    max-width: 50%;
+    grid-column: 1;
+    grid-row: 1;
+    width: 100%;
+    max-width: none;
     height: 100%;
     min-height: 0;
     max-height: none;
-    padding: max(0.8rem, env(safe-area-inset-top)) 1.2rem 0.6rem;
+    padding: max(0.75rem, env(safe-area-inset-top)) 1rem 0.55rem;
   }
 
   .dx-auth__hero-media img {
     object-fit: cover;
-    object-position: 50% 50%;
+    object-position: 50% 46%;
     filter: brightness(1.04) contrast(1.04) saturate(1.05);
   }
 
   .dx-auth__hero--studio .dx-auth__hero-media img {
     object-fit: cover;
-    object-position: 50% 50%;
+    object-position: 48% 45%;
     filter: brightness(1.04) contrast(1.04) saturate(1.05);
   }
 
@@ -1368,30 +1385,32 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__panel {
-    flex: 1 1 50%;
-    width: 50%;
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
     min-width: 0;
     height: 100%;
     overflow: hidden;
     position: relative;
     justify-content: center;
     align-items: center;
-    gap: 0.55rem;
-    padding: 0.9rem 1.35rem 2.15rem;
+    gap: 0.45rem;
+    padding: clamp(0.75rem, 2vh, 1.1rem) clamp(1.1rem, 2.4vw, 1.6rem)
+      clamp(2.1rem, 2.6vh, 2.35rem);
   }
 
   .dx-auth__card {
-    width: min(100%, 30rem);
+    width: min(100%, 28rem);
     flex-shrink: 0;
     padding: 0.95rem 1.35rem 0.85rem;
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
-    width: min(100%, 30rem);
-    max-width: 30rem;
+    width: min(100%, 27.5rem);
+    max-width: 27.5rem;
     flex: 0 0 auto;
     flex-shrink: 0;
-    padding: 1.05rem 1.45rem 0.95rem;
+    padding: 1.1rem 1.4rem 1rem;
   }
 
   .dx-auth__heading {
@@ -1496,9 +1515,9 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__hero--studio {
-    flex: 0 0 50%;
-    width: 50%;
-    max-width: 50%;
+    grid-column: 1;
+    width: 100%;
+    max-width: none;
     height: 100%;
     min-height: 0;
     max-height: none;
@@ -1506,13 +1525,13 @@ body:has(.dx-auth) {
   }
 
   .dx-auth__hero-media img {
-    object-position: 50% 50%;
+    object-position: 50% 45%;
     filter: brightness(1.04) contrast(1.04) saturate(1.05);
   }
 
   .dx-auth__hero--studio .dx-auth__hero-media img {
     object-fit: cover;
-    object-position: 50% 50%;
+    object-position: 47% 44%;
   }
 
   .dx-auth__panel {
@@ -1522,15 +1541,16 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__panel {
-    flex: 1 1 50%;
-    width: 50%;
+    grid-column: 2;
+    width: 100%;
     height: 100%;
     overflow: hidden;
     position: relative;
     justify-content: center;
     align-items: center;
-    gap: 0.55rem;
-    padding: 1rem 1.5rem 2.2rem;
+    gap: 0.5rem;
+    padding: clamp(0.85rem, 2.2vh, 1.25rem) clamp(1.25rem, 2.8vw, 1.75rem)
+      clamp(2.15rem, 2.8vh, 2.4rem);
   }
 
   .dx-auth__hero-inner {
@@ -1543,9 +1563,10 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
-    width: min(100%, 32rem);
-    max-width: 32rem;
+    width: min(100%, 29rem);
+    max-width: 29rem;
     flex: 0 0 auto;
+    padding: 1.15rem 1.5rem 1.05rem;
   }
 
   .dx-auth__heading {
@@ -1574,7 +1595,9 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) {
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr);
     align-items: stretch;
   }
 
@@ -1587,23 +1610,22 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__hero--studio {
-    flex: 0 0 50%;
-    flex-shrink: 0;
-    width: 50%;
-    max-width: 50%;
+    grid-column: 1;
+    width: 100%;
+    max-width: none;
     height: 100%;
     min-height: 0;
     max-height: none;
-    padding: max(0.55rem, env(safe-area-inset-top)) 0.9rem 0.4rem;
+    padding: max(0.55rem, env(safe-area-inset-top)) 0.75rem 0.35rem;
   }
 
   .dx-auth__hero-media img {
-    object-position: 50% 50%;
+    object-position: 50% 45%;
   }
 
   .dx-auth__hero--studio .dx-auth__hero-media img {
     object-fit: cover;
-    object-position: 50% 50%;
+    object-position: 48% 44%;
   }
 
   .dx-auth__hero--studio .dx-auth__hero-inner {
@@ -1665,16 +1687,16 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__panel {
-    flex: 1 1 50%;
-    width: 50%;
+    grid-column: 2;
+    width: 100%;
     min-width: 0;
     height: 100%;
     overflow: hidden;
     position: relative;
     justify-content: center;
     align-items: center;
-    gap: 0.3rem;
-    padding: 0.45rem 1.1rem 1.7rem;
+    gap: 0.28rem;
+    padding: 0.4rem clamp(0.85rem, 2vw, 1.15rem) 1.65rem;
   }
 
   .dx-auth__card {
@@ -1682,10 +1704,10 @@ body:has(.dx-auth) {
   }
 
   .dx-auth:has(> .dx-auth__hero--studio) .dx-auth__card {
-    width: min(100%, 28rem);
-    max-width: 28rem;
+    width: min(100%, 26.5rem);
+    max-width: 26.5rem;
     flex: 0 0 auto;
-    padding: 0.6rem 1.15rem 0.55rem;
+    padding: 0.65rem 1.2rem 0.6rem;
   }
 
   .dx-lang-strip-host--gate {
@@ -1755,7 +1777,7 @@ body:has(.dx-auth) {
   display: flex;
   width: 100%;
   justify-content: flex-end;
-  margin: 0 0 0.85rem 0;
+  margin: 0 0 0.7rem 0;
   font-size: 0.65rem;
   line-height: 1.15;
 }
