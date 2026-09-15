@@ -31,8 +31,7 @@ import {
   suggestKnownMailbox,
 } from "@/lib/mailboxSignup";
 
-import "./hms-gate.css";
-import "./dx-auth-neon.css";
+import "./login-screen.css";
 
 export type GateThemeId =
   | "midnight"
@@ -79,21 +78,6 @@ type ResolvePayload = {
   suggested_email?: string | null;
   detail?: { message?: string } | string;
 };
-
-const LIVE_CHIPS = [
-  { id: "outlook", labelKey: "chipOutlook" as const, tone: "live" },
-  { id: "hotmail", labelKey: "chipHotmail" as const, tone: "live" },
-  { id: "live", labelKey: "chipLive" as const, tone: "live" },
-  { id: "msn", labelKey: "chipMsn" as const, tone: "live" },
-  { id: "m365", labelKey: "chipM365" as const, tone: "live" },
-];
-
-const SOON_CHIPS = [
-  { id: "gmail", labelKey: "chipGmail" as const, tone: "gmail" },
-  { id: "workspace", labelKey: "chipWorkspace" as const, tone: "gmail" },
-  { id: "yahoo", labelKey: "chipYahoo" as const, tone: "yahoo" },
-  { id: "icloud", labelKey: "chipIcloud" as const, tone: "apple" },
-];
 
 /**
  * Acceso Donexto: un correo (el buzón) y un Continuar.
@@ -150,13 +134,13 @@ export function LoginScreen({
   useEffect(() => {
     const desktop = window.matchMedia("(min-width: 1024px)").matches;
     if (desktop) {
-      document.querySelector<HTMLElement>(".dx-auth__panel")?.scrollTo(0, 0);
+      document.querySelector<HTMLElement>(".dx-login__panel")?.scrollTo(0, 0);
       return;
     }
     if (step === "email") {
       return;
     }
-    document.getElementById("dx-auth-title")?.scrollIntoView({
+    document.getElementById("dx-login-title")?.scrollIntoView({
       block: "nearest",
       behavior: "smooth",
     });
@@ -505,22 +489,21 @@ export function LoginScreen({
   return (
     <main
       className={
-        confirming || waiting ? "dx-auth dx-auth--confirm" : "dx-auth"
+        confirming || waiting ? "dx-login dx-login--confirm" : "dx-login"
       }
     >
-      <aside className="dx-auth__hero dx-auth__hero--studio" aria-label="Donexto">
-        <div className="dx-auth__hero-media" aria-hidden="true">
+      <aside className="dx-login__hero dx-login__hero--studio" aria-label="Donexto">
+        <div className="dx-login__hero-media" aria-hidden="true">
           <picture>
             <source
               type="image/webp"
               srcSet="/brand/donexto-login-hero-studio-1280.webp 1280w, /brand/donexto-login-hero-studio-1920.webp 1920w, /brand/donexto-login-hero-studio-2560.webp 2560w"
-              sizes="(min-width: 768px) 50vw, 100vw"
+              sizes="(min-width: 1024px) 50vw, 100vw"
             />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/brand/donexto-login-hero-studio.jpg"
               srcSet="/brand/donexto-login-hero-studio-1280.jpg 1280w, /brand/donexto-login-hero-studio.jpg 1920w, /brand/donexto-login-hero-studio-2560.jpg 2560w"
-              sizes="(min-width: 768px) 50vw, 100vw"
+              sizes="(min-width: 1024px) 50vw, 100vw"
               width={2560}
               height={1428}
               alt=""
@@ -529,22 +512,23 @@ export function LoginScreen({
             />
           </picture>
         </div>
-        <div className="dx-auth__hero-scrim" aria-hidden="true" />
-        <div className="dx-auth__hero-inner">
-          <h1 className="dx-auth__sr">Donexto</h1>
-          <p className="dx-auth__hero-headline">{L("heroHeadline")}</p>
-          <p className="dx-auth__hero-subline">{L("heroSubline")}</p>
+        <div className="dx-login__hero-scrim" aria-hidden="true" />
+        <div className="dx-login__hero-inner">
+          <h1 className="dx-login__sr">Donexto</h1>
+          <p className="dx-login__hero-headline">{L("heroHeadline")}</p>
+          <p className="dx-login__hero-subline">{L("heroSubline")}</p>
         </div>
       </aside>
 
-      <section className="dx-auth__panel">
-        <div className="dx-auth__card" aria-labelledby="dx-auth-title">
-          <div className="dx-lang-strip-host--gate">
-            <LanguageStrip compact className="dx-lang-strip--gate" />
+      <section className="dx-login__panel">
+        <div className="dx-login__card" aria-labelledby="dx-login-title">
+          <div className="dx-login__topbar">
+            <span className="dx-login__brand">Donexto<span aria-hidden="true">.</span></span>
+            <LanguageStrip compact className="dx-login__language" />
           </div>
 
-          <header className="dx-auth__heading">
-            <h2 id="dx-auth-title" className="dx-auth__title">
+          <header className="dx-login__heading">
+            <h2 id="dx-login-title" className="dx-login__title">
               {waiting
                 ? L("waitlistTitle")
                 : confirming
@@ -552,19 +536,19 @@ export function LoginScreen({
                   : L("title")}
             </h2>
             {waiting ? (
-              <p className="dx-auth__slogan">{waitlistBody}</p>
+              <p className="dx-login__slogan">{waitlistBody}</p>
             ) : confirming ? (
-              <p className="dx-auth__slogan">{L("confirmHelper")}</p>
+              <p className="dx-login__slogan">{L("confirmHelper")}</p>
             ) : (
               <>
-                <p className="dx-auth__slogan">{L("body")}</p>
-                <p className="dx-auth__note">{L("noPasswordNote")}</p>
+                <p className="dx-login__slogan">{L("body")}</p>
+                <p className="dx-login__note">{L("noPasswordNote")}</p>
               </>
             )}
           </header>
 
           {error ? (
-            <div className="dx-auth__alert is-error" role="alert">
+            <div className="dx-login__alert is-error" role="alert">
               <AlertTriangle size={18} />
               <span>{error}</span>
             </div>
@@ -572,7 +556,7 @@ export function LoginScreen({
           {suggestedEmail ? (
             <button
               type="button"
-              className="dx-auth__secondary"
+              className="dx-login__secondary"
               disabled={busy}
               onClick={() => {
                 setEmail(suggestedEmail);
@@ -585,14 +569,14 @@ export function LoginScreen({
             </button>
           ) : null}
           {message ? (
-            <div className="dx-auth__alert is-ok" role="status">
+            <div className="dx-login__alert is-ok" role="status">
               <CheckCircle2 size={18} />
               <span>{message}</span>
             </div>
           ) : null}
 
           <form
-            className="dx-auth__form"
+            className="dx-login__form"
             onSubmit={(event) => {
               event.preventDefault();
               if (waiting) {
@@ -608,11 +592,11 @@ export function LoginScreen({
             noValidate
           >
             {confirming || waiting ? (
-              <p className="dx-auth__confirm-email">{displayEmail}</p>
+              <p className="dx-login__confirm-email">{displayEmail}</p>
             ) : (
-              <label className="dx-auth__field">
+              <label className="dx-login__field">
                 <span>{L("emailLabel")}</span>
-                <div className="dx-auth__control">
+                <div className="dx-login__control">
                   <Mail size={18} aria-hidden />
                   <input
                     ref={emailRef}
@@ -633,11 +617,11 @@ export function LoginScreen({
             )}
 
             {waiting ? (
-              <div className="dx-auth__actions">
-                <button type="submit" className="dx-auth__submit" disabled={busy}>
+              <div className="dx-login__actions">
+                <button type="submit" className="dx-login__submit" disabled={busy}>
                   {busy ? (
                     <>
-                      <LoaderCircle className="dx-auth__spin" size={18} />
+                      <LoaderCircle className="dx-login__spin" size={18} />
                       {L("continuing")}
                     </>
                   ) : (
@@ -646,7 +630,7 @@ export function LoginScreen({
                 </button>
                 <button
                   type="button"
-                  className="dx-auth__later"
+                  className="dx-login__later"
                   disabled={busy}
                   onClick={goLater}
                 >
@@ -654,11 +638,11 @@ export function LoginScreen({
                 </button>
               </div>
             ) : confirming ? (
-              <div className="dx-auth__actions">
-                <button type="submit" className="dx-auth__submit" disabled={busy}>
+              <div className="dx-login__actions">
+                <button type="submit" className="dx-login__submit" disabled={busy}>
                   {busy ? (
                     <>
-                      <LoaderCircle className="dx-auth__spin" size={18} />
+                      <LoaderCircle className="dx-login__spin" size={18} />
                       {oauthBusy ? L("openingMailbox") : L("confirming")}
                     </>
                   ) : (
@@ -667,7 +651,7 @@ export function LoginScreen({
                 </button>
                 <button
                   type="button"
-                  className="dx-auth__secondary"
+                  className="dx-login__secondary"
                   disabled={busy}
                   onClick={goChangeEmail}
                 >
@@ -675,7 +659,7 @@ export function LoginScreen({
                 </button>
                 <button
                   type="button"
-                  className="dx-auth__later"
+                  className="dx-login__later"
                   disabled={busy}
                   onClick={goLater}
                 >
@@ -683,15 +667,15 @@ export function LoginScreen({
                 </button>
               </div>
             ) : (
-              <button type="submit" className="dx-auth__submit" disabled={busy}>
+              <button type="submit" className="dx-login__submit" disabled={busy}>
                 {busy && oauthBusy === null ? (
                   <>
-                    <LoaderCircle className="dx-auth__spin" size={18} />
+                    <LoaderCircle className="dx-login__spin" size={18} />
                     {L("continuing")}
                   </>
                 ) : oauthBusy ? (
                   <>
-                    <LoaderCircle className="dx-auth__spin" size={18} />
+                    <LoaderCircle className="dx-login__spin" size={18} />
                     {L("openingMailbox")}
                   </>
                 ) : (
@@ -702,37 +686,20 @@ export function LoginScreen({
           </form>
 
           {step === "email" ? (
-            <div className="dx-auth__availability" aria-label={L("servicesKicker")}>
-              <p className="dx-auth__services-kicker">
+            <div className="dx-login__availability" aria-label={L("servicesKicker")}>
+              <p className="dx-login__services-kicker">
                 {L("availableNow")}
               </p>
-              <ul className="dx-auth__chips">
-                {LIVE_CHIPS.map((chip) => (
-                  <li
-                    key={chip.id}
-                    className={`dx-auth__chip dx-auth__chip--${chip.tone}`}
-                  >
-                    {L(chip.labelKey)}
-                  </li>
-                ))}
-              </ul>
-              <p className="dx-auth__services-kicker dx-auth__services-kicker--soon">
-                {L("comingSoonBadge")}
+              <p className="dx-login__providers">{L("serviceMicrosoftTitle")}</p>
+              <p className="dx-login__upcoming">
+                <span>{L("comingSoonBadge")}</span>{" · "}
+                {L("chipGmail")} / {L("chipWorkspace")}{" · "}
+                {L("chipYahoo")}{" · "}{L("chipIcloud")}
               </p>
-              <ul className="dx-auth__chips">
-                {SOON_CHIPS.map((chip) => (
-                  <li
-                    key={chip.id}
-                    className={`dx-auth__chip dx-auth__chip--soon dx-auth__chip--${chip.tone}`}
-                  >
-                    {L(chip.labelKey)}
-                  </li>
-                ))}
-              </ul>
             </div>
           ) : null}
 
-          <p className="dx-auth__legal-agree">
+          <p className="dx-login__legal-agree">
             {L("legalBefore")}{" "}
             <a href={TERMS_URL} target="_blank" rel="noopener noreferrer">
               {L("terms")}
@@ -745,8 +712,8 @@ export function LoginScreen({
           </p>
         </div>
 
-        <footer className="dx-auth__footer">
-          <p className="dx-auth__legal">
+        <footer className="dx-login__footer">
+          <p className="dx-login__legal">
             <span>© HMSR · MR</span>
             <span>Héctor M. Salcido Roacho</span>
           </p>
