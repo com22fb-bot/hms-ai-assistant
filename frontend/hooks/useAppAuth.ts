@@ -9,10 +9,10 @@ import {
   shouldDeferAuthStateChange,
   stripLogoutQueryParam,
 } from "@/lib/appAuthSession";
+import { isMailboxEmailVerified } from "@/lib/mailboxVerification";
 import { supabase } from "@/lib/supabase";
 import { hmsJson } from "@/lib/hmsApi";
 import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
-import { userHasOAuthIdentity } from "@/lib/oauthIdentity";
 import { isBrowserNetworkError, postPublicHms } from "@/lib/publicHms";
 
 export { userHasOAuthIdentity } from "@/lib/oauthIdentity";
@@ -43,11 +43,11 @@ const DONEXTO_VERIFY_QUERY = "donexto_verify";
 const HMS_API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "/api/hms";
 
-async function confirmDonextoWithBackend(): Promise<boolean> {
+async function confirmDonextoWithBackend(token: string): Promise<boolean> {
   try {
     const result = await hmsJson<{ donexto_verified?: boolean }>(
       `${HMS_API_BASE}/identity/confirm-donexto`,
-      { method: "POST" },
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) },
     );
     return result.donexto_verified === true;
   } catch (error) {
@@ -68,53 +68,24 @@ function yahooImapOwnsIdentity(user: User | null | undefined): boolean {
 }
 
 function isDonextoVerified(user: User | null | undefined): boolean {
-  if (user?.app_metadata?.donexto_verified === true) {
-    return true;
-  }
-  return false;
+  return isMailboxEmailVerified(user);
 }
 
-/**
- * Password / magic-link accounts still need the Donexto verify email.
- * Signing in at Yahoo, Google, or Microsoft is the verification.
- */
 function sessionNeedsDonextoEmailConfirm(session: Session | null): boolean {
-  const user = session?.user;
-  if (!user) {
-    return false;
-  }
-  if (userHasOAuthIdentity(user)) {
-    return false;
-  }
-  return !isDonextoVerified(user);
+  return Boolean(session?.user && !isDonextoVerified(session.user));
 }
 
-function isDonextoVerifyReturn(): boolean {
-  if (typeof window === "undefined") {
-    return false;
+function verificationToken(): string | null {
+  const token = new URLSearchParams(window.location.hash.slice(1)).get("donexto_verification");
+  if (token) {
+    sessionStorage.setItem("donexto_pending_verification", token);
+    window.history.replaceState({}, "", window.location.pathname + window.location.search);
   }
-
-  const search = new URLSearchParams(window.location.search);
-  return search.get(DONEXTO_VERIFY_QUERY) === "1";
+  return sessionStorage.getItem("donexto_pending_verification");
 }
 
 function donextoVerifyRedirectTo(): string {
   return `${window.location.origin}/?${DONEXTO_VERIFY_QUERY}=1`;
-}
-
-function clearDonextoVerifyQuery() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const url = new URL(window.location.href);
-  if (!url.searchParams.has(DONEXTO_VERIFY_QUERY)) {
-    return;
-  }
-
-  url.searchParams.delete(DONEXTO_VERIFY_QUERY);
-  const next = `${url.pathname}${url.search}${url.hash}`;
-  window.history.replaceState({}, "", next);
 }
 
 function mapSession(session: Session | null): AppSession | null {
@@ -232,7 +203,7 @@ export function useAppAuth() {
   const [loading, setLoading] = useState(true);
   const [passwordRecovery, setPasswordRecovery] =
     useState(false);
-  const verifyBootstrapLock = useRef(false);
+  const [verificationError, setVerificationError] = useState<string | null>(null);
   const bootstrapComplete = useRef(false);
 
   useEffect(() => {
@@ -382,86 +353,39 @@ export function useAppAuth() {
     };
   }, []);
 
+  const verificationUserId = rawSession?.user.id;
+  const verificationEmail = rawSession?.user.email;
+  const verificationComplete = isDonextoVerified(rawSession?.user);
+
   useEffect(() => {
-    const user = rawSession?.user;
-    const accountEmail = user?.email?.trim().toLowerCase() ?? "";
-    if (!user || !accountEmail) {
-      return;
-    }
-    const currentUser = user;
-
+    // Preserve the emailed proof if this browser needs to sign in first.
+    const token = verificationToken();
+    if (!verificationUserId || !verificationEmail) return;
+    if (verificationComplete && !token) return;
     let cancelled = false;
-
-    async function bootstrapDonextoVerify() {
-      if (verifyBootstrapLock.current) {
-        return;
-      }
-
-      if (userHasOAuthIdentity(currentUser) || isDonextoVerifyReturn()) {
-        verifyBootstrapLock.current = true;
-        try {
-          if (!isDonextoVerified(currentUser)) {
-            const confirmed = await confirmDonextoWithBackend();
-            if (confirmed) {
-              const { data: next } = await supabase.auth.refreshSession();
-              if (!cancelled) {
-                setRawSession(next.session ?? null);
-              }
-            }
-          }
-          if (isDonextoVerifyReturn()) {
-            clearDonextoVerifyQuery();
-          }
-        } catch (error) {
-          console.error("No fue posible confirmar Donexto:", error);
-        } finally {
-          verifyBootstrapLock.current = false;
-        }
-        return;
-      }
-
-      if (isDonextoVerified(currentUser)) {
-        return;
-      }
-
-      verifyBootstrapLock.current = true;
+    void (async () => {
       try {
-        const sentKey = `donexto_verify_sent:${accountEmail}`;
-        try {
-          if (sessionStorage.getItem(sentKey) === "1") {
-            return;
-          }
+        setVerificationError(null);
+        if (token) {
+          const confirmed = await confirmDonextoWithBackend(token);
+          if (!confirmed) throw new Error("El enlace no pudo validarse. Puede haber expirado o pertenecer a otra cuenta. Solicita otro enlace.");
+          sessionStorage.removeItem("donexto_pending_verification");
+          const { data, error } = await supabase.auth.refreshSession();
+          if (error) throw error;
+          if (!cancelled) setRawSession(data.session);
+          return;
+        }
+        const sentKey = `donexto_verify_sent:${verificationUserId}`;
+        if (!sessionStorage.getItem(sentKey)) {
+          await hmsJson(`${HMS_API_BASE}/identity/request-verification`, { method: "POST" });
           sessionStorage.setItem(sentKey, "1");
-        } catch {
-          // sessionStorage puede fallar en modo restringido
         }
-
-        const { error } = await supabase.auth.signInWithOtp({
-          email: accountEmail,
-          options: {
-            shouldCreateUser: false,
-            emailRedirectTo: donextoVerifyRedirectTo(),
-          },
-        });
-        if (error) {
-          try {
-            sessionStorage.removeItem(sentKey);
-          } catch {
-            // ignore
-          }
-          console.error("No fue posible enviar el correo Donexto:", error);
-        }
-      } finally {
-        verifyBootstrapLock.current = false;
+      } catch (error) {
+        if (!cancelled) setVerificationError(error instanceof Error ? error.message : "No se pudo enviar la verificación.");
       }
-    }
-
-    void bootstrapDonextoVerify();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [rawSession]);
+    })();
+    return () => { cancelled = true; };
+  }, [verificationUserId, verificationEmail, verificationComplete]);
 
   const signIn = useCallback(
     async (email: string, password: string) => {
@@ -644,22 +568,10 @@ export function useAppAuth() {
   }, []);
 
   const sendDonextoVerifyEmail = useCallback(async (email: string) => {
-    const cleanEmail = email.trim().toLowerCase();
-    const { error } = await supabase.auth.signInWithOtp({
-      email: cleanEmail,
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: donextoVerifyRedirectTo(),
-      },
-    });
-    if (error) {
-      throw new Error(translateAuthError(error.message));
-    }
-    try {
-      sessionStorage.setItem(`donexto_verify_sent:${cleanEmail}`, "1");
-    } catch {
-      // ignore
-    }
+    if (!email.trim()) throw new Error("Falta el correo de la sesión.");
+    await hmsJson(`${HMS_API_BASE}/identity/request-verification`, { method: "POST" });
+    sessionStorage.removeItem("donexto_pending_verification");
+    setVerificationError(null);
   }, []);
 
   const signInWithMagicLink = useCallback(
@@ -741,13 +653,6 @@ export function useAppAuth() {
       throw new Error(translateAuthError(error.message));
     }
 
-    if (
-      data.user
-      && sessionNeedsDonextoEmailConfirm({ user: data.user } as Session)
-    ) {
-      await confirmDonextoWithBackend();
-    }
-
     const { data: next, error: sessionError } =
       await supabase.auth.refreshSession();
     if (sessionError) {
@@ -768,6 +673,7 @@ export function useAppAuth() {
     loading,
     passwordRecovery,
     needsEmailConfirm,
+    verificationError,
     refreshSession,
     sendDonextoVerifyEmail,
     signIn,

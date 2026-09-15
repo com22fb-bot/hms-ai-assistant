@@ -6,6 +6,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
 
+from app.security.mailbox_verification import context_verified
 from app.security.identity import (
     authenticate_request,
     reset_request_context,
@@ -16,6 +17,7 @@ from app.security.identity import (
 _DONEXTO_EXEMPT_SUFFIXES = (
     "/identity/me",
     "/identity/confirm-donexto",
+    "/identity/request-verification",
 )
 
 
@@ -84,7 +86,7 @@ class AuthenticationContextMiddleware(BaseHTTPMiddleware):
             )
             path = request.url.path.rstrip("/") or "/"
             if not any(path == item or path.startswith(item + "/") for item in _DONEXTO_EXEMPT_SUFFIXES):
-                if not context.user.donexto_verified and not context.user.has_oauth_identity:
+                if not context_verified(context):
                     return JSONResponse(
                         status_code=403,
                         content={

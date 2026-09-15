@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from app.database.supabase import get_supabase_client
-from app.security.donexto_verified import (
-    can_mark_donexto_verified,
-    mark_donexto_verified,
+from pydantic import BaseModel, Field
+from app.security.mailbox_verification import (
+    context_verified, request_verification, confirm_verification,
 )
 from app.security.identity import require_request_context
 
@@ -24,7 +23,7 @@ def identity_me() -> dict[str, object]:
             "id": context.user.id,
             "email": context.user.email,
             "full_name": context.user.full_name,
-            "donexto_verified": context.user.donexto_verified,
+            "donexto_verified": context_verified(context),
             "has_oauth_identity": context.user.has_oauth_identity,
         },
         "workspace": {
@@ -51,58 +50,23 @@ def identity_me() -> dict[str, object]:
     }
 
 
+class VerifyMailboxRequest(BaseModel):
+    token: str = Field(min_length=32, max_length=128)
+
+
+@router.post("/request-verification")
+def request_mailbox_verification() -> dict:
+    return request_verification(require_request_context())
+
+
 @router.post("/confirm-donexto")
-def confirm_donexto_identity() -> dict[str, object]:
-    """Mark Donexto email verification from a trusted source (service role only).
-
-    Clients must not write ``donexto_verified`` via ``updateUser`` — that field
-    lives in ``app_metadata`` and is set here after OAuth or confirmed email.
-    """
-    context = require_request_context()
-    if context.user.donexto_verified:
-        return {
-            "status": "ok",
-            "donexto_verified": True,
-            "already": True,
-        }
-
-    client = get_supabase_client()
-    response = client.auth.admin.get_user_by_id(context.user.id)
-    raw_user = getattr(response, "user", None)
-    if raw_user is None and isinstance(response, dict):
-        raw_user = response.get("user")
-
-    if not can_mark_donexto_verified(raw_user):
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "status": "donexto_unverified",
-                "message": (
-                    "Aún no podemos confirmar ese correo. Abre el enlace "
-                    "que enviamos o inicia sesión con Yahoo, Google o Microsoft."
-                ),
-            },
-        )
-
-    mark_donexto_verified(context.user.id)
-    return {
-        "status": "ok",
-        "donexto_verified": True,
-        "already": False,
-    }
+def confirm_donexto_identity(payload: VerifyMailboxRequest) -> dict:
+    return confirm_verification(require_request_context(), payload.token)
 
 
 def require_donexto_verified_for_context() -> None:
-    context = require_request_context()
-    if context.user.donexto_verified or context.user.has_oauth_identity:
-        return
-    raise HTTPException(
-        status_code=403,
-        detail={
+    if not context_verified(require_request_context()):
+        raise HTTPException(403, detail={
             "status": "donexto_unverified",
-            "message": (
-                "Confirma tu correo Donexto antes de continuar. "
-                "Revisa la bandeja o vuelve a iniciar sesión."
-            ),
-        },
-    )
+            "message": "Abre el enlace enviado al correo que deseas monitorear.",
+        })
