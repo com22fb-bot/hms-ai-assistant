@@ -1856,6 +1856,7 @@ export default function HomePage() {
     loading,
     passwordRecovery,
     needsEmailConfirm,
+    verificationError,
     signIn,
     signInWithGoogle,
     signInWithYahoo,
@@ -1906,6 +1907,7 @@ export default function HomePage() {
         />
       ) : needsEmailConfirm ? (
         <ConfirmEmailGate
+          initialError={verificationError}
           email={session.email}
           onResend={sendDonextoVerifyEmail}
           onRefresh={refreshSession}
