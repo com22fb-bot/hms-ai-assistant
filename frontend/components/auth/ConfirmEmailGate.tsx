@@ -10,18 +10,16 @@ import "./dx-auth-neon.css";
 
 type ConfirmEmailGateProps = {
   email: string;
+  initialError?: string | null;
   onResend: (email: string) => Promise<void>;
   onRefresh: () => Promise<void>;
   onSignOut: () => Promise<void> | void;
 };
 
-/**
- * Bloquea el dashboard hasta `app_metadata.donexto_verified === true`
- * (clic en el mail Donexto con `?donexto_verify=1`, confirmado vía backend).
- * Identidad OAuth (Yahoo / Google / Microsoft) no usa esta pantalla.
- */
+/** Email-link proof is required for every provider, including Microsoft. */
 export function ConfirmEmailGate({
   email,
+  initialError,
   onResend,
   onRefresh,
   onSignOut,
@@ -107,15 +105,15 @@ export function ConfirmEmailGate({
               {ACCOUNT_VS_MAILBOX.confirmGateTitle}
             </h2>
             <p className="dx-auth__slogan">
-              Abre el enlace que enviamos a <strong>{email}</strong>.
-              Eso te identifica; no es la contraseña del buzón.
+              Para entrar al dashboard, verifica <strong>{email}</strong>.
+              Abre el enlace de verificación en ese mismo buzón.
             </p>
           </header>
 
           <div className="dx-auth__signin">
-            {error ? (
+            {error || initialError ? (
               <div className="dx-auth__alert is-error" role="alert">
-                <span>{error}</span>
+                <span>{error || initialError}</span>
               </div>
             ) : null}
             {message ? (
