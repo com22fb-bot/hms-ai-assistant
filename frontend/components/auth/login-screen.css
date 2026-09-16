@@ -48,7 +48,8 @@
 .dx-login__services-kicker { display: flex; align-items: center; gap: 8px; margin: 0 0 4px; color: #8ce5d7; font-size: 13px; font-weight: 600; }
 .dx-login__services-kicker::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
 .dx-login__providers { margin: 0; font-size: 14px; color: #e2ecef; }
-.dx-login__upcoming { margin: 8px 0 0; font-size: 13px; color: #b0c3cb; }
+.dx-login__upcoming { margin: 8px 0 0; font-size: 13px; color: #f49ad5; }
+.dx-login__upcoming > span { font-weight: 600; }
 .dx-login__legal-agree { margin: 16px 0 0; font-size: 12px; line-height: 1.7; color: #b0c3cb; }
 .dx-login__legal-agree a { color: #d1e4e9; text-underline-offset: 3px; }
 .dx-login__footer { margin-top: 14px; padding-top: 12px; border-top: 1px solid #314550; }
@@ -61,17 +62,27 @@
 .dx-login__sr { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .dx-login__spin { animation: dx-login-spin 1s linear infinite; }
 @keyframes dx-login-spin { to { transform: rotate(360deg); } }
-@media (max-width: 899px) {
-  .dx-login { grid-template-columns: minmax(0, 1fr); gap: 16px; padding: 16px max(16px, calc((100vw - 456px) / 2)); }
+/* Portrait tablets keep the full photograph and the approved framed form. */
+@media (min-width: 600px) and (max-width: 899px) {
+  .dx-login { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 24px max(24px, calc((100vw - 620px) / 2)); }
   .dx-login__hero { width: 100%; }
-  .dx-login__hero-media { width: fit-content; max-width: 100%; margin-inline: auto; border-radius: 12px; }
-  .dx-login__hero-media img { width: auto; max-width: 100%; max-height: 130px; }
-  .dx-login__hero-inner { display: none; }
-  .dx-login__panel { padding: 20px; }
+  .dx-login__hero-media { max-width: 540px; margin-inline: auto; }
+  .dx-login__hero-inner { padding-top: 16px; text-align: center; }
+  .dx-login__hero-headline { font-size: 28px; }
+  .dx-login__hero-subline { display: none; }
 }
-@media (max-width: 380px) {
-  .dx-login { padding-inline: 12px; gap: 12px; }
-  .dx-login__panel { padding: 16px; }
-  .dx-login__hero-media img { max-height: 110px; }
+/* Restore the previous phone presentation: full-width banner and open form. */
+@media (max-width: 599px) {
+  .dx-login { grid-template-columns: minmax(0, 1fr); align-content: start; gap: 0; padding: 0; }
+  .dx-login__hero { position: relative; min-height: 160px; }
+  .dx-login__hero-media { position: absolute; inset: 0; border: 0; border-radius: 0; }
+  .dx-login__hero-media picture, .dx-login__hero-media img { width: 100%; height: 100%; }
+  .dx-login__hero-media img { object-fit: cover; object-position: center 42%; }
+  .dx-login__hero-media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 20%, rgba(5, 20, 27, .9) 100%); }
+  .dx-login__hero-inner { position: relative; min-height: 160px; display: flex; align-items: flex-end; padding: 24px; }
+  .dx-login__hero-headline { max-width: 260px; font-size: 26px; }
+  .dx-login__hero-subline { display: none; }
+  .dx-login__panel { max-width: 500px; padding: 28px 20px max(24px, env(safe-area-inset-bottom), var(--dx-keyboard-gap, 0px)); border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+  .dx-login__topbar { margin-bottom: 24px; }
 }
 @media (prefers-reduced-motion: reduce) { .dx-login__spin { animation: none; } }
