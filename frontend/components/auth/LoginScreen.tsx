@@ -498,12 +498,12 @@ export function LoginScreen({
             <source
               type="image/webp"
               srcSet="/brand/donexto-login-hero-studio-1280.webp 1280w, /brand/donexto-login-hero-studio-1920.webp 1920w, /brand/donexto-login-hero-studio-2560.webp 2560w"
-              sizes="(min-width: 1264px) 672px, (min-width: 900px) 54vw, 232px"
+              sizes="(min-width: 1264px) 672px, (min-width: 900px) 54vw, (min-width: 600px) 540px, 100vw"
             />
             <img
               src="/brand/donexto-login-hero-studio.jpg"
               srcSet="/brand/donexto-login-hero-studio-1280.jpg 1280w, /brand/donexto-login-hero-studio.jpg 1920w, /brand/donexto-login-hero-studio-2560.jpg 2560w"
-              sizes="(min-width: 1264px) 672px, (min-width: 900px) 54vw, 232px"
+              sizes="(min-width: 1264px) 672px, (min-width: 900px) 54vw, (min-width: 600px) 540px, 100vw"
               width={2560}
               height={1428}
               alt=""

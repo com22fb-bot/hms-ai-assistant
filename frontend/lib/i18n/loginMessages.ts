@@ -174,7 +174,7 @@ const es: Record<LoginMessageKey, string> = {
   wantedToSay: "Ese dominio no es un correo que podamos leer ahora. ¿Quisiste decir",
   emailPlaceholder: "tu@correo.com",
   availableNow: "Disponible ahora",
-  comingSoonBadge: "Pronto",
+  comingSoonBadge: "Próximamente",
   chipOutlook: "Outlook",
   chipHotmail: "Hotmail",
   chipLive: "Live",
