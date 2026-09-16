@@ -95,7 +95,7 @@ const es: Record<LoginMessageKey, string> = {
   helper: "Ingresa tu correo para continuar a Donexto.",
   body: "Ingresa tu correo para continuar a Donexto.",
   noPasswordNote:
-    "Al continuar, te llevamos a iniciar sesión en tu correo. Donexto nunca te pide la contraseña de tu buzón.",
+    "Inicia sesión con tu proveedor. No compartes tu contraseña con Donexto.",
   helperYahoo:
     "Te llevamos al sitio de Yahoo para que firmes ahí. Donexto no pide tu clave.",
   helperMicrosoft:
@@ -200,7 +200,7 @@ const en: Record<LoginMessageKey, string> = {
   helper: "Enter your email to continue to Donexto.",
   body: "Enter your email to continue to Donexto.",
   noPasswordNote:
-    "When you continue, we take you to sign in to your mailbox. Donexto never asks for your email password.",
+    "Sign in with your provider. Your password is never shared with Donexto.",
   helperYahoo:
     "We take you to Yahoo’s site to sign in. Donexto does not ask for your password.",
   helperMicrosoft:
@@ -304,7 +304,7 @@ const fr: Record<LoginMessageKey, string> = {
   helper: "Saisissez votre e-mail pour continuer vers Donexto.",
   body: "Saisissez votre e-mail pour continuer vers Donexto.",
   noPasswordNote:
-    "En continuant, nous vous emmenons vous connecter à votre messagerie. Donexto ne demande jamais le mot de passe de votre boîte.",
+    "Connectez-vous chez votre fournisseur. Votre mot de passe reste privé.",
   helperYahoo:
     "Nous vous emmenons sur le site Yahoo pour vous connecter. Donexto ne demande pas votre mot de passe.",
   helperMicrosoft:
@@ -409,7 +409,7 @@ const it: Record<LoginMessageKey, string> = {
   helper: "Inserisci la tua email per continuare su Donexto.",
   body: "Inserisci la tua email per continuare su Donexto.",
   noPasswordNote:
-    "Continuando, ti portiamo ad accedere alla tua casella. Donexto non chiede mai la password della casella.",
+    "Accedi con il tuo provider. Non condividi la password con Donexto.",
   helperYahoo:
     "Ti portiamo sul sito Yahoo per accedere. Donexto non chiede la password.",
   helperMicrosoft:
@@ -514,7 +514,7 @@ const pt: Record<LoginMessageKey, string> = {
   helper: "Introduza o seu correio para continuar no Donexto.",
   body: "Introduza o seu correio para continuar no Donexto.",
   noPasswordNote:
-    "Ao continuar, levamo-lo a iniciar sessão no seu correio. O Donexto nunca pede a palavra-passe da sua caixa.",
+    "Entre com o seu provedor. Não partilha a palavra-passe com o Donexto.",
   helperYahoo:
     "Levamo-lo ao site da Yahoo para entrar. O Donexto não pede a palavra-passe.",
   helperMicrosoft:

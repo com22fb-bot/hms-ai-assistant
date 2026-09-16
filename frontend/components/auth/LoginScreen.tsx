@@ -498,12 +498,12 @@ export function LoginScreen({
             <source
               type="image/webp"
               srcSet="/brand/donexto-login-hero-studio-1280.webp 1280w, /brand/donexto-login-hero-studio-1920.webp 1920w, /brand/donexto-login-hero-studio-2560.webp 2560w"
-              sizes="(min-width: 1024px) 50vw, 100vw"
+              sizes="(min-width: 1264px) 672px, (min-width: 900px) 54vw, 232px"
             />
             <img
               src="/brand/donexto-login-hero-studio.jpg"
               srcSet="/brand/donexto-login-hero-studio-1280.jpg 1280w, /brand/donexto-login-hero-studio.jpg 1920w, /brand/donexto-login-hero-studio-2560.jpg 2560w"
-              sizes="(min-width: 1024px) 50vw, 100vw"
+              sizes="(min-width: 1264px) 672px, (min-width: 900px) 54vw, 232px"
               width={2560}
               height={1428}
               alt=""
@@ -512,7 +512,6 @@ export function LoginScreen({
             />
           </picture>
         </div>
-        <div className="dx-login__hero-scrim" aria-hidden="true" />
         <div className="dx-login__hero-inner">
           <h1 className="dx-login__sr">Donexto</h1>
           <p className="dx-login__hero-headline">{L("heroHeadline")}</p>
