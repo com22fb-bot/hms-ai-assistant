@@ -1,6 +1,11 @@
 name: Deploy Donexto app
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-donexto.yml"
 permissions:
   contents: read
 concurrency:
@@ -46,7 +51,25 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
         run: npm run deploy
+      - name: Record deployment result
+        run: echo "Worker donexto-app deployed from $GITHUB_SHA. Public endpoint checks run separately." >> "$GITHUB_STEP_SUMMARY"
+  verify:
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
       - name: Check public endpoints
+        shell: bash
         run: |
-          curl --fail --silent --show-error --retry 3 --max-time 30 https://app.donexto.com/ -o /dev/null
-          curl --fail --silent --show-error --retry 3 --max-time 30 https://app.donexto.com/api/hms/health | node -e 'let s=""; process.stdin.on("data", x => s+=x); process.stdin.on("end", () => { if(JSON.parse(s).status !== "ok") process.exit(1); });'
+          failed=0
+          for path in / /api/hms/health; do
+            status=$(curl --silent --show-error --retry 3 --max-time 30 -o response.txt -w '%{http_code}' "https://app.donexto.com$path") || status=000
+            echo "Endpoint $path: HTTP $status" >> "$GITHUB_STEP_SUMMARY"
+            if [ "$status" != 200 ]; then
+              echo "::error::Publication completed, but endpoint $path returned HTTP $status. Inspect domain access/security and application health."
+              failed=1
+            elif [ "$path" = /api/hms/health ]; then
+              python3 -c 'import json; assert json.load(open("response.txt")).get("status") == "ok"' || failed=1
+            fi
+          done
+          exit "$failed"
