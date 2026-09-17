@@ -85,15 +85,28 @@ export function LanguageProvider({
   );
 
   useEffect(() => {
-    if (!userId || readStoredLanguage()) {
+    if (!userId) {
       return;
     }
     let cancelled = false;
     void (async () => {
       const { data } = await supabase.auth.getUser();
       const fromMeta = data.user?.user_metadata?.language;
-      if (!cancelled && isAppLanguage(fromMeta)) {
-        applyLanguage(fromMeta);
+      const stored = readStoredLanguage();
+      const next = stored || (isAppLanguage(fromMeta) ? fromMeta : language);
+      if (!cancelled) {
+        applyLanguage(next);
+        try {
+          await supabase.auth.updateUser({
+            data: { language: next, locale: localeForLanguage(next) },
+          });
+          await supabase
+            .from("profiles")
+            .update({ language: next, locale: localeForLanguage(next) })
+            .eq("id", userId);
+        } catch {
+          /* La preferencia local sigue activa si el perfil no se puede actualizar. */
+        }
       }
     })();
     return () => {
@@ -150,4 +163,8 @@ export function useLanguage(): LanguageContextValue {
     throw new Error("useLanguage must be used within LanguageProvider");
   }
   return value;
+}
+
+export function useOptionalLanguage(): LanguageContextValue | null {
+  return useContext(LanguageContext);
 }

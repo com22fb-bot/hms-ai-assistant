@@ -22,7 +22,19 @@ export type MessageKey =
   | "profileSignOut"
   | "closeMenu"
   | "language"
-  | "searchPlaceholder";
+  | "searchPlaceholder"
+  | "confirmGateTitle"
+  | "confirmGateHelper"
+  | "confirmGateSpam"
+  | "confirmGateResent"
+  | "confirmGateResendError"
+  | "confirmGateRefreshError"
+  | "confirmGateChecking"
+  | "confirmGateSending"
+  | "confirmGateRefresh"
+  | "confirmGateResend"
+  | "confirmGateSignOut"
+  | "confirmGateSecure";
 
 const es: Record<MessageKey, string> = {
   settingsTitle: "Ajustes",
@@ -48,6 +60,18 @@ const es: Record<MessageKey, string> = {
   closeMenu: "Cerrar menú",
   language: "Idioma",
   searchPlaceholder: "Buscar correos, personas o avisos…",
+  confirmGateTitle: "Confirma tu correo",
+  confirmGateHelper: "Abre el enlace que enviamos a {email}. Eso te identifica; no es la contraseña del buzón.",
+  confirmGateSpam: "Revisa Spam o Correo no deseado: Donexto puede ser un remitente desconocido.",
+  confirmGateResent: "Listo. Revisa la bandeja y Spam de ese mismo correo.",
+  confirmGateResendError: "No fue posible reenviar el correo.",
+  confirmGateRefreshError: "Aún no vemos la confirmación. Abre el enlace del correo.",
+  confirmGateChecking: "Comprobando…",
+  confirmGateSending: "Enviando…",
+  confirmGateRefresh: "Ya confirmé mi correo",
+  confirmGateResend: "Reenviar correo",
+  confirmGateSignOut: "Cerrar sesión",
+  confirmGateSecure: "Al continuar, Donexto solo confirma que ese correo es tuyo.",
 };
 
 const en: Record<MessageKey, string> = {
@@ -74,6 +98,18 @@ const en: Record<MessageKey, string> = {
   closeMenu: "Close menu",
   language: "Language",
   searchPlaceholder: "Search mail, people, or alerts…",
+  confirmGateTitle: "Confirm your email",
+  confirmGateHelper: "Open the link we sent to {email}. It identifies you; it is not your mailbox password.",
+  confirmGateSpam: "Check Spam or Junk: Donexto may be an unfamiliar sender.",
+  confirmGateResent: "Done. Check the inbox and Spam folder for that email.",
+  confirmGateResendError: "We could not resend the email.",
+  confirmGateRefreshError: "We do not see confirmation yet. Open the link in the email.",
+  confirmGateChecking: "Checking…",
+  confirmGateSending: "Sending…",
+  confirmGateRefresh: "I confirmed my email",
+  confirmGateResend: "Resend email",
+  confirmGateSignOut: "Sign out",
+  confirmGateSecure: "Donexto only confirms that this email belongs to you.",
 };
 
 const fr: Record<MessageKey, string> = {
@@ -100,6 +136,18 @@ const fr: Record<MessageKey, string> = {
   closeMenu: "Fermer le menu",
   language: "Langue",
   searchPlaceholder: "Rechercher courrier, personnes ou alertes…",
+  confirmGateTitle: "Confirmez votre e-mail",
+  confirmGateHelper: "Ouvrez le lien envoyé à {email}. Il vous identifie et n’est pas le mot de passe de votre boîte.",
+  confirmGateSpam: "Vérifiez les spams ou courriers indésirables : Donexto peut être un expéditeur inconnu.",
+  confirmGateResent: "C’est fait. Vérifiez la boîte de réception et les spams.",
+  confirmGateResendError: "Impossible de renvoyer l’e-mail.",
+  confirmGateRefreshError: "La confirmation n’est pas encore visible. Ouvrez le lien reçu.",
+  confirmGateChecking: "Vérification…",
+  confirmGateSending: "Envoi…",
+  confirmGateRefresh: "J’ai confirmé mon e-mail",
+  confirmGateResend: "Renvoyer l’e-mail",
+  confirmGateSignOut: "Se déconnecter",
+  confirmGateSecure: "Donexto confirme seulement que cette adresse vous appartient.",
 };
 
 const it: Record<MessageKey, string> = {
@@ -126,6 +174,18 @@ const it: Record<MessageKey, string> = {
   closeMenu: "Chiudi menu",
   language: "Lingua",
   searchPlaceholder: "Cerca posta, persone o avvisi…",
+  confirmGateTitle: "Conferma la tua e-mail",
+  confirmGateHelper: "Apri il link inviato a {email}. Ti identifica; non è la password della tua casella.",
+  confirmGateSpam: "Controlla Spam o Posta indesiderata: Donexto potrebbe essere un mittente sconosciuto.",
+  confirmGateResent: "Fatto. Controlla la posta in arrivo e Spam.",
+  confirmGateResendError: "Non è stato possibile inviare di nuovo l’e-mail.",
+  confirmGateRefreshError: "La conferma non è ancora visibile. Apri il link ricevuto.",
+  confirmGateChecking: "Verifica…",
+  confirmGateSending: "Invio…",
+  confirmGateRefresh: "Ho confermato la mia e-mail",
+  confirmGateResend: "Invia di nuovo l’e-mail",
+  confirmGateSignOut: "Esci",
+  confirmGateSecure: "Donexto conferma solo che questo indirizzo ti appartiene.",
 };
 
 const pt: Record<MessageKey, string> = {
@@ -152,6 +212,18 @@ const pt: Record<MessageKey, string> = {
   closeMenu: "Fechar menu",
   language: "Idioma",
   searchPlaceholder: "Procurar correio, pessoas ou avisos…",
+  confirmGateTitle: "Confirme o seu e-mail",
+  confirmGateHelper: "Abra o link enviado para {email}. Ele identifica você; não é a senha da sua caixa de correio.",
+  confirmGateSpam: "Verifique Spam ou Lixo eletrônico: Donexto pode ser um remetente desconhecido.",
+  confirmGateResent: "Pronto. Verifique a caixa de entrada e o Spam.",
+  confirmGateResendError: "Não foi possível reenviar o e-mail.",
+  confirmGateRefreshError: "Ainda não vemos a confirmação. Abra o link recebido.",
+  confirmGateChecking: "Verificando…",
+  confirmGateSending: "Enviando…",
+  confirmGateRefresh: "Confirmei o meu e-mail",
+  confirmGateResend: "Reenviar e-mail",
+  confirmGateSignOut: "Terminar sessão",
+  confirmGateSecure: "O Donexto apenas confirma que este e-mail pertence a você.",
 };
 
 export const MESSAGES: Record<AppLanguage, Record<MessageKey, string>> = {

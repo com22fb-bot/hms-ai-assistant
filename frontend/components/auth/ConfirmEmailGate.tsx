@@ -3,14 +3,16 @@
 import { LoaderCircle, Mail } from "lucide-react";
 import { useState } from "react";
 
-import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
+import { useOptionalLanguage } from "@/lib/i18n/LanguageProvider";
+import type { AppLanguage } from "@/lib/i18n/languages";
+import { translate, type MessageKey } from "@/lib/i18n/messages";
 
 import "./hms-gate.css";
 import "./dx-auth-neon.css";
 
 type ConfirmEmailGateProps = {
   email: string;
-  onResend: (email: string) => Promise<void>;
+  onResend: (email: string, language: AppLanguage) => Promise<void>;
   onRefresh: () => Promise<void>;
   onSignOut: () => Promise<void> | void;
 };
@@ -25,6 +27,10 @@ export function ConfirmEmailGate({
   onRefresh,
   onSignOut,
 }: ConfirmEmailGateProps) {
+  const languageContext = useOptionalLanguage();
+  const language = languageContext?.language || "es";
+  const t = (key: MessageKey) =>
+    languageContext?.t(key) || translate("es", key);
   const [busy, setBusy] = useState<"resend" | "refresh" | "out" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,14 +43,10 @@ export function ConfirmEmailGate({
     setError(null);
     setMessage(null);
     try {
-      await onResend(email);
-      setMessage("Listo. Revisa la bandeja (y spam) de ese mismo correo.");
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "No fue posible reenviar el correo.",
-      );
+      await onResend(email, language);
+      setMessage(t("confirmGateResent"));
+    } catch {
+      setError(t("confirmGateResendError"));
     } finally {
       setBusy(null);
     }
@@ -59,12 +61,8 @@ export function ConfirmEmailGate({
     setMessage(null);
     try {
       await onRefresh();
-    } catch (requestError) {
-      setError(
-        requestError instanceof Error
-          ? requestError.message
-          : "Aún no vemos la confirmación. Abre el enlace del correo.",
-      );
+    } catch {
+      setError(t("confirmGateRefreshError"));
     } finally {
       setBusy(null);
     }
@@ -103,15 +101,17 @@ export function ConfirmEmailGate({
         <div className="dx-auth__card" aria-labelledby="dx-confirm-title">
           <header className="dx-auth__heading">
             <h2 id="dx-confirm-title" className="dx-auth__title">
-              {ACCOUNT_VS_MAILBOX.confirmGateTitle}
+              {t("confirmGateTitle")}
             </h2>
             <p className="dx-auth__slogan">
-              Abre el enlace que enviamos a <strong>{email}</strong>.
-              Eso te identifica; no es la contraseña del buzón.
+              {t("confirmGateHelper").replace("{email}", email)}
             </p>
           </header>
 
           <div className="dx-auth__signin">
+            <p className="dx-auth__alert" role="note">
+              {t("confirmGateSpam")}
+            </p>
             {error ? (
               <div className="dx-auth__alert is-error" role="alert">
                 <span>{error}</span>
@@ -132,10 +132,10 @@ export function ConfirmEmailGate({
               {busy === "refresh" ? (
                 <>
                   <LoaderCircle className="dx-auth__spin" size={18} />
-                  Comprobando…
+                  {t("confirmGateChecking")}
                 </>
               ) : (
-                ACCOUNT_VS_MAILBOX.confirmGateRefresh
+                t("confirmGateRefresh")
               )}
             </button>
 
@@ -148,12 +148,12 @@ export function ConfirmEmailGate({
               {busy === "resend" ? (
                 <>
                   <LoaderCircle className="dx-auth__spin" size={18} />
-                  Enviando…
+                  {t("confirmGateSending")}
                 </>
               ) : (
                 <>
                   <Mail size={18} />
-                  {ACCOUNT_VS_MAILBOX.confirmGateResend}
+                  {t("confirmGateResend")}
                 </>
               )}
             </button>
@@ -165,12 +165,12 @@ export function ConfirmEmailGate({
               disabled={busy !== null}
               onClick={() => void signOut()}
             >
-              {ACCOUNT_VS_MAILBOX.confirmGateSignOut}
+              {t("confirmGateSignOut")}
             </button>
           </div>
 
           <p className="dx-auth__secure" role="note">
-            Al continuar, Donexto solo confirma que ese correo es tuyo.
+            {t("confirmGateSecure")}
           </p>
         </div>
       </section>

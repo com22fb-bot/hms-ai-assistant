@@ -16,6 +16,7 @@ from app.security.identity import (
 _DONEXTO_EXEMPT_SUFFIXES = (
     "/identity/me",
     "/identity/confirm-donexto",
+    "/identity/send-donexto-verify",
 )
 
 
