@@ -60,6 +60,26 @@ def read_donexto_verified(app_metadata: dict[str, Any] | None) -> bool:
     return _metadata_dict(app_metadata).get("donexto_verified") is True
 
 
+def trusted_donexto_verified(
+    app_metadata: dict[str, Any] | None,
+    *,
+    oauth_identity_present: bool = False,
+) -> bool:
+    """Return true only for verification trusted by Donexto.
+
+    An OAuth identity never proves Donexto verification. The only valid proof
+    for an OAuth account is the email source written by ``mark_donexto_verified``
+    after the ``?donexto_verify=1`` flow. Password accounts keep compatibility
+    with the historical app_metadata flag.
+    """
+    metadata = _metadata_dict(app_metadata)
+    if metadata.get("donexto_verified") is not True:
+        return False
+    if oauth_identity_present:
+        return metadata.get("donexto_verification_source") == "email"
+    return True
+
+
 def email_is_confirmed(raw_user: Any) -> bool:
     confirmed = _user_value(raw_user, "email_confirmed_at")
     return bool(confirmed)
@@ -72,13 +92,7 @@ def _user_value(user: Any, key: str, default: Any = None) -> Any:
 
 
 def can_mark_donexto_verified(raw_user: Any) -> bool:
-    """Eligible sources: OAuth identity or Supabase-confirmed email."""
-    if user_has_oauth_identity(
-        identities=_user_value(raw_user, "identities"),
-        user_metadata=_metadata_dict(_user_value(raw_user, "user_metadata")),
-        app_metadata=_metadata_dict(_user_value(raw_user, "app_metadata")),
-    ):
-        return True
+    """Only a Supabase-confirmed Donexto email can be marked."""
     return email_is_confirmed(raw_user)
 
 
@@ -93,15 +107,9 @@ def mark_donexto_verified(user_id: str) -> None:
         **previous,
         "donexto_verified": True,
         "donexto_verified_at": datetime.now(timezone.utc).isoformat(),
+        "donexto_verification_source": "email",
     }
     client.auth.admin.update_user_by_id(
         user_id,
         {"app_metadata": merged},
     )
-
-
-def verified_app_metadata_patch() -> dict[str, Any]:
-    return {
-        "donexto_verified": True,
-        "donexto_verified_at": datetime.now(timezone.utc).isoformat(),
-    }

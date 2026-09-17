@@ -84,7 +84,7 @@ class AuthenticationContextMiddleware(BaseHTTPMiddleware):
             )
             path = request.url.path.rstrip("/") or "/"
             if not any(path == item or path.startswith(item + "/") for item in _DONEXTO_EXEMPT_SUFFIXES):
-                if not context.user.donexto_verified and not context.user.has_oauth_identity:
+                if not context.user.donexto_verified:
                     return JSONResponse(
                         status_code=403,
                         content={

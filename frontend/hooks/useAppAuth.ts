@@ -12,6 +12,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { hmsJson } from "@/lib/hmsApi";
 import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
+import { userHasOAuthIdentity } from "@/lib/oauthIdentity";
 import { isBrowserNetworkError, postPublicHms } from "@/lib/publicHms";
 
 export { userHasOAuthIdentity } from "@/lib/oauthIdentity";
@@ -45,7 +46,7 @@ const HMS_API_BASE =
 async function confirmDonextoWithBackend(): Promise<boolean> {
   try {
     const result = await hmsJson<{ donexto_verified?: boolean }>(
-      `${HMS_API_BASE}/identity/confirm-donexto`,
+      `${HMS_API_BASE}/identity/confirm-donexto?${DONEXTO_VERIFY_QUERY}=1`,
       { method: "POST" },
     );
     return result.donexto_verified === true;
@@ -68,14 +69,20 @@ function yahooImapOwnsIdentity(user: User | null | undefined): boolean {
 
 function isDonextoVerified(user: User | null | undefined): boolean {
   if (user?.app_metadata?.donexto_verified === true) {
+    if (
+      userHasOAuthIdentity(user)
+      && user.app_metadata?.donexto_verification_source !== "email"
+    ) {
+      return false;
+    }
     return true;
   }
   return false;
 }
 
 /**
- * Every account needs the Donexto verify email unless it already has the
- * trusted server-side verification flag.
+ * Every account, including OAuth accounts, needs the Donexto email link
+ * unless the backend has recorded a trusted verification source.
  */
 function sessionNeedsDonextoEmailConfirm(session: Session | null): boolean {
   const user = session?.user;

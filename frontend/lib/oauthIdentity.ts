@@ -1,7 +1,6 @@
 /**
- * Identity proven at Yahoo / Google / Microsoft (or Apple) counts as
- * Donexto verification. Backend Yahoo/Microsoft mint Auth users with
- * signup_via metadata rather than a Supabase OAuth identity row.
+ * Detects an external identity for routing and contamination cleanup. An
+ * OAuth identity is not Donexto email verification.
  */
 
 export type OAuthIdentityUser = {

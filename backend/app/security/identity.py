@@ -9,7 +9,7 @@ from fastapi import HTTPException, Request
 
 from app.database.supabase import get_supabase_client
 from app.security.donexto_verified import (
-    read_donexto_verified,
+    trusted_donexto_verified,
     user_has_oauth_identity,
 )
 
@@ -172,7 +172,10 @@ def authenticate_request(request: Request) -> AuthenticatedUser:
         full_name=full_name,
         raw_user_metadata=metadata,
         raw_app_metadata=app_metadata,
-        donexto_verified=read_donexto_verified(app_metadata),
+        donexto_verified=trusted_donexto_verified(
+            app_metadata,
+            oauth_identity_present=oauth_identity,
+        ),
         has_oauth_identity=oauth_identity,
     )
 
