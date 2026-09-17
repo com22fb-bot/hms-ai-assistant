@@ -164,3 +164,7 @@ export function useLanguage(): LanguageContextValue {
   }
   return value;
 }
+
+export function useOptionalLanguage(): LanguageContextValue | null {
+  return useContext(LanguageContext);
+}

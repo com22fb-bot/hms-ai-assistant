@@ -3,8 +3,9 @@
 import { LoaderCircle, Mail } from "lucide-react";
 import { useState } from "react";
 
-import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { useOptionalLanguage } from "@/lib/i18n/LanguageProvider";
 import type { AppLanguage } from "@/lib/i18n/languages";
+import { translate, type MessageKey } from "@/lib/i18n/messages";
 
 import "./hms-gate.css";
 import "./dx-auth-neon.css";
@@ -26,7 +27,10 @@ export function ConfirmEmailGate({
   onRefresh,
   onSignOut,
 }: ConfirmEmailGateProps) {
-  const { language, t } = useLanguage();
+  const languageContext = useOptionalLanguage();
+  const language = languageContext?.language || "es";
+  const t = (key: MessageKey) =>
+    languageContext?.t(key) || translate("es", key);
   const [busy, setBusy] = useState<"resend" | "refresh" | "out" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
