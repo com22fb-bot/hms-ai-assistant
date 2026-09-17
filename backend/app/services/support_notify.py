@@ -20,6 +20,18 @@ _recent_domains: dict[str, float] = {}
 _recent_lock = threading.Lock()
 
 
+class SMTPDeliveryError(RuntimeError):
+    """Safe SMTP failure details for logs and controlled API errors."""
+
+    def __init__(self, host: str, port: object, error: BaseException) -> None:
+        self.error_type = type(error).__name__
+        self.host = host
+        self.port = port
+        super().__init__(
+            f"SMTP delivery failed ({self.error_type}) at {host}:{port}"
+        )
+
+
 def support_notify_email() -> str:
     return (
         os.getenv("SUPPORT_NOTIFY_EMAIL", DEFAULT_SUPPORT_EMAIL).strip()
@@ -41,7 +53,17 @@ def _send_via_smtp(to_addr: str, subject: str, body: str) -> bool:
     host = os.getenv("SUPPORT_SMTP_HOST", "").strip()
     if not host:
         return False
-    port = int(os.getenv("SUPPORT_SMTP_PORT", "587") or "587")
+    port_value = os.getenv("SUPPORT_SMTP_PORT", "587") or "587"
+    try:
+        port = int(port_value)
+    except (TypeError, ValueError) as error:
+        logger.warning(
+            "SMTP delivery failed: type=%s host=%s port=%s",
+            type(error).__name__,
+            host,
+            port_value,
+        )
+        raise SMTPDeliveryError(host, port_value, error) from error
     user = os.getenv("SUPPORT_SMTP_USER", "").strip()
     password = os.getenv("SUPPORT_SMTP_PASSWORD", "").strip()
     from_addr = (
@@ -54,16 +76,22 @@ def _send_via_smtp(to_addr: str, subject: str, body: str) -> bool:
     message["From"] = from_addr
     message["To"] = to_addr
     message.set_content(body)
-    with smtplib.SMTP(host, port, timeout=12) as smtp:
-        smtp.ehlo()
-        try:
+    try:
+        with smtplib.SMTP(host, port, timeout=12) as smtp:
+            smtp.ehlo()
             smtp.starttls()
             smtp.ehlo()
-        except smtplib.SMTPException:
-            pass
-        if user and password:
-            smtp.login(user, password)
-        smtp.send_message(message)
+            if user and password:
+                smtp.login(user, password)
+            smtp.send_message(message)
+    except Exception as error:  # noqa: BLE001 — normalize without secrets
+        logger.warning(
+            "SMTP delivery failed: type=%s host=%s port=%s",
+            type(error).__name__,
+            host,
+            port,
+        )
+        raise SMTPDeliveryError(host, port, error) from error
     return True
 
 

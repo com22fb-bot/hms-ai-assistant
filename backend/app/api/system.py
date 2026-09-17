@@ -83,6 +83,10 @@ def env_status() -> dict[str, Any]:
             ),
             "SUPPORT_NOTIFY_EMAIL": _env_is_set("SUPPORT_NOTIFY_EMAIL"),
             "SUPPORT_SMTP_HOST": _env_is_set("SUPPORT_SMTP_HOST"),
+            "SUPPORT_SMTP_PORT": _env_is_set("SUPPORT_SMTP_PORT"),
+            "SUPPORT_SMTP_USER": _env_is_set("SUPPORT_SMTP_USER"),
+            "SUPPORT_SMTP_PASSWORD": _env_is_set("SUPPORT_SMTP_PASSWORD"),
+            "SUPPORT_SMTP_FROM": _env_is_set("SUPPORT_SMTP_FROM"),
         },
         "oauth_shape": {
             "frontend_mentions_donexto": frontend_is_donexto,
