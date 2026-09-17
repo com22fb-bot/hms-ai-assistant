@@ -14,7 +14,6 @@ from urllib.parse import parse_qs, urlparse
 from fastapi import HTTPException
 
 from app.database.supabase import get_supabase_client
-from app.security.donexto_verified import verified_app_metadata_patch
 from app.security.identity import bootstrap_workspace_for_user
 
 
@@ -240,8 +239,7 @@ def _ensure_yahoo_auth_user(
 ) -> tuple[str, str | None, bool]:
     """Localiza el usuario Auth. Solo crea uno si allow_create (alta explícita).
 
-    Usuarios existentes conservan la verificación OAuth histórica. Las altas
-    nuevas deben confirmar Donexto mediante el OTP de correo.
+    Las altas y accesos OAuth deben confirmar Donexto mediante el OTP de correo.
     """
 
     user_metadata = {"signup_via": signup_via}
@@ -258,13 +256,11 @@ def _ensure_yahoo_auth_user(
             client.auth.admin.update_user_by_id(
                 user_id,
                 {
-                    "email_confirm": True,
                     "user_metadata": merged_user,
-                    "app_metadata": verified_app_metadata_patch(),
                 },
             )
         except Exception:
-            logger.warning("No se pudo marcar donexto_verified en %s", email, exc_info=True)
+            logger.warning("No se pudo actualizar metadata OAuth en %s", email, exc_info=True)
         return user_id, None, False
 
     if not allow_create:
@@ -275,7 +271,6 @@ def _ensure_yahoo_auth_user(
         created = client.auth.admin.create_user(
             {
                 "email": email,
-                "email_confirm": True,
                 "password": created_password,
                 "user_metadata": user_metadata,
             }
@@ -312,12 +307,10 @@ def _ensure_yahoo_auth_user(
         client.auth.admin.update_user_by_id(
             user_id,
             {
-                "email_confirm": True,
                 "user_metadata": {
                     **(payload.get("user_metadata") or {}),
                     **user_metadata,
                 },
-                "app_metadata": verified_app_metadata_patch(),
             },
         )
     except Exception:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 
 from app.database.supabase import get_supabase_client
 from app.security.donexto_verified import (
@@ -52,12 +52,21 @@ def identity_me() -> dict[str, object]:
 
 
 @router.post("/confirm-donexto")
-def confirm_donexto_identity() -> dict[str, object]:
+def confirm_donexto_identity(request: Request) -> dict[str, object]:
     """Mark Donexto email verification from a trusted source (service role only).
 
     Clients must not write ``donexto_verified`` via ``updateUser`` — that field
-    lives in ``app_metadata`` and is set here after OAuth or confirmed email.
+    lives in ``app_metadata`` and is set here after confirmed email.
     """
+    if request.query_params.get("donexto_verify") != "1":
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "donexto_verify_required",
+                "message": "La confirmación debe proceder del enlace de correo Donexto.",
+            },
+        )
+
     context = require_request_context()
     if context.user.donexto_verified:
         return {
@@ -79,7 +88,7 @@ def confirm_donexto_identity() -> dict[str, object]:
                 "status": "donexto_unverified",
                 "message": (
                     "Aún no podemos confirmar ese correo. Abre el enlace "
-                    "que enviamos o inicia sesión con Yahoo, Google o Microsoft."
+                    "que enviamos a tu correo Donexto."
                 ),
             },
         )
@@ -94,7 +103,7 @@ def confirm_donexto_identity() -> dict[str, object]:
 
 def require_donexto_verified_for_context() -> None:
     context = require_request_context()
-    if context.user.donexto_verified or context.user.has_oauth_identity:
+    if context.user.donexto_verified:
         return
     raise HTTPException(
         status_code=403,
