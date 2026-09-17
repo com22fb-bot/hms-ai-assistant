@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
+from pydantic import BaseModel
 
 from app.database.supabase import get_supabase_client
 from app.security.donexto_verified import (
@@ -8,9 +9,16 @@ from app.security.donexto_verified import (
     mark_donexto_verified,
 )
 from app.security.identity import require_request_context
+from app.security.redirect import sanitize_return_to
+from app.services.donexto_verification_email import send_verification_email
 
 
 router = APIRouter(prefix="/identity", tags=["HMS Identity"])
+
+
+class DonextoVerificationEmailRequest(BaseModel):
+    language: str = "es"
+    redirect_to: str | None = None
 
 
 @router.get("/me")
@@ -49,6 +57,25 @@ def identity_me() -> dict[str, object]:
             }
         ),
     }
+
+
+@router.post("/send-donexto-verify")
+def send_donexto_verification_email(
+    payload: DonextoVerificationEmailRequest,
+) -> dict[str, object]:
+    context = require_request_context()
+    language = payload.language or context.user.raw_user_metadata.get("language", "es")
+    redirect_to = sanitize_return_to(payload.redirect_to)
+    try:
+        message = send_verification_email(
+            client=get_supabase_client(),
+            email=context.user.email,
+            language=language,
+            redirect_to=f"{redirect_to}?donexto_verify=1",
+        )
+    except (RuntimeError, ValueError) as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    return {"status": "sent", "language": language, "subject": message.subject}
 
 
 @router.post("/confirm-donexto")

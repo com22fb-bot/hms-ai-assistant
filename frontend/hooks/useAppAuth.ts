@@ -11,6 +11,13 @@ import {
 } from "@/lib/appAuthSession";
 import { supabase } from "@/lib/supabase";
 import { hmsJson } from "@/lib/hmsApi";
+import {
+  isAppLanguage,
+  languageFromBrowser,
+  localeForLanguage,
+  readStoredLanguage,
+  type AppLanguage,
+} from "@/lib/i18n/languages";
 import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
 import { userHasOAuthIdentity } from "@/lib/oauthIdentity";
 import { isBrowserNetworkError, postPublicHms } from "@/lib/publicHms";
@@ -439,14 +446,16 @@ export function useAppAuth() {
           // sessionStorage puede fallar en modo restringido
         }
 
-        const { error } = await supabase.auth.signInWithOtp({
-          email: accountEmail,
-          options: {
-            shouldCreateUser: false,
-            emailRedirectTo: donextoVerifyRedirectTo(),
-          },
-        });
-        if (error) {
+        const language = isAppLanguage(currentUser.user_metadata?.language)
+          ? currentUser.user_metadata.language
+          : readStoredLanguage() || languageFromBrowser(navigator.language);
+        try {
+          await hmsJson("/identity/send-donexto-verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ language, redirect_to: window.location.origin }),
+          });
+        } catch (error) {
           try {
             sessionStorage.removeItem(sentKey);
           } catch {
@@ -593,6 +602,7 @@ export function useAppAuth() {
       email: string,
       password: string,
       fullName: string,
+      language: AppLanguage = "es",
     ): Promise<SignUpResult> => {
       const cleanName = fullName.trim().replace(/\s+/g, " ");
       if (cleanName.length < 2) {
@@ -608,6 +618,8 @@ export function useAppAuth() {
           emailRedirectTo: donextoVerifyRedirectTo(),
           data: {
             full_name: cleanName,
+            language,
+            locale: localeForLanguage(language),
           },
         },
       });
@@ -646,18 +658,20 @@ export function useAppAuth() {
     }
   }, []);
 
-  const sendDonextoVerifyEmail = useCallback(async (email: string) => {
+  const sendDonextoVerifyEmail = useCallback(async (
+    email: string,
+    language: AppLanguage = "es",
+  ) => {
     const cleanEmail = email.trim().toLowerCase();
-    const { error } = await supabase.auth.signInWithOtp({
-      email: cleanEmail,
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: donextoVerifyRedirectTo(),
-      },
+    await hmsJson("/identity/send-donexto-verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: cleanEmail,
+        language,
+        redirect_to: window.location.origin,
+      }),
     });
-    if (error) {
-      throw new Error(translateAuthError(error.message));
-    }
     try {
       sessionStorage.setItem(`donexto_verify_sent:${cleanEmail}`, "1");
     } catch {
