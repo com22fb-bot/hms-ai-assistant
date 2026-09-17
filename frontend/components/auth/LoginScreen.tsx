@@ -302,10 +302,6 @@ export function LoginScreen({
       await startOAuth("azure", address, yahooIntent);
       return;
     }
-    if (provider === "yahoo") {
-      openWaitlist("coming_soon", "Yahoo");
-      return;
-    }
     if (provider === "gmail") {
       openWaitlist("coming_soon", "Gmail");
       return;

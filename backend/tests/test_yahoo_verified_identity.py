@@ -26,17 +26,18 @@ class YahooVerifiedIdentityTests(unittest.TestCase):
             "app.services.yahoo_session._find_user_by_email",
             return_value=existing,
         ):
-            user_id, password = _ensure_yahoo_auth_user(
+            user_id, password, is_new = _ensure_yahoo_auth_user(
                 client, "hsalcidor@yahoo.com"
             )
         self.assertEqual(user_id, "user-1")
         self.assertIsNone(password)
+        self.assertFalse(is_new)
         payload = admin.update_user_by_id.call_args.args[1]
         self.assertTrue(payload["app_metadata"]["donexto_verified"])
         self.assertEqual(payload["user_metadata"]["signup_via"], "yahoo_oauth")
         self.assertEqual(payload["user_metadata"]["full_name"], "Héctor")
 
-    def test_new_yahoo_user_is_created_verified(self) -> None:
+    def test_new_yahoo_user_requires_donexto_verification(self) -> None:
         admin = MagicMock()
         created = MagicMock()
         created.user = {
@@ -51,10 +52,11 @@ class YahooVerifiedIdentityTests(unittest.TestCase):
             "app.services.yahoo_session._find_user_by_email",
             return_value={},
         ):
-            user_id, password = _ensure_yahoo_auth_user(
+            user_id, password, is_new = _ensure_yahoo_auth_user(
                 client, "nuevo@yahoo.com", allow_create=True
             )
         self.assertEqual(user_id, "user-2")
         self.assertTrue(password)
+        self.assertTrue(is_new)
         created_payload = admin.create_user.call_args.args[0]
-        self.assertTrue(created_payload["app_metadata"]["donexto_verified"])
+        self.assertNotIn("app_metadata", created_payload)

@@ -330,6 +330,7 @@ def microsoft_callback(request: Request) -> RedirectResponse:
             "token_type": "bearer",
             "expires_in": session.get("expires_in") or "3600",
             "type": "magiclink",
+            "is_new": str(session.get("is_new") is True).lower(),
         }
     )
     return RedirectResponse(

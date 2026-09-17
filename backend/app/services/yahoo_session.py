@@ -237,15 +237,14 @@ def _ensure_yahoo_auth_user(
     *,
     allow_create: bool = True,
     signup_via: str = YAHOO_SIGNUP_VIA,
-) -> tuple[str, str | None]:
+) -> tuple[str, str | None, bool]:
     """Localiza el usuario Auth. Solo crea uno si allow_create (alta explícita).
 
-    Firmar en Yahoo o Microsoft prueba el correo: donexto_verified queda True
-    en app_metadata (solo service role), no en user_metadata editable.
+    Usuarios existentes conservan la verificación OAuth histórica. Las altas
+    nuevas deben confirmar Donexto mediante el OTP de correo.
     """
 
     user_metadata = {"signup_via": signup_via}
-    app_metadata = verified_app_metadata_patch()
     existing = _find_user_by_email(client, email)
     created_password: str | None = None
 
@@ -261,12 +260,12 @@ def _ensure_yahoo_auth_user(
                 {
                     "email_confirm": True,
                     "user_metadata": merged_user,
-                    "app_metadata": app_metadata,
+                    "app_metadata": verified_app_metadata_patch(),
                 },
             )
         except Exception:
             logger.warning("No se pudo marcar donexto_verified en %s", email, exc_info=True)
-        return user_id, None
+        return user_id, None, False
 
     if not allow_create:
         raise YahooSessionError("no_donexto_account")
@@ -279,12 +278,11 @@ def _ensure_yahoo_auth_user(
                 "email_confirm": True,
                 "password": created_password,
                 "user_metadata": user_metadata,
-                "app_metadata": app_metadata,
             }
         )
         payload = _unwrap_user(created)
         if payload.get("id"):
-            return payload["id"], created_password
+            return payload["id"], created_password, True
     except Exception as error:
         if not _already_registered(error):
             raise YahooSessionError(
@@ -317,13 +315,14 @@ def _ensure_yahoo_auth_user(
                 "email_confirm": True,
                 "user_metadata": {
                     **(payload.get("user_metadata") or {}),
-                    **metadata,
+                    **user_metadata,
                 },
+                "app_metadata": verified_app_metadata_patch(),
             },
         )
     except Exception:
         logger.warning("No se pudo actualizar metadata Yahoo de %s", email, exc_info=True)
-    return user_id, created_password
+    return user_id, created_password, False
 
 
 def mint_yahoo_session(
@@ -331,11 +330,11 @@ def mint_yahoo_session(
     *,
     allow_create: bool = True,
     signup_via: str = YAHOO_SIGNUP_VIA,
-) -> dict[str, str]:
+) -> dict[str, str | bool]:
     """Usuario Auth + tokens. La clave del buzón nunca es password de Supabase."""
 
     client = get_supabase_client()
-    user_id, created_password = _ensure_yahoo_auth_user(
+    user_id, created_password, is_new = _ensure_yahoo_auth_user(
         client,
         email,
         allow_create=allow_create,
@@ -360,6 +359,7 @@ def mint_yahoo_session(
     session["user_id"] = user.id
     session["workspace_id"] = workspace_id
     session["email"] = email
+    session["is_new"] = is_new
     return session
 
 
@@ -369,7 +369,7 @@ def mint_yahoo_session_or_http(
     allow_create: bool = True,
     signup_via: str = YAHOO_SIGNUP_VIA,
     provider_label: str = "Yahoo",
-) -> dict[str, str]:
+) -> dict[str, str | bool]:
     try:
         return mint_yahoo_session(
             email,
