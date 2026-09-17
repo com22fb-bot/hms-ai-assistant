@@ -38,11 +38,11 @@ backend. Deben existir en Railway estas variables:
 - `SUPPORT_SMTP_PASSWORD`
 - `SUPPORT_SMTP_FROM`
 
-Para Gmail y Google Workspace usa el host SMTP autorizado por la cuenta y el
-puerto `587` con STARTTLS. `SUPPORT_SMTP_FROM` debe ser una dirección permitida
-por ese buzón o relay. La contraseña debe ser un secreto del proveedor (por
-ejemplo, una contraseña de aplicación cuando la política de la cuenta lo
-requiera), nunca la contraseña personal del usuario de Donexto.
+Para Gmail y Google Workspace usa un relay autorizado por la cuenta, el puerto
+`587` y STARTTLS. `SUPPORT_SMTP_FROM` debe ser una dirección permitida por ese
+buzón o relay. La contraseña debe ser un secreto del proveedor (por ejemplo,
+una contraseña de aplicación cuando la política de la cuenta lo requiera),
+nunca la contraseña personal del usuario de Donexto.
 
 El backend registra únicamente el tipo de error SMTP, host y puerto. No
 registra credenciales ni devuelve secretos al frontend.

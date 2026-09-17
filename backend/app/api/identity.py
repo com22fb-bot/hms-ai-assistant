@@ -84,7 +84,13 @@ def send_donexto_verification_email(
             },
         ) from error
     except (RuntimeError, ValueError) as error:
-        raise HTTPException(status_code=503, detail=str(error)) from error
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "verification_email_unavailable",
+                "message": "No fue posible preparar el correo de verificación.",
+            },
+        ) from error
     return {"status": "sent", "language": language, "subject": message.subject}
 
 

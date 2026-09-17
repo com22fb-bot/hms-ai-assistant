@@ -39,7 +39,7 @@ class DonextoVerificationEmailTests(unittest.TestCase):
 
     def test_sends_localized_email_with_supabase_action_link(self) -> None:
         client = MagicMock()
-        smtp_password = "p" * 16
+        smtp_password = "secret-that-must-not-leak"
         client.auth.admin.generate_link.return_value = {
             "properties": {"action_link": "https://example.test/action"}
         }
@@ -62,9 +62,7 @@ class DonextoVerificationEmailTests(unittest.TestCase):
 
         smtp = smtp_class.return_value.__enter__.return_value
         smtp.starttls.assert_called_once_with()
-        smtp.login.assert_called_once_with(
-            "sender@example.test", smtp_password
-        )
+        smtp.login.assert_called_once_with("sender@example.test", smtp_password)
         smtp.send_message.assert_called_once()
         sent_message = smtp.send_message.call_args.args[0]
         self.assertEqual(message.subject, "Confirm your Donexto email")
@@ -81,7 +79,7 @@ class DonextoVerificationEmailTests(unittest.TestCase):
 
     def test_smtp_authentication_error_is_safe(self) -> None:
         client = MagicMock()
-        smtp_password = "p" * 16
+        smtp_password = "auth-secret-that-must-not-leak"
         client.auth.admin.generate_link.return_value = {
             "properties": {"action_link": "https://example.test/action"}
         }
@@ -112,7 +110,7 @@ class DonextoVerificationEmailTests(unittest.TestCase):
 
     def test_smtp_connection_error_is_safe(self) -> None:
         client = MagicMock()
-        smtp_password = "q" * 16
+        smtp_password = "connection-secret-that-must-not-leak"
         client.auth.admin.generate_link.return_value = {
             "properties": {"action_link": "https://example.test/action"}
         }
@@ -124,8 +122,10 @@ class DonextoVerificationEmailTests(unittest.TestCase):
                 "SUPPORT_SMTP_USER": "sender@example.test",
                 "SUPPORT_SMTP_PASSWORD": smtp_password,
             },
-        ), patch("app.services.support_notify.smtplib.SMTP") as smtp_class:
-            smtp_class.side_effect = OSError("connection refused")
+        ), patch(
+            "app.services.support_notify.smtplib.SMTP",
+            side_effect=OSError("connection refused"),
+        ):
             with self.assertRaises(SMTPDeliveryError) as caught:
                 send_verification_email(
                     client=client,
