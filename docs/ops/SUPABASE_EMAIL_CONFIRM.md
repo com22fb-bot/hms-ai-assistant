@@ -25,3 +25,24 @@ Tras el alta, la UI muestra pantalla “Confirma tu correo” con:
 - **Ya confirmé — Entrar**
 
 No se puede spamear “Crear cuenta” otra vez en el mismo intento.
+
+## 4) Reenvío localizado de Donexto
+
+El endpoint `POST /identity/send-donexto-verify` genera el enlace con
+Supabase y envía el asunto y cuerpo localizados mediante el relay SMTP del
+backend. Deben existir en Railway estas variables:
+
+- `SUPPORT_SMTP_HOST`
+- `SUPPORT_SMTP_PORT`
+- `SUPPORT_SMTP_USER`
+- `SUPPORT_SMTP_PASSWORD`
+- `SUPPORT_SMTP_FROM`
+
+Para Gmail y Google Workspace usa un relay autorizado por la cuenta, el puerto
+`587` y STARTTLS. `SUPPORT_SMTP_FROM` debe ser una dirección permitida por ese
+buzón o relay. La contraseña debe ser un secreto del proveedor (por ejemplo,
+una contraseña de aplicación cuando la política de la cuenta lo requiera),
+nunca la contraseña personal del usuario de Donexto.
+
+El backend registra únicamente el tipo de error SMTP, host y puerto. No
+registra credenciales ni devuelve secretos al frontend.

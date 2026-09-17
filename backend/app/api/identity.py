@@ -11,6 +11,7 @@ from app.security.donexto_verified import (
 from app.security.identity import require_request_context
 from app.security.redirect import sanitize_return_to
 from app.services.donexto_verification_email import send_verification_email
+from app.services.support_notify import SMTPDeliveryError
 
 
 router = APIRouter(prefix="/identity", tags=["HMS Identity"])
@@ -73,8 +74,23 @@ def send_donexto_verification_email(
             language=language,
             redirect_to=f"{redirect_to}?donexto_verify=1",
         )
+    except SMTPDeliveryError as error:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "verification_email_delivery_failed",
+                "message": "No fue posible enviar el correo de verificación.",
+                "error_type": error.error_type,
+            },
+        ) from error
     except (RuntimeError, ValueError) as error:
-        raise HTTPException(status_code=503, detail=str(error)) from error
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "verification_email_unavailable",
+                "message": "No fue posible preparar el correo de verificación.",
+            },
+        ) from error
     return {"status": "sent", "language": language, "subject": message.subject}
 
 
