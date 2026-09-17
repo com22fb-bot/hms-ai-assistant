@@ -12,7 +12,6 @@ import {
 import { supabase } from "@/lib/supabase";
 import { hmsJson } from "@/lib/hmsApi";
 import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
-import { userHasOAuthIdentity } from "@/lib/oauthIdentity";
 import { isBrowserNetworkError, postPublicHms } from "@/lib/publicHms";
 
 export { userHasOAuthIdentity } from "@/lib/oauthIdentity";
@@ -75,15 +74,12 @@ function isDonextoVerified(user: User | null | undefined): boolean {
 }
 
 /**
- * Password / magic-link accounts still need the Donexto verify email.
- * Signing in at Yahoo, Google, or Microsoft is the verification.
+ * Every account needs the Donexto verify email unless it already has the
+ * trusted server-side verification flag.
  */
 function sessionNeedsDonextoEmailConfirm(session: Session | null): boolean {
   const user = session?.user;
   if (!user) {
-    return false;
-  }
-  if (userHasOAuthIdentity(user)) {
     return false;
   }
   return !isDonextoVerified(user);
@@ -397,7 +393,7 @@ export function useAppAuth() {
         return;
       }
 
-      if (userHasOAuthIdentity(currentUser) || isDonextoVerifyReturn()) {
+      if (isDonextoVerifyReturn()) {
         verifyBootstrapLock.current = true;
         try {
           if (!isDonextoVerified(currentUser)) {
