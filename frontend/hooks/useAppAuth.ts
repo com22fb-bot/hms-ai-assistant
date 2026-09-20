@@ -456,12 +456,15 @@ export function useAppAuth() {
             body: JSON.stringify({ language, redirect_to: window.location.origin }),
           });
         } catch (error) {
+          // Log loudly so we do not silently swallow 503s (SMTP down, etc.).
+          // Clear the "sent" flag so the ConfirmEmailGate can show its
+          // "Reenviar" button and the user can retry manually.
+          console.error("Auto-resend failed", error);
           try {
             sessionStorage.removeItem(sentKey);
           } catch {
             // ignore
           }
-          console.error("No fue posible enviar el correo Donexto:", error);
         }
       } finally {
         verifyBootstrapLock.current = false;
@@ -632,6 +635,34 @@ export function useAppAuth() {
       const identities = data.user?.identities ?? [];
       if (data.user && identities.length === 0) {
         return { kind: "already_registered" };
+      }
+
+      // Fire the localized Donexto verification email through our backend
+      // as the single source of truth. Supabase's own template will still
+      // be sent (Free plan cannot disable it without emptying the template);
+      // if this call fails we do not block signup because Supabase's own
+      // email will land as a fallback.
+      if (data.user?.email) {
+        try {
+          await hmsJson("/identity/send-donexto-verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              language,
+              redirect_to: window.location.origin,
+            }),
+          });
+          try {
+            sessionStorage.setItem(
+              `donexto_verify_sent:${data.user.email.toLowerCase()}`,
+              "1",
+            );
+          } catch {
+            // sessionStorage may be unavailable in restricted modes.
+          }
+        } catch (err) {
+          console.warn("Backend verification email failed", err);
+        }
       }
 
       if (data.session) {
