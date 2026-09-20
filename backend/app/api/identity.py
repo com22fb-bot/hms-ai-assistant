@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
@@ -20,6 +22,19 @@ router = APIRouter(prefix="/identity", tags=["HMS Identity"])
 class DonextoVerificationEmailRequest(BaseModel):
     language: str = "es"
     redirect_to: str | None = None
+
+
+def _append_verify_flag(url: str) -> str:
+    """Append ``donexto_verify=1`` preserving any pre-existing query string.
+
+    The old ``f"{url}?donexto_verify=1"`` concatenation broke URLs that
+    already had a query string (produced malformed ``?a=b?donexto_verify=1``
+    which Supabase then propagated back verbatim).
+    """
+    parsed = urlparse(url)
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query["donexto_verify"] = "1"
+    return urlunparse(parsed._replace(query=urlencode(query)))
 
 
 @router.get("/me")
@@ -72,7 +87,7 @@ def send_donexto_verification_email(
             client=get_supabase_client(),
             email=context.user.email,
             language=language,
-            redirect_to=f"{redirect_to}?donexto_verify=1",
+            redirect_to=_append_verify_flag(redirect_to),
         )
     except SMTPDeliveryError as error:
         raise HTTPException(

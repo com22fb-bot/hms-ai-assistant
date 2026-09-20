@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import smtplib
+import ssl
 import threading
 import time
 from email.message import EmailMessage
@@ -77,13 +78,23 @@ def _send_via_smtp(to_addr: str, subject: str, body: str) -> bool:
     message["To"] = to_addr
     message.set_content(body)
     try:
-        with smtplib.SMTP(host, port, timeout=12) as smtp:
-            smtp.ehlo()
-            smtp.starttls()
-            smtp.ehlo()
-            if user and password:
-                smtp.login(user, password)
-            smtp.send_message(message)
+        if port == 465:
+            # Direct SSL/TLS (port 465 = SMTPS). No starttls().
+            context = ssl.create_default_context()
+            with smtplib.SMTP_SSL(host, port, timeout=12, context=context) as smtp:
+                smtp.ehlo()
+                if user and password:
+                    smtp.login(user, password)
+                smtp.send_message(message)
+        else:
+            # STARTTLS upgrade path (typical for 587).
+            with smtplib.SMTP(host, port, timeout=12) as smtp:
+                smtp.ehlo()
+                smtp.starttls()
+                smtp.ehlo()
+                if user and password:
+                    smtp.login(user, password)
+                smtp.send_message(message)
     except Exception as error:  # noqa: BLE001 — normalize without secrets
         logger.warning(
             "SMTP delivery failed: type=%s host=%s port=%s",
