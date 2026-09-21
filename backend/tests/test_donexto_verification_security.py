@@ -113,16 +113,12 @@ class ConfirmDonextoSecurityTests(unittest.TestCase):
             "donexto_verify_required",
         )
 
-    def test_05_manual_donexto_verify_query_without_session_still_needs_auth(self) -> None:
-        """?donexto_verify=1 alone is not enough; session is still required."""
+    def test_05_manual_donexto_verify_query_without_token_is_forbidden(self) -> None:
+        """?donexto_verify=1 alone is not proof of an email click."""
         request = self._make_request({"donexto_verify": "1"})
-        with patch(
-            "app.api.identity.require_request_context",
-            side_effect=HTTPException(status_code=401, detail={"status": "unauthorized"}),
-        ):
-            with self.assertRaises(HTTPException) as caught:
-                confirm_donexto_identity(request)
-        self.assertEqual(caught.exception.status_code, 401)
+        with self.assertRaises(HTTPException) as caught:
+            confirm_donexto_identity(request)
+        self.assertEqual(caught.exception.status_code, 403)
 
     def test_06_fake_already_confirmed_button_blocked(self) -> None:
         """Call without the query flag (typical 'Ya confirmé' button) → 403."""
@@ -132,11 +128,19 @@ class ConfirmDonextoSecurityTests(unittest.TestCase):
         self.assertEqual(caught.exception.status_code, 403)
 
     def test_12_real_confirmation_with_flag_and_confirmed_email_succeeds(self) -> None:
-        request = self._make_request({"donexto_verify": "1"})
+        request = self._make_request(
+            {"donexto_verify": "1", "token_hash": "valid-token", "type": "signup"}
+        )
         mock_client = MagicMock()
-        raw_user = SimpleNamespace(email_confirmed_at="2026-01-01T00:00:00Z")
+        raw_user = SimpleNamespace(
+            id="user-789",
+            email_confirmed_at="2026-01-01T00:00:00Z",
+        )
         mock_client.auth.admin.get_user_by_id.return_value = SimpleNamespace(
             user=raw_user
+        )
+        mock_client.auth.verify_otp.return_value = SimpleNamespace(
+            user=SimpleNamespace(id="user-789")
         )
 
         with patch("app.api.identity.require_request_context") as mock_ctx, patch(
@@ -151,6 +155,9 @@ class ConfirmDonextoSecurityTests(unittest.TestCase):
 
         self.assertEqual(result["status"], "ok")
         self.assertTrue(result["donexto_verified"])
+        mock_client.auth.verify_otp.assert_called_once_with(
+            {"token_hash": "valid-token", "type": "signup"}
+        )
         mark.assert_called_once_with("user-789")
 
 

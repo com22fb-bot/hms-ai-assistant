@@ -146,6 +146,17 @@ def confirm_donexto_identity(request: Request) -> dict[str, object]:
             },
         )
 
+    token_hash = request.query_params.get("token_hash")
+    token_type = request.query_params.get("type") or "signup"
+    if not token_hash:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "verification_proof_required",
+                "message": "Se requiere el token real del enlace de verificación.",
+            },
+        )
+
     context = require_request_context()
     if context.user.donexto_verified:
         return {
@@ -155,6 +166,34 @@ def confirm_donexto_identity(request: Request) -> dict[str, object]:
         }
 
     client = get_supabase_client()
+    try:
+        verification = client.auth.verify_otp(
+            {"token_hash": token_hash, "type": token_type}
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "invalid_verification_token",
+                "message": "El enlace de verificación es inválido o ha expirado.",
+            },
+        ) from error
+
+    verified_user = getattr(verification, "user", None)
+    if verified_user is None and isinstance(verification, dict):
+        verified_user = verification.get("user")
+    verified_user_id = getattr(verified_user, "id", None)
+    if verified_user_id is None and isinstance(verified_user, dict):
+        verified_user_id = verified_user.get("id")
+    if str(verified_user_id or "") != context.user.id:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "verification_user_mismatch",
+                "message": "El enlace no pertenece a la sesión Donexto actual.",
+            },
+        )
+
     response = client.auth.admin.get_user_by_id(context.user.id)
     raw_user = getattr(response, "user", None)
     if raw_user is None and isinstance(response, dict):
