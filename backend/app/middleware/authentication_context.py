@@ -11,10 +11,10 @@ from app.security.identity import (
     reset_request_context,
     resolve_workspace_context,
     set_request_context,
+    WorkspaceContext,
 )
 
 _DONEXTO_EXEMPT_SUFFIXES = (
-    "/identity/me",
     "/identity/confirm-donexto",
     "/identity/send-donexto-verify",
 )
@@ -78,25 +78,35 @@ class AuthenticationContextMiddleware(BaseHTTPMiddleware):
 
         try:
             user = await run_in_threadpool(authenticate_request, request)
-            context = await run_in_threadpool(
-                resolve_workspace_context,
-                request,
-                user,
-            )
             path = request.url.path.rstrip("/") or "/"
-            if not any(path == item or path.startswith(item + "/") for item in _DONEXTO_EXEMPT_SUFFIXES):
-                if not context.user.donexto_verified:
-                    return JSONResponse(
-                        status_code=403,
-                        content={
-                            "detail": {
-                                "status": "donexto_unverified",
-                                "message": (
-                                    "Confirma tu correo Donexto antes de continuar."
-                                ),
-                            }
-                        },
-                    )
+            is_verification_route = any(
+                path == item or path.startswith(item + "/")
+                for item in _DONEXTO_EXEMPT_SUFFIXES
+            )
+            if not is_verification_route and not user.donexto_verified:
+                return JSONResponse(
+                    status_code=403,
+                    content={
+                        "detail": {
+                            "status": "donexto_unverified",
+                            "message": "Confirma tu correo Donexto antes de continuar.",
+                        }
+                    },
+                )
+            if is_verification_route:
+                context = WorkspaceContext(
+                    user=user,
+                    workspace_id="",
+                    workspace_name="",
+                    membership_role="",
+                    google_account=None,
+                )
+            else:
+                context = await run_in_threadpool(
+                    resolve_workspace_context,
+                    request,
+                    user,
+                )
             request.state.hms_context = context
             context_token = set_request_context(context)
             return await call_next(request)

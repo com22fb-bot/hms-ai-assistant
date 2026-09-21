@@ -51,8 +51,18 @@ const DONEXTO_VERIFY_QUERY = "donexto_verify";
 
 async function confirmDonextoWithBackend(): Promise<boolean> {
   try {
+    const query = new URLSearchParams({ [DONEXTO_VERIFY_QUERY]: "1" });
+    if (typeof window !== "undefined") {
+      const callbackQuery = new URLSearchParams(window.location.search);
+      for (const key of ["token_hash", "type"]) {
+        const value = callbackQuery.get(key);
+        if (value) {
+          query.set(key, value);
+        }
+      }
+    }
     const result = await hmsJson<{ donexto_verified?: boolean }>(
-      buildApiUrl(`/identity/confirm-donexto?${DONEXTO_VERIFY_QUERY}=1`),
+      buildApiUrl(`/identity/confirm-donexto?${query.toString()}`),
       { method: "POST" },
     );
     return result.donexto_verified === true;
