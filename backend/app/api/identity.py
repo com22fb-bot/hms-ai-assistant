@@ -20,7 +20,6 @@ router = APIRouter(prefix="/identity", tags=["HMS Identity"])
 
 
 class DonextoVerificationEmailRequest(BaseModel):
-    email: str | None = None
     language: str = "es"
     redirect_to: str | None = None
 
@@ -80,19 +79,13 @@ def identity_me() -> dict[str, object]:
 def send_donexto_verification_email(
     payload: DonextoVerificationEmailRequest,
 ) -> dict[str, object]:
-    email: str | None = None
-    language = payload.language or "es"
-    try:
-        context = require_request_context()
-        email = context.user.email
-        language = payload.language or context.user.raw_user_metadata.get(
-            "language", "es"
-        )
-    except HTTPException:
-        if not payload.email:
-            raise
-        email = payload.email.strip().lower()
+    """Request a Donexto verification email. Requires an authenticated session.
 
+    Never accepts an email from the request body. The only source of truth
+    is the authenticated user's email from the session context.
+    """
+    context = require_request_context()
+    email = (context.user.email or "").strip().lower()
     if not email:
         raise HTTPException(
             status_code=400,
@@ -102,6 +95,9 @@ def send_donexto_verification_email(
             },
         )
 
+    language = payload.language or context.user.raw_user_metadata.get(
+        "language", "es"
+    )
     redirect_to = sanitize_return_to(payload.redirect_to)
     try:
         message = send_verification_email(
@@ -136,6 +132,10 @@ def confirm_donexto_identity(request: Request) -> dict[str, object]:
 
     Clients must not write ``donexto_verified`` via ``updateUser`` — that field
     lives in ``app_metadata`` and is set here after confirmed email.
+
+    Requires the real ``?donexto_verify=1`` query flag that only the email
+    link carries. A hand-crafted call or the "Ya confirmé mi correo" button
+    without the flag is rejected with 403.
     """
     if request.query_params.get("donexto_verify") != "1":
         raise HTTPException(
