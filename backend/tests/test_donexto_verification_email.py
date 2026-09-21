@@ -18,6 +18,14 @@ from app.services.donexto_verification_email import (
 from app.services.support_notify import SMTPDeliveryError
 
 
+def _existing_unconfirmed_user(email: str = "recipient@example.test") -> SimpleNamespace:
+    return SimpleNamespace(email=email, email_confirmed_at=None)
+
+
+def _existing_confirmed_user(email: str = "confirmed@example.test") -> SimpleNamespace:
+    return SimpleNamespace(email=email, email_confirmed_at="2026-01-01T00:00:00Z")
+
+
 class DonextoVerificationEmailTests(unittest.TestCase):
     # ------------------------------------------------------------------ i18n
     def test_spanish_email(self) -> None:
@@ -78,12 +86,7 @@ class DonextoVerificationEmailTests(unittest.TestCase):
     def test_resolve_link_type_returns_signup_for_unconfirmed_user(self) -> None:
         client = MagicMock()
         client.auth.admin.list_users.return_value = SimpleNamespace(
-            users=[
-                SimpleNamespace(
-                    email="pending@example.test",
-                    email_confirmed_at=None,
-                )
-            ]
+            users=[_existing_unconfirmed_user("pending@example.test")]
         )
         self.assertEqual(
             _resolve_link_type(client, "pending@example.test"),
@@ -93,12 +96,7 @@ class DonextoVerificationEmailTests(unittest.TestCase):
     def test_resolve_link_type_returns_magiclink_for_confirmed_user(self) -> None:
         client = MagicMock()
         client.auth.admin.list_users.return_value = SimpleNamespace(
-            users=[
-                SimpleNamespace(
-                    email="confirmed@example.test",
-                    email_confirmed_at="2026-01-01T00:00:00Z",
-                )
-            ]
+            users=[_existing_confirmed_user("confirmed@example.test")]
         )
         self.assertEqual(
             _resolve_link_type(client, "confirmed@example.test"),
@@ -117,8 +115,10 @@ class DonextoVerificationEmailTests(unittest.TestCase):
     def test_sends_localized_email_with_supabase_action_link(self) -> None:
         client = MagicMock()
         smtp_password = "secret-that-must-not-leak"
-        # Unconfirmed user → signup link type is used.
-        client.auth.admin.list_users.return_value = SimpleNamespace(users=[])
+        # Existing unconfirmed user → signup link type is used.
+        client.auth.admin.list_users.return_value = SimpleNamespace(
+            users=[_existing_unconfirmed_user("recipient@example.test")]
+        )
         client.auth.admin.generate_link.return_value = {
             "properties": {"action_link": "https://example.test/action"}
         }
@@ -158,7 +158,9 @@ class DonextoVerificationEmailTests(unittest.TestCase):
 
     def test_sends_via_smtp_ssl_when_port_is_465(self) -> None:
         client = MagicMock()
-        client.auth.admin.list_users.return_value = SimpleNamespace(users=[])
+        client.auth.admin.list_users.return_value = SimpleNamespace(
+            users=[_existing_unconfirmed_user("recipient@example.test")]
+        )
         client.auth.admin.generate_link.return_value = {
             "properties": {"action_link": "https://example.test/action"}
         }
@@ -171,8 +173,9 @@ class DonextoVerificationEmailTests(unittest.TestCase):
                 "SUPPORT_SMTP_PASSWORD": "re_secret",
                 "SUPPORT_SMTP_FROM": "noreply@donexto.com",
             },
-        ), patch("app.services.support_notify.smtplib.SMTP_SSL") as ssl_class, \
-             patch("app.services.support_notify.smtplib.SMTP") as plain_class:
+        ), patch("app.services.support_notify.smtplib.SMTP_SSL") as ssl_class, patch(
+            "app.services.support_notify.smtplib.SMTP"
+        ) as plain_class:
             send_verification_email(
                 client=client,
                 email="recipient@example.test",
@@ -190,7 +193,9 @@ class DonextoVerificationEmailTests(unittest.TestCase):
 
     def test_smtp_authentication_error_is_safe(self) -> None:
         client = MagicMock()
-        client.auth.admin.list_users.return_value = SimpleNamespace(users=[])
+        client.auth.admin.list_users.return_value = SimpleNamespace(
+            users=[_existing_unconfirmed_user("recipient@example.test")]
+        )
         smtp_password = "auth-secret-that-must-not-leak"
         client.auth.admin.generate_link.return_value = {
             "properties": {"action_link": "https://example.test/action"}
@@ -222,7 +227,9 @@ class DonextoVerificationEmailTests(unittest.TestCase):
 
     def test_smtp_connection_error_is_safe(self) -> None:
         client = MagicMock()
-        client.auth.admin.list_users.return_value = SimpleNamespace(users=[])
+        client.auth.admin.list_users.return_value = SimpleNamespace(
+            users=[_existing_unconfirmed_user("recipient@example.test")]
+        )
         smtp_password = "connection-secret-that-must-not-leak"
         client.auth.admin.generate_link.return_value = {
             "properties": {"action_link": "https://example.test/action"}
@@ -251,34 +258,49 @@ class DonextoVerificationEmailTests(unittest.TestCase):
         self.assertIn("smtp.gmail.com:587", str(caught.exception))
         self.assertNotIn(smtp_password, str(caught.exception))
 
-
-class VerificationEndpointTests(unittest.TestCase):
-    def test_uses_email_from_payload_when_user_is_not_authenticated(self) -> None:
+    def test_refuses_to_send_for_nonexistent_user(self) -> None:
         client = MagicMock()
         client.auth.admin.list_users.return_value = SimpleNamespace(users=[])
-        client.auth.admin.generate_link.return_value = {
-            "properties": {"action_link": "https://example.test/action"}
-        }
+        with self.assertRaises(HTTPException) as caught:
+            send_verification_email(
+                client=client,
+                email="ghost@example.test",
+                language="es",
+                redirect_to="https://app.example.test/",
+            )
+        self.assertEqual(caught.exception.status_code, 404)
+        client.auth.admin.generate_link.assert_not_called()
 
-        with patch.dict(
-            os.environ,
-            {
-                "SUPPORT_SMTP_HOST": "smtp.gmail.com",
-                "SUPPORT_SMTP_PORT": "587",
-                "SUPPORT_SMTP_USER": "sender@example.test",
-                "SUPPORT_SMTP_PASSWORD": "secret",
-                "SUPPORT_SMTP_FROM": "sender@example.test",
-            },
-        ), patch("app.api.identity.get_supabase_client", return_value=client), patch(
-            "app.api.identity.send_verification_email",
-            return_value=SimpleNamespace(subject="Confirm your Donexto email"),
-        ) as send_email, patch(
+
+class VerificationEndpointTests(unittest.TestCase):
+    """Endpoint now requires an authenticated session; no payload.email fallback."""
+
+    def test_rejects_unauthenticated_call(self) -> None:
+        with patch(
             "app.api.identity.require_request_context",
             side_effect=HTTPException(401, detail={"status": "unauthorized"}),
         ):
+            with self.assertRaises(HTTPException) as caught:
+                send_donexto_verification_email(
+                    DonextoVerificationEmailRequest(language="en")
+                )
+        self.assertEqual(caught.exception.status_code, 401)
+
+    def test_uses_email_from_authenticated_session(self) -> None:
+        client = MagicMock()
+        client.auth.admin.list_users.return_value = SimpleNamespace(
+            users=[_existing_unconfirmed_user("session-user@example.test")]
+        )
+
+        with patch("app.api.identity.get_supabase_client", return_value=client), patch(
+            "app.api.identity.send_verification_email",
+            return_value=SimpleNamespace(subject="Confirm your Donexto email"),
+        ) as send_email, patch("app.api.identity.require_request_context") as mock_ctx:
+            mock_ctx.return_value.user.email = "session-user@example.test"
+            mock_ctx.return_value.user.raw_user_metadata = {"language": "en"}
+
             result = send_donexto_verification_email(
                 DonextoVerificationEmailRequest(
-                    email="new-user@example.test",
                     language="en",
                     redirect_to="https://app.example.test/",
                 )
@@ -288,15 +310,16 @@ class VerificationEndpointTests(unittest.TestCase):
         send_email.assert_called_once()
         self.assertEqual(
             send_email.call_args.kwargs["email"],
-            "new-user@example.test",
+            "session-user@example.test",
         )
 
 
 class AppendVerifyFlagTests(unittest.TestCase):
-    """Tests for the identity._append_verify_flag helper (fix 3)."""
+    """Tests for the identity._append_verify_flag helper."""
 
     def _run(self, url: str) -> str:
         from app.api.identity import _append_verify_flag
+
         return _append_verify_flag(url)
 
     def test_appends_flag_on_clean_url(self) -> None:
