@@ -5,9 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from app.services.support_notify import _send_via_smtp
-
-
 @dataclass(frozen=True)
 class VerificationEmail:
     subject: str
@@ -104,41 +101,43 @@ def _user_from_admin_response(response: Any) -> Any:
     return user
 
 
-def _email_already_confirmed(client: Any, email: str) -> bool:
-    """Best-effort check: does the given email already have a confirmed account?
-
-    Falls back to ``False`` on any error so we always default to the ``signup``
-    flow, which is safe for unconfirmed users (the 95% case).
-    """
+def _find_user_by_email(client: Any, email: str) -> Any | None:
+    """Return the existing Supabase user for this email, or None."""
     try:
-        # Supabase Python SDK: list_users supports filtering by email in newer
-        # releases; for compatibility we scan the first page.
         response = client.auth.admin.list_users()
         users = getattr(response, "users", None)
         if users is None and isinstance(response, dict):
             users = response.get("users") or []
         if users is None and isinstance(response, list):
             users = response
+        target = email.strip().lower()
         for candidate in users or []:
             candidate_email = (
                 getattr(candidate, "email", None)
                 or (candidate.get("email") if isinstance(candidate, dict) else None)
                 or ""
             )
-            if str(candidate_email).strip().lower() != email.strip().lower():
-                continue
-            confirmed_at = (
-                getattr(candidate, "email_confirmed_at", None)
-                or (
-                    candidate.get("email_confirmed_at")
-                    if isinstance(candidate, dict)
-                    else None
-                )
-            )
-            return bool(confirmed_at)
+            if str(candidate_email).strip().lower() == target:
+                return candidate
     except Exception:
+        return None
+    return None
+
+
+def _email_already_confirmed(client: Any, email: str) -> bool:
+    """Best-effort check: does the given email already have a confirmed account?
+
+    Falls back to ``False`` on any error so we always default to the ``signup``
+    flow, which is safe for unconfirmed users (the 95% case).
+    """
+    user = _find_user_by_email(client, email)
+    if user is None:
         return False
-    return False
+    confirmed_at = (
+        getattr(user, "email_confirmed_at", None)
+        or (user.get("email_confirmed_at") if isinstance(user, dict) else None)
+    )
+    return bool(confirmed_at)
 
 
 def _resolve_link_type(client: Any, email: str) -> str:
@@ -160,19 +159,25 @@ def send_verification_email(
     email: str,
     language: object,
     redirect_to: str,
-) -> VerificationEmail:
-    link_type = _resolve_link_type(client, email)
-    response = client.auth.admin.generate_link(
+) -> VerificationEmail | None:
+    """Send a verification email only for an already-existing account.
+
+    Never calls ``generate_link`` for an email that does not exist in
+    Supabase. This prevents the ``signup`` link type from silently creating
+    new users during a resend flow.
+    """
+    existing = _find_user_by_email(client, email)
+    if existing is None:
+        # The caller deliberately returns the same public response for this
+        # case, preventing account enumeration.
+        return None
+
+    client.auth.resend(
         {
-            "type": link_type,
+            "type": "signup",
             "email": email,
-            "options": {"redirect_to": redirect_to},
+            "options": {"email_redirect_to": redirect_to},
         }
     )
-    message = build_verification_email(
-        language,
-        action_link_from_generate_response(response),
-    )
-    if not _send_via_smtp(email, message.subject, message.body):
-        raise RuntimeError("No hay un relay SMTP configurado para Donexto")
-    return message
+    subject, _ = _TEMPLATES[normalize_language(language)]
+    return VerificationEmail(subject=subject, body="")

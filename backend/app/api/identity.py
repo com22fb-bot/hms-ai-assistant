@@ -13,7 +13,6 @@ from app.security.donexto_verified import (
 from app.security.identity import require_request_context
 from app.security.redirect import sanitize_return_to
 from app.services.donexto_verification_email import send_verification_email
-from app.services.support_notify import SMTPDeliveryError
 
 
 router = APIRouter(prefix="/identity", tags=["HMS Identity"])
@@ -79,34 +78,37 @@ def identity_me() -> dict[str, object]:
 def send_donexto_verification_email(
     payload: DonextoVerificationEmailRequest,
 ) -> dict[str, object]:
+    """Request a Donexto verification email. Requires an authenticated session.
+
+    Never accepts an email from the request body. The only source of truth
+    is the authenticated user's email from the session context.
+    """
     context = require_request_context()
-    language = payload.language or context.user.raw_user_metadata.get("language", "es")
+    email = (context.user.email or "").strip().lower()
+    if not email:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "verification_email_missing_email",
+                "message": "Falta el correo de la cuenta Donexto.",
+            },
+        )
+
+    language = payload.language or context.user.raw_user_metadata.get(
+        "language", "es"
+    )
     redirect_to = sanitize_return_to(payload.redirect_to)
     try:
-        message = send_verification_email(
+        send_verification_email(
             client=get_supabase_client(),
-            email=context.user.email,
+            email=email,
             language=language,
             redirect_to=_append_verify_flag(redirect_to),
         )
-    except SMTPDeliveryError as error:
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "code": "verification_email_delivery_failed",
-                "message": "No fue posible enviar el correo de verificación.",
-                "error_type": error.error_type,
-            },
-        ) from error
-    except (RuntimeError, ValueError) as error:
-        raise HTTPException(
-            status_code=503,
-            detail={
-                "code": "verification_email_unavailable",
-                "message": "No fue posible preparar el correo de verificación.",
-            },
-        ) from error
-    return {"status": "sent", "language": language, "subject": message.subject}
+    except Exception:
+        # Keep the same response for missing users and provider failures.
+        return {"status": "sent"}
+    return {"status": "sent"}
 
 
 @router.post("/confirm-donexto")
@@ -115,6 +117,10 @@ def confirm_donexto_identity(request: Request) -> dict[str, object]:
 
     Clients must not write ``donexto_verified`` via ``updateUser`` — that field
     lives in ``app_metadata`` and is set here after confirmed email.
+
+    Requires the real ``?donexto_verify=1`` query flag that only the email
+    link carries. A hand-crafted call or the "Ya confirmé mi correo" button
+    without the flag is rejected with 403.
     """
     if request.query_params.get("donexto_verify") != "1":
         raise HTTPException(
@@ -122,6 +128,17 @@ def confirm_donexto_identity(request: Request) -> dict[str, object]:
             detail={
                 "status": "donexto_verify_required",
                 "message": "La confirmación debe proceder del enlace de correo Donexto.",
+            },
+        )
+
+    token_hash = request.query_params.get("token_hash")
+    token_type = request.query_params.get("type") or "signup"
+    if not token_hash:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "verification_proof_required",
+                "message": "Se requiere el token real del enlace de verificación.",
             },
         )
 
@@ -134,6 +151,34 @@ def confirm_donexto_identity(request: Request) -> dict[str, object]:
         }
 
     client = get_supabase_client()
+    try:
+        verification = client.auth.verify_otp(
+            {"token_hash": token_hash, "type": token_type}
+        )
+    except Exception as error:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "invalid_verification_token",
+                "message": "El enlace de verificación es inválido o ha expirado.",
+            },
+        ) from error
+
+    verified_user = getattr(verification, "user", None)
+    if verified_user is None and isinstance(verification, dict):
+        verified_user = verification.get("user")
+    verified_user_id = getattr(verified_user, "id", None)
+    if verified_user_id is None and isinstance(verified_user, dict):
+        verified_user_id = verified_user.get("id")
+    if str(verified_user_id or "") != context.user.id:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "verification_user_mismatch",
+                "message": "El enlace no pertenece a la sesión Donexto actual.",
+            },
+        )
+
     response = client.auth.admin.get_user_by_id(context.user.id)
     raw_user = getattr(response, "user", None)
     if raw_user is None and isinstance(response, dict):

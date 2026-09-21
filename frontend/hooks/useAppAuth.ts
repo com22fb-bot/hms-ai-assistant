@@ -20,6 +20,7 @@ import {
 } from "@/lib/i18n/languages";
 import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
 import { userHasOAuthIdentity } from "@/lib/oauthIdentity";
+import { buildApiUrl } from "@/lib/apiBase";
 import { isBrowserNetworkError, postPublicHms } from "@/lib/publicHms";
 
 export { userHasOAuthIdentity } from "@/lib/oauthIdentity";
@@ -47,13 +48,21 @@ type AppSession = {
 };
 
 const DONEXTO_VERIFY_QUERY = "donexto_verify";
-const HMS_API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "/api/hms";
 
 async function confirmDonextoWithBackend(): Promise<boolean> {
   try {
+    const query = new URLSearchParams({ [DONEXTO_VERIFY_QUERY]: "1" });
+    if (typeof window !== "undefined") {
+      const callbackQuery = new URLSearchParams(window.location.search);
+      for (const key of ["token_hash", "type"]) {
+        const value = callbackQuery.get(key);
+        if (value) {
+          query.set(key, value);
+        }
+      }
+    }
     const result = await hmsJson<{ donexto_verified?: boolean }>(
-      `${HMS_API_BASE}/identity/confirm-donexto?${DONEXTO_VERIFY_QUERY}=1`,
+      buildApiUrl(`/identity/confirm-donexto?${query.toString()}`),
       { method: "POST" },
     );
     return result.donexto_verified === true;
@@ -106,6 +115,17 @@ function isDonextoVerifyReturn(): boolean {
 
   const search = new URLSearchParams(window.location.search);
   return search.get(DONEXTO_VERIFY_QUERY) === "1";
+}
+
+function hasDonextoVerificationProof(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  const search = new URLSearchParams(window.location.search);
+  return (
+    search.get(DONEXTO_VERIFY_QUERY) === "1"
+    && Boolean(search.get("token_hash"))
+  );
 }
 
 function donextoVerifyRedirectTo(): string {
@@ -450,13 +470,13 @@ export function useAppAuth() {
           ? currentUser.user_metadata.language
           : readStoredLanguage() || languageFromBrowser(navigator.language);
         try {
-          await hmsJson("/identity/send-donexto-verify", {
+          await hmsJson(buildApiUrl("/identity/send-donexto-verify"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ language, redirect_to: window.location.origin }),
           });
         } catch (error) {
-          // Log loudly so we do not silently swallow 503s (SMTP down, etc.).
+          // Log loudly so Auth provider failures are retryable.
           // Clear the "sent" flag so the ConfirmEmailGate can show its
           // "Reenviar" button and the user can retry manually.
           console.error("Auto-resend failed", error);
@@ -644,7 +664,7 @@ export function useAppAuth() {
       // email will land as a fallback.
       if (data.user?.email) {
         try {
-          await hmsJson("/identity/send-donexto-verify", {
+          await hmsJson(buildApiUrl("/identity/send-donexto-verify"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -694,11 +714,10 @@ export function useAppAuth() {
     language: AppLanguage = "es",
   ) => {
     const cleanEmail = email.trim().toLowerCase();
-    await hmsJson("/identity/send-donexto-verify", {
+    await hmsJson(buildApiUrl("/identity/send-donexto-verify"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        email: cleanEmail,
         language,
         redirect_to: window.location.origin,
       }),
@@ -792,6 +811,7 @@ export function useAppAuth() {
     if (
       data.user
       && sessionNeedsDonextoEmailConfirm({ user: data.user } as Session)
+      && hasDonextoVerificationProof()
     ) {
       await confirmDonextoWithBackend();
     }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { buildApiUrl } from "@/lib/apiBase";
 import { hmsFetch } from "@/lib/hmsApi";
 
 import type {
@@ -10,9 +11,7 @@ import type {
   GoogleConnectionStatus,
 } from "@/types/mail";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
-  "/api/hms";
+const API_BASE_URL = buildApiUrl("");
 
 function getErrorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -34,7 +33,7 @@ export function useConnection() {
 
     try {
       const response = await hmsFetch(
-        `${API_BASE_URL}/gmail/messages?limit=100`,
+        `${API_BASE_URL}gmail/messages?limit=100`,
         {
           method: "GET",
           cache: "no-store",
@@ -79,7 +78,7 @@ export function useConnection() {
     setError(null);
 
     try {
-      const response = await hmsFetch(`${API_BASE_URL}/auth/google/status`, {
+      const response = await hmsFetch(`${API_BASE_URL}auth/google/status`, {
         method: "GET",
         cache: "no-store",
       });
