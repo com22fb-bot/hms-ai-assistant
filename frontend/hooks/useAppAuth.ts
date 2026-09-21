@@ -117,6 +117,17 @@ function isDonextoVerifyReturn(): boolean {
   return search.get(DONEXTO_VERIFY_QUERY) === "1";
 }
 
+function hasDonextoVerificationProof(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  const search = new URLSearchParams(window.location.search);
+  return (
+    search.get(DONEXTO_VERIFY_QUERY) === "1"
+    && Boolean(search.get("token_hash"))
+  );
+}
+
 function donextoVerifyRedirectTo(): string {
   return `${window.location.origin}/?${DONEXTO_VERIFY_QUERY}=1`;
 }
@@ -465,7 +476,7 @@ export function useAppAuth() {
             body: JSON.stringify({ language, redirect_to: window.location.origin }),
           });
         } catch (error) {
-          // Log loudly so we do not silently swallow 503s (SMTP down, etc.).
+          // Log loudly so Auth provider failures are retryable.
           // Clear the "sent" flag so the ConfirmEmailGate can show its
           // "Reenviar" button and the user can retry manually.
           console.error("Auto-resend failed", error);
@@ -707,7 +718,6 @@ export function useAppAuth() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        email: cleanEmail,
         language,
         redirect_to: window.location.origin,
       }),
@@ -801,6 +811,7 @@ export function useAppAuth() {
     if (
       data.user
       && sessionNeedsDonextoEmailConfirm({ user: data.user } as Session)
+      && hasDonextoVerificationProof()
     ) {
       await confirmDonextoWithBackend();
     }

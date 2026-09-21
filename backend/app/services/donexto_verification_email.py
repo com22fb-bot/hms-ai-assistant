@@ -5,11 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from fastapi import HTTPException
-
-from app.services.support_notify import _send_via_smtp
-
-
 @dataclass(frozen=True)
 class VerificationEmail:
     subject: str
@@ -164,7 +159,7 @@ def send_verification_email(
     email: str,
     language: object,
     redirect_to: str,
-) -> VerificationEmail:
+) -> VerificationEmail | None:
     """Send a verification email only for an already-existing account.
 
     Never calls ``generate_link`` for an email that does not exist in
@@ -173,26 +168,16 @@ def send_verification_email(
     """
     existing = _find_user_by_email(client, email)
     if existing is None:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "code": "user_not_found",
-                "message": "No existe una cuenta Donexto con ese correo.",
-            },
-        )
+        # The caller deliberately returns the same public response for this
+        # case, preventing account enumeration.
+        return None
 
-    link_type = _resolve_link_type(client, email)
-    response = client.auth.admin.generate_link(
+    client.auth.resend(
         {
-            "type": link_type,
+            "type": "signup",
             "email": email,
-            "options": {"redirect_to": redirect_to},
+            "options": {"email_redirect_to": redirect_to},
         }
     )
-    message = build_verification_email(
-        language,
-        action_link_from_generate_response(response),
-    )
-    if not _send_via_smtp(email, message.subject, message.body):
-        raise RuntimeError("No hay un relay SMTP configurado para Donexto")
-    return message
+    subject, _ = _TEMPLATES[normalize_language(language)]
+    return VerificationEmail(subject=subject, body="")

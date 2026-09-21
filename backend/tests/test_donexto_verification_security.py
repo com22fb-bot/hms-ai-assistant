@@ -62,7 +62,7 @@ class SendDonextoVerifySecurityTests(unittest.TestCase):
         self.assertEqual(caught.exception.status_code, 401)
 
     def test_03_does_not_create_user_on_resend_when_email_missing(self) -> None:
-        """If the authenticated email does not exist in Supabase, 404 and no generate_link."""
+        """Missing accounts get the same generic success response."""
         mock_client = MagicMock()
         mock_client.auth.admin.list_users.return_value = SimpleNamespace(users=[])
 
@@ -72,27 +72,27 @@ class SendDonextoVerifySecurityTests(unittest.TestCase):
             mock_ctx.return_value.user.email = "ghost@example.test"
             mock_ctx.return_value.user.raw_user_metadata = {}
 
-            with self.assertRaises(HTTPException) as caught:
-                send_donexto_verification_email(
-                    DonextoVerificationEmailRequest(language="es")
-                )
+            result = send_donexto_verification_email(
+                DonextoVerificationEmailRequest(language="es")
+            )
 
-        self.assertEqual(caught.exception.status_code, 404)
+        self.assertEqual(result, {"status": "sent"})
         mock_client.auth.admin.generate_link.assert_not_called()
+        mock_client.auth.resend.assert_not_called()
 
     def test_11_generate_link_not_called_for_nonexistent_email(self) -> None:
         mock_client = MagicMock()
         mock_client.auth.admin.list_users.return_value = SimpleNamespace(users=[])
 
-        with self.assertRaises(HTTPException) as caught:
-            send_verification_email(
-                client=mock_client,
-                email="noexiste@test.com",
-                language="es",
-                redirect_to="https://app.donexto.com",
-            )
-        self.assertEqual(caught.exception.status_code, 404)
+        result = send_verification_email(
+            client=mock_client,
+            email="noexiste@test.com",
+            language="es",
+            redirect_to="https://app.donexto.com",
+        )
+        self.assertIsNone(result)
         mock_client.auth.admin.generate_link.assert_not_called()
+        mock_client.auth.resend.assert_not_called()
 
 
 class ConfirmDonextoSecurityTests(unittest.TestCase):
