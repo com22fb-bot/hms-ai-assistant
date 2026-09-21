@@ -11,8 +11,7 @@ from app.api.identity import (
     send_donexto_verification_email,
 )
 from app.services.donexto_verification_email import (
-    _resolve_link_type,
-    action_link_from_generate_response,
+    VerificationEmailUserNotFound,
     build_verification_email,
     normalize_language,
     send_verification_email,
@@ -37,31 +36,16 @@ class DonextoVerificationEmailTests(unittest.TestCase):
         self.assertEqual(normalize_language("pt_BR"), "pt")
         self.assertEqual(normalize_language("de"), "es")
 
-    def test_extracts_action_link_from_supabase_response(self) -> None:
-        response = SimpleNamespace(properties={"action_link": " https://example.test/action "})
-        self.assertEqual(action_link_from_generate_response(response), "https://example.test/action")
-
-    def test_resolve_link_type_for_existing_users(self) -> None:
-        client = MagicMock()
-        client.auth.admin.list_users.return_value = SimpleNamespace(
-            users=[SimpleNamespace(email="pending@example.test", email_confirmed_at=None)]
-        )
-        self.assertEqual(_resolve_link_type(client, "pending@example.test"), "signup")
-        client.auth.admin.list_users.return_value = SimpleNamespace(
-            users=[SimpleNamespace(email="confirmed@example.test", email_confirmed_at="now")]
-        )
-        self.assertEqual(_resolve_link_type(client, "confirmed@example.test"), "magiclink")
-
-    def test_resend_unknown_user_is_noop(self) -> None:
+    def test_resend_unknown_user_raises_not_found(self) -> None:
         client = MagicMock()
         client.auth.admin.list_users.return_value = SimpleNamespace(users=[])
-        result = send_verification_email(
-            client=client,
-            email="unknown@example.test",
-            language="es",
-            redirect_to="https://app.example.test/?donexto_verify=1",
-        )
-        self.assertIsNone(result)
+        with self.assertRaises(VerificationEmailUserNotFound):
+            send_verification_email(
+                client=client,
+                email="unknown@example.test",
+                language="es",
+                redirect_to="https://app.example.test/?donexto_verify=1",
+            )
         client.auth.resend.assert_not_called()
         client.auth.admin.generate_link.assert_not_called()
 
@@ -95,7 +79,7 @@ class DonextoVerificationEmailTests(unittest.TestCase):
         self.assertFalse(hasattr(DonextoVerificationEmailRequest(), "email"))
 
     def test_endpoint_returns_same_generic_body_for_existing_and_missing(self) -> None:
-        context = SimpleNamespace(user=SimpleNamespace(email="user@example.test", raw_user_metadata={}))
+        context = SimpleNamespace(user=SimpleNamespace(id="user-1", email="user@example.test", raw_user_metadata={}))
         missing_client = MagicMock()
         missing_client.auth.admin.list_users.return_value = SimpleNamespace(users=[])
         existing_client = MagicMock()
@@ -104,7 +88,7 @@ class DonextoVerificationEmailTests(unittest.TestCase):
         )
         with patch("app.api.identity.require_request_context", return_value=context), patch(
             "app.api.identity.get_supabase_client", return_value=missing_client
-        ):
+        ), self.assertLogs("app.api.identity", level="INFO") as missing_logs:
             missing = send_donexto_verification_email(DonextoVerificationEmailRequest())
         with patch("app.api.identity.require_request_context", return_value=context), patch(
             "app.api.identity.get_supabase_client", return_value=existing_client
@@ -112,6 +96,23 @@ class DonextoVerificationEmailTests(unittest.TestCase):
             existing = send_donexto_verification_email(DonextoVerificationEmailRequest())
         self.assertEqual(missing, {"status": "sent"})
         self.assertEqual(existing, {"status": "sent"})
+        self.assertTrue(
+            any("donexto_verify_resend_unknown_user" in record for record in missing_logs.output)
+        )
+        existing_client.auth.resend.assert_called_once()
+
+    def test_endpoint_logs_provider_error_but_returns_generic_body(self) -> None:
+        context = SimpleNamespace(user=SimpleNamespace(id="user-1", email="user@example.test", raw_user_metadata={}))
+        failing_client = MagicMock()
+        failing_client.auth.admin.list_users.side_effect = RuntimeError("supabase down")
+        with patch("app.api.identity.require_request_context", return_value=context), patch(
+            "app.api.identity.get_supabase_client", return_value=failing_client
+        ), self.assertLogs("app.api.identity", level="ERROR") as error_logs:
+            result = send_donexto_verification_email(DonextoVerificationEmailRequest())
+        self.assertEqual(result, {"status": "sent"})
+        self.assertTrue(
+            any("donexto_verify_resend_provider_error" in record for record in error_logs.output)
+        )
 
 
 class AppendVerifyFlagTests(unittest.TestCase):

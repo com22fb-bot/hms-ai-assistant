@@ -78,21 +78,6 @@ def build_verification_email(language: object, action_link: str) -> Verification
     )
 
 
-def action_link_from_generate_response(response: Any) -> str:
-    properties = getattr(response, "properties", None)
-    if properties is None and isinstance(response, dict):
-        properties = response.get("properties")
-    if not isinstance(properties, dict):
-        properties = {}
-    link = str(properties.get("action_link") or "").strip()
-    if link:
-        return link
-    link = str(getattr(response, "action_link", "") or "").strip()
-    if link:
-        return link
-    raise ValueError("Supabase no devolvió un enlace de verificación")
-
-
 def _user_from_admin_response(response: Any) -> Any:
     """Extract the ``user`` object from either an SDK model or a plain dict."""
     user = getattr(response, "user", None)
@@ -102,55 +87,31 @@ def _user_from_admin_response(response: Any) -> Any:
 
 
 def _find_user_by_email(client: Any, email: str) -> Any | None:
-    """Return the existing Supabase user for this email, or None."""
-    try:
-        response = client.auth.admin.list_users()
-        users = getattr(response, "users", None)
-        if users is None and isinstance(response, dict):
-            users = response.get("users") or []
-        if users is None and isinstance(response, list):
-            users = response
-        target = email.strip().lower()
-        for candidate in users or []:
-            candidate_email = (
-                getattr(candidate, "email", None)
-                or (candidate.get("email") if isinstance(candidate, dict) else None)
-                or ""
-            )
-            if str(candidate_email).strip().lower() == target:
-                return candidate
-    except Exception:
-        return None
+    """Return the existing Supabase user for this email, or None.
+
+    Provider errors (e.g. Supabase outage) propagate to the caller instead of
+    being swallowed, so they are distinguishable from a genuine "not found".
+    """
+    response = client.auth.admin.list_users()
+    users = getattr(response, "users", None)
+    if users is None and isinstance(response, dict):
+        users = response.get("users") or []
+    if users is None and isinstance(response, list):
+        users = response
+    target = email.strip().lower()
+    for candidate in users or []:
+        candidate_email = (
+            getattr(candidate, "email", None)
+            or (candidate.get("email") if isinstance(candidate, dict) else None)
+            or ""
+        )
+        if str(candidate_email).strip().lower() == target:
+            return candidate
     return None
 
 
-def _email_already_confirmed(client: Any, email: str) -> bool:
-    """Best-effort check: does the given email already have a confirmed account?
-
-    Falls back to ``False`` on any error so we always default to the ``signup``
-    flow, which is safe for unconfirmed users (the 95% case).
-    """
-    user = _find_user_by_email(client, email)
-    if user is None:
-        return False
-    confirmed_at = (
-        getattr(user, "email_confirmed_at", None)
-        or (user.get("email_confirmed_at") if isinstance(user, dict) else None)
-    )
-    return bool(confirmed_at)
-
-
-def _resolve_link_type(client: Any, email: str) -> str:
-    """Pick between ``signup`` (unconfirmed) and ``magiclink`` (re-verify).
-
-    ``signup`` is the correct type for accounts that never confirmed their
-    email: Supabase will mark ``email_confirmed_at`` on click. ``magiclink``
-    is only used when the address already exists and is confirmed but we need
-    to re-issue a Donexto verification link for some other reason.
-    """
-    if _email_already_confirmed(client, email):
-        return "magiclink"
-    return "signup"
+class VerificationEmailUserNotFound(Exception):
+    """Raised when the requested email has no matching Supabase account."""
 
 
 def send_verification_email(
@@ -159,18 +120,18 @@ def send_verification_email(
     email: str,
     language: object,
     redirect_to: str,
-) -> VerificationEmail | None:
+) -> VerificationEmail:
     """Send a verification email only for an already-existing account.
 
     Never calls ``generate_link`` for an email that does not exist in
     Supabase. This prevents the ``signup`` link type from silently creating
-    new users during a resend flow.
+    new users during a resend flow. Raises ``VerificationEmailUserNotFound``
+    so the caller can log it internally while still returning the same
+    public response, preventing account enumeration.
     """
     existing = _find_user_by_email(client, email)
     if existing is None:
-        # The caller deliberately returns the same public response for this
-        # case, preventing account enumeration.
-        return None
+        raise VerificationEmailUserNotFound(email)
 
     client.auth.resend(
         {
