@@ -2,13 +2,12 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { buildApiUrl } from "@/lib/apiBase";
 import { hmsFetch } from "@/lib/hmsApi";
 
 import type { GoogleConnectionStatus } from "@/types/mail";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
-  "/api/hms";
+const API_BASE_URL = buildApiUrl("");
 
 async function parseStatus(
   response: Response,
@@ -68,7 +67,7 @@ export function useGoogleStatus() {
 
     try {
       const response = await hmsFetch(
-        `${API_BASE_URL}/auth/google/status`,
+        `${API_BASE_URL}auth/google/status`,
         { cache: "no-store" },
       );
 

@@ -20,6 +20,7 @@ router = APIRouter(prefix="/identity", tags=["HMS Identity"])
 
 
 class DonextoVerificationEmailRequest(BaseModel):
+    email: str | None = None
     language: str = "es"
     redirect_to: str | None = None
 
@@ -79,13 +80,33 @@ def identity_me() -> dict[str, object]:
 def send_donexto_verification_email(
     payload: DonextoVerificationEmailRequest,
 ) -> dict[str, object]:
-    context = require_request_context()
-    language = payload.language or context.user.raw_user_metadata.get("language", "es")
+    email: str | None = None
+    language = payload.language or "es"
+    try:
+        context = require_request_context()
+        email = context.user.email
+        language = payload.language or context.user.raw_user_metadata.get(
+            "language", "es"
+        )
+    except HTTPException:
+        if not payload.email:
+            raise
+        email = payload.email.strip().lower()
+
+    if not email:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "verification_email_missing_email",
+                "message": "Falta el correo de la cuenta Donexto.",
+            },
+        )
+
     redirect_to = sanitize_return_to(payload.redirect_to)
     try:
         message = send_verification_email(
             client=get_supabase_client(),
-            email=context.user.email,
+            email=email,
             language=language,
             redirect_to=_append_verify_flag(redirect_to),
         )

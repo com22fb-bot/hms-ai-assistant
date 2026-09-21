@@ -5,6 +5,9 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urlparse
 
+from fastapi import HTTPException
+
+from app.api.identity import DonextoVerificationEmailRequest, send_donexto_verification_email
 from app.services.donexto_verification_email import (
     _resolve_link_type,
     action_link_from_generate_response,
@@ -247,6 +250,46 @@ class DonextoVerificationEmailTests(unittest.TestCase):
         self.assertIn("OSError", str(caught.exception))
         self.assertIn("smtp.gmail.com:587", str(caught.exception))
         self.assertNotIn(smtp_password, str(caught.exception))
+
+
+class VerificationEndpointTests(unittest.TestCase):
+    def test_uses_email_from_payload_when_user_is_not_authenticated(self) -> None:
+        client = MagicMock()
+        client.auth.admin.list_users.return_value = SimpleNamespace(users=[])
+        client.auth.admin.generate_link.return_value = {
+            "properties": {"action_link": "https://example.test/action"}
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "SUPPORT_SMTP_HOST": "smtp.gmail.com",
+                "SUPPORT_SMTP_PORT": "587",
+                "SUPPORT_SMTP_USER": "sender@example.test",
+                "SUPPORT_SMTP_PASSWORD": "secret",
+                "SUPPORT_SMTP_FROM": "sender@example.test",
+            },
+        ), patch("app.api.identity.get_supabase_client", return_value=client), patch(
+            "app.api.identity.send_verification_email",
+            return_value=SimpleNamespace(subject="Confirm your Donexto email"),
+        ) as send_email, patch(
+            "app.api.identity.require_request_context",
+            side_effect=HTTPException(401, detail={"status": "unauthorized"}),
+        ):
+            result = send_donexto_verification_email(
+                DonextoVerificationEmailRequest(
+                    email="new-user@example.test",
+                    language="en",
+                    redirect_to="https://app.example.test/",
+                )
+            )
+
+        self.assertEqual(result["status"], "sent")
+        send_email.assert_called_once()
+        self.assertEqual(
+            send_email.call_args.kwargs["email"],
+            "new-user@example.test",
+        )
 
 
 class AppendVerifyFlagTests(unittest.TestCase):

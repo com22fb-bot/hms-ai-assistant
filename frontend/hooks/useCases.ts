@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { buildApiUrl } from "@/lib/apiBase";
 import { hmsFetch } from "@/lib/hmsApi";
 
 import type {
@@ -9,9 +10,7 @@ import type {
   FullSyncProgress,
 } from "@/types/cases";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ??
-  "/api/hms";
+const API_BASE_URL = buildApiUrl("");
 
 const SYNC_BATCH_SIZE = 50;
 const POLL_INTERVAL_MS = 2000;

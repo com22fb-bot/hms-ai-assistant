@@ -20,6 +20,7 @@ import {
 } from "@/lib/i18n/languages";
 import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
 import { userHasOAuthIdentity } from "@/lib/oauthIdentity";
+import { buildApiUrl } from "@/lib/apiBase";
 import { isBrowserNetworkError, postPublicHms } from "@/lib/publicHms";
 
 export { userHasOAuthIdentity } from "@/lib/oauthIdentity";
@@ -47,13 +48,11 @@ type AppSession = {
 };
 
 const DONEXTO_VERIFY_QUERY = "donexto_verify";
-const HMS_API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ?? "/api/hms";
 
 async function confirmDonextoWithBackend(): Promise<boolean> {
   try {
     const result = await hmsJson<{ donexto_verified?: boolean }>(
-      `${HMS_API_BASE}/identity/confirm-donexto?${DONEXTO_VERIFY_QUERY}=1`,
+      buildApiUrl(`/identity/confirm-donexto?${DONEXTO_VERIFY_QUERY}=1`),
       { method: "POST" },
     );
     return result.donexto_verified === true;
@@ -450,7 +449,7 @@ export function useAppAuth() {
           ? currentUser.user_metadata.language
           : readStoredLanguage() || languageFromBrowser(navigator.language);
         try {
-          await hmsJson("/identity/send-donexto-verify", {
+          await hmsJson(buildApiUrl("/identity/send-donexto-verify"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ language, redirect_to: window.location.origin }),
@@ -644,7 +643,7 @@ export function useAppAuth() {
       // email will land as a fallback.
       if (data.user?.email) {
         try {
-          await hmsJson("/identity/send-donexto-verify", {
+          await hmsJson(buildApiUrl("/identity/send-donexto-verify"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -694,7 +693,7 @@ export function useAppAuth() {
     language: AppLanguage = "es",
   ) => {
     const cleanEmail = email.trim().toLowerCase();
-    await hmsJson("/identity/send-donexto-verify", {
+    await hmsJson(buildApiUrl("/identity/send-donexto-verify"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
