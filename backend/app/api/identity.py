@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from fastapi import APIRouter, HTTPException, Request
@@ -12,7 +13,13 @@ from app.security.donexto_verified import (
 )
 from app.security.identity import require_request_context
 from app.security.redirect import sanitize_return_to
-from app.services.donexto_verification_email import send_verification_email
+from app.services.donexto_verification_email import (
+    VerificationEmailUserNotFound,
+    send_verification_email,
+)
+
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(prefix="/identity", tags=["HMS Identity"])
@@ -105,9 +112,13 @@ def send_donexto_verification_email(
             language=language,
             redirect_to=_append_verify_flag(redirect_to),
         )
+    except VerificationEmailUserNotFound:
+        # Public response never reveals whether the account exists.
+        logger.info("donexto_verify_resend_unknown_user user_id=%s", context.user.id)
     except Exception:
-        # Keep the same response for missing users and provider failures.
-        return {"status": "sent"}
+        logger.error(
+            "donexto_verify_resend_provider_error user_id=%s", context.user.id, exc_info=True
+        )
     return {"status": "sent"}
 
 

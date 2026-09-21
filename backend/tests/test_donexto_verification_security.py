@@ -31,7 +31,10 @@ from app.api.identity import (
     confirm_donexto_identity,
     send_donexto_verification_email,
 )
-from app.services.donexto_verification_email import send_verification_email
+from app.services.donexto_verification_email import (
+    VerificationEmailUserNotFound,
+    send_verification_email,
+)
 
 
 class SendDonextoVerifySecurityTests(unittest.TestCase):
@@ -84,13 +87,13 @@ class SendDonextoVerifySecurityTests(unittest.TestCase):
         mock_client = MagicMock()
         mock_client.auth.admin.list_users.return_value = SimpleNamespace(users=[])
 
-        result = send_verification_email(
-            client=mock_client,
-            email="noexiste@test.com",
-            language="es",
-            redirect_to="https://app.donexto.com",
-        )
-        self.assertIsNone(result)
+        with self.assertRaises(VerificationEmailUserNotFound):
+            send_verification_email(
+                client=mock_client,
+                email="noexiste@test.com",
+                language="es",
+                redirect_to="https://app.donexto.com",
+            )
         mock_client.auth.admin.generate_link.assert_not_called()
         mock_client.auth.resend.assert_not_called()
 
@@ -160,6 +163,74 @@ class ConfirmDonextoSecurityTests(unittest.TestCase):
         )
         mark.assert_called_once_with("user-789")
 
+    def test_13_invalid_token_hash_returns_403(self) -> None:
+        """verify_otp rejects a garbage/tampered token_hash."""
+        request = self._make_request(
+            {"donexto_verify": "1", "token_hash": "not-a-real-token", "type": "signup"}
+        )
+        mock_client = MagicMock()
+        mock_client.auth.verify_otp.side_effect = Exception("invalid token_hash")
+
+        with patch("app.api.identity.require_request_context") as mock_ctx, patch(
+            "app.api.identity.get_supabase_client", return_value=mock_client
+        ):
+            mock_ctx.return_value.user.id = "user-789"
+            mock_ctx.return_value.user.donexto_verified = False
+
+            with self.assertRaises(HTTPException) as caught:
+                confirm_donexto_identity(request)
+
+        self.assertEqual(caught.exception.status_code, 403)
+        self.assertEqual(
+            caught.exception.detail.get("status"), "invalid_verification_token"
+        )
+
+    def test_14_expired_token_hash_returns_403(self) -> None:
+        """Supabase raises for an expired token_hash the same way as invalid."""
+        request = self._make_request(
+            {"donexto_verify": "1", "token_hash": "expired-token", "type": "signup"}
+        )
+        mock_client = MagicMock()
+        mock_client.auth.verify_otp.side_effect = Exception("token has expired")
+
+        with patch("app.api.identity.require_request_context") as mock_ctx, patch(
+            "app.api.identity.get_supabase_client", return_value=mock_client
+        ):
+            mock_ctx.return_value.user.id = "user-789"
+            mock_ctx.return_value.user.donexto_verified = False
+
+            with self.assertRaises(HTTPException) as caught:
+                confirm_donexto_identity(request)
+
+        self.assertEqual(caught.exception.status_code, 403)
+        self.assertEqual(
+            caught.exception.detail.get("status"), "invalid_verification_token"
+        )
+
+    def test_15_token_hash_belonging_to_other_user_returns_403(self) -> None:
+        """A token that verifies fine but belongs to a different account is rejected."""
+        request = self._make_request(
+            {"donexto_verify": "1", "token_hash": "someone-elses-token", "type": "signup"}
+        )
+        mock_client = MagicMock()
+        mock_client.auth.verify_otp.return_value = SimpleNamespace(
+            user=SimpleNamespace(id="attacker-user")
+        )
+
+        with patch("app.api.identity.require_request_context") as mock_ctx, patch(
+            "app.api.identity.get_supabase_client", return_value=mock_client
+        ):
+            mock_ctx.return_value.user.id = "victim-user"
+            mock_ctx.return_value.user.donexto_verified = False
+
+            with self.assertRaises(HTTPException) as caught:
+                confirm_donexto_identity(request)
+
+        self.assertEqual(caught.exception.status_code, 403)
+        self.assertEqual(
+            caught.exception.detail.get("status"), "verification_user_mismatch"
+        )
+
 
 class MiddlewareSecurityTests(unittest.TestCase):
     """Tests 7–10: middleware blocks unverified sessions."""
@@ -225,6 +296,73 @@ class MiddlewareSecurityTests(unittest.TestCase):
         is_exempt = any(path == item or path.startswith(item + "/") for item in exempt)
         self.assertFalse(is_exempt)
         self.assertFalse(context.user.donexto_verified)
+
+
+class MiddlewareIntegrationTests(unittest.TestCase):
+    """Real ASGI integration: the actual middleware, not the inline copy above."""
+
+    def _build_app(self):
+        from fastapi import FastAPI
+
+        from app.middleware.authentication_context import AuthenticationContextMiddleware
+
+        app = FastAPI()
+        app.add_middleware(AuthenticationContextMiddleware)
+
+        @app.get("/cases")
+        def protected_route():  # pragma: no cover - only reached if not blocked
+            return {"status": "ok"}
+
+        return app
+
+    def test_16_real_middleware_blocks_unverified_user_before_workspace_resolution(
+        self,
+    ) -> None:
+        app = self._build_app()
+        unverified_user = SimpleNamespace(
+            id="user-123", donexto_verified=False, email="user@example.test"
+        )
+
+        with patch(
+            "app.middleware.authentication_context.authenticate_request",
+            return_value=unverified_user,
+        ), patch(
+            "app.middleware.authentication_context.resolve_workspace_context"
+        ) as mock_resolve_workspace:
+            client = TestClient(app)
+            response = client.get("/cases")
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(
+            response.json()["detail"]["status"], "donexto_unverified"
+        )
+        mock_resolve_workspace.assert_not_called()
+
+    def test_17_real_middleware_allows_verified_user_through(self) -> None:
+        app = self._build_app()
+        verified_user = SimpleNamespace(
+            id="user-123", donexto_verified=True, email="user@example.test"
+        )
+        workspace_context = SimpleNamespace(
+            user=verified_user,
+            workspace_id="ws-1",
+            workspace_name="Test",
+            membership_role="owner",
+            google_account=None,
+        )
+
+        with patch(
+            "app.middleware.authentication_context.authenticate_request",
+            return_value=verified_user,
+        ), patch(
+            "app.middleware.authentication_context.resolve_workspace_context",
+            return_value=workspace_context,
+        ) as mock_resolve_workspace:
+            client = TestClient(app)
+            response = client.get("/cases")
+
+        self.assertEqual(response.status_code, 200)
+        mock_resolve_workspace.assert_called_once()
 
 
 if __name__ == "__main__":
