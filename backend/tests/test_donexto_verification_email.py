@@ -48,8 +48,13 @@ class DonextoVerificationEmailTests(unittest.TestCase):
             )
         client.auth.resend.assert_not_called()
         client.auth.admin.generate_link.assert_not_called()
+        client.auth.sign_in_with_otp.assert_not_called()
 
     def test_resend_uses_supabase_auth_not_private_smtp(self) -> None:
+        # All Donexto accounts arrive via OAuth, so Supabase already confirmed
+        # the email; auth.resend(type="signup") never fires for these accounts
+        # and auth.resend does not support "magiclink". sign_in_with_otp with
+        # should_create_user=False is the only call that actually sends mail.
         client = MagicMock()
         client.auth.admin.list_users.return_value = SimpleNamespace(
             users=[SimpleNamespace(email="user@example.test", email_confirmed_at=None)]
@@ -61,11 +66,14 @@ class DonextoVerificationEmailTests(unittest.TestCase):
             redirect_to="https://app.example.test/?donexto_verify=1",
         )
         self.assertEqual(message.subject, "Confirm your Donexto email")
-        client.auth.resend.assert_called_once_with(
+        client.auth.resend.assert_not_called()
+        client.auth.sign_in_with_otp.assert_called_once_with(
             {
-                "type": "signup",
                 "email": "user@example.test",
-                "options": {"email_redirect_to": "https://app.example.test/?donexto_verify=1"},
+                "options": {
+                    "email_redirect_to": "https://app.example.test/?donexto_verify=1",
+                    "should_create_user": False,
+                },
             }
         )
 
@@ -99,7 +107,7 @@ class DonextoVerificationEmailTests(unittest.TestCase):
         self.assertTrue(
             any("donexto_verify_resend_unknown_user" in record for record in missing_logs.output)
         )
-        existing_client.auth.resend.assert_called_once()
+        existing_client.auth.sign_in_with_otp.assert_called_once()
 
     def test_endpoint_logs_provider_error_but_returns_generic_body(self) -> None:
         context = SimpleNamespace(user=SimpleNamespace(id="user-1", email="user@example.test", raw_user_metadata={}))

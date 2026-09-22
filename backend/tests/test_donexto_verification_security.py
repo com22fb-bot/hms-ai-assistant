@@ -82,6 +82,7 @@ class SendDonextoVerifySecurityTests(unittest.TestCase):
         self.assertEqual(result, {"status": "sent"})
         mock_client.auth.admin.generate_link.assert_not_called()
         mock_client.auth.resend.assert_not_called()
+        mock_client.auth.sign_in_with_otp.assert_not_called()
 
     def test_11_generate_link_not_called_for_nonexistent_email(self) -> None:
         mock_client = MagicMock()
@@ -96,6 +97,7 @@ class SendDonextoVerifySecurityTests(unittest.TestCase):
             )
         mock_client.auth.admin.generate_link.assert_not_called()
         mock_client.auth.resend.assert_not_called()
+        mock_client.auth.sign_in_with_otp.assert_not_called()
 
 
 class ConfirmDonextoSecurityTests(unittest.TestCase):

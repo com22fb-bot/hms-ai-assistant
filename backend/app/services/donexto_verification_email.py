@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class VerificationEmail:
@@ -123,22 +126,41 @@ def send_verification_email(
 ) -> VerificationEmail:
     """Send a verification email only for an already-existing account.
 
-    Never calls ``generate_link`` for an email that does not exist in
-    Supabase. This prevents the ``signup`` link type from silently creating
-    new users during a resend flow. Raises ``VerificationEmailUserNotFound``
-    so the caller can log it internally while still returning the same
-    public response, preventing account enumeration.
+    Never calls ``sign_in_with_otp`` (or any link-issuing call) for an email
+    that does not exist in Supabase; ``should_create_user=False`` is a second
+    line of defense against ever creating a new user from this flow. Raises
+    ``VerificationEmailUserNotFound`` so the caller can log it internally
+    while still returning the same public response, preventing account
+    enumeration.
     """
     existing = _find_user_by_email(client, email)
     if existing is None:
         raise VerificationEmailUserNotFound(email)
 
-    client.auth.resend(
-        {
-            "type": "signup",
-            "email": email,
-            "options": {"email_redirect_to": redirect_to},
-        }
-    )
+    # Every Donexto account is created via OAuth (Microsoft today; Google/Yahoo/
+    # iCloud later), so Supabase always sets email_confirmed_at at creation time
+    # (the provider already proved mailbox ownership). auth.resend(type="signup")
+    # only fires for accounts with a pending signup confirmation, which never
+    # applies here, so it silently sends nothing. auth.resend's SDK type also
+    # does not accept "magiclink" (only "signup"/"email_change"), so a real
+    # email requires client.auth.sign_in_with_otp with should_create_user=False
+    # (never creates a user; the existence check above already guarantees one
+    # exists) — this is the only correct call for all providers, present and
+    # future. Do not reintroduce type="signup" or auth.resend in this flow.
+    try:
+        client.auth.sign_in_with_otp(
+            {
+                "email": email,
+                "options": {
+                    "email_redirect_to": redirect_to,
+                    "should_create_user": False,
+                },
+            }
+        )
+    except Exception:
+        # Temporary diagnostic log for the OAuth-magiclink rollout (Railway logs).
+        logger.info("donexto_verify_send type=magiclink result=error")
+        raise
+    logger.info("donexto_verify_send type=magiclink result=ok")
     subject, _ = _TEMPLATES[normalize_language(language)]
     return VerificationEmail(subject=subject, body="")
