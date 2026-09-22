@@ -29,6 +29,7 @@ _PROTECTED_PREFIXES = (
     "/ai",
     "/dashboard",
     "/billing",
+    "/admin",
     "/auth/google/start",
     "/auth/google/status",
     "/auth/google/disconnect",

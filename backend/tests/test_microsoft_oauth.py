@@ -236,6 +236,18 @@ class MicrosoftOAuthTests(unittest.TestCase):
         self.assertIsInstance(response, RedirectResponse)
         self.assertIn("donexto=microsoft_error", location)
 
+    def test_login_requires_continuar_email(self) -> None:
+        from app.api.microsoft_mail import MicrosoftLoginRequest, microsoft_login
+
+        with patch("app.api.microsoft_mail.require_microsoft_oauth_config"):
+            with self.assertRaises(HTTPException) as caught:
+                microsoft_login(
+                    _FakeRequest("/auth/microsoft/login"),  # type: ignore[arg-type]
+                    MicrosoftLoginRequest(intent="signup"),
+                )
+        self.assertEqual(caught.exception.status_code, 400)
+        self.assertIn("login_hint_required", str(caught.exception.detail))
+
     def test_callback_rejects_email_mismatch(self) -> None:
         from fastapi.responses import RedirectResponse
         from app.api.microsoft_mail import microsoft_callback
@@ -273,6 +285,7 @@ class MicrosoftOAuthTests(unittest.TestCase):
                 "app.api.microsoft_mail.sanitize_return_to",
                 return_value="https://app.donexto.com/",
             ),
+            patch("app.api.microsoft_mail.mint_yahoo_session_or_http") as mint,
         ):
             storage.load_oauth_state.return_value = {
                 "return_to": "https://app.donexto.com/",
@@ -283,16 +296,109 @@ class MicrosoftOAuthTests(unittest.TestCase):
         location = str(response.headers.get("location") or response.url)
         self.assertIn("donexto=microsoft_error", location)
         self.assertIn("hector%40hotmail.com", location)
+        self.assertNotIn("access_token", location)
+        mint.assert_not_called()
         storage.delete_oauth_state.assert_called_once_with(state)
         storage.load_oauth_state.assert_called_once()
 
-    def test_callback_login_existing_deletes_state_after_token(self) -> None:
+    def test_callback_signup_mismatch_does_not_create_user(self) -> None:
+        from fastapi.responses import RedirectResponse
+        from app.api.microsoft_mail import microsoft_callback
+
+        state = encode_login_hint_in_state_prefix(
+            "signup.consumers",
+            "nadie@hotmail.com",
+        ) + ".token"
+        request = SimpleNamespace(
+            query_params={"state": state, "code": "auth-code"}
+        )
+        with (
+            patch("app.api.microsoft_mail.oauth_storage") as storage,
+            patch(
+                "app.api.microsoft_mail.exchange_microsoft_code",
+                return_value={"access_token": "ms-at", "scope": "openid Mail.Read"},
+            ),
+            patch(
+                "app.api.microsoft_mail.fetch_microsoft_profile",
+                return_value={"mail": "donexto@hotmail.com"},
+            ),
+            patch(
+                "app.api.microsoft_mail.microsoft_email_from_profile",
+                return_value="donexto@hotmail.com",
+            ),
+            patch(
+                "app.api.microsoft_mail.sanitize_return_to",
+                return_value="https://app.donexto.com/",
+            ),
+            patch("app.api.microsoft_mail.mint_yahoo_session_or_http") as mint,
+            patch("app.api.microsoft_mail.auth_user_exists") as exists,
+        ):
+            storage.load_oauth_state.return_value = {
+                "return_to": "https://app.donexto.com/",
+            }
+            response = microsoft_callback(request)  # type: ignore[arg-type]
+
+        location = str(response.headers.get("location") or response.url)
+        self.assertIsInstance(response, RedirectResponse)
+        self.assertIn("donexto=microsoft_error", location)
+        self.assertIn("nadie%40hotmail.com", location)
+        self.assertIn("donexto%40hotmail.com", location)
+        self.assertNotIn("access_token", location)
+        mint.assert_not_called()
+        exists.assert_not_called()
+
+    def test_callback_without_hint_does_not_open_session(self) -> None:
         from fastapi.responses import RedirectResponse
         from app.api.microsoft_mail import microsoft_callback
 
         request = SimpleNamespace(
             query_params={
-                "state": "login.consumers.token",
+                "state": "signup.consumers.token",
+                "code": "auth-code",
+            }
+        )
+        with (
+            patch("app.api.microsoft_mail.oauth_storage") as storage,
+            patch(
+                "app.api.microsoft_mail.exchange_microsoft_code",
+                return_value={"access_token": "ms-at"},
+            ),
+            patch(
+                "app.api.microsoft_mail.fetch_microsoft_profile",
+                return_value={"mail": "donexto@hotmail.com"},
+            ),
+            patch(
+                "app.api.microsoft_mail.microsoft_email_from_profile",
+                return_value="donexto@hotmail.com",
+            ),
+            patch(
+                "app.api.microsoft_mail.sanitize_return_to",
+                return_value="https://app.donexto.com/",
+            ),
+            patch("app.api.microsoft_mail.mint_yahoo_session_or_http") as mint,
+        ):
+            storage.load_oauth_state.return_value = {
+                "return_to": "https://app.donexto.com/",
+            }
+            response = microsoft_callback(request)  # type: ignore[arg-type]
+
+        location = str(response.headers.get("location") or response.url)
+        self.assertIsInstance(response, RedirectResponse)
+        self.assertIn("donexto=microsoft_error", location)
+        self.assertIn("No+se+abri%C3%B3+sesi%C3%B3n", location)
+        mint.assert_not_called()
+
+    def test_callback_login_existing_deletes_state_after_token(self) -> None:
+        from fastapi.responses import RedirectResponse
+        from app.api.microsoft_mail import microsoft_callback
+
+        state = encode_login_hint_in_state_prefix(
+            "login.consumers",
+            "donexto@hotmail.com",
+        ) + ".token"
+        request = SimpleNamespace(
+            query_params={
+                "state": state,
                 "code": "auth-code",
             }
         )
@@ -339,11 +445,11 @@ class MicrosoftOAuthTests(unittest.TestCase):
         location = str(response.headers.get("location") or response.url)
         self.assertIn("access_token=at", location)
         storage.load_oauth_state.assert_called_once_with(
-            "login.consumers.token",
+            state,
             "microsoft",
         )
         storage.consume_oauth_state.assert_not_called()
-        storage.delete_oauth_state.assert_called_once_with("login.consumers.token")
+        storage.delete_oauth_state.assert_called_once_with(state)
         persist.assert_called_once()
 
     def test_callback_token_error_keeps_state(self) -> None:

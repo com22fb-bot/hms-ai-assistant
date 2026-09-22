@@ -148,10 +148,53 @@ def oauth_email_mismatch_message(
     actual = (actual_email or "").strip().lower()
     if actual == expected:
         return None
+    shown = actual or "otro correo"
     return (
-        f"Firmaste con {actual}, pero en Donexto pediste {expected}. "
+        f"Firmaste con {shown}, pero en Donexto pediste {expected}. "
         f"Cierra sesión en {provider_label} (o usa una ventana privada) "
-        "y vuelve a pulsar Continuar."
+        "y vuelve a pulsar Continuar. No se abrió sesión."
+    )
+
+
+def oauth_identity_block_message(
+    expected_hint: str | None,
+    actual_email: str,
+    *,
+    provider_label: str = "el proveedor",
+) -> str | None:
+    """Fail closed unless Continuar email equals the OAuth identity.
+
+    Returns None only when both addresses are present and equal. A missing
+    Continuar email never opens a session and never creates an Auth user.
+    """
+    if not sanitize_login_hint(expected_hint):
+        return (
+            "Donexto no recibió el correo con el que pulsaste Continuar. "
+            "Vuelve a escribirlo en la app y continúa. No se abrió sesión."
+        )
+    return oauth_email_mismatch_message(
+        expected_hint,
+        actual_email,
+        provider_label=provider_label,
+    )
+
+
+def require_continuar_login_hint(login_hint: str | None) -> str:
+    """The email typed on Continuar is mandatory before leaving for OAuth."""
+    from fastapi import HTTPException
+
+    hint = sanitize_login_hint(login_hint)
+    if hint:
+        return hint
+    raise HTTPException(
+        status_code=400,
+        detail={
+            "status": "login_hint_required",
+            "message": (
+                "Escribe el correo en Donexto antes de continuar. "
+                "Tiene que ser el mismo con el que firmas en el proveedor."
+            ),
+        },
     )
 
 

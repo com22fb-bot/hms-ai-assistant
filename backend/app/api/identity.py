@@ -105,20 +105,35 @@ def send_donexto_verification_email(
         "language", "es"
     )
     redirect_to = sanitize_return_to(payload.redirect_to)
+    user_id = context.user.id if isinstance(context.user.id, str) else None
     try:
         send_verification_email(
             client=get_supabase_client(),
             email=email,
             language=language,
             redirect_to=_append_verify_flag(redirect_to),
+            user_id=user_id,
         )
     except VerificationEmailUserNotFound:
         # Public response never reveals whether the account exists.
         logger.info("donexto_verify_resend_unknown_user user_id=%s", context.user.id)
-    except Exception:
+        return {"status": "sent"}
+    except Exception as error:
         logger.error(
-            "donexto_verify_resend_provider_error user_id=%s", context.user.id, exc_info=True
+            "donexto_verify_resend_provider_error user_id=%s",
+            context.user.id,
+            exc_info=True,
         )
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "verification_email_delivery_failed",
+                "message": (
+                    "No pudimos enviar el correo de confirmación de Donexto. "
+                    "Pulsa Reenviar en un momento."
+                ),
+            },
+        ) from error
     return {"status": "sent"}
 
 

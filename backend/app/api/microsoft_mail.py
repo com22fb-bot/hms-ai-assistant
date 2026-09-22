@@ -28,14 +28,14 @@ from app.services.microsoft_oauth import (
     microsoft_tenant_from_state,
     microsoft_token_url,
     require_microsoft_oauth_config,
-    sanitize_login_hint,
     sanitize_return_to,
 )
 from app.services.yahoo_oauth import (
     encode_login_hint_in_state_prefix,
     login_hint_from_oauth_state,
     normalize_yahoo_intent,
-    oauth_email_mismatch_message,
+    oauth_identity_block_message,
+    require_continuar_login_hint,
     yahoo_intent_from_state,
 )
 from app.services.yahoo_session import auth_user_exists, mint_yahoo_session_or_http
@@ -162,7 +162,7 @@ def _callback_error_page(
     query = urlencode(
         {
             "donexto": "microsoft_error",
-            "reason": message[:180],
+            "reason": message[:280],
         }
     )
     return RedirectResponse(url=f"{home.rstrip('/')}?{query}", status_code=302)
@@ -175,7 +175,9 @@ def microsoft_login(
 ) -> dict[str, str]:
     require_microsoft_oauth_config()
     intent = normalize_yahoo_intent(payload.intent if payload else None)
-    hint = sanitize_login_hint(payload.login_hint if payload else None)
+    hint = require_continuar_login_hint(
+        payload.login_hint if payload else None
+    )
     if intent == "login" and hint and not auth_user_exists(hint):
         raise HTTPException(
             status_code=403,
@@ -274,7 +276,7 @@ def microsoft_callback(request: Request) -> RedirectResponse:
         )
 
     expected_hint = login_hint_from_oauth_state(state)
-    mismatch = oauth_email_mismatch_message(
+    mismatch = oauth_identity_block_message(
         expected_hint,
         address,
         provider_label="Microsoft",

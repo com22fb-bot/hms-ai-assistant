@@ -28,15 +28,21 @@ No se puede spamear “Crear cuenta” otra vez en el mismo intento.
 
 ## 4) Reenvío localizado de Donexto
 
-El endpoint `POST /identity/send-donexto-verify` genera el enlace con
-Supabase y envía el asunto y cuerpo localizados mediante el relay SMTP del
-backend. Deben existir en Railway estas variables:
+El endpoint `POST /identity/send-donexto-verify` arma el enlace con
+`generate_link` (no con `auth.resend`) y manda el asunto y el cuerpo del
+idioma de la interfaz por el relay del backend. El enlace abre la app con
+`donexto_verify=1` y el `token_hash` todavía sin usar. Deben existir en
+Railway estas variables, o en su lugar `RESEND_API_KEY`:
 
 - `SUPPORT_SMTP_HOST`
 - `SUPPORT_SMTP_PORT`
 - `SUPPORT_SMTP_USER`
 - `SUPPORT_SMTP_PASSWORD`
 - `SUPPORT_SMTP_FROM`
+
+`SUPPORT_SMTP_FROM` en producción es `support@donexto.com`. Si el host SMTP
+no está puesto y sí existe `RESEND_API_KEY`, el mismo correo sale por la API
+de Resend.
 
 Para Gmail y Google Workspace usa un relay autorizado por la cuenta, el puerto
 `587` y STARTTLS. `SUPPORT_SMTP_FROM` debe ser una dirección permitida por ese

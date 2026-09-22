@@ -120,7 +120,7 @@ export function LoginScreen({
     const cleaned = `${url.pathname}${url.search}${url.hash}`;
     window.history.replaceState({}, "", cleaned || "/");
     const frame = window.requestAnimationFrame(() => {
-      if (flag === "microsoft_error") {
+      if (flag === "microsoft_error" || flag === "oauth_error") {
         setError(reason || loginText(language, "microsoftOpenFailed"));
       }
       if (flag === "signup" && isValidSignupEmail(hinted)) {

@@ -12,6 +12,7 @@ from app.services.yahoo_oauth import (
     encode_login_hint_in_state_prefix,
     login_hint_from_oauth_state,
     oauth_email_mismatch_message,
+    oauth_identity_block_message,
 )
 
 
@@ -49,6 +50,34 @@ class OAuthLoginHintTests(unittest.TestCase):
             oauth_email_mismatch_message(
                 "onexto@hotmail.com",
                 "onexto@hotmail.com",
+            )
+        )
+
+    def test_missing_hint_is_fail_closed(self) -> None:
+        message = oauth_identity_block_message(
+            None,
+            "donexto@hotmail.com",
+            provider_label="Microsoft",
+        )
+        self.assertIsNotNone(message)
+        self.assertIn("No se abrió sesión", message or "")
+
+    def test_mismatch_block_names_both_emails(self) -> None:
+        message = oauth_identity_block_message(
+            "nadie@hotmail.com",
+            "donexto@hotmail.com",
+            provider_label="Microsoft",
+        )
+        self.assertIn("nadie@hotmail.com", message or "")
+        self.assertIn("donexto@hotmail.com", message or "")
+        self.assertIn("No se abrió sesión", message or "")
+
+    def test_matching_hint_is_not_blocked(self) -> None:
+        self.assertIsNone(
+            oauth_identity_block_message(
+                "donexto@hotmail.com",
+                "Donexto@Hotmail.com",
+                provider_label="Microsoft",
             )
         )
 
