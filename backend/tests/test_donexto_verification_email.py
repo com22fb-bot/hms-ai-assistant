@@ -59,7 +59,7 @@ class DonextoVerificationEmailTests(unittest.TestCase):
         client.auth.admin.generate_link.return_value = SimpleNamespace(
             properties={
                 "hashed_token": "hash-token",
-                "verification_type": "signup",
+                "verification_type": "magiclink",
             }
         )
         with patch(
@@ -75,7 +75,12 @@ class DonextoVerificationEmailTests(unittest.TestCase):
         self.assertEqual(message.subject, "Confirm your Donexto email")
         self.assertIn("hash-token", message.body)
         self.assertIn("token_hash=hash-token", message.body)
-        self.assertIn("type=signup", message.body)
+        self.assertIn("type=magiclink", message.body)
+        self.assertNotIn("type=signup", message.body)
+        self.assertEqual(
+            client.auth.admin.generate_link.call_args.args[0]["type"],
+            "magiclink",
+        )
         client.auth.resend.assert_not_called()
         deliver.assert_called_once()
         self.assertEqual(deliver.call_args.args[0], "user@example.test")
@@ -124,6 +129,40 @@ class DonextoVerificationEmailTests(unittest.TestCase):
         self.assertIn("type=magiclink", message.body)
         client.auth.resend.assert_not_called()
         client.auth.admin.generate_link.assert_called_once()
+
+    def test_microsoft_oauth_without_confirmed_at_stays_on_magiclink(self) -> None:
+        """Signup resend is a no-op for provider-confirmed OAuth users."""
+        client = MagicMock()
+        client.auth.admin.get_user_by_id.return_value = SimpleNamespace(
+            user=SimpleNamespace(
+                id="ms-user",
+                email="donexto@hotmail.com",
+                email_confirmed_at=None,
+                user_metadata={"signup_via": "microsoft_oauth"},
+            )
+        )
+        client.auth.admin.generate_link.return_value = SimpleNamespace(
+            properties={"hashed_token": "ms-token", "verification_type": "magiclink"}
+        )
+        with patch(
+            "app.services.support_notify.send_transactional_email",
+            return_value=True,
+        ):
+            message = send_verification_email(
+                client=client,
+                email="donexto@hotmail.com",
+                language="es",
+                redirect_to="https://app.donexto.com/?donexto_verify=1",
+                user_id="ms-user",
+            )
+        self.assertIn("type=magiclink", message.body)
+        self.assertNotIn("type=signup", message.body)
+        self.assertEqual(
+            client.auth.admin.generate_link.call_args.args[0]["type"],
+            "magiclink",
+        )
+        client.auth.resend.assert_not_called()
+        client.auth.sign_in_with_otp.assert_not_called()
 
     def test_user_id_lookup_ignores_empty_first_page(self) -> None:
         client = MagicMock()
@@ -179,7 +218,7 @@ class DonextoVerificationEmailTests(unittest.TestCase):
             )
         )
         existing_client.auth.admin.generate_link.return_value = SimpleNamespace(
-            properties={"hashed_token": "hash-token", "verification_type": "signup"}
+            properties={"hashed_token": "hash-token", "verification_type": "magiclink"}
         )
         with patch("app.api.identity.require_request_context", return_value=context), patch(
             "app.api.identity.get_supabase_client", return_value=missing_client
@@ -199,6 +238,10 @@ class DonextoVerificationEmailTests(unittest.TestCase):
         )
         existing_client.auth.resend.assert_not_called()
         existing_client.auth.admin.generate_link.assert_called_once()
+        self.assertEqual(
+            existing_client.auth.admin.generate_link.call_args.args[0]["type"],
+            "magiclink",
+        )
 
     def test_endpoint_logs_provider_error_and_returns_503(self) -> None:
         context = SimpleNamespace(user=SimpleNamespace(id="user-1", email="user@example.test", raw_user_metadata={}))

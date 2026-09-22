@@ -117,14 +117,6 @@ def _candidate_id(candidate: Any) -> str:
     return raw.strip()
 
 
-def _confirmed_at(candidate: Any) -> Any:
-    if candidate is None:
-        return None
-    if isinstance(candidate, dict):
-        return candidate.get("email_confirmed_at")
-    return getattr(candidate, "email_confirmed_at", None)
-
-
 def _listed_users(response: Any) -> list[Any]:
     users = getattr(response, "users", None)
     if users is None and isinstance(response, dict):
@@ -195,15 +187,10 @@ def _find_user_by_email(client: Any, email: str) -> Any | None:
     return None
 
 
-def _resolve_link_type(user: Any) -> str:
-    """``signup`` confirms a new address. ``magiclink`` re-proves one already confirmed.
-
-    OAuth session minting often sets ``email_confirmed_at`` before Donexto's
-    own link is clicked. ``auth.resend(type=signup)`` then sends nothing.
-    """
-    if _confirmed_at(user):
-        return "magiclink"
-    return "signup"
+# Microsoft/Yahoo/Google OAuth users are already provider-confirmed.
+# ``signup`` confirmation does not apply: Supabase accepts the call and
+# sends nothing. The delivery that worked (2026-09-17) was always magiclink.
+DONEXTO_VERIFY_LINK_TYPE = "magiclink"
 
 
 def _properties(response: Any) -> dict[str, Any]:
@@ -244,7 +231,7 @@ def verification_token_from_generate_response(response: Any) -> tuple[str, str]:
             link_type = (query.get("type") or [""])[0].strip()
     if not token:
         raise ValueError("Supabase no devolvió el token de verificación")
-    return token, link_type or "signup"
+    return token, link_type or DONEXTO_VERIFY_LINK_TYPE
 
 
 def app_verification_link(redirect_to: str, token_hash: str, token_type: str) -> str:
@@ -252,7 +239,7 @@ def app_verification_link(redirect_to: str, token_hash: str, token_type: str) ->
     query = dict(parse_qsl(parsed.query, keep_blank_values=True))
     query["donexto_verify"] = "1"
     query["token_hash"] = token_hash
-    query["type"] = token_type or "signup"
+    query["type"] = token_type or DONEXTO_VERIFY_LINK_TYPE
     return urlunparse(parsed._replace(query=urlencode(query)))
 
 
@@ -281,15 +268,15 @@ def send_verification_email(
     """Send a localized verification email only for an already-existing account.
 
     Never calls ``generate_link`` for an email that does not exist in
-    Supabase. This prevents the ``signup`` link type from silently creating
-    new users during a resend flow. Raises ``VerificationEmailUserNotFound``
-    so the caller can log it internally while still returning the same
-    public response, preventing account enumeration.
+    Supabase, so a resend cannot create a user. Raises
+    ``VerificationEmailUserNotFound`` so the caller can log it internally
+    while still returning the same public response for a missing account.
 
-    Delivery uses ``SUPPORT_SMTP_*`` (from ``support@donexto.com`` when that
-    is ``SUPPORT_SMTP_FROM``) or ``RESEND_API_KEY``. It does not use
-    ``auth.resend``, which ignores these templates and skips already
-    confirmed OAuth accounts.
+    The link type is always ``magiclink``. OAuth accounts are already
+    confirmed by the provider; ``auth.resend(type=signup)`` returns success
+    and Supabase/Resend emit no mail. Delivery is the localized body through
+    ``SUPPORT_SMTP_*`` (from ``support@donexto.com`` when that is
+    ``SUPPORT_SMTP_FROM``) or ``RESEND_API_KEY``.
     """
     existing = None
     if isinstance(user_id, str) and user_id.strip():
@@ -303,17 +290,20 @@ def send_verification_email(
     if existing is None:
         raise VerificationEmailUserNotFound(email)
 
-    link_type = _resolve_link_type(existing)
     response = _generate_link(
         client,
         email=email,
-        link_type=link_type,
+        link_type=DONEXTO_VERIFY_LINK_TYPE,
         redirect_to=redirect_to,
     )
     token_hash, actual_type = verification_token_from_generate_response(response)
     message = build_verification_email(
         language,
-        app_verification_link(redirect_to, token_hash, actual_type or link_type),
+        app_verification_link(
+            redirect_to,
+            token_hash,
+            actual_type or DONEXTO_VERIFY_LINK_TYPE,
+        ),
     )
     from app.services.support_notify import send_transactional_email
 
