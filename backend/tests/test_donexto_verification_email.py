@@ -49,6 +49,7 @@ class DonextoVerificationEmailTests(unittest.TestCase):
             )
         client.auth.resend.assert_not_called()
         client.auth.admin.generate_link.assert_not_called()
+        client.auth.sign_in_with_otp.assert_not_called()
 
     def test_send_uses_localized_smtp_not_auth_resend(self) -> None:
         client = MagicMock()
@@ -82,6 +83,7 @@ class DonextoVerificationEmailTests(unittest.TestCase):
             "magiclink",
         )
         client.auth.resend.assert_not_called()
+        client.auth.sign_in_with_otp.assert_not_called()
         deliver.assert_called_once()
         self.assertEqual(deliver.call_args.args[0], "user@example.test")
         self.assertEqual(deliver.call_args.args[1], "Confirm your Donexto email")
@@ -237,6 +239,7 @@ class DonextoVerificationEmailTests(unittest.TestCase):
             any("donexto_verify_resend_unknown_user" in record for record in missing_logs.output)
         )
         existing_client.auth.resend.assert_not_called()
+        existing_client.auth.sign_in_with_otp.assert_not_called()
         existing_client.auth.admin.generate_link.assert_called_once()
         self.assertEqual(
             existing_client.auth.admin.generate_link.call_args.args[0]["type"],

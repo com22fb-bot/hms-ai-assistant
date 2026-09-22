@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import Any
 from urllib.parse import parse_qs, parse_qsl, urlencode, urlparse, urlunparse
+
+logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class VerificationEmail:
@@ -267,16 +270,18 @@ def send_verification_email(
 ) -> VerificationEmail:
     """Send a localized verification email only for an already-existing account.
 
-    Never calls ``generate_link`` for an email that does not exist in
-    Supabase, so a resend cannot create a user. Raises
+    Never calls ``generate_link`` or ``sign_in_with_otp`` for an email that
+    does not exist in Supabase, so a resend cannot create a user. Raises
     ``VerificationEmailUserNotFound`` so the caller can log it internally
     while still returning the same public response for a missing account.
 
     The link type is always ``magiclink``. OAuth accounts are already
     confirmed by the provider; ``auth.resend(type=signup)`` returns success
-    and Supabase/Resend emit no mail. Delivery is the localized body through
-    ``SUPPORT_SMTP_*`` (from ``support@donexto.com`` when that is
-    ``SUPPORT_SMTP_FROM``) or ``RESEND_API_KEY``.
+    and Supabase/Resend emit no mail. ``sign_in_with_otp`` would send
+    Supabase's default template instead of the localized body. Delivery is
+    the localized body through ``SUPPORT_SMTP_*`` (from
+    ``support@donexto.com`` when that is ``SUPPORT_SMTP_FROM``) or
+    ``RESEND_API_KEY``.
     """
     existing = None
     if isinstance(user_id, str) and user_id.strip():
@@ -290,6 +295,12 @@ def send_verification_email(
     if existing is None:
         raise VerificationEmailUserNotFound(email)
 
+    # OAuth accounts are provider-confirmed, so auth.resend(type="signup")
+    # returns success and sends nothing. auth.resend also cannot request
+    # type "magiclink". generate_link(type="magiclink") mints an unused
+    # token_hash; the localized body (SMTP or Resend) carries the app URL.
+    # sign_in_with_otp is not used: it would send Supabase's template, not
+    # this body, and must never run for a missing account.
     response = _generate_link(
         client,
         email=email,
@@ -312,4 +323,5 @@ def send_verification_email(
         raise VerificationEmailDeliveryError(
             "No hay relay SMTP ni RESEND_API_KEY para el correo de Donexto"
         )
+    logger.info("donexto_verify_send type=magiclink result=ok")
     return message
