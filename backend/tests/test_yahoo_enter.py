@@ -16,6 +16,7 @@ from app.api.yahoo_mail import YahooConnectRequest, yahoo_connect, yahoo_enter
 from app.middleware.authentication_context import AuthenticationContextMiddleware
 from app.services.yahoo_oauth import (
     build_yahoo_authorization_url,
+    encode_login_hint_in_state_prefix,
     granted_mail_read,
     sanitize_return_to,
 )
@@ -180,6 +181,18 @@ class YahooOAuthGateTests(unittest.TestCase):
         self.assertEqual(caught.exception.status_code, 403)
         self.assertIn("Suscribirse", str(caught.exception.detail))
 
+    def test_login_requires_continuar_email(self) -> None:
+        from app.api.yahoo_mail import YahooLoginRequest, yahoo_login
+
+        with patch("app.api.yahoo_mail.require_yahoo_oauth_config"):
+            with self.assertRaises(HTTPException) as caught:
+                yahoo_login(
+                    _FakeRequest("/auth/yahoo/login"),  # type: ignore[arg-type]
+                    YahooLoginRequest(intent="signup"),
+                )
+        self.assertEqual(caught.exception.status_code, 400)
+        self.assertIn("login_hint_required", str(caught.exception.detail))
+
     def test_mail_read_scope_detection(self) -> None:
         self.assertTrue(granted_mail_read({"scope": "openid email mail-r"}))
         self.assertTrue(granted_mail_read({"scope": "openid,mail-w"}))
@@ -211,8 +224,9 @@ class YahooOAuthGateTests(unittest.TestCase):
         from fastapi.responses import RedirectResponse
         from app.api.yahoo_mail import yahoo_callback
 
+        state = encode_login_hint_in_state_prefix("login", "nuevo@yahoo.com") + ".token"
         request = SimpleNamespace(
-            query_params={"state": "login.token", "code": "auth-code"}
+            query_params={"state": state, "code": "auth-code"}
         )
         with (
             patch("app.api.yahoo_mail.oauth_storage") as storage,
@@ -251,8 +265,12 @@ class YahooOAuthGateTests(unittest.TestCase):
         from fastapi.responses import RedirectResponse
         from app.api.yahoo_mail import yahoo_callback
 
+        state = (
+            encode_login_hint_in_state_prefix("login", "hsalcidor@yahoo.com")
+            + ".token"
+        )
         request = SimpleNamespace(
-            query_params={"state": "login.token", "code": "auth-code"}
+            query_params={"state": state, "code": "auth-code"}
         )
         with (
             patch("app.api.yahoo_mail.oauth_storage") as storage,
@@ -299,8 +317,11 @@ class YahooOAuthGateTests(unittest.TestCase):
         from fastapi.responses import RedirectResponse
         from app.api.yahoo_mail import yahoo_callback
 
+        state = (
+            encode_login_hint_in_state_prefix("signup", "nuevo@yahoo.com") + ".token"
+        )
         request = SimpleNamespace(
-            query_params={"state": "signup.token", "code": "auth-code"}
+            query_params={"state": state, "code": "auth-code"}
         )
         with (
             patch("app.api.yahoo_mail.oauth_storage") as storage,
@@ -336,6 +357,46 @@ class YahooOAuthGateTests(unittest.TestCase):
         location = str(response.headers.get("location") or response.url)
         self.assertIn("access_token=at2", location)
         mint.assert_called_once_with("nuevo@yahoo.com", allow_create=True)
+
+    def test_callback_signup_mismatch_does_not_create_user(self) -> None:
+        from fastapi.responses import RedirectResponse
+        from app.api.yahoo_mail import yahoo_callback
+
+        state = (
+            encode_login_hint_in_state_prefix("signup", "nadie@yahoo.com") + ".token"
+        )
+        request = SimpleNamespace(
+            query_params={"state": state, "code": "auth-code"}
+        )
+        with (
+            patch("app.api.yahoo_mail.oauth_storage") as storage,
+            patch(
+                "app.api.yahoo_mail.exchange_yahoo_code",
+                return_value={"access_token": "ya"},
+            ),
+            patch("app.api.yahoo_mail.fetch_yahoo_userinfo", return_value={}),
+            patch(
+                "app.api.yahoo_mail.yahoo_email_from_userinfo",
+                return_value="otro@yahoo.com",
+            ),
+            patch("app.api.yahoo_mail.mint_yahoo_session_or_http") as mint,
+            patch(
+                "app.api.yahoo_mail.sanitize_return_to",
+                return_value="https://app.donexto.com/",
+            ),
+        ):
+            storage.consume_oauth_state.return_value = {
+                "return_to": "https://app.donexto.com/",
+            }
+            response = yahoo_callback(request)  # type: ignore[arg-type]
+
+        self.assertIsInstance(response, RedirectResponse)
+        location = str(response.headers.get("location") or response.url)
+        self.assertIn("donexto=oauth_error", location)
+        self.assertIn("nadie%40yahoo.com", location)
+        self.assertIn("otro%40yahoo.com", location)
+        self.assertNotIn("access_token", location)
+        mint.assert_not_called()
 
 
 if __name__ == "__main__":

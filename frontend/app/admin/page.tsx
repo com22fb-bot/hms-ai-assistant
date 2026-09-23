@@ -60,6 +60,7 @@ type UsersResponse = {
     subscription_status?: string | null;
     plan_code?: string | null;
     first_product_use_at?: string | null;
+    protected?: boolean;
   }>;
   total: number;
 };
@@ -203,6 +204,7 @@ export default function AdminPage() {
     discount_value: 10,
   });
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const sessionEmail = session?.email ?? "";
 
@@ -281,6 +283,31 @@ export default function AdminPage() {
     if (!sessionEmail) return "Sin sesión";
     return sessionEmail;
   }, [sessionEmail]);
+
+  async function onDeleteUser(userId: string, email: string | null | undefined) {
+    if (!userId || deletingId) return;
+    const label = email || userId;
+    const confirmed = window.confirm(
+      `¿Borrar la cuenta de prueba ${label}? Se elimina de Supabase Auth, el perfil y su espacio de trabajo. Esta acción no se puede deshacer.`,
+    );
+    if (!confirmed) return;
+    setDeletingId(userId);
+    setError(null);
+    try {
+      await hmsJson(`/api/hms/admin/users/${encodeURIComponent(userId)}`, {
+        method: "DELETE",
+      });
+      await loadTab("users");
+    } catch (err) {
+      setError(
+        err instanceof HmsApiError
+          ? err.message
+          : "No se pudo borrar esa cuenta.",
+      );
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   async function onCreateFeedback(event: FormEvent) {
     event.preventDefault();
@@ -511,10 +538,12 @@ export default function AdminPage() {
         {!forbidden && tab === "users" && users && (
           <section className="dx-admin__section">
             <header className="dx-admin__section-head">
-              <h2>Usuarios recientes</h2>
+              <h2>Usuarios</h2>
               <p>
-                Perfiles Donexto, estado de buzón y suscripción (si hay filas
-                de billing).
+                Cuentas actuales en Supabase Auth. Borrar quita la cuenta de
+                prueba, el perfil y el espacio de trabajo para poder repetir
+                el alta. No puedes borrar tu sesión ni un correo de
+                ADMIN_EMAILS.
               </p>
             </header>
             <div className="dx-admin__table-wrap">
@@ -527,12 +556,13 @@ export default function AdminPage() {
                     <th>Plan / estado</th>
                     <th>País</th>
                     <th>Alta</th>
+                    <th>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.users.length === 0 && (
                     <tr>
-                      <td colSpan={6}>Sin usuarios en profiles aún.</td>
+                      <td colSpan={7}>Sin usuarios en Supabase Auth.</td>
                     </tr>
                   )}
                   {users.users.map((user) => (
@@ -554,6 +584,20 @@ export default function AdminPage() {
                       </td>
                       <td>{user.country_code || "—"}</td>
                       <td>{formatWhen(user.created_at)}</td>
+                      <td>
+                        <button
+                          type="button"
+                          className="dx-admin__btn dx-admin__btn--danger"
+                          disabled={Boolean(user.protected) || deletingId !== null}
+                          onClick={() => void onDeleteUser(user.id, user.email)}
+                        >
+                          {deletingId === user.id
+                            ? "Borrando…"
+                            : user.protected
+                              ? "Protegido"
+                              : "Borrar"}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

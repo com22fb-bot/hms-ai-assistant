@@ -28,9 +28,9 @@ from app.services.yahoo_oauth import (
     granted_mail_read,
     login_hint_from_oauth_state,
     normalize_yahoo_intent,
-    oauth_email_mismatch_message,
+    oauth_identity_block_message,
+    require_continuar_login_hint,
     require_yahoo_oauth_config,
-    sanitize_login_hint,
     sanitize_return_to,
     yahoo_email_from_userinfo,
     yahoo_intent_from_state,
@@ -203,7 +203,9 @@ def yahoo_login(
     """Devuelve la URL para firmar en el sitio de Yahoo."""
     require_yahoo_oauth_config()
     intent = normalize_yahoo_intent(payload.intent if payload else None)
-    hint = sanitize_login_hint(payload.login_hint if payload else None)
+    hint = require_continuar_login_hint(
+        payload.login_hint if payload else None
+    )
     if intent == "login" and hint and not auth_user_exists(hint):
         raise HTTPException(
             status_code=403,
@@ -324,17 +326,26 @@ def yahoo_callback(request: Request) -> HTMLResponse | RedirectResponse:
     except YahooOAuthError as error:
         return _callback_error_page("No fue posible conectar Yahoo", str(error))
 
+    return_to = sanitize_return_to(str(state_context.get("return_to") or ""))
     expected_hint = login_hint_from_oauth_state(state)
-    mismatch = oauth_email_mismatch_message(
+    mismatch = oauth_identity_block_message(
         expected_hint,
         address,
         provider_label="Yahoo",
     )
     if mismatch:
-        return _callback_error_page("Correo distinto al que pediste", mismatch)
+        query = urlencode(
+            {
+                "donexto": "oauth_error",
+                "reason": mismatch[:280],
+            }
+        )
+        return RedirectResponse(
+            url=f"{return_to.rstrip('/')}?{query}",
+            status_code=302,
+        )
 
     intent = yahoo_intent_from_state(state)
-    return_to = sanitize_return_to(str(state_context.get("return_to") or ""))
     exists = auth_user_exists(address)
     if intent != "signup" and not exists:
         return _signup_redirect(return_to, address)

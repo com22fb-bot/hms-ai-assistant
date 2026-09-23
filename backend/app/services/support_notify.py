@@ -50,7 +50,21 @@ def _within_cooldown(domain: str) -> bool:
         return False
 
 
-def _send_via_smtp(to_addr: str, subject: str, body: str) -> bool:
+def transactional_from_address() -> str:
+    """From address for Donexto mail. Ops should set SUPPORT_SMTP_FROM."""
+    return (
+        os.getenv("SUPPORT_SMTP_FROM", "").strip()
+        or "support@donexto.com"
+    )
+
+
+def _send_via_smtp(
+    to_addr: str,
+    subject: str,
+    body: str,
+    *,
+    from_addr: str | None = None,
+) -> bool:
     host = os.getenv("SUPPORT_SMTP_HOST", "").strip()
     if not host:
         return False
@@ -67,10 +81,10 @@ def _send_via_smtp(to_addr: str, subject: str, body: str) -> bool:
         raise SMTPDeliveryError(host, port_value, error) from error
     user = os.getenv("SUPPORT_SMTP_USER", "").strip()
     password = os.getenv("SUPPORT_SMTP_PASSWORD", "").strip()
-    from_addr = (
+    from_addr = (from_addr or "").strip() or (
         os.getenv("SUPPORT_SMTP_FROM", "").strip()
         or user
-        or "noreply@donexto.com"
+        or "support@donexto.com"
     )
     message = EmailMessage()
     message["Subject"] = subject
@@ -104,6 +118,71 @@ def _send_via_smtp(to_addr: str, subject: str, body: str) -> bool:
         )
         raise SMTPDeliveryError(host, port, error) from error
     return True
+
+
+def _send_via_resend(
+    to_addr: str,
+    subject: str,
+    body: str,
+    *,
+    from_addr: str | None = None,
+) -> bool:
+    """Resend HTTP API. Used when SUPPORT_SMTP_HOST is unset and RESEND_API_KEY is set."""
+    api_key = os.getenv("RESEND_API_KEY", "").strip()
+    if not api_key:
+        return False
+    sender = (from_addr or "").strip() or transactional_from_address()
+    if "<" not in sender and "@" in sender:
+        sender = f"Donexto <{sender}>"
+    try:
+        response = httpx.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "from": sender,
+                "to": [to_addr],
+                "subject": subject,
+                "text": body,
+            },
+            timeout=12.0,
+        )
+    except httpx.HTTPError as error:
+        logger.warning("Resend delivery failed: type=%s", type(error).__name__)
+        raise SMTPDeliveryError("api.resend.com", 443, error) from error
+    if response.status_code >= 400:
+        logger.warning(
+            "Resend delivery failed: type=HTTPStatus host=api.resend.com port=443 status=%s",
+            response.status_code,
+        )
+        raise SMTPDeliveryError(
+            "api.resend.com",
+            443,
+            RuntimeError(f"HTTP {response.status_code}"),
+        )
+    return True
+
+
+def send_transactional_email(
+    to_addr: str,
+    subject: str,
+    body: str,
+    *,
+    from_addr: str | None = None,
+) -> bool:
+    """Send one Donexto email via SUPPORT_SMTP_* or, if unset, Resend.
+
+    Returns False only when neither transport is configured. Transport
+    failures raise ``SMTPDeliveryError`` without including secrets.
+    """
+    sender = (from_addr or "").strip() or transactional_from_address()
+    if os.getenv("SUPPORT_SMTP_HOST", "").strip():
+        return _send_via_smtp(to_addr, subject, body, from_addr=sender)
+    if os.getenv("RESEND_API_KEY", "").strip():
+        return _send_via_resend(to_addr, subject, body, from_addr=sender)
+    return False
 
 
 def _send_via_formsubmit(to_addr: str, subject: str, body: str) -> bool:

@@ -48,6 +48,58 @@ type AppSession = {
 };
 
 const DONEXTO_VERIFY_QUERY = "donexto_verify";
+const OAUTH_EXPECTED_EMAIL_KEY = "donexto_oauth_expected_email";
+
+function clearOAuthExpectedEmail() {
+  try {
+    sessionStorage.removeItem(OAUTH_EXPECTED_EMAIL_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+function rememberOAuthExpectedEmail(email: string | undefined): string {
+  const hint = email?.trim().toLowerCase() ?? "";
+  if (!hint.includes("@")) {
+    throw new Error(
+      "Escribe el correo en Donexto antes de continuar. Tiene que ser el mismo con el que firmas en el proveedor.",
+    );
+  }
+  try {
+    sessionStorage.setItem(OAUTH_EXPECTED_EMAIL_KEY, hint);
+  } catch {
+    // sessionStorage puede fallar en modo restringido
+  }
+  return hint;
+}
+
+function consumeOAuthEmailMismatch(sessionEmail: string | undefined): string | null {
+  let expected = "";
+  try {
+    expected = sessionStorage.getItem(OAUTH_EXPECTED_EMAIL_KEY) || "";
+  } catch {
+    return null;
+  }
+  if (!expected) {
+    return null;
+  }
+  const actual = (sessionEmail || "").trim().toLowerCase();
+  if (!actual) {
+    return null;
+  }
+  try {
+    sessionStorage.removeItem(OAUTH_EXPECTED_EMAIL_KEY);
+  } catch {
+    // ignore
+  }
+  if (actual === expected) {
+    return null;
+  }
+  return (
+    `Firmaste con ${actual}, pero en Donexto pediste ${expected}. ` +
+    "Cierra sesión en el proveedor (o usa una ventana privada) y vuelve a pulsar Continuar. No se abrió sesión."
+  );
+}
 
 async function confirmDonextoWithBackend(): Promise<boolean> {
   try {
@@ -300,6 +352,19 @@ export function useAppAuth() {
         return;
       }
 
+      const mismatch = consumeOAuthEmailMismatch(userData.user.email);
+      if (mismatch) {
+        await invalidateLocalSession();
+        if (typeof window !== "undefined") {
+          const url = new URL(window.location.href);
+          url.hash = "";
+          url.searchParams.set("donexto", "oauth_error");
+          url.searchParams.set("reason", mismatch);
+          window.location.replace(`${url.pathname}?${url.searchParams.toString()}`);
+        }
+        return;
+      }
+
       setRawSession(nextSession);
     }
 
@@ -357,6 +422,17 @@ export function useAppAuth() {
 
         if (error) {
           console.error("No fue posible leer la sesión:", error);
+        }
+
+        const mismatch = consumeOAuthEmailMismatch(userData.user.email);
+        if (mismatch) {
+          await invalidateLocalSession();
+          const url = new URL(window.location.href);
+          url.hash = "";
+          url.searchParams.set("donexto", "oauth_error");
+          url.searchParams.set("reason", mismatch);
+          window.location.replace(`${url.pathname}?${url.searchParams.toString()}`);
+          return;
         }
 
         setRawSession(data.session ?? null);
@@ -522,7 +598,7 @@ export function useAppAuth() {
         throw new Error("Falta activar Yahoo en Supabase Auth");
       }
 
-      const hint = email?.trim().toLowerCase();
+      const hint = rememberOAuthExpectedEmail(email);
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
@@ -536,6 +612,7 @@ export function useAppAuth() {
       });
 
       if (error) {
+        clearOAuthExpectedEmail();
         throw new Error(translateAuthError(error.message, provider));
       }
     },
@@ -550,7 +627,7 @@ export function useAppAuth() {
     intent: YahooAuthIntent = "login",
     email?: string,
   ) => {
-    const hint = email?.trim().toLowerCase();
+    const hint = rememberOAuthExpectedEmail(email);
     let resolved;
     try {
       resolved = await postPublicHms("/auth/yahoo/login", {
@@ -559,6 +636,7 @@ export function useAppAuth() {
         ...(hint ? { login_hint: hint } : {}),
       });
     } catch (error) {
+      clearOAuthExpectedEmail();
       if (isBrowserNetworkError(error)) {
         throw new Error(
           "No hay conexión con Donexto. Revisa la red e inténtalo de nuevo.",
@@ -574,6 +652,7 @@ export function useAppAuth() {
     };
 
     if (!resolved.ok || !payload.authorization_url) {
+      clearOAuthExpectedEmail();
       throw new Error(
         detailMessage(payload) ??
           "No fue posible abrir el inicio de sesión de Yahoo.",
@@ -587,7 +666,7 @@ export function useAppAuth() {
     intent: YahooAuthIntent = "login",
     email?: string,
   ) => {
-    const hint = email?.trim().toLowerCase();
+    const hint = rememberOAuthExpectedEmail(email);
     let resolved;
     try {
       resolved = await postPublicHms("/auth/microsoft/login", {
@@ -596,6 +675,7 @@ export function useAppAuth() {
         ...(hint ? { login_hint: hint } : {}),
       });
     } catch (error) {
+      clearOAuthExpectedEmail();
       if (isBrowserNetworkError(error)) {
         throw new Error(
           "No hay conexión con Donexto. Revisa la red e inténtalo de nuevo.",
@@ -611,6 +691,7 @@ export function useAppAuth() {
     };
 
     if (!resolved.ok || !payload.authorization_url) {
+      clearOAuthExpectedEmail();
       throw new Error(
         detailMessage(payload) ??
           "No fue posible abrir el inicio de sesión de Microsoft.",

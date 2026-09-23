@@ -68,6 +68,7 @@ class SendDonextoVerifySecurityTests(unittest.TestCase):
         """Missing accounts get the same generic success response."""
         mock_client = MagicMock()
         mock_client.auth.admin.list_users.return_value = SimpleNamespace(users=[])
+        mock_client.auth.admin.get_user_by_email.side_effect = RuntimeError("missing")
 
         with patch("app.api.identity.get_supabase_client", return_value=mock_client), patch(
             "app.api.identity.require_request_context"
@@ -87,6 +88,7 @@ class SendDonextoVerifySecurityTests(unittest.TestCase):
     def test_11_generate_link_not_called_for_nonexistent_email(self) -> None:
         mock_client = MagicMock()
         mock_client.auth.admin.list_users.return_value = SimpleNamespace(users=[])
+        mock_client.auth.admin.get_user_by_email.side_effect = RuntimeError("missing")
 
         with self.assertRaises(VerificationEmailUserNotFound):
             send_verification_email(
