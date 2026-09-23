@@ -43,13 +43,17 @@ class OAuthVerificationCleanupTests(unittest.TestCase):
         user = {
             "id": "oauth-2",
             "identities": [{"provider": "google"}],
-            "user_metadata": {},
+            "user_metadata": {"donexto_verified": True},
             "app_metadata": {
+                "provider": "google",
                 "donexto_verified": True,
                 "donexto_verification_source": "email",
             },
         }
+        client = MagicMock()
         self.assertFalse(is_legacy_oauth_verified_user(user))
+        self.assertFalse(clear_legacy_oauth_verification(client, user))
+        client.auth.admin.update_user_by_id.assert_not_called()
 
     def test_clears_only_legacy_fields(self) -> None:
         user = {

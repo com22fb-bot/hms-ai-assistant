@@ -13,7 +13,9 @@ from app.security.donexto_verified import (
     can_mark_donexto_verified,
     email_is_confirmed,
     mark_donexto_verified,
+    raw_user_is_trusted_verified,
     trusted_donexto_verified,
+    user_from_admin_response,
     user_has_oauth_identity,
 )
 from app.security.identity import require_request_context
@@ -34,6 +36,20 @@ router = APIRouter(prefix="/identity", tags=["HMS Identity"])
 class DonextoVerificationEmailRequest(BaseModel):
     language: str = "es"
     redirect_to: str | None = None
+
+
+def _admin_user_is_trusted_verified(client: Any, user_id: str) -> bool:
+    """Re-read app_metadata with the service role.
+
+    The caller JWT can be older than ``mark_donexto_verified``. A lookup
+    failure stays unverified so a new account can still receive its one mail.
+    """
+    try:
+        record = user_from_admin_response(client.auth.admin.get_user_by_id(user_id))
+    except Exception:
+        logger.info("donexto_verify_admin_lookup_failed user_id=%s", user_id)
+        return False
+    return raw_user_is_trusted_verified(record)
 
 
 def _append_verify_flag(url: str) -> str:
@@ -113,9 +129,28 @@ def send_donexto_verification_email(
     language = resolve_verification_language(payload.language)
     redirect_to = sanitize_return_to(payload.redirect_to)
     user_id = context.user.id if isinstance(context.user.id, str) else None
+
+    # A trusted app_metadata flag is forever. Resend and session bootstrap
+    # must not mail that account again. user_metadata is not consulted.
+    if getattr(context.user, "donexto_verified", False) is True:
+        logger.info("donexto_verify_skip_already_verified user_id=%s", user_id)
+        return {
+            "status": "ok",
+            "already_verified": True,
+            "donexto_verified": True,
+        }
+
     try:
+        client = get_supabase_client()
+        if user_id and _admin_user_is_trusted_verified(client, user_id):
+            logger.info("donexto_verify_skip_already_verified user_id=%s", user_id)
+            return {
+                "status": "ok",
+                "already_verified": True,
+                "donexto_verified": True,
+            }
         send_verification_email(
-            client=get_supabase_client(),
+            client=client,
             email=email,
             language=language,
             redirect_to=_append_verify_flag(redirect_to),

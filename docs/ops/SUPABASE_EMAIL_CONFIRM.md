@@ -54,3 +54,27 @@ nunca la contraseña personal del usuario de Donexto.
 
 El backend registra únicamente el tipo de error SMTP, host y puerto. No
 registra credenciales ni devuelve secretos al frontend.
+
+Si la cuenta ya tiene `app_metadata.donexto_verified` con
+`donexto_verification_source=email`, `POST /identity/send-donexto-verify`
+responde éxito y no manda otro correo. Un alta nueva de OAuth sigue
+recibiendo un solo correo hasta que pulse Verificar.
+
+## 5) Backfill único de cuentas viejas
+
+Algunas cuentas que ya pulsaron Verificar (por ejemplo el primer alta con
+Google) quedaron solo con `user_metadata.donexto_verified=true`. El login
+en vivo no confía en ese campo. Migrarlas una vez, en Codespace, con la
+service role ya configurada:
+
+```bash
+python scripts/backfill_donexto_verified_app_metadata.py
+python scripts/backfill_donexto_verified_app_metadata.py --email hmcelinfo@gmail.com --apply
+```
+
+La primera corrida es dry-run. Revisa la lista: `user_metadata` lo puede
+escribir el cliente, así que `--apply` es solo para cuentas que de verdad
+completaron Verificar antes de pasar la prueba a `app_metadata`. No lo
+programes. Volver a correrlo no reescribe a quien ya tiene la fuente
+`email`, y `scripts/clean_oauth_donexto_verified.py` no les quita esa
+bandera.

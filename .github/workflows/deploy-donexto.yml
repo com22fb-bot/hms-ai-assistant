@@ -45,7 +45,7 @@ jobs:
           done
       - run: npm ci
       - run: npx tsc --noEmit
-      - run: node --experimental-strip-types --test lib/loginGate.test.ts lib/languageProviderMount.test.ts lib/i18n/verificationLanguage.test.ts
+      - run: node --experimental-strip-types --test lib/loginGate.test.ts lib/languageProviderMount.test.ts lib/i18n/verificationLanguage.test.ts lib/donextoVerification.test.ts
       - run: node --test scripts/workerPublicEnv.test.mjs
       - name: Build and deploy worker
         env:
