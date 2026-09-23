@@ -105,6 +105,112 @@ class SendDonextoVerifySecurityTests(unittest.TestCase):
         mock_client.auth.sign_in_with_otp.assert_not_called()
 
 
+class AlreadyVerifiedSendTests(unittest.TestCase):
+    """Returning accounts must not receive another Donexto verification mail."""
+
+    def _context(self, *, verified: bool) -> SimpleNamespace:
+        return SimpleNamespace(
+            user=SimpleNamespace(
+                id="user-1",
+                email="hmcelinfo@gmail.com",
+                donexto_verified=verified,
+                raw_user_metadata={},
+            )
+        )
+
+    def test_trusted_session_does_not_call_resend(self) -> None:
+        client = MagicMock()
+        with patch(
+            "app.api.identity.require_request_context",
+            return_value=self._context(verified=True),
+        ), patch(
+            "app.api.identity.get_supabase_client",
+            return_value=client,
+        ), patch(
+            "app.services.support_notify.send_transactional_email",
+            return_value=True,
+        ) as send_mail:
+            result = send_donexto_verification_email(
+                DonextoVerificationEmailRequest(language="es")
+            )
+
+        self.assertEqual(
+            result,
+            {
+                "status": "ok",
+                "already_verified": True,
+                "donexto_verified": True,
+            },
+        )
+        send_mail.assert_not_called()
+        client.auth.resend.assert_not_called()
+        client.auth.admin.generate_link.assert_not_called()
+        client.auth.sign_in_with_otp.assert_not_called()
+        client.auth.admin.get_user_by_id.assert_not_called()
+
+    def test_stale_jwt_with_trusted_admin_record_does_not_call_resend(self) -> None:
+        client = MagicMock()
+        client.auth.admin.get_user_by_id.return_value = SimpleNamespace(
+            user={
+                "id": "user-1",
+                "email": "hmcelinfo@gmail.com",
+                "identities": [{"provider": "google"}],
+                "user_metadata": {"donexto_verified": True},
+                "app_metadata": {
+                    "provider": "google",
+                    "donexto_verified": True,
+                    "donexto_verification_source": "email",
+                },
+            }
+        )
+        with patch(
+            "app.api.identity.require_request_context",
+            return_value=self._context(verified=False),
+        ), patch("app.api.identity.get_supabase_client", return_value=client), patch(
+            "app.services.support_notify.send_transactional_email",
+            return_value=True,
+        ) as send_mail:
+            result = send_donexto_verification_email(
+                DonextoVerificationEmailRequest(language="es")
+            )
+
+        self.assertTrue(result["already_verified"])
+        send_mail.assert_not_called()
+        client.auth.resend.assert_not_called()
+        client.auth.admin.generate_link.assert_not_called()
+
+    def test_user_metadata_flag_alone_still_sends_for_new_oauth(self) -> None:
+        """OAuth without an email-sourced app_metadata flag still gets one mail."""
+        client = MagicMock()
+        client.auth.admin.get_user_by_id.return_value = SimpleNamespace(
+            user={
+                "id": "user-1",
+                "email": "hmcelinfo@gmail.com",
+                "identities": [{"provider": "google"}],
+                "user_metadata": {"donexto_verified": True},
+                "app_metadata": {"provider": "google"},
+            }
+        )
+        client.auth.admin.generate_link.return_value = SimpleNamespace(
+            properties={"hashed_token": "hash-token", "verification_type": "magiclink"}
+        )
+        with patch(
+            "app.api.identity.require_request_context",
+            return_value=self._context(verified=False),
+        ), patch("app.api.identity.get_supabase_client", return_value=client), patch(
+            "app.services.support_notify.send_transactional_email",
+            return_value=True,
+        ) as send_mail:
+            result = send_donexto_verification_email(
+                DonextoVerificationEmailRequest(language="es")
+            )
+
+        self.assertEqual(result, {"status": "sent"})
+        send_mail.assert_called_once()
+        client.auth.resend.assert_not_called()
+        client.auth.admin.generate_link.assert_called_once()
+
+
 class ConfirmDonextoSecurityTests(unittest.TestCase):
     """Tests 4–6, 12: proof-of-click requirements."""
 

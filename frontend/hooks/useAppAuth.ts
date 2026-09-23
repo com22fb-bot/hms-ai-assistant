@@ -18,9 +18,13 @@ import {
   type AppLanguage,
 } from "@/lib/i18n/languages";
 import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
-import { userHasOAuthIdentity } from "@/lib/oauthIdentity";
 import { authReturnUrl, verifyEmailRedirectUrl } from "@/lib/adminCanonical";
 import { buildApiUrl } from "@/lib/apiBase";
+import {
+  donextoBootstrapAction,
+  isDonextoVerified,
+  sessionNeedsDonextoEmailConfirm,
+} from "@/lib/oauthIdentity";
 import {
   confirmDonextoPath,
   donextoVerifyFailure,
@@ -268,31 +272,6 @@ function yahooImapOwnsIdentity(user: User | null | undefined): boolean {
     return true;
   }
   return resolveMailboxProviderFromEmail(user.email) === "yahoo";
-}
-
-function isDonextoVerified(user: User | null | undefined): boolean {
-  if (user?.app_metadata?.donexto_verified === true) {
-    if (
-      userHasOAuthIdentity(user)
-      && user.app_metadata?.donexto_verification_source !== "email"
-    ) {
-      return false;
-    }
-    return true;
-  }
-  return false;
-}
-
-/**
- * Every account, including OAuth accounts, needs the Donexto email link
- * unless the backend has recorded a trusted verification source.
- */
-function sessionNeedsDonextoEmailConfirm(session: Session | null): boolean {
-  const user = session?.user;
-  if (!user) {
-    return false;
-  }
-  return !isDonextoVerified(user);
 }
 
 function currentAuthReturn(): string {
@@ -626,27 +605,50 @@ export function useAppAuth() {
         return;
       }
 
-      if (!isDonextoVerified(currentUser) && captureDonextoVerifyProof()) {
-        verifyBootstrapLock.current = true;
-        try {
-          const redeemed = await redeemDonextoEmailLink();
-          if (!cancelled && redeemed.ok) {
-            setRawSession(redeemed.session);
-          }
-        } catch (error) {
-          console.error("No fue posible confirmar Donexto:", error);
-        } finally {
-          verifyBootstrapLock.current = false;
-        }
+      if (isDonextoVerified(currentUser)) {
         return;
       }
 
-      if (isDonextoVerified(currentUser)) {
+      const action = donextoBootstrapAction({
+        user: currentUser,
+        hasVerifyProof: Boolean(captureDonextoVerifyProof()),
+      });
+      if (action === "skip") {
         return;
       }
 
       verifyBootstrapLock.current = true;
       try {
+        if (action === "redeem") {
+          const redeemed = await redeemDonextoEmailLink();
+          if (!cancelled && redeemed.ok) {
+            setRawSession(redeemed.session);
+          }
+          return;
+        }
+
+        let refreshedUser: User | null = null;
+        try {
+          const { data, error } = await supabase.auth.getUser();
+          if (!error) {
+            refreshedUser = data.user;
+          }
+        } catch (error) {
+          console.error("No fue posible releer la verificación Donexto:", error);
+        }
+        if (
+          donextoBootstrapAction({
+            user: currentUser,
+            hasVerifyProof: false,
+            refreshedUser,
+          }) !== "send"
+        ) {
+          if (!cancelled && isDonextoVerified(refreshedUser)) {
+            setRawSession((current) => withFreshUser(current, refreshedUser));
+          }
+          return;
+        }
+
         const sentKey = `donexto_verify_sent:${accountEmail}`;
         try {
           if (sessionStorage.getItem(sentKey) === "1") {

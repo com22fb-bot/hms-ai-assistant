@@ -91,6 +91,55 @@ def _user_value(user: Any, key: str, default: Any = None) -> Any:
     return getattr(user, key, default)
 
 
+def user_from_admin_response(response: Any) -> Any:
+    user = getattr(response, "user", None)
+    if user is None and isinstance(response, dict):
+        user = response.get("user")
+    return user
+
+
+def raw_user_is_trusted_verified(raw_user: Any) -> bool:
+    """True when a service-role user record already has trusted app_metadata.
+
+    ``user_metadata`` is ignored. A missing or non-dict ``app_metadata`` is
+    unverified. Call this with the admin user, not with client-supplied JSON.
+    """
+    if raw_user is None:
+        return False
+    app_metadata = _user_value(raw_user, "app_metadata")
+    if not isinstance(app_metadata, dict):
+        return False
+    identities = _user_value(raw_user, "identities")
+    if not isinstance(identities, list):
+        identities = None
+    user_metadata = _user_value(raw_user, "user_metadata")
+    if not isinstance(user_metadata, dict):
+        user_metadata = None
+    return trusted_donexto_verified(
+        app_metadata,
+        oauth_identity_present=user_has_oauth_identity(
+            identities=identities,
+            user_metadata=user_metadata,
+            app_metadata=app_metadata,
+        ),
+    )
+
+
+def merge_trusted_email_verification(
+    previous: dict[str, Any] | None,
+    *,
+    verified_at: str | None = None,
+) -> dict[str, Any]:
+    """App_metadata written by ``mark_donexto_verified`` and the backfill script."""
+    stamp = verified_at.strip() if isinstance(verified_at, str) else ""
+    return {
+        **_metadata_dict(previous),
+        "donexto_verified": True,
+        "donexto_verified_at": stamp or datetime.now(timezone.utc).isoformat(),
+        "donexto_verification_source": "email",
+    }
+
+
 def can_mark_donexto_verified(raw_user: Any) -> bool:
     """Only a Supabase-confirmed Donexto email can be marked."""
     return email_is_confirmed(raw_user)
@@ -99,17 +148,9 @@ def can_mark_donexto_verified(raw_user: Any) -> bool:
 def mark_donexto_verified(user_id: str) -> None:
     client = get_supabase_client()
     response = client.auth.admin.get_user_by_id(user_id)
-    user = getattr(response, "user", None)
-    if user is None and isinstance(response, dict):
-        user = response.get("user")
+    user = user_from_admin_response(response)
     previous = _metadata_dict(_user_value(user, "app_metadata"))
-    merged = {
-        **previous,
-        "donexto_verified": True,
-        "donexto_verified_at": datetime.now(timezone.utc).isoformat(),
-        "donexto_verification_source": "email",
-    }
     client.auth.admin.update_user_by_id(
         user_id,
-        {"app_metadata": merged},
+        {"app_metadata": merge_trusted_email_verification(previous)},
     )
