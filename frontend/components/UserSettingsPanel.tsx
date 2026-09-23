@@ -14,7 +14,11 @@ export function LanguageStrip({
   className?: string;
   compact?: boolean;
 }) {
-  const { language, setLanguage, t } = useLanguage();
+  const { language, setLanguage, t, languageLocked } = useLanguage();
+
+  if (languageLocked) {
+    return null;
+  }
 
   if (compact) {
     return (

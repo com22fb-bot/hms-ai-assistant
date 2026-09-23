@@ -27,6 +27,8 @@ type LanguageContextValue = {
   locale: string;
   setLanguage: (language: AppLanguage) => Promise<void>;
   t: (key: MessageKey) => string;
+  /** /admin locks Spanish and hides the language switcher. */
+  languageLocked: boolean;
 };
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
@@ -77,19 +79,35 @@ function applyLanguage(next: AppLanguage) {
 
 export function LanguageProvider({
   userId,
+  lockedLanguage,
   children,
 }: {
   userId?: string | null;
+  /** Fixed copy for a route. Does not write the visitor's stored language. */
+  lockedLanguage?: AppLanguage;
   children: ReactNode;
 }) {
-  const language = useSyncExternalStore(
+  const storedLanguage = useSyncExternalStore(
     subscribe,
     getSnapshot,
     getServerSnapshot,
   );
+  const language = lockedLanguage ?? storedLanguage;
 
   useEffect(() => {
-    if (!userId) {
+    if (!lockedLanguage || typeof document === "undefined") {
+      return;
+    }
+    const root = document.documentElement;
+    const previous = root.lang;
+    root.lang = lockedLanguage;
+    return () => {
+      root.lang = previous;
+    };
+  }, [lockedLanguage]);
+
+  useEffect(() => {
+    if (lockedLanguage || !userId) {
       return;
     }
     let cancelled = false;
@@ -116,10 +134,13 @@ export function LanguageProvider({
     return () => {
       cancelled = true;
     };
-  }, [userId]);
+  }, [userId, lockedLanguage]);
 
   const setLanguage = useCallback(
     async (next: AppLanguage) => {
+      if (lockedLanguage) {
+        return;
+      }
       applyLanguage(next);
       const locale = localeForLanguage(next);
       try {
@@ -141,7 +162,7 @@ export function LanguageProvider({
         /* RLS may be select-only; auth metadata is enough */
       }
     },
-    [userId],
+    [userId, lockedLanguage],
   );
 
   const value = useMemo<LanguageContextValue>(
@@ -150,8 +171,9 @@ export function LanguageProvider({
       locale: localeForLanguage(language),
       setLanguage,
       t: (key: MessageKey) => translate(language, key),
+      languageLocked: lockedLanguage != null,
     }),
-    [language, setLanguage],
+    [language, lockedLanguage, setLanguage],
   );
 
   return (
