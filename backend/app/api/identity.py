@@ -190,6 +190,28 @@ _OTP_TYPES = frozenset(
     }
 )
 _TOKEN_HASH_MAX = 2048
+_USED_OR_EXPIRED_DETAIL = {
+    "status": "invalid_verification_token",
+    "message": (
+        "El enlace ya se usó o expiró. "
+        "Pide otro correo y pulsa Verificar una sola vez."
+    ),
+}
+
+
+def _used_or_expired_token() -> HTTPException:
+    return HTTPException(
+        status_code=403,
+        detail=dict(_USED_OR_EXPIRED_DETAIL),
+    )
+
+
+def _safe_error_text(error: Exception) -> str:
+    text = str(getattr(error, "message", None) or error)
+    lowered = text.lower()
+    if "bearer " in lowered or "sb_secret" in lowered or "sb_publishable" in lowered:
+        return type(error).__name__
+    return text[:180]
 
 
 def _read(value: Any, key: str) -> Any:
@@ -288,13 +310,7 @@ def confirm_donexto_identity(request: Request) -> dict[str, object]:
     try:
         verification = _verify_donexto_otp(client, token_hash, token_type)
     except Exception as error:
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "status": "invalid_verification_token",
-                "message": "El enlace ya se usó o expiró. Pide otro correo y pulsa Verificar una sola vez.",
-            },
-        ) from error
+        raise _used_or_expired_token() from error
 
     user_id = str(_read(_read(verification, "user"), "id") or "").strip()
     try:
@@ -308,7 +324,16 @@ def confirm_donexto_identity(request: Request) -> dict[str, object]:
             },
         ) from error
 
-    response = client.auth.admin.get_user_by_id(user_id)
+    try:
+        response = client.auth.admin.get_user_by_id(user_id)
+    except Exception as error:
+        logger.error(
+            "donexto_verify_admin_lookup_failed user_id=%s error=%s message=%s",
+            user_id,
+            type(error).__name__,
+            _safe_error_text(error),
+        )
+        raise _used_or_expired_token() from error
     raw_user = _read(response, "user")
     if raw_user is None:
         raise HTTPException(
@@ -350,7 +375,16 @@ def confirm_donexto_identity(request: Request) -> dict[str, object]:
                     ),
                 },
             )
-        mark_donexto_verified(user_id)
+        try:
+            mark_donexto_verified(user_id)
+        except Exception as error:
+            logger.error(
+                "donexto_verify_mark_failed user_id=%s error=%s message=%s",
+                user_id,
+                type(error).__name__,
+                _safe_error_text(error),
+            )
+            raise _used_or_expired_token() from error
 
     payload: dict[str, object] = {
         "status": "ok",

@@ -78,3 +78,17 @@ completaron Verificar antes de pasar la prueba a `app_metadata`. No lo
 programes. Volver a correrlo no reescribe a quien ya tiene la fuente
 `email`, y `scripts/clean_oauth_donexto_verified.py` no les quita esa
 bandera.
+
+## 6) Clave de Railway para confirmar el enlace
+
+`POST /identity/confirm-donexto` verifica el `token_hash` y después lee al
+usuario con `auth.admin.get_user_by_id`. En el servicio `hms-ai-assistant`
+la variable es `SUPABASE_SECRET_KEY`. Sirve la clave **secret** actual
+(`sb_secret_…`) o el JWT legacy `service_role`. No hace falta cambiar la
+que ya está: el envío del correo ya llama a la misma Admin API y responde
+200. No pongas ahí la clave publishable ni el JWT `anon`; el proceso
+arranca el rechazo en el log como `supabase_secret_key_cannot_admin` y
+responde 500 antes de llamar a GoTrue.
+
+No existe `SUPABASE_SERVICE_ROLE_KEY` en este repo. No la crees como
+atajo: el cliente lee solo `SUPABASE_SECRET_KEY`.

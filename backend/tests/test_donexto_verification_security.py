@@ -439,6 +439,111 @@ class ConfirmDonextoSecurityTests(unittest.TestCase):
         )
         mark.assert_not_called()
         self.assertEqual(mock_client.auth.verify_otp.call_count, 2)
+        self.assertEqual(
+            caught.exception.detail.get("message"),
+            "El enlace ya se usó o expiró. Pide otro correo y pulsa Verificar una sola vez.",
+        )
+
+    def test_19_admin_user_not_allowed_is_403_not_500(self) -> None:
+        """GoTrue 403 after a consumed OTP must not escape as an unhandled 500."""
+        request = self._make_request(
+            {"donexto_verify": "1", "token_hash": "fresh-hash", "type": "magiclink"}
+        )
+        owner_id = "11111111-1111-1111-1111-111111111111"
+        mock_client = MagicMock()
+        mock_client.auth.verify_otp.return_value = SimpleNamespace(
+            user=SimpleNamespace(id=owner_id, email_confirmed_at="2026-09-22T00:00:00Z"),
+            session=SimpleNamespace(
+                access_token="access-from-otp",
+                refresh_token="refresh-from-otp",
+                expires_in=3600,
+            ),
+        )
+        mock_client.auth.admin.get_user_by_id.side_effect = RuntimeError(
+            "User not allowed"
+        )
+
+        with patch("app.api.identity.get_supabase_client", return_value=mock_client), patch(
+            "app.api.identity.mark_donexto_verified"
+        ) as mark, self.assertLogs("app.api.identity", level="ERROR") as logs:
+            with self.assertRaises(HTTPException) as caught:
+                confirm_donexto_identity(request)
+
+        self.assertEqual(caught.exception.status_code, 403)
+        self.assertEqual(
+            caught.exception.detail.get("status"), "invalid_verification_token"
+        )
+        self.assertEqual(
+            caught.exception.detail.get("message"),
+            "El enlace ya se usó o expiró. Pide otro correo y pulsa Verificar una sola vez.",
+        )
+        mark.assert_not_called()
+        self.assertTrue(
+            any("donexto_verify_admin_lookup_failed" in line for line in logs.output)
+        )
+
+    def test_20_admin_error_log_drops_secret_key(self) -> None:
+        request = self._make_request(
+            {"donexto_verify": "1", "token_hash": "fresh-hash", "type": "email"}
+        )
+        mock_client = MagicMock()
+        mock_client.auth.verify_otp.return_value = SimpleNamespace(
+            user=SimpleNamespace(
+                id="11111111-1111-1111-1111-111111111111",
+                email_confirmed_at="2026-09-22T00:00:00Z",
+            ),
+            session=None,
+        )
+        mock_client.auth.admin.get_user_by_id.side_effect = RuntimeError(
+            "Authorization: Bearer sb_secret_do_not_log"
+        )
+
+        with patch("app.api.identity.get_supabase_client", return_value=mock_client), self.assertLogs(
+            "app.api.identity", level="ERROR"
+        ) as logs:
+            with self.assertRaises(HTTPException):
+                confirm_donexto_identity(request)
+
+        combined = "\n".join(logs.output)
+        self.assertNotIn("sb_secret_do_not_log", combined)
+        self.assertNotIn("Bearer ", combined)
+
+    def test_21_mark_failure_is_403_not_500(self) -> None:
+        request = self._make_request(
+            {"donexto_verify": "1", "token_hash": "fresh-hash", "type": "signup"}
+        )
+        raw_user = SimpleNamespace(
+            id="78900000-0000-4000-8000-000000000789",
+            email_confirmed_at="2026-01-01T00:00:00Z",
+            app_metadata={},
+            user_metadata={},
+            identities=[{"provider": "email"}],
+        )
+        mock_client = MagicMock()
+        mock_client.auth.admin.get_user_by_id.return_value = SimpleNamespace(user=raw_user)
+        mock_client.auth.verify_otp.return_value = SimpleNamespace(
+            user=SimpleNamespace(
+                id="78900000-0000-4000-8000-000000000789",
+                email_confirmed_at="2026-01-01T00:00:00Z",
+            ),
+            session=SimpleNamespace(
+                access_token="access-token",
+                refresh_token="refresh-token",
+                expires_in=3600,
+            ),
+        )
+
+        with patch("app.api.identity.get_supabase_client", return_value=mock_client), patch(
+            "app.api.identity.mark_donexto_verified",
+            side_effect=RuntimeError("User not allowed"),
+        ):
+            with self.assertRaises(HTTPException) as caught:
+                confirm_donexto_identity(request)
+
+        self.assertEqual(caught.exception.status_code, 403)
+        self.assertEqual(
+            caught.exception.detail.get("status"), "invalid_verification_token"
+        )
 
     def test_18_oauth_without_email_click_cannot_confirm(self) -> None:
         """Microsoft OAuth plus email_confirmed_at is not Donexto verification."""

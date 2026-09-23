@@ -66,9 +66,14 @@ URL del proyecto Supabase utilizado por el backend.
 
 ## `SUPABASE_SECRET_KEY`
 
-Clave privada utilizada por el backend para comunicarse con Supabase.
+Clave privada utilizada por el backend para comunicarse con Supabase,
+incluida la Admin API de Auth.
 
 Debe permanecer únicamente del lado del servidor.
+
+En Railway (servicio `hms-ai-assistant`) vale la clave secret
+(`sb_secret_…`) o el JWT legacy con rol `service_role`. No uses la clave
+publishable ni el JWT `anon`. El código no lee `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## `GOOGLE_CLIENT_ID`
 
