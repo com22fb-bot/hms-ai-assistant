@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import logging
 from dataclasses import dataclass
 from typing import Any
@@ -13,50 +14,59 @@ logger = logging.getLogger(__name__)
 class VerificationEmail:
     subject: str
     body: str
+    html: str
 
 
-_TEMPLATES: dict[str, tuple[str, str]] = {
-    "es": (
-        "Confirma tu correo de Donexto",
-        (
-            "Confirma tu correo de Donexto abriendo este enlace:\n\n"
-            "{link}\n\n"
+@dataclass(frozen=True)
+class _Template:
+    subject: str
+    lead: str
+    button: str
+    note: str
+
+
+_TEMPLATES: dict[str, _Template] = {
+    "es": _Template(
+        subject="Confirma tu correo de Donexto",
+        lead="Confirma tu correo de Donexto abriendo este enlace:",
+        button="Verificar",
+        note=(
             "Este enlace protege tu cuenta Donexto. "
             "Si no lo solicitaste, puedes ignorar este correo."
         ),
     ),
-    "en": (
-        "Confirm your Donexto email",
-        (
-            "Confirm your Donexto email by opening this link:\n\n"
-            "{link}\n\n"
+    "en": _Template(
+        subject="Confirm your Donexto email",
+        lead="Confirm your Donexto email by opening this link:",
+        button="Verify",
+        note=(
             "This link keeps your Donexto account protected. "
             "If you did not request it, you can ignore this email."
         ),
     ),
-    "fr": (
-        "Confirmez votre e-mail Donexto",
-        (
-            "Confirmez votre e-mail Donexto en ouvrant ce lien :\n\n"
-            "{link}\n\n"
+    "fr": _Template(
+        subject="Confirmez votre e-mail Donexto",
+        lead="Confirmez votre e-mail Donexto en ouvrant ce lien :",
+        button="Vérifier",
+        note=(
             "Ce lien protège votre compte Donexto. "
             "Si vous ne l'avez pas demandé, ignorez cet e-mail."
         ),
     ),
-    "it": (
-        "Conferma la tua email Donexto",
-        (
-            "Conferma la tua email Donexto aprendo questo link:\n\n"
-            "{link}\n\n"
+    "it": _Template(
+        subject="Conferma la tua email Donexto",
+        lead="Conferma la tua email Donexto aprendo questo link:",
+        button="Verifica",
+        note=(
             "Questo link protegge il tuo account Donexto. "
             "Se non lo hai richiesto, puoi ignorare questa email."
         ),
     ),
-    "pt": (
-        "Confirme o seu e-mail Donexto",
-        (
-            "Confirme o seu e-mail Donexto abrindo este link:\n\n"
-            "{link}\n\n"
+    "pt": _Template(
+        subject="Confirme o seu e-mail Donexto",
+        lead="Confirme o seu e-mail Donexto abrindo este link:",
+        button="Verificar",
+        note=(
             "Este link protege a sua conta Donexto. "
             "Se você não solicitou, pode ignorar este e-mail."
         ),
@@ -74,11 +84,104 @@ def normalize_language(value: object) -> str:
     return v if v in _TEMPLATES else "es"
 
 
+def resolve_verification_language(requested: object) -> str:
+    """Language for the verification email, from the login screen only.
+
+    The value is whatever the client sent for the login UI. Account metadata
+    and the browser Accept-Language header are not consulted: a Microsoft or
+    Yahoo account can keep ``user_metadata.language`` as ``en`` after the
+    login strip is already Spanish. Empty or unknown values fall back to
+    Spanish, which is the login default.
+    """
+    requested_text = str(requested or "").strip()
+    if not requested_text:
+        return "es"
+    return normalize_language(requested_text)
+
+
+# Login studio hero, resized to 1200×670 JPEG (~110KB) for mail clients.
+# Served from the app, not a cid attachment. The 1.2MB square donexto-hero.png
+# is too heavy and too tall for a header.
+VERIFICATION_EMAIL_HERO_URL = (
+    "https://app.donexto.com/brand/donexto-verify-email-hero.jpg"
+)
+_HERO_WIDTH = 600
+
+
+def _plain_body(template: _Template, action_link: str) -> str:
+    return f"{template.lead}\n\n{action_link}\n\n{template.note}"
+
+
+def _html_body(template: _Template, action_link: str, language: str) -> str:
+    """Email-client HTML: tables and inline CSS, same link as the text part."""
+    safe_link = html.escape(action_link, quote=True)
+    subject = html.escape(template.subject)
+    lead = html.escape(template.lead)
+    note = html.escape(template.note)
+    button = html.escape(template.button)
+    lang = html.escape(language)
+    return (
+        "<!DOCTYPE html>"
+        f'<html lang="{lang}">'
+        "<head>"
+        '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'
+        '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+        f"<title>{subject}</title>"
+        "</head>"
+        '<body style="margin:0;padding:0;background:#f4f1ea;">'
+        '<div style="display:none;max-height:0;overflow:hidden;opacity:0;">'
+        f"{subject}"
+        "</div>"
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+        'border="0" style="background:#f4f1ea;margin:0;padding:0;">'
+        '<tr><td align="center" style="padding:32px 16px;">'
+        '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
+        'border="0" width="600" style="max-width:600px;background:#ffffff;'
+        'border:1px solid #e6e1d6;border-radius:16px;">'
+        '<tr><td style="padding:0;line-height:0;font-size:0;">'
+        f'<img src="{VERIFICATION_EMAIL_HERO_URL}" width="{_HERO_WIDTH}" '
+        'alt="Donexto" border="0" '
+        'style="display:block;width:100%;max-width:600px;height:auto;'
+        'border:0;outline:none;text-decoration:none;">'
+        "</td></tr>"
+        '<tr><td style="padding:28px 32px 0;font-family:Arial,Helvetica,sans-serif;">'
+        '<p style="margin:0;font-size:13px;letter-spacing:0.14em;'
+        'text-transform:uppercase;color:#0b6e66;font-weight:bold;">Donexto</p>'
+        '<h1 style="margin:12px 0 0;font-size:22px;line-height:1.35;'
+        f'color:#102027;font-weight:700;">{subject}</h1>'
+        "</td></tr>"
+        '<tr><td style="padding:16px 32px 0;font-family:Arial,Helvetica,sans-serif;'
+        f'font-size:16px;line-height:1.5;color:#24343a;">{lead}</td></tr>'
+        '<tr><td align="center" style="padding:28px 32px 8px;">'
+        '<table role="presentation" cellpadding="0" cellspacing="0" border="0">'
+        '<tr><td bgcolor="#0b6e66" style="border-radius:10px;">'
+        f'<a href="{safe_link}" '
+        'style="display:inline-block;padding:14px 32px;'
+        "font-family:Arial,Helvetica,sans-serif;font-size:16px;font-weight:bold;"
+        f'color:#ffffff;text-decoration:none;">{button}</a>'
+        "</td></tr></table>"
+        "</td></tr>"
+        '<tr><td style="padding:8px 32px 0;font-family:Arial,Helvetica,sans-serif;'
+        'font-size:13px;line-height:1.5;color:#5c6b70;">'
+        f"{note}"
+        "</td></tr>"
+        '<tr><td style="padding:16px 32px 28px;font-family:Arial,Helvetica,sans-serif;'
+        'font-size:12px;line-height:1.5;color:#5c6b70;word-break:break-all;">'
+        f'<a href="{safe_link}" style="color:#0b6e66;">{safe_link}</a>'
+        "</td></tr>"
+        "</table>"
+        "</td></tr></table>"
+        "</body></html>"
+    )
+
+
 def build_verification_email(language: object, action_link: str) -> VerificationEmail:
-    subject, body = _TEMPLATES[normalize_language(language)]
+    code = normalize_language(language)
+    template = _TEMPLATES[code]
     return VerificationEmail(
-        subject=subject,
-        body=body.replace("{link}", action_link),
+        subject=template.subject,
+        body=_plain_body(template, action_link),
+        html=_html_body(template, action_link, code),
     )
 
 
@@ -318,7 +421,12 @@ def send_verification_email(
     )
     from app.services.support_notify import send_transactional_email
 
-    delivered = send_transactional_email(email, message.subject, message.body)
+    delivered = send_transactional_email(
+        email,
+        message.subject,
+        message.body,
+        html=message.html,
+    )
     if not delivered:
         raise VerificationEmailDeliveryError(
             "No hay relay SMTP ni RESEND_API_KEY para el correo de Donexto"

@@ -63,6 +63,7 @@ def _send_via_smtp(
     subject: str,
     body: str,
     *,
+    html: str | None = None,
     from_addr: str | None = None,
 ) -> bool:
     host = os.getenv("SUPPORT_SMTP_HOST", "").strip()
@@ -91,6 +92,8 @@ def _send_via_smtp(
     message["From"] = from_addr
     message["To"] = to_addr
     message.set_content(body)
+    if html:
+        message.add_alternative(html, subtype="html")
     try:
         if port == 465:
             # Direct SSL/TLS (port 465 = SMTPS). No starttls().
@@ -125,6 +128,7 @@ def _send_via_resend(
     subject: str,
     body: str,
     *,
+    html: str | None = None,
     from_addr: str | None = None,
 ) -> bool:
     """Resend HTTP API. Used when SUPPORT_SMTP_HOST is unset and RESEND_API_KEY is set."""
@@ -134,6 +138,14 @@ def _send_via_resend(
     sender = (from_addr or "").strip() or transactional_from_address()
     if "<" not in sender and "@" in sender:
         sender = f"Donexto <{sender}>"
+    payload: dict[str, object] = {
+        "from": sender,
+        "to": [to_addr],
+        "subject": subject,
+        "text": body,
+    }
+    if html:
+        payload["html"] = html
     try:
         response = httpx.post(
             "https://api.resend.com/emails",
@@ -141,12 +153,7 @@ def _send_via_resend(
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
             },
-            json={
-                "from": sender,
-                "to": [to_addr],
-                "subject": subject,
-                "text": body,
-            },
+            json=payload,
             timeout=12.0,
         )
     except httpx.HTTPError as error:
@@ -170,18 +177,33 @@ def send_transactional_email(
     subject: str,
     body: str,
     *,
+    html: str | None = None,
     from_addr: str | None = None,
 ) -> bool:
     """Send one Donexto email via SUPPORT_SMTP_* or, if unset, Resend.
 
+    ``body`` is the plain-text part. ``html``, when set, is the alternative
+    shown by clients that render HTML. Both must carry the same link.
     Returns False only when neither transport is configured. Transport
     failures raise ``SMTPDeliveryError`` without including secrets.
     """
     sender = (from_addr or "").strip() or transactional_from_address()
     if os.getenv("SUPPORT_SMTP_HOST", "").strip():
-        return _send_via_smtp(to_addr, subject, body, from_addr=sender)
+        return _send_via_smtp(
+            to_addr,
+            subject,
+            body,
+            html=html,
+            from_addr=sender,
+        )
     if os.getenv("RESEND_API_KEY", "").strip():
-        return _send_via_resend(to_addr, subject, body, from_addr=sender)
+        return _send_via_resend(
+            to_addr,
+            subject,
+            body,
+            html=html,
+            from_addr=sender,
+        )
     return False
 
 

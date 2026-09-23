@@ -12,6 +12,7 @@ import { LanguageStrip } from "@/components/UserSettingsPanel";
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import type { AuthOAuthProvider, YahooAuthIntent } from "@/hooks/useAppAuth";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { rememberLoginLanguage } from "@/lib/i18n/languages";
 import { loginText, loginTextReplace } from "@/lib/i18n/loginMessages";
 import {
   accountExistsFromResolveNext,
@@ -257,6 +258,9 @@ export function LoginScreen({
       openWaitlist("coming_soon", "iCloud");
       return;
     }
+    // Persist the language on this screen before leaving for Microsoft/Yahoo.
+    // The verify email after the redirect must use this, not account metadata.
+    rememberLoginLanguage(language);
     resetAlerts();
     setBusy(true);
     setOauthBusy(provider);

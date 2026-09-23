@@ -12,10 +12,9 @@ import {
 import { supabase } from "@/lib/supabase";
 import { hmsJson } from "@/lib/hmsApi";
 import {
-  isAppLanguage,
-  languageFromBrowser,
+  languageForDonextoVerifyEmail,
   localeForLanguage,
-  readStoredLanguage,
+  rememberLoginLanguage,
   type AppLanguage,
 } from "@/lib/i18n/languages";
 import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
@@ -542,9 +541,10 @@ export function useAppAuth() {
           // sessionStorage puede fallar en modo restringido
         }
 
-        const language = isAppLanguage(currentUser.user_metadata?.language)
-          ? currentUser.user_metadata.language
-          : readStoredLanguage() || languageFromBrowser(navigator.language);
+        // Same language as the login screen. Do not read user_metadata.language
+        // or navigator.language here: metadata often stays "en" after a Spanish login.
+        const language = languageForDonextoVerifyEmail();
+        rememberLoginLanguage(language);
         try {
           await hmsJson(buildApiUrl("/identity/send-donexto-verify"), {
             method: "POST",
@@ -598,6 +598,7 @@ export function useAppAuth() {
         throw new Error("Falta activar Yahoo en Supabase Auth");
       }
 
+      rememberLoginLanguage(languageForDonextoVerifyEmail());
       const hint = rememberOAuthExpectedEmail(email);
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -627,6 +628,7 @@ export function useAppAuth() {
     intent: YahooAuthIntent = "login",
     email?: string,
   ) => {
+    rememberLoginLanguage(languageForDonextoVerifyEmail());
     const hint = rememberOAuthExpectedEmail(email);
     let resolved;
     try {
@@ -666,6 +668,7 @@ export function useAppAuth() {
     intent: YahooAuthIntent = "login",
     email?: string,
   ) => {
+    rememberLoginLanguage(languageForDonextoVerifyEmail());
     const hint = rememberOAuthExpectedEmail(email);
     let resolved;
     try {
@@ -706,8 +709,10 @@ export function useAppAuth() {
       email: string,
       password: string,
       fullName: string,
-      language: AppLanguage = "es",
+      language?: AppLanguage,
     ): Promise<SignUpResult> => {
+      const accountLanguage = language ?? languageForDonextoVerifyEmail();
+      rememberLoginLanguage(accountLanguage);
       const cleanName = fullName.trim().replace(/\s+/g, " ");
       if (cleanName.length < 2) {
         throw new Error(
@@ -722,8 +727,8 @@ export function useAppAuth() {
           emailRedirectTo: donextoVerifyRedirectTo(),
           data: {
             full_name: cleanName,
-            language,
-            locale: localeForLanguage(language),
+            language: accountLanguage,
+            locale: localeForLanguage(accountLanguage),
           },
         },
       });
@@ -749,7 +754,7 @@ export function useAppAuth() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              language,
+              language: accountLanguage,
               redirect_to: window.location.origin,
             }),
           });
@@ -792,14 +797,16 @@ export function useAppAuth() {
 
   const sendDonextoVerifyEmail = useCallback(async (
     email: string,
-    language: AppLanguage = "es",
+    language?: AppLanguage,
   ) => {
     const cleanEmail = email.trim().toLowerCase();
+    const accountLanguage = language ?? languageForDonextoVerifyEmail();
+    rememberLoginLanguage(accountLanguage);
     await hmsJson(buildApiUrl("/identity/send-donexto-verify"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        language,
+        language: accountLanguage,
         redirect_to: window.location.origin,
       }),
     });
