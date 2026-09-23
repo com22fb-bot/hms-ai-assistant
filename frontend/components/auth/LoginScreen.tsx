@@ -103,7 +103,7 @@ export function LoginScreen({
     "coming_soon",
   );
   const emailRef = useRef<HTMLInputElement>(null);
-  const { language } = useLanguage();
+  const { language, languageLocked } = useLanguage();
   const L = (key: Parameters<typeof loginText>[1]) => loginText(language, key);
 
   useEffect(() => {
@@ -260,7 +260,10 @@ export function LoginScreen({
     }
     // Persist the language on this screen before leaving for Microsoft/Yahoo.
     // The verify email after the redirect must use this, not account metadata.
-    rememberLoginLanguage(language);
+    // /admin is locked to Spanish and must not overwrite the home preference.
+    if (!languageLocked) {
+      rememberLoginLanguage(language);
+    }
     resetAlerts();
     setBusy(true);
     setOauthBusy(provider);

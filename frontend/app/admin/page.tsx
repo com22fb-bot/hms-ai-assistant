@@ -18,6 +18,7 @@ import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { ConfirmEmailGate } from "@/components/auth/ConfirmEmailGate";
 import { LoginScreen } from "@/components/auth/LoginScreen";
 import { useAppAuth } from "@/hooks/useAppAuth";
+import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
 import { HmsApiError, hmsJson } from "@/lib/hmsApi";
 import "@/app/admin/admin.css";
 
@@ -159,7 +160,7 @@ function formatWhen(value?: string | null): string {
   }
 }
 
-export default function AdminPage() {
+function AdminPage() {
   const [theme, setTheme] = useState<"midnight" | "aurora" | "accessible" | "graphite">(
     "accessible",
   );
@@ -954,5 +955,13 @@ export default function AdminPage() {
         )}
       </main>
     </div>
+  );
+}
+
+export default function AdminRoute() {
+  return (
+    <LanguageProvider lockedLanguage="es">
+      <AdminPage />
+    </LanguageProvider>
   );
 }
