@@ -20,6 +20,20 @@ import {
 import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
 import { userHasOAuthIdentity } from "@/lib/oauthIdentity";
 import { buildApiUrl } from "@/lib/apiBase";
+import {
+  confirmDonextoPath,
+  donextoVerifyFailure,
+  acknowledgeVerifyLinkError,
+  forgetDonextoVerifyProof,
+  interpretConfirmDonextoResponse,
+  loadDonextoVerifyProof,
+  readDonextoVerifyProof,
+  rememberDonextoVerifyProof,
+  rememberVerifyLinkError,
+  stripDonextoVerifySearch,
+  type DonextoVerifyProof,
+  type VerifyLinkErrorCode,
+} from "@/lib/donextoVerifyLink";
 import { isBrowserNetworkError, postPublicHms } from "@/lib/publicHms";
 
 export { userHasOAuthIdentity } from "@/lib/oauthIdentity";
@@ -100,27 +114,149 @@ function consumeOAuthEmailMismatch(sessionEmail: string | undefined): string | n
   );
 }
 
-async function confirmDonextoWithBackend(): Promise<boolean> {
+type RedeemResult =
+  | { ok: true; session: Session }
+  | { ok: false; code: VerifyLinkErrorCode | "absent" };
+
+function browserStore(): Storage | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
   try {
-    const query = new URLSearchParams({ [DONEXTO_VERIFY_QUERY]: "1" });
-    if (typeof window !== "undefined") {
-      const callbackQuery = new URLSearchParams(window.location.search);
-      for (const key of ["token_hash", "type"]) {
-        const value = callbackQuery.get(key);
-        if (value) {
-          query.set(key, value);
-        }
-      }
-    }
-    const result = await hmsJson<{ donexto_verified?: boolean }>(
-      buildApiUrl(`/identity/confirm-donexto?${query.toString()}`),
-      { method: "POST" },
-    );
-    return result.donexto_verified === true;
+    return window.sessionStorage;
+  } catch {
+    return null;
+  }
+}
+
+function rememberVerifyCode(code: VerifyLinkErrorCode) {
+  const store = browserStore();
+  if (store) {
+    rememberVerifyLinkError(store, code);
+  }
+}
+
+function captureDonextoVerifyProof(): DonextoVerifyProof | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  const fromUrl = readDonextoVerifyProof(window.location.search);
+  const store = browserStore();
+  if (fromUrl && store) {
+    rememberDonextoVerifyProof(store, fromUrl);
+    return fromUrl;
+  }
+  return store ? loadDonextoVerifyProof(store) : fromUrl;
+}
+
+function clearDonextoVerifyProof() {
+  const store = browserStore();
+  if (store) {
+    forgetDonextoVerifyProof(store);
+  }
+  if (typeof window === "undefined") {
+    return;
+  }
+  const next = stripDonextoVerifySearch(window.location.href);
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (next !== current) {
+    window.history.replaceState({}, "", next);
+  }
+}
+
+function withFreshUser(session: Session | null, user: User | null | undefined): Session | null {
+  if (!session) {
+    return null;
+  }
+  if (!user) {
+    return session;
+  }
+  return { ...session, user };
+}
+
+let redeemInflight: Promise<RedeemResult> | null = null;
+
+async function establishSessionFromTokens(
+  accessToken: string,
+  refreshToken: string,
+): Promise<Session | null> {
+  const { data, error } = await supabase.auth.setSession({
+    access_token: accessToken,
+    refresh_token: refreshToken,
+  });
+  if (error) {
+    throw error;
+  }
+  let user = (await supabase.auth.getUser()).data.user;
+  if (user && !isDonextoVerified(user)) {
+    user = (await supabase.auth.getUser()).data.user ?? user;
+  }
+  return withFreshUser(data.session, user);
+}
+
+async function redeemProof(proof: DonextoVerifyProof): Promise<RedeemResult> {
+  acknowledgeVerifyLinkError();
+  let resolved: { ok: boolean; status: number; payload: unknown };
+  try {
+    resolved = await postPublicHms(confirmDonextoPath(proof), {});
   } catch (error) {
     console.error("No fue posible confirmar Donexto en el servidor:", error);
-    return false;
+    rememberVerifyCode("retry");
+    return { ok: false, code: "retry" };
   }
+
+  const outcome = interpretConfirmDonextoResponse(resolved.status, resolved.payload);
+  if (outcome.kind === "invalid") {
+    clearDonextoVerifyProof();
+    rememberVerifyCode("invalid");
+    return { ok: false, code: "invalid" };
+  }
+  if (outcome.kind === "retry") {
+    rememberVerifyCode("retry");
+    return { ok: false, code: "retry" };
+  }
+  if (outcome.kind === "verified_without_session") {
+    clearDonextoVerifyProof();
+    const { data } = await supabase.auth.getSession();
+    const { data: userData } = await supabase.auth.getUser();
+    const session = withFreshUser(data.session, userData.user);
+    if (session?.user) {
+      return { ok: true, session };
+    }
+    rememberVerifyCode("sign_in_again");
+    return { ok: false, code: "sign_in_again" };
+  }
+
+  try {
+    const session = await establishSessionFromTokens(
+      outcome.accessToken,
+      outcome.refreshToken,
+    );
+    clearDonextoVerifyProof();
+    if (!session?.user) {
+      rememberVerifyCode("sign_in_again");
+      return { ok: false, code: "sign_in_again" };
+    }
+    return { ok: true, session };
+  } catch (error) {
+    console.error("La cuenta quedó confirmada, pero no se abrió la sesión:", error);
+    clearDonextoVerifyProof();
+    rememberVerifyCode("sign_in_again");
+    return { ok: false, code: "sign_in_again" };
+  }
+}
+
+function redeemDonextoEmailLink(): Promise<RedeemResult> {
+  const proof = captureDonextoVerifyProof();
+  if (!proof) {
+    return Promise.resolve({ ok: false, code: "absent" });
+  }
+  if (!redeemInflight) {
+    redeemInflight = redeemProof(proof).finally(() => {
+      redeemInflight = null;
+    });
+  }
+  return redeemInflight;
 }
 
 function yahooImapOwnsIdentity(user: User | null | undefined): boolean {
@@ -159,43 +295,8 @@ function sessionNeedsDonextoEmailConfirm(session: Session | null): boolean {
   return !isDonextoVerified(user);
 }
 
-function isDonextoVerifyReturn(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-
-  const search = new URLSearchParams(window.location.search);
-  return search.get(DONEXTO_VERIFY_QUERY) === "1";
-}
-
-function hasDonextoVerificationProof(): boolean {
-  if (typeof window === "undefined") {
-    return false;
-  }
-  const search = new URLSearchParams(window.location.search);
-  return (
-    search.get(DONEXTO_VERIFY_QUERY) === "1"
-    && Boolean(search.get("token_hash"))
-  );
-}
-
 function donextoVerifyRedirectTo(): string {
   return `${window.location.origin}/?${DONEXTO_VERIFY_QUERY}=1`;
-}
-
-function clearDonextoVerifyQuery() {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const url = new URL(window.location.href);
-  if (!url.searchParams.has(DONEXTO_VERIFY_QUERY)) {
-    return;
-  }
-
-  url.searchParams.delete(DONEXTO_VERIFY_QUERY);
-  const next = `${url.pathname}${url.search}${url.hash}`;
-  window.history.replaceState({}, "", next);
 }
 
 function mapSession(session: Session | null): AppSession | null {
@@ -364,7 +465,7 @@ export function useAppAuth() {
         return;
       }
 
-      setRawSession(nextSession);
+      setRawSession(withFreshUser(nextSession, userData.user));
     }
 
     function clearVerifySentKeys() {
@@ -396,6 +497,25 @@ export function useAppAuth() {
             window.location.search,
           );
           window.history.replaceState({}, "", nextPath);
+          return;
+        }
+
+        const redeemed = await redeemDonextoEmailLink();
+        if (!mounted) {
+          return;
+        }
+        if (redeemed.ok) {
+          const mismatch = consumeOAuthEmailMismatch(redeemed.session.user.email);
+          if (mismatch) {
+            await invalidateLocalSession();
+            const url = new URL(window.location.href);
+            url.hash = "";
+            url.searchParams.set("donexto", "oauth_error");
+            url.searchParams.set("reason", mismatch);
+            window.location.replace(`${url.pathname}?${url.searchParams.toString()}`);
+            return;
+          }
+          setRawSession(redeemed.session);
           return;
         }
 
@@ -434,7 +554,7 @@ export function useAppAuth() {
           return;
         }
 
-        setRawSession(data.session ?? null);
+        setRawSession(withFreshUser(data.session ?? null, userData.user));
       } finally {
         if (mounted) {
           bootstrapComplete.current = true;
@@ -502,20 +622,12 @@ export function useAppAuth() {
         return;
       }
 
-      if (isDonextoVerifyReturn()) {
+      if (!isDonextoVerified(currentUser) && captureDonextoVerifyProof()) {
         verifyBootstrapLock.current = true;
         try {
-          if (!isDonextoVerified(currentUser)) {
-            const confirmed = await confirmDonextoWithBackend();
-            if (confirmed) {
-              const { data: next } = await supabase.auth.refreshSession();
-              if (!cancelled) {
-                setRawSession(next.session ?? null);
-              }
-            }
-          }
-          if (isDonextoVerifyReturn()) {
-            clearDonextoVerifyQuery();
+          const redeemed = await redeemDonextoEmailLink();
+          if (!cancelled && redeemed.ok) {
+            setRawSession(redeemed.session);
           }
         } catch (error) {
           console.error("No fue posible confirmar Donexto:", error);
@@ -891,17 +1003,20 @@ export function useAppAuth() {
   );
 
   const refreshSession = useCallback(async () => {
+    if (captureDonextoVerifyProof()) {
+      const redeemed = await redeemDonextoEmailLink();
+      if (redeemed.ok && !sessionNeedsDonextoEmailConfirm(redeemed.session)) {
+        setRawSession(redeemed.session);
+        return;
+      }
+      if (!redeemed.ok && redeemed.code !== "absent") {
+        throw donextoVerifyFailure(redeemed.code);
+      }
+    }
+
     const { data, error } = await supabase.auth.getUser();
     if (error) {
       throw new Error(translateAuthError(error.message));
-    }
-
-    if (
-      data.user
-      && sessionNeedsDonextoEmailConfirm({ user: data.user } as Session)
-      && hasDonextoVerificationProof()
-    ) {
-      await confirmDonextoWithBackend();
     }
 
     const { data: next, error: sessionError } =
@@ -910,12 +1025,11 @@ export function useAppAuth() {
       throw new Error(translateAuthError(sessionError.message));
     }
 
-    setRawSession(next.session ?? null);
+    const session = withFreshUser(next.session ?? null, data.user);
+    setRawSession(session);
 
-    if (sessionNeedsDonextoEmailConfirm(next.session ?? null) && data.user) {
-      throw new Error(
-        "Aún no vemos el clic de confirmación. Abre el correo que te enviamos.",
-      );
+    if (sessionNeedsDonextoEmailConfirm(session) && data.user) {
+      throw donextoVerifyFailure("unverified");
     }
   }, []);
 

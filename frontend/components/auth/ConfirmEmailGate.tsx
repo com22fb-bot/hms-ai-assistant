@@ -1,11 +1,12 @@
 "use client";
 
 import { LoaderCircle, Mail } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
+import { consumeVerifyLinkError, verifyUiErrorCode } from "@/lib/donextoVerifyLink";
 import { useOptionalLanguage } from "@/lib/i18n/LanguageProvider";
 import type { AppLanguage } from "@/lib/i18n/languages";
-import { translate, type MessageKey } from "@/lib/i18n/messages";
+import { translate, verifyLinkErrorText, type MessageKey } from "@/lib/i18n/messages";
 
 import "./hms-gate.css";
 import "./dx-auth-neon.css";
@@ -18,8 +19,9 @@ type ConfirmEmailGateProps = {
 };
 
 /**
- * Bloquea el dashboard hasta que el backend confirme el enlace Donexto con
- * `?donexto_verify=1`; entrar mediante OAuth nunca sustituye ese paso.
+ * Bloquea el dashboard hasta el clic en Verificar del correo.
+ * OAuth no sustituye ese paso. "Ya abrí el enlace" solo revisa un token
+ * pendiente o una confirmación que ya hizo otra pestaña.
  */
 export function ConfirmEmailGate({
   email,
@@ -33,20 +35,36 @@ export function ConfirmEmailGate({
     languageContext?.t(key) || translate("es", key);
   const [busy, setBusy] = useState<"resend" | "refresh" | "out" | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
+  const error = errorCode
+    ? verifyLinkErrorText(language, errorCode)
+    : localError;
+
+  useEffect(() => {
+    try {
+      const code = consumeVerifyLinkError(sessionStorage);
+      if (code) {
+        setErrorCode(code);
+      }
+    } catch {
+      // sessionStorage puede fallar en modo restringido
+    }
+  }, [language]);
 
   async function resend() {
     if (busy) {
       return;
     }
     setBusy("resend");
-    setError(null);
+    setErrorCode(null);
+    setLocalError(null);
     setMessage(null);
     try {
       await onResend(email, language);
       setMessage(t("confirmGateResent"));
     } catch {
-      setError(t("confirmGateResendError"));
+      setLocalError(t("confirmGateResendError"));
     } finally {
       setBusy(null);
     }
@@ -57,12 +75,13 @@ export function ConfirmEmailGate({
       return;
     }
     setBusy("refresh");
-    setError(null);
+    setErrorCode(null);
+    setLocalError(null);
     setMessage(null);
     try {
       await onRefresh();
-    } catch {
-      setError(t("confirmGateRefreshError"));
+    } catch (caught) {
+      setErrorCode(verifyUiErrorCode(caught));
     } finally {
       setBusy(null);
     }
@@ -125,7 +144,7 @@ export function ConfirmEmailGate({
 
             <button
               type="button"
-              className="dx-auth__submit"
+              className="dx-auth__secondary"
               disabled={busy !== null}
               onClick={() => void refresh()}
             >
@@ -141,7 +160,7 @@ export function ConfirmEmailGate({
 
             <button
               type="button"
-              className="dx-auth__secondary"
+              className="dx-auth__submit"
               disabled={busy !== null}
               onClick={() => void resend()}
             >

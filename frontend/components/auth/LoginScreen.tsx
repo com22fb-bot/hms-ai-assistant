@@ -22,6 +22,8 @@ import {
   oauthFromResolveNext,
   type AuthGateNext,
 } from "@/lib/loginGate";
+import { consumeVerifyLinkError } from "@/lib/donextoVerifyLink";
+import { verifyLinkErrorText } from "@/lib/i18n/messages";
 import {
   isBrowserNetworkError,
   postPublicHms,
@@ -130,6 +132,17 @@ export function LoginScreen({
       }
     });
     return () => window.cancelAnimationFrame(frame);
+  }, [language]);
+
+  useEffect(() => {
+    try {
+      const verifyCode = consumeVerifyLinkError(sessionStorage);
+      if (verifyCode) {
+        setError(verifyLinkErrorText(language, verifyCode));
+      }
+    } catch {
+      // sessionStorage puede fallar en modo restringido
+    }
   }, [language]);
 
   useEffect(() => {
