@@ -12,6 +12,7 @@ from app.api.identity import (
     send_donexto_verification_email,
 )
 from app.services.donexto_verification_email import (
+    VERIFICATION_EMAIL_HERO_URL,
     VerificationEmailUserNotFound,
     build_verification_email,
     normalize_language,
@@ -57,6 +58,13 @@ class DonextoVerificationEmailTests(unittest.TestCase):
         self.assertNotIn("Confirm your Donexto email", spanish.body)
         self.assertIn(">Verificar</a>", spanish.html)
         self.assertNotIn(">Verify</a>", spanish.html)
+        self.assertIn(VERIFICATION_EMAIL_HERO_URL, spanish.html)
+        self.assertLess(
+            spanish.html.index(VERIFICATION_EMAIL_HERO_URL),
+            spanish.html.index(">Verificar</a>"),
+        )
+        self.assertIn('width="600"', spanish.html)
+        self.assertNotIn(VERIFICATION_EMAIL_HERO_URL, spanish.body)
         self.assertIn("token_hash=abc", spanish.html)
         self.assertIn("type=magiclink", spanish.html)
         self.assertIn(link, spanish.body)

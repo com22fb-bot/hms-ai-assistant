@@ -99,6 +99,12 @@ def resolve_verification_language(requested: object) -> str:
     return normalize_language(requested_text)
 
 
+# Homepage banner on www.donexto.com (1024×434). Wide, warm, and already
+# served over HTTPS, so mail clients can load it without a cid attachment.
+VERIFICATION_EMAIL_HERO_URL = "https://www.donexto.com/brand-youtube.jpg"
+_HERO_WIDTH = 600
+
+
 def _plain_body(template: _Template, action_link: str) -> str:
     return f"{template.lead}\n\n{action_link}\n\n{template.note}"
 
@@ -127,8 +133,14 @@ def _html_body(template: _Template, action_link: str, language: str) -> str:
         'border="0" style="background:#f4f1ea;margin:0;padding:0;">'
         '<tr><td align="center" style="padding:32px 16px;">'
         '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" '
-        'border="0" style="max-width:560px;background:#ffffff;'
+        'border="0" width="600" style="max-width:600px;background:#ffffff;'
         'border:1px solid #e6e1d6;border-radius:16px;">'
+        '<tr><td style="padding:0;line-height:0;font-size:0;">'
+        f'<img src="{VERIFICATION_EMAIL_HERO_URL}" width="{_HERO_WIDTH}" '
+        'alt="Donexto" border="0" '
+        'style="display:block;width:100%;max-width:600px;height:auto;'
+        'border:0;outline:none;text-decoration:none;">'
+        "</td></tr>"
         '<tr><td style="padding:28px 32px 0;font-family:Arial,Helvetica,sans-serif;">'
         '<p style="margin:0;font-size:13px;letter-spacing:0.14em;'
         'text-transform:uppercase;color:#0b6e66;font-weight:bold;">Donexto</p>'
