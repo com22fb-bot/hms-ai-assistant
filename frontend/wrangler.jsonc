@@ -31,4 +31,8 @@
 		// see https://opennext.js.org/cloudflare/howtos/image
 		"binding": "IMAGES"
 	}
+	// No "routes" here. app.donexto.com is a dashboard custom domain.
+	// Path routes for www.donexto.com/admin* and the apex are applied by
+	// scripts/configure-admin-routes.mjs so deploy does not drop that domain.
+	// See docs/ops/ADMIN_EN_WWW.md.
 }

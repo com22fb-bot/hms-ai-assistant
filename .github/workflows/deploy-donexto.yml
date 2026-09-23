@@ -45,8 +45,8 @@ jobs:
           done
       - run: npm ci
       - run: npx tsc --noEmit
-      - run: node --experimental-strip-types --test lib/loginGate.test.ts lib/languageProviderMount.test.ts lib/i18n/verificationLanguage.test.ts
-      - run: node --test scripts/workerPublicEnv.test.mjs
+      - run: node --experimental-strip-types --test lib/loginGate.test.ts lib/languageProviderMount.test.ts lib/i18n/verificationLanguage.test.ts lib/adminCanonical.test.ts
+      - run: node --test scripts/workerPublicEnv.test.mjs scripts/adminWorkerRoutes.test.mjs
       - name: Build and deploy worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -73,4 +73,13 @@ jobs:
               python3 -c 'import json; assert json.load(open("response.txt")).get("status") == "ok"' || failed=1
             fi
           done
+          admin_line=$(curl --silent --show-error --retry 3 --max-time 30 -o /dev/null -w '%{http_code} %{redirect_url}' "https://app.donexto.com/admin") || admin_line="000"
+          echo "Admin redirect: $admin_line" >> "$GITHUB_STEP_SUMMARY"
+          case "$admin_line" in
+            308\ https://www.donexto.com/admin*|301\ https://www.donexto.com/admin*) ;;
+            *)
+              echo "::error::app.donexto.com/admin should 308/301 to https://www.donexto.com/admin (got: $admin_line)."
+              failed=1
+              ;;
+          esac
           exit "$failed"

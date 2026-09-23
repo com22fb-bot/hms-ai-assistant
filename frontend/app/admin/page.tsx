@@ -12,12 +12,12 @@ import {
   Tag,
   Users,
 } from "lucide-react";
-import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ConfirmEmailGate } from "@/components/auth/ConfirmEmailGate";
 import { LoginScreen } from "@/components/auth/LoginScreen";
 import { useAppAuth } from "@/hooks/useAppAuth";
+import { PRODUCT_APP_ORIGIN } from "@/lib/adminCanonical";
 import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
 import { HmsApiError, hmsJson } from "@/lib/hmsApi";
 import "@/app/admin/admin.css";
@@ -160,6 +160,84 @@ function formatWhen(value?: string | null): string {
   }
 }
 
+function AdminPasswordReset({
+  onUpdatePassword,
+  onCancel,
+}: {
+  onUpdatePassword: (password: string) => Promise<void>;
+  onCancel: () => Promise<void>;
+}) {
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    if (password.length < 8) {
+      setError("La nueva contraseña Donexto debe tener al menos 8 caracteres.");
+      return;
+    }
+    if (password !== confirmation) {
+      setError("Las dos contraseñas no coinciden.");
+      return;
+    }
+    setBusy(true);
+    try {
+      await onUpdatePassword(password);
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "No fue posible actualizar la contraseña Donexto.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="dx-admin-login">
+      <form className="dx-admin__form" onSubmit={(event) => void submit(event)}>
+        <h1>Nueva contraseña</h1>
+        <p>Elige la contraseña de tu cuenta Donexto. El panel sigue en español.</p>
+        <label>
+          Contraseña
+          <input
+            required
+            type="password"
+            autoComplete="new-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+        </label>
+        <label>
+          Confirmar
+          <input
+            required
+            type="password"
+            autoComplete="new-password"
+            value={confirmation}
+            onChange={(event) => setConfirmation(event.target.value)}
+          />
+        </label>
+        {error && <p className="dx-admin__alert is-error">{error}</p>}
+        <button type="submit" className="dx-admin__btn" disabled={busy}>
+          {busy ? "Guardando…" : "Guardar contraseña"}
+        </button>
+        <button
+          type="button"
+          className="dx-admin__btn dx-admin__btn--ghost"
+          onClick={() => void onCancel()}
+        >
+          Cancelar
+        </button>
+      </form>
+    </div>
+  );
+}
+
 function AdminPage() {
   const [theme, setTheme] = useState<"midnight" | "aurora" | "accessible" | "graphite">(
     "accessible",
@@ -180,6 +258,9 @@ function AdminPage() {
     signOut,
     resetPassword,
     refreshSession,
+    passwordRecovery,
+    updatePassword,
+    cancelPasswordRecovery,
   } = useAppAuth();
   const [tab, setTab] = useState<AdminTab>("overview");
   const [loading, setLoading] = useState(false);
@@ -370,6 +451,15 @@ function AdminPage() {
     );
   }
 
+  if (passwordRecovery) {
+    return (
+      <AdminPasswordReset
+        onUpdatePassword={updatePassword}
+        onCancel={cancelPasswordRecovery}
+      />
+    );
+  }
+
   if (!session) {
     return (
       <div className="dx-admin-login">
@@ -424,10 +514,10 @@ function AdminPage() {
             <RefreshCw size={16} />
             Actualizar
           </button>
-          <Link href="/" className="dx-admin__btn dx-admin__btn--ghost">
+          <a href={PRODUCT_APP_ORIGIN} className="dx-admin__btn dx-admin__btn--ghost">
             <ArrowLeft size={16} />
             App
-          </Link>
+          </a>
           <button
             type="button"
             className="dx-admin__btn"

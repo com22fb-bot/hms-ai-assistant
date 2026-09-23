@@ -25,8 +25,24 @@ def allowed_frontend_origins() -> set[str]:
     return allowed
 
 
+# Only these paths may survive an OAuth return. Anything else collapses to /.
+_SAFE_RETURN_PATHS = {"/", "/admin"}
+
+
+def _safe_return_path(path: str) -> str:
+    clean = path or "/"
+    if len(clean) > 1 and clean.endswith("/"):
+        clean = clean.rstrip("/") or "/"
+    if clean not in _SAFE_RETURN_PATHS:
+        return "/"
+    return clean
+
+
 def sanitize_return_to(value: str | None) -> str:
-    """Return a safe frontend origin path root, never an attacker-controlled host."""
+    """Return a safe frontend URL, never an attacker-controlled host.
+
+    `/` and `/admin` are kept. Other paths on an allowed origin become `/`.
+    """
     allowed = allowed_frontend_origins()
     if value:
         try:
@@ -36,7 +52,10 @@ def sanitize_return_to(value: str | None) -> str:
         if parsed and parsed.scheme in {"http", "https"} and parsed.netloc:
             origin = f"{parsed.scheme}://{parsed.netloc}".rstrip("/")
             if origin in allowed:
-                return origin + "/"
+                path = _safe_return_path(parsed.path or "/")
+                if path == "/":
+                    return origin + "/"
+                return origin + path
     for origin in sorted(allowed):
         if origin.startswith("https://") and "donexto.com" in origin.lower():
             return origin + "/"

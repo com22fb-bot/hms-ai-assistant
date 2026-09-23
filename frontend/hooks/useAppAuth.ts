@@ -19,6 +19,7 @@ import {
 } from "@/lib/i18n/languages";
 import { resolveMailboxProviderFromEmail } from "@/lib/mailboxSignup";
 import { userHasOAuthIdentity } from "@/lib/oauthIdentity";
+import { authReturnUrl, verifyEmailRedirectUrl } from "@/lib/adminCanonical";
 import { buildApiUrl } from "@/lib/apiBase";
 import {
   confirmDonextoPath,
@@ -60,7 +61,6 @@ type AppSession = {
   name: string;
 };
 
-const DONEXTO_VERIFY_QUERY = "donexto_verify";
 const OAUTH_EXPECTED_EMAIL_KEY = "donexto_oauth_expected_email";
 
 function clearOAuthExpectedEmail() {
@@ -295,8 +295,12 @@ function sessionNeedsDonextoEmailConfirm(session: Session | null): boolean {
   return !isDonextoVerified(user);
 }
 
+function currentAuthReturn(): string {
+  return authReturnUrl(window.location);
+}
+
 function donextoVerifyRedirectTo(): string {
-  return `${window.location.origin}/?${DONEXTO_VERIFY_QUERY}=1`;
+  return verifyEmailRedirectUrl(window.location);
 }
 
 function mapSession(session: Session | null): AppSession | null {
@@ -661,7 +665,7 @@ export function useAppAuth() {
           await hmsJson(buildApiUrl("/identity/send-donexto-verify"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ language, redirect_to: window.location.origin }),
+            body: JSON.stringify({ language, redirect_to: currentAuthReturn() }),
           });
         } catch (error) {
           // Log loudly so Auth provider failures are retryable.
@@ -715,7 +719,7 @@ export function useAppAuth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: currentAuthReturn(),
           queryParams: {
             prompt: "consent",
             access_type: "offline",
@@ -745,7 +749,7 @@ export function useAppAuth() {
     let resolved;
     try {
       resolved = await postPublicHms("/auth/yahoo/login", {
-        return_to: window.location.origin,
+        return_to: currentAuthReturn(),
         intent,
         ...(hint ? { login_hint: hint } : {}),
       });
@@ -785,7 +789,7 @@ export function useAppAuth() {
     let resolved;
     try {
       resolved = await postPublicHms("/auth/microsoft/login", {
-        return_to: window.location.origin,
+        return_to: currentAuthReturn(),
         intent,
         ...(hint ? { login_hint: hint } : {}),
       });
@@ -867,7 +871,7 @@ export function useAppAuth() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               language: accountLanguage,
-              redirect_to: window.location.origin,
+              redirect_to: currentAuthReturn(),
             }),
           });
           try {
@@ -919,7 +923,7 @@ export function useAppAuth() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         language: accountLanguage,
-        redirect_to: window.location.origin,
+        redirect_to: currentAuthReturn(),
       }),
     });
     try {
@@ -950,7 +954,7 @@ export function useAppAuth() {
     const { error } = await supabase.auth.resetPasswordForEmail(
       email,
       {
-        redirectTo: `${window.location.origin}/`,
+        redirectTo: currentAuthReturn(),
       },
     );
 

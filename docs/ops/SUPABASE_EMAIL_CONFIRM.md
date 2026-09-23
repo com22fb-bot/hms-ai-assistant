@@ -9,7 +9,7 @@ Si al crear cuenta ves “revisa tu correo” pero **no llega nada**:
    - Si quieres entrar al instante en pruebas: desactiva “Confirm email”.
 2. **Authentication → URL Configuration**
    - Site URL: `https://app.donexto.com`
-   - Redirect URLs: incluye `https://app.donexto.com/**` y `https://app.donexto.com/`
+   - Redirect URLs: incluye `https://app.donexto.com/**`, `https://app.donexto.com/` y las de www/apex del panel (`/admin`). Ver [ADMIN_EN_WWW.md](./ADMIN_EN_WWW.md).
 3. **Project Settings → Auth → SMTP** (recomendado en prod)
    - El correo por defecto de Supabase (built-in) es limitado y a menudo cae en spam o no llega.
    - Configura SMTP propio (Resend, SendGrid, Brevo, etc.).

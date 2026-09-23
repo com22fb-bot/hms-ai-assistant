@@ -148,7 +148,7 @@ class YahooOAuthGateTests(unittest.TestCase):
             )
             self.assertEqual(
                 sanitize_return_to("https://app.donexto.com/admin"),
-                "https://app.donexto.com/",
+                "https://app.donexto.com/admin",
             )
 
     def test_login_requires_yahoo_app(self) -> None:
