@@ -58,6 +58,9 @@ class DonextoVerificationEmailTests(unittest.TestCase):
         self.assertNotIn("Confirm your Donexto email", spanish.body)
         self.assertIn(">Verificar</a>", spanish.html)
         self.assertNotIn(">Verify</a>", spanish.html)
+        self.assertTrue(
+            VERIFICATION_EMAIL_HERO_URL.startswith("https://app.donexto.com/")
+        )
         self.assertIn(VERIFICATION_EMAIL_HERO_URL, spanish.html)
         self.assertLess(
             spanish.html.index(VERIFICATION_EMAIL_HERO_URL),

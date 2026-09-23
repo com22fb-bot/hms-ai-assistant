@@ -99,9 +99,12 @@ def resolve_verification_language(requested: object) -> str:
     return normalize_language(requested_text)
 
 
-# Homepage banner on www.donexto.com (1024×434). Wide, warm, and already
-# served over HTTPS, so mail clients can load it without a cid attachment.
-VERIFICATION_EMAIL_HERO_URL = "https://www.donexto.com/brand-youtube.jpg"
+# Login studio hero, resized to 1200×670 JPEG (~110KB) for mail clients.
+# Served from the app, not a cid attachment. The 1.2MB square donexto-hero.png
+# is too heavy and too tall for a header.
+VERIFICATION_EMAIL_HERO_URL = (
+    "https://app.donexto.com/brand/donexto-verify-email-hero.jpg"
+)
 _HERO_WIDTH = 600
 
 
