@@ -2,6 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { NextConfig } from "next";
 
+import { appHostAdminRedirects } from "./lib/adminCanonical";
 import { DOCUMENT_CACHE_CONTROL } from "./lib/httpCacheControl";
 
 // Root must be this folder (frontend/), not the monorepo root.
@@ -23,6 +24,9 @@ const nextConfig: NextConfig = {
   // Exclude `/_next/static` so hashed chunks keep long immutable cache when
   // Next itself serves them (`next start`). On Cloudflare, those files come
   // from Static Assets + `public/_headers`, not this `headers()` map.
+  async redirects() {
+    return appHostAdminRedirects();
+  },
   async headers() {
     return [
       { source: "/", headers: documentCacheHeaders },

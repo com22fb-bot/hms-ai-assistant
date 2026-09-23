@@ -34,5 +34,11 @@ DNS a mano (zona donexto.com -> DNS -> Records), si Pages no lo creo:
 
 NO apuntar @ (apex) al Worker.
 Landing en apex Y www esta bien si ambos son custom domains de Pages "donexto".
+
+Admin (path, no el sitio entero):
+  www.donexto.com/admin* y donexto.com/admin* van al Worker donexto-app,
+  mas /_next/*, /api/hms*, /brand/* en esos dos hosts.
+  / sigue en Pages. No borres esas rutas al "quitar el apex del Worker".
+  Ver docs/ops/ADMIN_EN_WWW.md y frontend/scripts/configure-admin-routes.mjs.
 No hay redirect apex<->www en el codigo de la landing.
 Contacto: support@donexto.com (oficial; nunca hmcelinfo).

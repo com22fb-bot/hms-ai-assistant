@@ -9,6 +9,7 @@ os.environ.setdefault(
     "test-oauth-encryption-key-32chars!!",
 )
 
+from app.security.origins import expand_frontend_origins
 from app.security.redirect import sanitize_return_to
 
 
@@ -36,6 +37,18 @@ class SanitizeReturnToTests(unittest.TestCase):
             ]
             self.assertEqual(
                 sanitize_return_to("https://app.donexto.com/admin"),
+                "https://app.donexto.com/admin",
+            )
+            self.assertEqual(
+                sanitize_return_to("https://app.donexto.com/admin/"),
+                "https://app.donexto.com/admin",
+            )
+            self.assertEqual(
+                sanitize_return_to("https://app.donexto.com/dashboard"),
+                "https://app.donexto.com/",
+            )
+            self.assertEqual(
+                sanitize_return_to("https://app.donexto.com/admin/extra"),
                 "https://app.donexto.com/",
             )
             self.assertEqual(
@@ -49,6 +62,42 @@ class SanitizeReturnToTests(unittest.TestCase):
             self.assertEqual(
                 sanitize_return_to("https://app.donexto.com"),
                 "http://127.0.0.1:3000/",
+            )
+
+    def test_marketing_admin_origins_when_app_is_allowed(self) -> None:
+        expanded = expand_frontend_origins(
+            ["https://app.donexto.com/", "http://localhost:3000"]
+        )
+        self.assertEqual(
+            expanded,
+            [
+                "https://app.donexto.com",
+                "http://localhost:3000",
+                "https://www.donexto.com",
+                "https://donexto.com",
+            ],
+        )
+        self.assertEqual(
+            expand_frontend_origins(["http://localhost:3000"]),
+            ["http://localhost:3000"],
+        )
+        with patch("app.security.redirect.settings") as settings:
+            settings.frontend_origins = expanded
+            self.assertEqual(
+                sanitize_return_to("https://www.donexto.com/admin"),
+                "https://www.donexto.com/admin",
+            )
+            self.assertEqual(
+                sanitize_return_to("https://donexto.com/admin?x=1"),
+                "https://donexto.com/admin",
+            )
+            self.assertEqual(
+                sanitize_return_to("https://www.donexto.com/other"),
+                "https://www.donexto.com/",
+            )
+            self.assertEqual(
+                sanitize_return_to("https://not-donexto.example/admin"),
+                "https://app.donexto.com/",
             )
 
 

@@ -40,7 +40,7 @@ Confirma que leíste los tres docs y espera instrucción de Héctor.
 | App | https://app.donexto.com |
 | API | https://hms-ai-assistant-production.up.railway.app |
 | Landing | https://www.donexto.com |
-| Admin | https://app.donexto.com/admin |
+| Admin | https://www.donexto.com/admin (`app.donexto.com/admin` redirige aquí) |
 | Repo | https://github.com/com22fb-bot/hms-ai-assistant |
 
 ---

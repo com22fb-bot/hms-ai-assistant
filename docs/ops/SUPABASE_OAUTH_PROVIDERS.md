@@ -22,8 +22,8 @@ Si abres **otro** proyecto en el dashboard, el callback no coincidirá.
 En Supabase → **Authentication** → **URL Configuration**
 (enlace: https://supabase.com/dashboard/project/tgirnpystoydvbxlvlzz/auth/url-configuration):
 
-- **Site URL:** `https://app.donexto.com`
-- **Redirect URLs:** `https://app.donexto.com/`, `https://app.donexto.com/**` y, en local, `http://localhost:3000/` (o `http://localhost:3000/**`)
+- **Site URL:** `https://app.donexto.com` (no la cambies a www: el alta de la app sigue cayendo aquí)
+- **Redirect URLs:** `https://app.donexto.com/`, `https://app.donexto.com/**`, el panel en `https://www.donexto.com/admin`, `https://www.donexto.com/admin/**`, `https://donexto.com/admin`, `https://donexto.com/admin/**`, `https://www.donexto.com/**`, `https://donexto.com/**` y, en local, `http://localhost:3000/` (o `http://localhost:3000/**`). Lista completa: [ADMIN_EN_WWW.md](./ADMIN_EN_WWW.md).
 
 ## Qué activar (en este orden)
 

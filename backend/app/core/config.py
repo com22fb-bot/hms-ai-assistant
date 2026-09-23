@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 
 from dotenv import load_dotenv
 
+from app.security.origins import expand_frontend_origins
+
 
 load_dotenv()
 HMS_PUSH_ENV_PATH = Path(__file__).resolve().parents[3] / '.hms-secrets' / 'push.env'
@@ -147,9 +149,11 @@ class Settings:
     )
 
     frontend_origins: list[str] = field(
-        default_factory=lambda: get_list_environment_variable(
-            "FRONTEND_ORIGINS",
-            "http://localhost:3000,http://127.0.0.1:3000",
+        default_factory=lambda: expand_frontend_origins(
+            get_list_environment_variable(
+                "FRONTEND_ORIGINS",
+                "http://localhost:3000,http://127.0.0.1:3000",
+            )
         )
     )
 

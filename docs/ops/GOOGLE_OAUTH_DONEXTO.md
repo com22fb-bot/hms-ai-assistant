@@ -6,7 +6,7 @@
 
 ```text
 GOOGLE_REDIRECT_URI=https://hms-ai-assistant-production.up.railway.app/auth/google/callback
-FRONTEND_ORIGINS=https://app.donexto.com
+FRONTEND_ORIGINS=https://app.donexto.com,https://www.donexto.com,https://donexto.com
 OAUTH_ENCRYPTION_KEY=<secreto >= 32 caracteres, ver abajo>
 ```
 
