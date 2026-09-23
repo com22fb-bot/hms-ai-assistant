@@ -3,18 +3,21 @@
 These tests encode the original security requirements for
 fix/secure-donexto-verification-flow:
 
-1. Endpoint rejects unauthenticated calls (no payload.email fallback).
-2. Endpoint requires a valid session.
+1. Resend rejects unauthenticated calls (no payload.email fallback).
+2. Resend requires a valid session.
 3. generate_link is never called for non-existent users.
 4. confirm without real proof returns 403.
-5. Hand-crafted ?donexto_verify=1 without session/proof is blocked.
+5. Hand-crafted ?donexto_verify=1 without the email token is blocked.
 6. "Ya confirmé mi correo" style call without the flag is blocked.
 7. Middleware blocks protected routes when donexto_verified=false.
 8. Middleware still allows the verification endpoints themselves.
 9. OAuth sessions with donexto_verified=false are blocked.
 10. Second-device / other sessions stay blocked while unverified.
 11. generate_link is not invoked for missing emails.
-12. Real confirmation path (query flag + confirmed email) succeeds.
+12. Real confirmation path (query flag + token) succeeds.
+13. A cold browser with no OAuth session can confirm and receive a session.
+14. Reused or expired tokens fail and do not mark the account.
+15. OAuth without the email click stays unverified.
 """
 
 from __future__ import annotations
@@ -140,32 +143,44 @@ class ConfirmDonextoSecurityTests(unittest.TestCase):
         )
         mock_client = MagicMock()
         raw_user = SimpleNamespace(
-            id="user-789",
+            id="78900000-0000-4000-8000-000000000789",
             email_confirmed_at="2026-01-01T00:00:00Z",
+            app_metadata={},
+            user_metadata={},
+            identities=[{"provider": "email"}],
         )
         mock_client.auth.admin.get_user_by_id.return_value = SimpleNamespace(
             user=raw_user
         )
         mock_client.auth.verify_otp.return_value = SimpleNamespace(
-            user=SimpleNamespace(id="user-789")
+            user=SimpleNamespace(
+                id="78900000-0000-4000-8000-000000000789",
+                email_confirmed_at="2026-01-01T00:00:00Z",
+            ),
+            session=SimpleNamespace(
+                access_token="access-token",
+                refresh_token="refresh-token",
+                expires_in=3600,
+            ),
         )
 
-        with patch("app.api.identity.require_request_context") as mock_ctx, patch(
+        with patch(
+            "app.api.identity.require_request_context",
+            side_effect=AssertionError("confirm must not require a session"),
+        ), patch(
             "app.api.identity.get_supabase_client", return_value=mock_client
-        ), patch("app.api.identity.can_mark_donexto_verified", return_value=True), patch(
-            "app.api.identity.mark_donexto_verified"
-        ) as mark:
-            mock_ctx.return_value.user.id = "user-789"
-            mock_ctx.return_value.user.donexto_verified = False
-
+        ), patch("app.api.identity.mark_donexto_verified") as mark:
             result = confirm_donexto_identity(request)
 
         self.assertEqual(result["status"], "ok")
         self.assertTrue(result["donexto_verified"])
+        self.assertEqual(result["access_token"], "access-token")
+        self.assertEqual(result["refresh_token"], "refresh-token")
+        self.assertFalse(result["already"])
         mock_client.auth.verify_otp.assert_called_once_with(
             {"token_hash": "valid-token", "type": "signup"}
         )
-        mark.assert_called_once_with("user-789")
+        mark.assert_called_once_with("78900000-0000-4000-8000-000000000789")
 
     def test_13_invalid_token_hash_returns_403(self) -> None:
         """verify_otp rejects a garbage/tampered token_hash."""
@@ -175,12 +190,9 @@ class ConfirmDonextoSecurityTests(unittest.TestCase):
         mock_client = MagicMock()
         mock_client.auth.verify_otp.side_effect = Exception("invalid token_hash")
 
-        with patch("app.api.identity.require_request_context") as mock_ctx, patch(
+        with patch(
             "app.api.identity.get_supabase_client", return_value=mock_client
         ):
-            mock_ctx.return_value.user.id = "user-789"
-            mock_ctx.return_value.user.donexto_verified = False
-
             with self.assertRaises(HTTPException) as caught:
                 confirm_donexto_identity(request)
 
@@ -188,6 +200,7 @@ class ConfirmDonextoSecurityTests(unittest.TestCase):
         self.assertEqual(
             caught.exception.detail.get("status"), "invalid_verification_token"
         )
+        mock_client.auth.admin.update_user_by_id.assert_not_called()
 
     def test_14_expired_token_hash_returns_403(self) -> None:
         """Supabase raises for an expired token_hash the same way as invalid."""
@@ -197,12 +210,9 @@ class ConfirmDonextoSecurityTests(unittest.TestCase):
         mock_client = MagicMock()
         mock_client.auth.verify_otp.side_effect = Exception("token has expired")
 
-        with patch("app.api.identity.require_request_context") as mock_ctx, patch(
+        with patch(
             "app.api.identity.get_supabase_client", return_value=mock_client
         ):
-            mock_ctx.return_value.user.id = "user-789"
-            mock_ctx.return_value.user.donexto_verified = False
-
             with self.assertRaises(HTTPException) as caught:
                 confirm_donexto_identity(request)
 
@@ -210,29 +220,142 @@ class ConfirmDonextoSecurityTests(unittest.TestCase):
         self.assertEqual(
             caught.exception.detail.get("status"), "invalid_verification_token"
         )
+        mock_client.auth.admin.update_user_by_id.assert_not_called()
 
-    def test_15_token_hash_belonging_to_other_user_returns_403(self) -> None:
-        """A token that verifies fine but belongs to a different account is rejected."""
-        request = self._make_request(
-            {"donexto_verify": "1", "token_hash": "someone-elses-token", "type": "signup"}
+    def _oauth_owner(self) -> SimpleNamespace:
+        return SimpleNamespace(
+            id="11111111-1111-1111-1111-111111111111",
+            email="donexto@hotmail.com",
+            email_confirmed_at="2026-09-22T00:00:00Z",
+            app_metadata={"provider": "email", "providers": ["email", "azure"]},
+            user_metadata={"signup_via": "microsoft_oauth"},
+            identities=[{"provider": "azure"}],
         )
+
+    def test_15_cold_open_marks_token_user_and_returns_session(self) -> None:
+        """No Authorization header and no request context. The email token is enough."""
+        request = self._make_request(
+            {
+                "donexto_verify": "1",
+                "token_hash": "fresh-hash",
+                "type": "magiclink",
+                "user_id": "attacker-should-be-ignored",
+            }
+        )
+        owner = self._oauth_owner()
         mock_client = MagicMock()
         mock_client.auth.verify_otp.return_value = SimpleNamespace(
-            user=SimpleNamespace(id="attacker-user")
+            user=owner,
+            session=SimpleNamespace(
+                access_token="access-from-otp",
+                refresh_token="refresh-from-otp",
+                expires_in=3600,
+            ),
         )
+        mock_client.auth.admin.get_user_by_id.return_value = SimpleNamespace(user=owner)
 
-        with patch("app.api.identity.require_request_context") as mock_ctx, patch(
+        with patch(
+            "app.api.identity.require_request_context",
+            side_effect=AssertionError("confirm must not require a session"),
+        ), patch(
             "app.api.identity.get_supabase_client", return_value=mock_client
+        ), patch(
+            "app.security.donexto_verified.get_supabase_client",
+            return_value=mock_client,
         ):
-            mock_ctx.return_value.user.id = "victim-user"
-            mock_ctx.return_value.user.donexto_verified = False
+            result = confirm_donexto_identity(request)
 
+        self.assertEqual(result["status"], "ok")
+        self.assertTrue(result["donexto_verified"])
+        self.assertFalse(result["already"])
+        self.assertEqual(result["access_token"], "access-from-otp")
+        self.assertEqual(result["refresh_token"], "refresh-from-otp")
+        self.assertEqual(result["token_type"], "bearer")
+        updated_id, updated_body = mock_client.auth.admin.update_user_by_id.call_args.args
+        self.assertEqual(updated_id, owner.id)
+        self.assertNotEqual(updated_id, "attacker-should-be-ignored")
+        metadata = updated_body["app_metadata"]
+        self.assertTrue(metadata["donexto_verified"])
+        self.assertEqual(metadata["donexto_verification_source"], "email")
+        self.assertIn("donexto_verified_at", metadata)
+
+    def test_16_magiclink_hash_falls_back_to_email_type(self) -> None:
+        """Outlook links send type=magiclink; GoTrue often wants type=email."""
+        request = self._make_request(
+            {"donexto_verify": "1", "token_hash": "fresh-hash", "type": "magiclink"}
+        )
+        owner = self._oauth_owner()
+        mock_client = MagicMock()
+
+        def verify(payload: dict[str, str]) -> SimpleNamespace:
+            if payload["type"] == "magiclink":
+                raise Exception("otp type mismatch")
+            return SimpleNamespace(
+                user=owner,
+                session=SimpleNamespace(
+                    access_token="access-from-otp",
+                    refresh_token="refresh-from-otp",
+                    expires_in=3600,
+                ),
+            )
+
+        mock_client.auth.verify_otp.side_effect = verify
+        mock_client.auth.admin.get_user_by_id.return_value = SimpleNamespace(user=owner)
+
+        with patch(
+            "app.api.identity.get_supabase_client", return_value=mock_client
+        ), patch("app.api.identity.mark_donexto_verified") as mark:
+            result = confirm_donexto_identity(request)
+
+        self.assertTrue(result["donexto_verified"])
+        self.assertEqual(
+            [call.args[0]["type"] for call in mock_client.auth.verify_otp.call_args_list],
+            ["magiclink", "email"],
+        )
+        mark.assert_called_once_with(owner.id)
+
+    def test_17_reused_token_does_not_mark(self) -> None:
+        request = self._make_request(
+            {"donexto_verify": "1", "token_hash": "used-hash", "type": "magiclink"}
+        )
+        mock_client = MagicMock()
+        mock_client.auth.verify_otp.side_effect = Exception("Token has expired or is invalid")
+
+        with patch("app.api.identity.get_supabase_client", return_value=mock_client), patch(
+            "app.api.identity.mark_donexto_verified"
+        ) as mark:
             with self.assertRaises(HTTPException) as caught:
                 confirm_donexto_identity(request)
 
         self.assertEqual(caught.exception.status_code, 403)
         self.assertEqual(
-            caught.exception.detail.get("status"), "verification_user_mismatch"
+            caught.exception.detail.get("status"), "invalid_verification_token"
+        )
+        mark.assert_not_called()
+        self.assertEqual(mock_client.auth.verify_otp.call_count, 2)
+
+    def test_18_oauth_without_email_click_cannot_confirm(self) -> None:
+        """Microsoft OAuth plus email_confirmed_at is not Donexto verification."""
+        from app.security.donexto_verified import trusted_donexto_verified
+
+        request = self._make_request({"donexto_verify": "1"})
+        with self.assertRaises(HTTPException) as caught:
+            confirm_donexto_identity(request)
+        self.assertEqual(caught.exception.status_code, 403)
+        self.assertEqual(
+            caught.exception.detail.get("status"), "verification_proof_required"
+        )
+        self.assertFalse(
+            trusted_donexto_verified(
+                {"donexto_verified": True},
+                oauth_identity_present=True,
+            )
+        )
+        self.assertFalse(
+            trusted_donexto_verified(
+                {},
+                oauth_identity_present=True,
+            )
         )
 
 
@@ -367,6 +490,37 @@ class MiddlewareIntegrationTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         mock_resolve_workspace.assert_called_once()
+
+    def test_19_cold_confirm_reaches_handler_without_bearer(self) -> None:
+        """The email tab has no Authorization header. Middleware must not 401 it."""
+        from fastapi import FastAPI
+
+        from app.middleware.authentication_context import AuthenticationContextMiddleware
+
+        app = FastAPI()
+        app.add_middleware(AuthenticationContextMiddleware)
+
+        @app.post("/identity/confirm-donexto")
+        def confirm() -> dict[str, bool]:
+            return {"reached": True}
+
+        client = TestClient(app)
+        response = client.post(
+            "/identity/confirm-donexto",
+            params={"donexto_verify": "1", "token_hash": "hash", "type": "magiclink"},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"reached": True})
+
+    def test_20_send_verify_still_requires_a_session(self) -> None:
+        from app.middleware.authentication_context import AuthenticationContextMiddleware
+
+        request = MagicMock()
+        request.method = "POST"
+        request.url.path = "/identity/send-donexto-verify"
+        self.assertTrue(AuthenticationContextMiddleware._requires_identity(request))
+        request.url.path = "/identity/confirm-donexto"
+        self.assertFalse(AuthenticationContextMiddleware._requires_identity(request))
 
 
 if __name__ == "__main__":

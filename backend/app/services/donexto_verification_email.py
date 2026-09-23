@@ -324,6 +324,7 @@ def verification_token_from_generate_response(response: Any) -> tuple[str, str]:
 
     The action URL consumes the token before the app can post it to
     ``confirm-donexto``. The app link must carry the still-unused hash.
+    That endpoint verifies the hash with no existing OAuth session.
     """
     props = _properties(response)
     token = str(props.get("hashed_token") or "").strip()

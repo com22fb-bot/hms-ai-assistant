@@ -47,6 +47,9 @@ _PUBLIC_PATHS = {
     "/auth/microsoft/callback",
     "/auth/login/resolve",
     "/auth/login/waitlist",
+    # Email click may open a browser with no OAuth session. The token_hash
+    # is the proof; the handler rejects calls that do not carry it.
+    "/identity/confirm-donexto",
 }
 
 
