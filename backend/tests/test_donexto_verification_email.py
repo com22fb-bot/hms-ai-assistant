@@ -1,3 +1,4 @@
+import os
 import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -14,8 +15,10 @@ from app.services.donexto_verification_email import (
     VerificationEmailUserNotFound,
     build_verification_email,
     normalize_language,
+    resolve_verification_language,
     send_verification_email,
 )
+from app.services.support_notify import send_transactional_email
 
 
 class DonextoVerificationEmailTests(unittest.TestCase):
@@ -35,6 +38,57 @@ class DonextoVerificationEmailTests(unittest.TestCase):
         self.assertEqual(normalize_language("es-ES"), "es")
         self.assertEqual(normalize_language("pt_BR"), "pt")
         self.assertEqual(normalize_language("de"), "es")
+
+    def test_login_language_beats_english_metadata_and_defaults_to_spanish(self) -> None:
+        self.assertEqual(resolve_verification_language("es"), "es")
+        self.assertEqual(resolve_verification_language("en"), "en")
+        self.assertEqual(resolve_verification_language("es-MX"), "es")
+        self.assertEqual(resolve_verification_language(""), "es")
+        self.assertEqual(resolve_verification_language(None), "es")
+        self.assertEqual(resolve_verification_language("de"), "es")
+
+    def test_html_button_matches_login_language(self) -> None:
+        link = "https://app.donexto.com/?donexto_verify=1&token_hash=abc&type=magiclink"
+        spanish = build_verification_email("es", link)
+        english = build_verification_email("en", link)
+
+        self.assertEqual(spanish.subject, "Confirma tu correo de Donexto")
+        self.assertIn("Confirma tu correo de Donexto", spanish.body)
+        self.assertNotIn("Confirm your Donexto email", spanish.body)
+        self.assertIn(">Verificar</a>", spanish.html)
+        self.assertNotIn(">Verify</a>", spanish.html)
+        self.assertIn("token_hash=abc", spanish.html)
+        self.assertIn("type=magiclink", spanish.html)
+        self.assertIn(link, spanish.body)
+        self.assertNotIn("<script", spanish.html.lower())
+
+        self.assertEqual(english.subject, "Confirm your Donexto email")
+        self.assertIn("Confirm your Donexto email", english.body)
+        self.assertNotIn("Confirma tu correo de Donexto", english.body)
+        self.assertIn(">Verify</a>", english.html)
+        self.assertNotIn(">Verificar</a>", english.html)
+        self.assertIn("token_hash=abc", english.html)
+        self.assertIn(link, english.body)
+
+        buttons = {
+            "fr": ">Vérifier</a>",
+            "it": ">Verifica</a>",
+            "pt": ">Verificar</a>",
+        }
+        for language, button in buttons.items():
+            message = build_verification_email(language, link)
+            self.assertIn(button, message.html)
+            self.assertIn("token_hash=abc", message.html)
+            self.assertIn(link, message.body)
+
+    def test_html_escapes_the_link_and_keeps_the_plain_text_url(self) -> None:
+        dirty = 'https://app.example/?a=1&token_hash="><script>alert(1)</script>'
+        message = build_verification_email("es", dirty)
+        self.assertIn(dirty, message.body)
+        self.assertNotIn("<script>", message.html)
+        self.assertIn("&lt;script&gt;", message.html)
+        self.assertIn("token_hash=", message.html)
+        self.assertIn(">Verificar</a>", message.html)
 
     def test_resend_unknown_user_raises_not_found(self) -> None:
         client = MagicMock()
@@ -88,6 +142,9 @@ class DonextoVerificationEmailTests(unittest.TestCase):
         self.assertEqual(deliver.call_args.args[0], "user@example.test")
         self.assertEqual(deliver.call_args.args[1], "Confirm your Donexto email")
         self.assertIn("hash-token", deliver.call_args.args[2])
+        self.assertIn(">Verify</a>", deliver.call_args.kwargs["html"])
+        self.assertIn("token_hash=hash-token", deliver.call_args.kwargs["html"])
+        self.assertIn("type=magiclink", deliver.call_args.kwargs["html"])
 
     def test_lookup_finds_user_past_first_page(self) -> None:
         client = MagicMock()
@@ -261,6 +318,146 @@ class DonextoVerificationEmailTests(unittest.TestCase):
         self.assertTrue(
             any("donexto_verify_resend_provider_error" in record for record in error_logs.output)
         )
+
+    def _existing_verify_client(self) -> MagicMock:
+        client = MagicMock()
+        client.auth.admin.get_user_by_id.return_value = SimpleNamespace(
+            user=SimpleNamespace(
+                id="user-1",
+                email="user@example.test",
+                email_confirmed_at=None,
+            )
+        )
+        client.auth.admin.generate_link.return_value = SimpleNamespace(
+            properties={"hashed_token": "lang-token", "verification_type": "magiclink"}
+        )
+        return client
+
+    def test_spanish_login_beats_english_account_metadata(self) -> None:
+        context = SimpleNamespace(
+            user=SimpleNamespace(
+                id="user-1",
+                email="user@example.test",
+                raw_user_metadata={"language": "en", "locale": "en-US"},
+            )
+        )
+        client = self._existing_verify_client()
+        with patch("app.api.identity.require_request_context", return_value=context), patch(
+            "app.api.identity.get_supabase_client", return_value=client
+        ), patch(
+            "app.services.support_notify.send_transactional_email",
+            return_value=True,
+        ) as deliver:
+            result = send_donexto_verification_email(
+                DonextoVerificationEmailRequest(language="es")
+            )
+        self.assertEqual(result, {"status": "sent"})
+        self.assertEqual(deliver.call_args.args[1], "Confirma tu correo de Donexto")
+        self.assertIn("Confirma tu correo de Donexto", deliver.call_args.args[2])
+        self.assertNotIn("Confirm your Donexto email", deliver.call_args.args[2])
+        self.assertIn(">Verificar</a>", deliver.call_args.kwargs["html"])
+        self.assertNotIn(">Verify</a>", deliver.call_args.kwargs["html"])
+        self.assertIn("token_hash=lang-token", deliver.call_args.kwargs["html"])
+        self.assertIn("type=magiclink", deliver.call_args.kwargs["html"])
+
+    def test_omitted_language_stays_spanish_when_metadata_is_english(self) -> None:
+        context = SimpleNamespace(
+            user=SimpleNamespace(
+                id="user-1",
+                email="user@example.test",
+                raw_user_metadata={"language": "en"},
+            )
+        )
+        client = self._existing_verify_client()
+        with patch("app.api.identity.require_request_context", return_value=context), patch(
+            "app.api.identity.get_supabase_client", return_value=client
+        ), patch(
+            "app.services.support_notify.send_transactional_email",
+            return_value=True,
+        ) as deliver:
+            send_donexto_verification_email(DonextoVerificationEmailRequest())
+        self.assertEqual(deliver.call_args.args[1], "Confirma tu correo de Donexto")
+        self.assertIn(">Verificar</a>", deliver.call_args.kwargs["html"])
+
+    def test_english_login_sends_english_button(self) -> None:
+        context = SimpleNamespace(
+            user=SimpleNamespace(
+                id="user-1",
+                email="user@example.test",
+                raw_user_metadata={"language": "es"},
+            )
+        )
+        client = self._existing_verify_client()
+        with patch("app.api.identity.require_request_context", return_value=context), patch(
+            "app.api.identity.get_supabase_client", return_value=client
+        ), patch(
+            "app.services.support_notify.send_transactional_email",
+            return_value=True,
+        ) as deliver:
+            send_donexto_verification_email(
+                DonextoVerificationEmailRequest(language="en")
+            )
+        self.assertEqual(deliver.call_args.args[1], "Confirm your Donexto email")
+        self.assertIn("Confirm your Donexto email", deliver.call_args.args[2])
+        self.assertNotIn("Confirma tu correo de Donexto", deliver.call_args.args[2])
+        self.assertIn(">Verify</a>", deliver.call_args.kwargs["html"])
+        self.assertNotIn(">Verificar</a>", deliver.call_args.kwargs["html"])
+
+    def test_resend_posts_html_and_text(self) -> None:
+        link = "https://app.donexto.com/?donexto_verify=1&token_hash=abc&type=magiclink"
+        message = build_verification_email("es", link)
+        with patch.dict(
+            os.environ,
+            {"SUPPORT_SMTP_HOST": "", "RESEND_API_KEY": "re_test"},
+        ), patch("app.services.support_notify.httpx.post") as post:
+            post.return_value = SimpleNamespace(status_code=200)
+            delivered = send_transactional_email(
+                "user@example.test",
+                message.subject,
+                message.body,
+                html=message.html,
+            )
+        self.assertTrue(delivered)
+        payload = post.call_args.kwargs["json"]
+        self.assertEqual(payload["subject"], "Confirma tu correo de Donexto")
+        self.assertIn(link, payload["text"])
+        self.assertIn("token_hash=abc", payload["html"])
+        self.assertIn(">Verificar</a>", payload["html"])
+        self.assertNotIn(">Verify</a>", payload["html"])
+
+    def test_smtp_sets_plain_and_html_alternative(self) -> None:
+        link = "https://app.donexto.com/?donexto_verify=1&token_hash=abc&type=magiclink"
+        message = build_verification_email("es", link)
+        smtp = MagicMock()
+        with patch.dict(
+            os.environ,
+            {
+                "SUPPORT_SMTP_HOST": "smtp.test",
+                "SUPPORT_SMTP_PORT": "587",
+                "SUPPORT_SMTP_FROM": "support@donexto.com",
+                "RESEND_API_KEY": "",
+            },
+        ), patch("app.services.support_notify.smtplib.SMTP") as smtp_cls:
+            smtp_cls.return_value.__enter__.return_value = smtp
+            delivered = send_transactional_email(
+                "user@example.test",
+                message.subject,
+                message.body,
+                html=message.html,
+            )
+        self.assertTrue(delivered)
+        sent = smtp.send_message.call_args.args[0]
+        self.assertEqual(sent.get_content_type(), "multipart/alternative")
+        plain = sent.get_body(preferencelist=("plain",))
+        rich = sent.get_body(preferencelist=("html",))
+        self.assertIsNotNone(plain)
+        self.assertIsNotNone(rich)
+        assert plain is not None and rich is not None
+        self.assertIn("token_hash=abc", plain.get_content())
+        self.assertIn("type=magiclink", plain.get_content())
+        self.assertIn(">Verificar</a>", rich.get_content())
+        self.assertIn("token_hash=abc", rich.get_content())
+        self.assertNotIn("<script", rich.get_content().lower())
 
 
 class AppendVerifyFlagTests(unittest.TestCase):

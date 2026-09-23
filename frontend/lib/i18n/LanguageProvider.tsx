@@ -12,11 +12,12 @@ import {
 
 import { supabase } from "@/lib/supabase";
 import {
-  isAppLanguage,
   languageFromBrowser,
   localeForLanguage,
+  noteUiLanguage,
+  readRememberedLoginLanguage,
   readStoredLanguage,
-  writeStoredLanguage,
+  rememberLoginLanguage,
   type AppLanguage,
 } from "@/lib/i18n/languages";
 import { translate, type MessageKey } from "@/lib/i18n/messages";
@@ -53,8 +54,11 @@ function getSnapshot(): AppLanguage {
   if (!hydrated) {
     hydrated = true;
     currentLanguage =
-      readStoredLanguage() || languageFromBrowser(navigator.language);
-    writeStoredLanguage(currentLanguage);
+      readStoredLanguage() ||
+      readRememberedLoginLanguage() ||
+      languageFromBrowser(navigator.language);
+    noteUiLanguage(currentLanguage);
+    rememberLoginLanguage(currentLanguage);
     if (typeof document !== "undefined") {
       document.documentElement.lang = currentLanguage;
     }
@@ -64,7 +68,7 @@ function getSnapshot(): AppLanguage {
 
 function applyLanguage(next: AppLanguage) {
   currentLanguage = next;
-  writeStoredLanguage(next);
+  rememberLoginLanguage(next);
   if (typeof document !== "undefined") {
     document.documentElement.lang = next;
   }
@@ -90,10 +94,10 @@ export function LanguageProvider({
     }
     let cancelled = false;
     void (async () => {
-      const { data } = await supabase.auth.getUser();
-      const fromMeta = data.user?.user_metadata?.language;
+      // Keep the login screen language. Do not copy user_metadata.language
+      // over it: that field can stay "en" after a Spanish login.
       const stored = readStoredLanguage();
-      const next = stored || (isAppLanguage(fromMeta) ? fromMeta : language);
+      const next = stored || readRememberedLoginLanguage() || language;
       if (!cancelled) {
         applyLanguage(next);
         try {

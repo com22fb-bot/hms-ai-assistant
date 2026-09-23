@@ -15,6 +15,7 @@ from app.security.identity import require_request_context
 from app.security.redirect import sanitize_return_to
 from app.services.donexto_verification_email import (
     VerificationEmailUserNotFound,
+    resolve_verification_language,
     send_verification_email,
 )
 
@@ -101,9 +102,10 @@ def send_donexto_verification_email(
             },
         )
 
-    language = payload.language or context.user.raw_user_metadata.get(
-        "language", "es"
-    )
+    # The login screen sends its i18n language. Do not replace that with
+    # user_metadata.language or Accept-Language: OAuth metadata often stays
+    # "en" after the login strip is already Spanish.
+    language = resolve_verification_language(payload.language)
     redirect_to = sanitize_return_to(payload.redirect_to)
     user_id = context.user.id if isinstance(context.user.id, str) else None
     try:
