@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Outfit } from "next/font/google";
 
+import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
+
 import "./globals.css";
 import "./approved-ui.css";
 import "./donexto-skin.css";
@@ -57,7 +59,11 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${hmsSans.variable} ${hmsDisplay.variable}`}
     >
-      <body className={hmsSans.className}>{children}</body>
+      <body className={hmsSans.className}>
+        {/* LoginScreen calls useLanguage. Home nests another provider with the
+            signed-in user id; this one covers /admin and any other route. */}
+        <LanguageProvider>{children}</LanguageProvider>
+      </body>
     </html>
   );
 }
