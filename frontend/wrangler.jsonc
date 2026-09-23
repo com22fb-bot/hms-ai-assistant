@@ -8,7 +8,10 @@
 		"global_fetch_strictly_public"
 	],
 	"vars": {
-		// Server-side proxy target for /api/hms/* → Railway FastAPI
+		// Server-side proxy target for /api/hms/* → Railway FastAPI.
+		// scripts/deploy-worker.mjs also injects NEXT_PUBLIC_SUPABASE_* for
+		// this deploy only. nodejs_compat reads Worker vars as process.env;
+		// without them an un-inlined bundle throws during SSR and `/` is HTTP 500.
 		"HMS_INTERNAL_API_BASE_URL": "https://hms-ai-assistant-production.up.railway.app"
 	},
 	"assets": {

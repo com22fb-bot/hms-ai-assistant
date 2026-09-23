@@ -46,6 +46,7 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: node --experimental-strip-types --test lib/loginGate.test.ts
+      - run: node --test scripts/workerPublicEnv.test.mjs
       - name: Build and deploy worker
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
