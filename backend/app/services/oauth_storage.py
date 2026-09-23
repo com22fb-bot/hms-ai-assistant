@@ -100,6 +100,37 @@ def _parse_datetime(value: Any) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
+def _normalize_oauth_state_prefix(state_prefix: str | None) -> str:
+    """Normaliza intent/tenant y conserva el login_hint en base64.
+
+    El correo de Continuar viaja como urlsafe-base64 después del marcador
+    ``h`` (``encode_login_hint_in_state_prefix``). Esa cadena distingue
+    mayúsculas: bajar todo el prefijo con ``.lower()`` la corrompe y el
+    callback no recupera el correo, aunque coincida con Microsoft o Yahoo.
+    """
+    raw = (state_prefix or "").strip()
+    if not raw:
+        return ""
+
+    # Import perezoso: yahoo_oauth no debe arrastrar este módulo al cargarse.
+    from app.services.yahoo_oauth import HINT_STATE_MARKER
+
+    marker = HINT_STATE_MARKER.lower()
+    parts = raw.split(".")
+    normalized: list[str] = []
+    index = 0
+    while index < len(parts):
+        segment = parts[index]
+        if segment.lower() == marker and index + 1 < len(parts):
+            normalized.append(marker)
+            normalized.append(parts[index + 1])
+            index += 2
+            continue
+        normalized.append(segment.lower())
+        index += 1
+    return ".".join(normalized)
+
+
 def _normalize_provider(provider: str) -> str:
     normalized = provider.strip().lower()
 
@@ -331,7 +362,9 @@ class OAuthStorage:
         Retorna el valor original que debe enviarse al proveedor.
         En Supabase solo se almacena su hash SHA-256.
         `state_prefix` viaja en el token (p. ej. login/signup) porque
-        return_to se sanitiza a solo el origen.
+        return_to se sanitiza a solo el origen. Intent y tenant se
+        normalizan a minúsculas; el segmento base64 del correo de
+        Continuar conserva su caja.
         """
 
         normalized_provider = _normalize_provider(provider)
@@ -344,7 +377,7 @@ class OAuthStorage:
         self.delete_expired_oauth_states()
 
         raw_state = secrets.token_urlsafe(48)
-        prefix = (state_prefix or "").strip().lower()
+        prefix = _normalize_oauth_state_prefix(state_prefix)
         if prefix:
             raw_state = f"{prefix}.{raw_state}"
         hashed_state = _state_hash(raw_state)
