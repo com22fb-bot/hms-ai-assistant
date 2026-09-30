@@ -153,4 +153,4 @@ PRs recientes en `main` (agosto): #28 idiomas, #29 Microsoft callback, #30 login
 - Deploy Worker solo con `CLOUDFLARE_API_TOKEN` (no OAuth Wrangler en Codespace).
 - Railway publica `main`. Ramas `cursor/<nombre>-3d73`.
 - No Vercel.
-- `support@yahoo.com` es inbox interno de dominios no soportados, no el mailer de verify (eso es SMTP de Supabase).
+- Avisos internos de dominios no soportados van a `support@donexto.com` (antes el default era `support@yahoo.com`, un buzón que no es de Donexto). No es el mailer de verify.
