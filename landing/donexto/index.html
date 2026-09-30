@@ -238,7 +238,7 @@
             </header>
             <div class="dash-proto__bar">
               <span class="dash-proto__ai">IA · criterio N1</span>
-              <span>hsalcidor@yahoo.com</span>
+              <span>alex@correo.example</span>
             </div>
             <div class="dash-proto__metrics is-dense">
               <div><b>4</b><span>N1</span></div>
@@ -445,12 +445,33 @@
                 <option value="OTHER" data-i18n="opt_other">Otro</option>
               </select>
             </label>
+            <label class="field">
+              <span data-i18n="label_message">Mensaje</span>
+              <textarea
+                name="message"
+                required
+                maxlength="2000"
+                rows="5"
+                data-i18n-placeholder="ph_message"
+                placeholder="Cuéntanos en qué podemos ayudarte"
+              ></textarea>
+            </label>
+            <div class="hp-field" aria-hidden="true">
+              <label>
+                Website
+                <input
+                  type="text"
+                  name="website"
+                  tabindex="-1"
+                  autocomplete="off"
+                />
+              </label>
+            </div>
             <button type="submit" class="btn primary full" data-i18n="btn_join">
               Enviar
             </button>
             <p class="form-note" data-i18n="form_note">
-              Abre tu cliente de correo hacia support@donexto.com. No vendemos
-              listas.
+              Llega a support@donexto.com. No vendemos listas.
             </p>
             <p class="form-status" id="formStatus" role="status" hidden></p>
           </form>
@@ -515,6 +536,6 @@
       </p>
     </footer>
 
-    <script src="./app.js?v=lang5" defer></script>
+    <script src="./app.js?v=contact1" defer></script>
   </body>
 </html>
