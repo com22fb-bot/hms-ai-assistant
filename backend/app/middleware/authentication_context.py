@@ -50,6 +50,8 @@ _PUBLIC_PATHS = {
     # Email click may open a browser with no OAuth session. The token_hash
     # is the proof; the handler rejects calls that do not carry it.
     "/identity/confirm-donexto",
+    # Marketing landing form. No session; validated and rate-limited itself.
+    "/public/contact",
 }
 
 

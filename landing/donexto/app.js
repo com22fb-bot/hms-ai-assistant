@@ -93,16 +93,20 @@ const strings = {
     label_name: "Nombre",
     label_email: "Correo",
     label_country: "País",
+    label_message: "Mensaje",
     ph_name: "Alex",
     ph_email: "tu@correo.com",
+    ph_message: "Cuéntanos en qué podemos ayudarte",
     opt_us: "Estados Unidos",
     opt_mx: "México",
     opt_other: "Otro",
     btn_join: "Enviar",
-    form_note:
-      "Abre tu cliente de correo hacia support@donexto.com. No vendemos listas.",
-    form_ok: "Casi listo: envía el correo que se abrió.",
+    btn_sending: "Enviando…",
+    form_note: "Llega a support@donexto.com. No vendemos listas.",
+    form_ok: "Listo. Recibimos tu mensaje.",
     form_err: "Escribe un correo válido.",
+    form_msg_err: "Escribe un mensaje.",
+    form_send_err: "No se pudo enviar. Escríbenos a",
     social_title: "Canal",
     foot_tag: "Do Next To…",
   },
@@ -195,15 +199,20 @@ const strings = {
     label_name: "Name",
     label_email: "Email",
     label_country: "Country",
+    label_message: "Message",
     ph_name: "Alex",
     ph_email: "you@email.com",
+    ph_message: "Tell us how we can help",
     opt_us: "United States",
     opt_mx: "Mexico",
     opt_other: "Other",
     btn_join: "Send",
-    form_note: "Opens your mail client to support@donexto.com. We don’t sell lists.",
-    form_ok: "Almost done—send the email that just opened.",
+    btn_sending: "Sending…",
+    form_note: "It goes to support@donexto.com. We don’t sell lists.",
+    form_ok: "Sent. We received your message.",
     form_err: "Enter a valid email.",
+    form_msg_err: "Write a message.",
+    form_send_err: "Could not send. Email us at",
     social_title: "Channel",
     foot_tag: "Do Next To…",
   },
@@ -296,15 +305,20 @@ const strings = {
     label_name: "Nom",
     label_email: "E-mail",
     label_country: "Pays",
+    label_message: "Message",
     ph_name: "Alex",
     ph_email: "vous@email.com",
+    ph_message: "Dites-nous comment vous aider",
     opt_us: "États-Unis",
     opt_mx: "Mexique",
     opt_other: "Autre",
     btn_join: "Envoyer",
-    form_note: "Ouvre votre client mail vers support@donexto.com. Nous ne vendons pas de listes.",
-    form_ok: "Presque prêt : envoyez l’e-mail qui s’est ouvert.",
+    btn_sending: "Envoi…",
+    form_note: "Le message arrive à support@donexto.com. Nous ne vendons pas de listes.",
+    form_ok: "Envoyé. Nous avons reçu votre message.",
     form_err: "Saisissez un e-mail valide.",
+    form_msg_err: "Écrivez un message.",
+    form_send_err: "Envoi impossible. Écrivez-nous à",
     social_title: "Canal",
     foot_tag: "Do Next To…",
   },
@@ -397,15 +411,20 @@ const strings = {
     label_name: "Nome",
     label_email: "Email",
     label_country: "Paese",
+    label_message: "Messaggio",
     ph_name: "Alex",
     ph_email: "tu@email.com",
+    ph_message: "Dicci come possiamo aiutarti",
     opt_us: "Stati Uniti",
     opt_mx: "Messico",
     opt_other: "Altro",
     btn_join: "Invia",
-    form_note: "Apre il client di posta verso support@donexto.com. Non vendiamo liste.",
-    form_ok: "Quasi fatto: invia l’email appena aperta.",
+    btn_sending: "Invio…",
+    form_note: "Arriva a support@donexto.com. Non vendiamo liste.",
+    form_ok: "Inviato. Abbiamo ricevuto il messaggio.",
     form_err: "Inserisci un’email valida.",
+    form_msg_err: "Scrivi un messaggio.",
+    form_send_err: "Invio non riuscito. Scrivici a",
     social_title: "Canale",
     foot_tag: "Do Next To…",
   },
@@ -498,15 +517,20 @@ const strings = {
     label_name: "Nome",
     label_email: "Correio",
     label_country: "País",
+    label_message: "Mensagem",
     ph_name: "Alex",
     ph_email: "voce@email.com",
+    ph_message: "Conte-nos como podemos ajudar",
     opt_us: "Estados Unidos",
     opt_mx: "México",
     opt_other: "Outro",
     btn_join: "Enviar",
-    form_note: "Abre o cliente de correio para support@donexto.com. Não vendemos listas.",
-    form_ok: "Quase: envie o correio que se abriu.",
+    btn_sending: "A enviar…",
+    form_note: "Chega a support@donexto.com. Não vendemos listas.",
+    form_ok: "Enviado. Recebemos a sua mensagem.",
     form_err: "Escreva um correio válido.",
+    form_msg_err: "Escreva uma mensagem.",
+    form_send_err: "Não foi possível enviar. Escreva para",
     social_title: "Canal",
     foot_tag: "Do Next To…",
   },
@@ -886,44 +910,92 @@ document.getElementById("storyNext")?.addEventListener("click", () => {
   if (playing) shotStartedAt = performance.now();
 });
 
-document.getElementById("waitForm")?.addEventListener("submit", (event) => {
+const CONTACT_API =
+  "https://hms-ai-assistant-production.up.railway.app/public/contact";
+
+function paintFormStatus(status, tone) {
+  status.hidden = false;
+  if (tone === "ok") {
+    status.style.background = "rgba(36, 200, 202, 0.2)";
+    status.style.color = "#9fe8e4";
+    return;
+  }
+  status.style.background = "rgba(140, 40, 28, 0.28)";
+  status.style.color = "#ffb4a8";
+}
+
+function paintSendFailure(status, dict) {
+  paintFormStatus(status, "err");
+  status.replaceChildren();
+  status.append(document.createTextNode(`${dict.form_send_err} `));
+  const link = document.createElement("a");
+  link.href = "mailto:support@donexto.com";
+  link.textContent = "support@donexto.com";
+  status.append(link);
+}
+
+document.getElementById("waitForm")?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
   const status = document.getElementById("formStatus");
+  const button = form.querySelector('button[type="submit"]');
   const dict = strings[lang] || strings.es;
   const data = new FormData(form);
   const name = String(data.get("name") || "").trim();
   const email = String(data.get("email") || "").trim().toLowerCase();
   const country = String(data.get("country") || "MX");
+  const message = String(data.get("message") || "").trim();
+  const website = String(data.get("website") || "");
 
   if (!email.includes("@") || email.length < 5) {
-    status.hidden = false;
-    status.textContent = dict.form_err;
-    status.style.background = "rgba(140, 40, 28, 0.28)";
-    status.style.color = "#ffb4a8";
+    paintFormStatus(status, "err");
+    status.replaceChildren(document.createTextNode(dict.form_err));
+    return;
+  }
+  if (!message) {
+    paintFormStatus(status, "err");
+    status.replaceChildren(document.createTextNode(dict.form_msg_err));
     return;
   }
 
-  const to = "support@donexto.com";
-  const subject = encodeURIComponent("Donexto contact / waitlist");
-  const body = encodeURIComponent(
-    [
-      "Donexto landing contact",
-      "",
-      `Name: ${name || "(not provided)"}`,
-      `Email: ${email}`,
-      `Country: ${country}`,
-      `Lang: ${lang}`,
-      `Source: donexto.com`,
-    ].join("\n"),
-  );
+  if (button) {
+    button.disabled = true;
+    button.textContent = dict.btn_sending || dict.btn_join;
+  }
 
-  status.hidden = false;
-  status.textContent = dict.form_ok;
-  status.style.background = "rgba(36, 200, 202, 0.2)";
-  status.style.color = "#9fe8e4";
-
-  window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+  try {
+    const response = await fetch(CONTACT_API, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        name,
+        email,
+        country,
+        message,
+        lang,
+        website,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!response.ok) {
+      paintSendFailure(status, dict);
+      return;
+    }
+    paintFormStatus(status, "ok");
+    status.replaceChildren(document.createTextNode(dict.form_ok));
+    form.reset();
+  } catch {
+    paintSendFailure(status, dict);
+  } finally {
+    if (button) {
+      const current = strings[lang] || strings.es;
+      button.disabled = false;
+      button.textContent = current.btn_join;
+    }
+  }
 });
 
 applyLang();

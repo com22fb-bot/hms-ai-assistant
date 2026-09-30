@@ -15,7 +15,8 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_SUPPORT_EMAIL = "support@yahoo.com"
+DEFAULT_SUPPORT_EMAIL = "support@donexto.com"
+PUBLIC_CONTACT_INBOX = "support@donexto.com"
 _NOTIFY_COOLDOWN_SECONDS = 24 * 60 * 60
 _recent_domains: dict[str, float] = {}
 _recent_lock = threading.Lock()
@@ -123,6 +124,11 @@ def _send_via_smtp(
     return True
 
 
+def _one_line(value: str, limit: int) -> str:
+    cleaned = " ".join((value or "").replace("\r", " ").replace("\n", " ").split())
+    return cleaned[:limit]
+
+
 def _send_via_resend(
     to_addr: str,
     subject: str,
@@ -130,8 +136,9 @@ def _send_via_resend(
     *,
     html: str | None = None,
     from_addr: str | None = None,
+    reply_to: str | None = None,
 ) -> bool:
-    """Resend HTTP API. Used when SUPPORT_SMTP_HOST is unset and RESEND_API_KEY is set."""
+    """Resend HTTP API. Does not open an SMTP connection."""
     api_key = os.getenv("RESEND_API_KEY", "").strip()
     if not api_key:
         return False
@@ -146,6 +153,9 @@ def _send_via_resend(
     }
     if html:
         payload["html"] = html
+    clean_reply = _one_line(reply_to or "", 320)
+    if clean_reply:
+        payload["reply_to"] = clean_reply
     try:
         response = httpx.post(
             "https://api.resend.com/emails",
@@ -207,6 +217,47 @@ def send_transactional_email(
     return False
 
 
+def send_public_contact_message(
+    *,
+    name: str,
+    email: str,
+    country: str,
+    message: str,
+    lang: str,
+) -> bool:
+    """Landing contact via Resend HTTP only.
+
+    ``send_transactional_email`` tries SMTP first when ``SUPPORT_SMTP_HOST``
+    is set. From Railway that path to smtp.resend.com times out, so this
+    helper never calls SMTP or ``send_transactional_email``.
+    Returns False when ``RESEND_API_KEY`` is unset. Transport failures raise
+    ``SMTPDeliveryError``.
+    """
+    safe_name = _one_line(name, 80)
+    subject = "Donexto: mensaje desde donexto.com"
+    if safe_name:
+        subject = f"Donexto: mensaje de {safe_name}"[:180]
+    body = "\n".join(
+        [
+            "Mensaje desde el formulario de donexto.com",
+            "",
+            f"Nombre: {safe_name or '(no indicado)'}",
+            f"Correo: {email}",
+            f"País: {_one_line(country, 40) or '(no indicado)'}",
+            f"Idioma: {_one_line(lang, 12) or '(no indicado)'}",
+            "",
+            message.strip(),
+            "",
+        ]
+    )
+    return _send_via_resend(
+        PUBLIC_CONTACT_INBOX,
+        subject,
+        body,
+        reply_to=email,
+    )
+
+
 def _send_via_formsubmit(to_addr: str, subject: str, body: str) -> bool:
     """Fallback sin SMTP: FormSubmit confirma una vez el buzón y reenvía."""
     url = f"https://formsubmit.co/ajax/{to_addr}"
@@ -252,11 +303,13 @@ def send_unsupported_domain_notice(email: str, domain: str) -> bool:
         "integrarlo (OAuth / lectura de buzón).\n"
     )
     persist_domain_request(email, domain, to_addr)
+    # Same constraint as the public contact form: SMTP from Railway to
+    # smtp.resend.com times out, so alerts go out over the Resend HTTP API.
     try:
-        if _send_via_smtp(to_addr, subject, body):
+        if _send_via_resend(to_addr, subject, body):
             return True
     except Exception as error:  # noqa: BLE001
-        logger.warning("SMTP de soporte falló: %s", error)
+        logger.warning("Resend de soporte falló: %s", error)
     try:
         return _send_via_formsubmit(to_addr, subject, body)
     except Exception as error:  # noqa: BLE001
