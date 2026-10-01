@@ -4,6 +4,7 @@ import {
   Activity,
   ArrowLeft,
   CreditCard,
+  Inbox,
   Loader2,
   MessageSquareWarning,
   RefreshCw,
@@ -21,11 +22,13 @@ import { PRODUCT_APP_ORIGIN } from "@/lib/adminCanonical";
 import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
 import { HmsApiError, hmsJson } from "@/lib/hmsApi";
 import "@/app/admin/admin.css";
+import { ContactInbox } from "@/app/admin/ContactInbox";
 
 type AdminTab =
   | "overview"
   | "users"
   | "billing"
+  | "messages"
   | "feedback"
   | "promotions"
   | "system";
@@ -39,6 +42,8 @@ type OverviewResponse = {
     mailbox_connected: number;
     feedback_open: number;
     signed_up_no_product_use_24h: number;
+    contact_nuevo?: number;
+    contact_unread?: number;
   };
   schema?: {
     migrations_hint?: string | null;
@@ -136,6 +141,7 @@ const TABS: Array<{ id: AdminTab; label: string; icon: typeof Activity }> = [
   { id: "overview", label: "Resumen", icon: Activity },
   { id: "users", label: "Usuarios", icon: Users },
   { id: "billing", label: "Cobros", icon: CreditCard },
+  { id: "messages", label: "Mensajes", icon: Inbox },
   { id: "feedback", label: "Quejas y ideas", icon: MessageSquareWarning },
   { id: "promotions", label: "Promociones", icon: Tag },
   { id: "system", label: "Sistema", icon: Server },
@@ -288,12 +294,25 @@ function AdminPage() {
   });
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [contactUnread, setContactUnread] = useState(0);
+  const [contactFocus, setContactFocus] = useState<string | null>(null);
+  const [inboxReload, setInboxReload] = useState(0);
+
+  const onContactUnread = useCallback((count: number) => {
+    setContactUnread(count);
+  }, []);
 
   const sessionEmail = session?.email ?? "";
 
   const loadTab = useCallback(
     async (target: AdminTab) => {
       if (!session) return;
+      if (target === "messages") {
+        setError(null);
+        setForbidden(false);
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       setError(null);
       setForbidden(false);
@@ -357,10 +376,35 @@ function AdminPage() {
   );
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("tab") === "mensajes") {
+      setTab("messages");
+    }
+    const focus = params.get("id");
+    if (focus) setContactFocus(focus);
+  }, []);
+
+  useEffect(() => {
     if (authLoading) return;
     if (!session) return;
     void loadTab(tab);
   }, [authLoading, session, tab, loadTab]);
+
+  useEffect(() => {
+    if (!session) return;
+    let cancelled = false;
+    void hmsJson<{ unread: number }>(
+      "/api/hms/admin/contact-messages?limit=1",
+      { cache: "no-store" },
+    )
+      .then((data) => {
+        if (!cancelled) setContactUnread(data.unread || 0);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [session]);
 
   const headerMeta = useMemo(() => {
     if (!sessionEmail) return "Sin sesión";
@@ -510,7 +554,10 @@ function AdminPage() {
           <button
             type="button"
             className="dx-admin__btn dx-admin__btn--ghost"
-            onClick={() => void loadTab(tab)}
+            onClick={() => {
+              if (tab === "messages") setInboxReload((value) => value + 1);
+              void loadTab(tab);
+            }}
             disabled={loading}
           >
             <RefreshCw size={16} />
@@ -546,6 +593,14 @@ function AdminPage() {
             >
               <Icon size={16} />
               {item.label}
+              {item.id === "messages" && contactUnread > 0 && (
+                <span
+                  className="dx-admin__badge"
+                  aria-label={`${contactUnread} mensajes por atender`}
+                >
+                  {contactUnread}
+                </span>
+              )}
             </button>
           );
         })}
@@ -607,6 +662,10 @@ function AdminPage() {
               <article>
                 <span>Feedback abierto</span>
                 <strong>{overview.counts.feedback_open}</strong>
+              </article>
+              <article>
+                <span>Mensajes por atender</span>
+                <strong>{overview.counts.contact_unread ?? 0}</strong>
               </article>
               <article>
                 <span>Sin uso en 24&nbsp;h</span>
@@ -749,6 +808,14 @@ function AdminPage() {
               ))}
             </ul>
           </section>
+        )}
+
+        {!forbidden && tab === "messages" && (
+          <ContactInbox
+            onUnread={onContactUnread}
+            initialId={contactFocus}
+            reloadToken={inboxReload}
+          />
         )}
 
         {!forbidden && tab === "feedback" && (

@@ -6,7 +6,6 @@ import hmac
 import json
 import os
 import time
-from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -16,6 +15,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
+from app.services.vapid_keys import load_vapid_private_key, public_key_for
+
 
 MAX_WEB_PUSH_PLAINTEXT = 3993
 RECORD_SIZE = 4096
@@ -24,10 +25,6 @@ RECORD_SIZE = 4096
 def _b64url_decode(value: str) -> bytes:
     padding = "=" * ((4 - len(value) % 4) % 4)
     return base64.urlsafe_b64decode((value + padding).encode("ascii"))
-
-
-def _b64url_encode(value: bytes) -> str:
-    return base64.urlsafe_b64encode(value).rstrip(b"=").decode("ascii")
 
 
 def _public_bytes(key: ec.EllipticCurvePublicKey) -> bytes:
@@ -109,29 +106,16 @@ def encrypt_web_push_payload(
     return header + ciphertext
 
 
-def _load_vapid_private_key(
-    private_key_path: str,
-) -> ec.EllipticCurvePrivateKey:
-    value = serialization.load_pem_private_key(
-        Path(private_key_path).read_bytes(),
-        password=None,
-    )
-    if not isinstance(value, ec.EllipticCurvePrivateKey):
-        raise ValueError("La llave VAPID no es una llave EC privada.")
-    if not isinstance(value.curve, ec.SECP256R1):
-        raise ValueError("La llave VAPID debe usar la curva P-256.")
-    return value
-
-
 def send_web_push(
     *,
     endpoint: str,
     p256dh: str,
     auth_secret: str,
     payload: dict[str, Any],
-    vapid_private_key_path: str,
     vapid_public_key: str,
     vapid_subject: str,
+    vapid_private_key: str | None = None,
+    vapid_private_key_path: str = "",
     ttl: int = 900,
     timeout: float = 12.0,
 ) -> httpx.Response:
@@ -140,8 +124,11 @@ def send_web_push(
     if parsed.scheme != "https" or not parsed.netloc:
         raise ValueError("El endpoint Push debe ser una URL HTTPS válida.")
 
-    private_key = _load_vapid_private_key(vapid_private_key_path)
-    expected_public = _b64url_encode(_public_bytes(private_key.public_key()))
+    private_key = load_vapid_private_key(
+        material=vapid_private_key,
+        path=vapid_private_key_path,
+    )
+    expected_public = public_key_for(private_key)
     if expected_public != vapid_public_key:
         raise ValueError("Las llaves VAPID pública y privada no coinciden.")
 

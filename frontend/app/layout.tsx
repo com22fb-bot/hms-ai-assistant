@@ -36,7 +36,12 @@ export const metadata: Metadata = {
       { url: "/brand/donexto-3d-2026.png", type: "image/png", sizes: "1024x1024" },
       { url: "/favicon.ico" },
     ],
-    apple: "/brand/donexto-3d-2026.png",
+      apple: "/brand/donexto-3d-2026.png",
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Donexto",
+    statusBarStyle: "black-translucent",
   },
 };
 
@@ -45,7 +50,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   viewportFit: "cover",
-  themeColor: "#f4f1ea",
+  themeColor: "#070A12",
 };
 
 export default function RootLayout({

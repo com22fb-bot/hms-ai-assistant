@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import logging
 import re
+import uuid
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.security.rate_limit import allow_request
+from app.services.contact_inbox import persist_public_contact
 from app.services.support_notify import (
     SMTPDeliveryError,
     send_public_contact_message,
@@ -94,6 +96,7 @@ def submit_public_contact(
         logger.info("Contact honeypot tripped from %s", ip)
         return {"status": "ok"}
 
+    message_id = str(uuid.uuid4())
     try:
         delivered = send_public_contact_message(
             name=payload.name,
@@ -101,6 +104,7 @@ def submit_public_contact(
             country=payload.country,
             message=payload.message,
             lang=payload.lang,
+            message_id=message_id,
         )
     except SMTPDeliveryError:
         logger.warning("Public contact delivery failed")
@@ -121,5 +125,15 @@ def submit_public_contact(
                 "message": "El envío de contacto no está configurado.",
             },
         )
+
+    persist_public_contact(
+        message_id=message_id,
+        name=payload.name,
+        email=payload.email,
+        country=payload.country,
+        message=payload.message,
+        lang=payload.lang,
+        ip=ip,
+    )
 
     return {"status": "ok"}

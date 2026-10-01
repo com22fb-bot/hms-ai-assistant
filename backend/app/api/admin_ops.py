@@ -230,6 +230,11 @@ def admin_overview() -> dict[str, Any]:
             ),
             "feedback_open": 0,
             "signed_up_no_product_use_24h": 0,
+            "contact_nuevo": _count(client, "contact_messages", status="nuevo"),
+            "contact_unread": (
+                _count(client, "contact_messages", status="nuevo")
+                + _count(client, "contact_messages", status="borrador listo")
+            ),
         },
         "product_health": "ok",
         "notes": {

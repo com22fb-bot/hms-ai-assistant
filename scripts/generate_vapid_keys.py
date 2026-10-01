@@ -34,11 +34,15 @@ public_bytes = (
     + public_numbers.y.to_bytes(32, "big")
 )
 public_key = base64.urlsafe_b64encode(public_bytes).rstrip(b"=").decode("ascii")
+private_scalar = base64.urlsafe_b64encode(
+    private_key.private_numbers().private_value.to_bytes(32, "big")
+).rstrip(b"=").decode("ascii")
 subject = os.getenv("HMS_VAPID_SUBJECT", "mailto:hmcelinfo@gmail.com")
 env_path.write_text(
     "\n".join(
         [
             f"HMS_VAPID_PUBLIC_KEY={public_key}",
+            f"HMS_VAPID_PRIVATE_KEY={private_scalar}",
             f"HMS_VAPID_PRIVATE_KEY_PATH={private_path}",
             f"HMS_VAPID_SUBJECT={subject}",
             "HMS_AUTO_SYNC_ENABLED=true",
