@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from app.security.identity import require_request_context
 from app.services.preferences_service import schema_gap
 from app.services.oauth_storage import OAuthStorage
+from app.services.vapid_keys import vapid_is_configured
 from app.services.web_push_sender import send_web_push
 
 
@@ -35,6 +36,10 @@ def _public_key() -> str:
     return os.getenv("HMS_VAPID_PUBLIC_KEY", "").strip()
 
 
+def _private_key_material() -> str:
+    return os.getenv("HMS_VAPID_PRIVATE_KEY", "").strip()
+
+
 def _private_key_path() -> str:
     return os.getenv("HMS_VAPID_PRIVATE_KEY_PATH", "").strip()
 
@@ -46,9 +51,17 @@ def _subject() -> str:
     ).strip()
 
 
+def _vapid_ready() -> bool:
+    return vapid_is_configured(
+        public_key=_public_key(),
+        private_material=_private_key_material(),
+        private_path=_private_key_path(),
+    )
+
+
 def push_configuration() -> dict[str, Any]:
     return {
-        "configured": bool(_public_key() and _private_key_path()),
+        "configured": _vapid_ready(),
         "public_key": _public_key(),
         "sender_available": True,
     }
@@ -214,7 +227,7 @@ def _deliver_to_profile(
     result = {"devices": len(subscriptions), "sent": 0, "failed": 0, "expired": 0}
     if not subscriptions:
         return result
-    if not _private_key_path() or not _public_key():
+    if not _vapid_ready():
         result["failed"] = len(subscriptions)
         return result
 
@@ -228,6 +241,7 @@ def _deliver_to_profile(
                 p256dh=str(subscription["p256dh"]),
                 auth_secret=str(subscription["auth_secret"]),
                 payload=payload,
+                vapid_private_key=_private_key_material() or None,
                 vapid_private_key_path=_private_key_path(),
                 vapid_public_key=_public_key(),
                 vapid_subject=_subject(),
@@ -402,7 +416,7 @@ def send_test_notification(
     lang: str | None = None,
 ) -> dict[str, Any]:
     context = require_request_context()
-    if not _public_key() or not _private_key_path():
+    if not _vapid_ready():
         raise HTTPException(
             status_code=503,
             detail={
