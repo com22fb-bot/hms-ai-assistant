@@ -2,7 +2,8 @@
 
 Un dominio con @ y un punto no basta: hay que distinguir typo
 (hotmil.com), dominio inexistente, proveedor activo, proveedor en
-revisión (Gmail/iCloud) y dominio real aún no integrado.
+revisión (Gmail/Yahoo) y dominio real aún no integrado.
+iCloud se lee por IMAP de solo lectura.
 """
 
 from __future__ import annotations
@@ -20,9 +21,9 @@ from app.services.yahoo_domains import YAHOO_MAIL_DOMAINS
 GMAIL_MAIL_DOMAINS = ("gmail.com", "googlemail.com")
 APPLE_MAIL_DOMAINS = ("icloud.com", "me.com", "mac.com")
 
-# Solo leemos buzón cuando hay OAuth + Mail.Read en producción: Microsoft.
-ACTIVE_OPTIONS_TEXT = "Outlook, Hotmail, Live, MSN y Microsoft 365"
-PENDING_OPTIONS_TEXT = "Gmail, Google Workspace, Yahoo e iCloud"
+# Microsoft por OAuth. iCloud por IMAP de solo lectura (contraseña de app).
+ACTIVE_OPTIONS_TEXT = "Outlook, Hotmail, Live, MSN, Microsoft 365 e iCloud"
+PENDING_OPTIONS_TEXT = "Gmail, Google Workspace y Yahoo"
 
 _LABEL = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$", re.I)
 
@@ -69,10 +70,8 @@ def _roots_for(*groups: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(seen)
 
 
-KNOWN_ACTIVE_DOMAINS = _roots_for(MICROSOFT_MAIL_DOMAINS)
-KNOWN_PENDING_DOMAINS = _roots_for(
-    GMAIL_MAIL_DOMAINS, YAHOO_MAIL_DOMAINS, APPLE_MAIL_DOMAINS
-)
+KNOWN_ACTIVE_DOMAINS = _roots_for(MICROSOFT_MAIL_DOMAINS, APPLE_MAIL_DOMAINS)
+KNOWN_PENDING_DOMAINS = _roots_for(GMAIL_MAIL_DOMAINS, YAHOO_MAIL_DOMAINS)
 KNOWN_MAIL_DOMAINS = _roots_for(KNOWN_ACTIVE_DOMAINS, KNOWN_PENDING_DOMAINS)
 
 MICROSOFT_MX_MARKERS = (
@@ -450,7 +449,7 @@ def classify_mail_domain(
             message=message_for_missing(),
         )
 
-    if provider == "hotmail":
+    if provider in {"hotmail", "apple"}:
         return DomainVerdict(
             email=clean,
             domain=domain,
@@ -460,7 +459,7 @@ def classify_mail_domain(
             message="",
         )
 
-    if provider in {"gmail", "yahoo", "apple"}:
+    if provider in {"gmail", "yahoo"}:
         return DomainVerdict(
             email=clean,
             domain=domain,

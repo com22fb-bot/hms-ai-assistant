@@ -10,7 +10,8 @@ export type AuthGateNext =
   | "unsupported_imap_domain"
   | "pending_review"
   | "unsupported"
-  | "icloud_unavailable";
+  | "icloud_unavailable"
+  | "icloud_connect";
 
 export type AuthGateOAuth = "google" | "azure" | "apple" | "yahoo";
 
@@ -40,7 +41,8 @@ function comingSoonFromNext(next?: string, provider?: string): AuthGateNext | nu
  * Email-first gate: one Continuar.
  * Routing comes from POST /auth/login/resolve (`{ next, provider, message }`).
  * Hotmail/Outlook/M365 can enter and we can read mail.
- * Gmail/Yahoo/iCloud first-time go to waitlist; existing testers
+ * iCloud connects with an app-specific password (read-only IMAP).
+ * Gmail/Yahoo first-time go to waitlist; existing testers
  * still get identity login.
  */
 export function gateNextAfterResolve(
@@ -50,11 +52,13 @@ export function gateNextAfterResolve(
   provider?: string,
 ): AuthGateNext {
   const hasAccount = exists || accountExistsFromResolveNext(next);
-  if (provider === "apple" || next === "apple_oauth" || next === "coming_soon_icloud") {
-    if (hasAccount && next === "apple_oauth") {
-      return "icloud_unavailable";
-    }
-    return "coming_soon_icloud";
+  if (
+    provider === "apple"
+    || next === "apple_oauth"
+    || next === "icloud_imap"
+    || next === "coming_soon_icloud"
+  ) {
+    return "icloud_connect";
   }
   if (next === "fix_domain" || next === "typo" || next === "invalid_domain") {
     return "fix_domain";

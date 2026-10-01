@@ -73,11 +73,16 @@ describe("gateNextAfterResolve", () => {
     );
   });
 
-  it("blocks iCloud OAuth and offers waitlist", () => {
+  it("sends iCloud to the app-password connect form", () => {
+    assert.equal(
+      gateNextAfterResolve("login", false, "icloud_imap", "apple"),
+      "icloud_connect",
+    );
     assert.equal(
       gateNextAfterResolve("login", false, "coming_soon_icloud", "apple"),
-      "coming_soon_icloud",
+      "icloud_connect",
     );
+    assert.equal(isComingSoonGate("icloud_connect"), false);
     assert.equal(comingSoonProviderLabel("coming_soon_icloud", "apple"), "iCloud");
   });
 
@@ -128,10 +133,11 @@ describe("honest mailbox availability", () => {
     assert.equal(isKnownActiveMailbox("donexto@hotmail.com"), true);
   });
 
-  it("does not treat Gmail, Yahoo, iCloud or random empresa as live read", () => {
+  it("treats iCloud as a readable mailbox and leaves Gmail and Yahoo pending", () => {
+    assert.equal(isKnownActiveMailbox("ana@icloud.com"), true);
+    assert.equal(isKnownActiveMailbox("ana@me.com"), true);
     assert.equal(isKnownActiveMailbox("hmcelinfo@gmail.com"), false);
     assert.equal(isKnownActiveMailbox("hsalcidor@yahoo.com"), false);
-    assert.equal(isKnownActiveMailbox("ana@icloud.com"), false);
     assert.equal(isKnownActiveMailbox("ana@empresa.mx"), false);
   });
 });

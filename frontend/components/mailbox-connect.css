@@ -16,7 +16,7 @@
 
 .dx-connect-card {
   width: min(420px, 100%);
-  max-height: min(92vh, 680px);
+  max-height: min(92vh, 860px);
   overflow: auto;
   border-radius: 12px;
   border: 1px solid #d5e0e4;
@@ -218,4 +218,45 @@
 .dx-connect-signout .dx-connect-back {
   display: block;
   margin-top: 0.5rem;
+}
+
+.dx-icloud-steps {
+  margin: 0;
+  padding-left: 1.15rem;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.86rem;
+  line-height: 1.4;
+  color: #3d4f56;
+}
+
+.dx-login .dx-icloud-steps,
+.dx-login .dx-icloud .dx-login__note {
+  color: #d5e4ea;
+}
+
+.dx-icloud-secret {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dx-icloud-secret input {
+  flex: 1;
+  min-width: 0;
+}
+
+.dx-icloud-reveal {
+  border: 0;
+  background: transparent;
+  color: #0c8a80;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.dx-login .dx-icloud-reveal {
+  color: #8ce5d7;
 }

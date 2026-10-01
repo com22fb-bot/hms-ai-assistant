@@ -4,6 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 
 import { buildApiUrl } from "@/lib/apiBase";
 import { hmsFetch } from "@/lib/hmsApi";
+import {
+  icloudErrorCode,
+  icloudErrorMessage,
+  icloudFailureText,
+} from "@/lib/i18n/icloudConnect";
+import { readRememberedLoginLanguage } from "@/lib/i18n/languages";
 
 import type { GoogleConnectionStatus } from "@/types/mail";
 
@@ -60,6 +66,7 @@ export function useGoogleStatus() {
     useState<string | null>(null);
   const [connectingYahoo, setConnectingYahoo] = useState(false);
   const [connectingMicrosoft, setConnectingMicrosoft] = useState(false);
+  const [connectingIcloud, setConnectingIcloud] = useState(false);
 
   const loadGoogleStatus = useCallback(async () => {
     setLoadingConnection(true);
@@ -240,15 +247,55 @@ export function useGoogleStatus() {
     }
   }, []);
 
+  const connectIcloud = useCallback(async (email: string, appPassword: string) => {
+    setConnectingIcloud(true);
+    setConnectionError(null);
+    try {
+      const response = await hmsFetch(`${API_BASE_URL}/auth/icloud/connect`, {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          app_password: appPassword,
+        }),
+      });
+      let payload: unknown = {};
+      try {
+        payload = await response.json();
+      } catch {
+        payload = {};
+      }
+      if (!response.ok) {
+        const code = icloudErrorCode(payload);
+        const fallback =
+          icloudErrorMessage(payload) || detailMessage(payload as { detail?: { message?: string } | string }) || "iCloud";
+        const message = icloudFailureText(
+          readRememberedLoginLanguage() || "es",
+          code,
+          fallback,
+        );
+        const error = new Error(message) as Error & { code?: string };
+        error.code = code;
+        throw error;
+      }
+      await loadGoogleStatus();
+    } finally {
+      setConnectingIcloud(false);
+    }
+  }, [loadGoogleStatus]);
+
   return {
     connection,
     loadingConnection,
     connectionError,
     connectingYahoo,
     connectingMicrosoft,
+    connectingIcloud,
     loadGoogleStatus,
     startGoogleConnection,
     startYahooConnection,
     startMicrosoftConnection,
+    connectIcloud,
   };
 }

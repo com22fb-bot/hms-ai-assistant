@@ -188,11 +188,19 @@
             Yahoo, cifrado) con el token OAuth. Ese token se guarda cifrado
             solo para seguir leyendo el buzón mientras la conexión siga activa.
           </li>
+          <li>
+            <strong>Apple iCloud Mail</strong> (@icloud.com, @me.com, @mac.com):
+            conectas con una contraseña específica de app. Donexto lee solo ese
+            correo, en solo lectura (<code>imap.mail.me.com</code>, puerto 993
+            con SSL, EXAMINE y BODY.PEEK). No marca leído, no mueve y no borra.
+            La contraseña de app se guarda cifrada. Puedes desconectar el buzón
+            en Donexto (se borra) y revocar la contraseña en account.apple.com
+            cuando quieras.
+          </li>
         </ul>
         <p>
           <strong>Próximamente</strong> (aún no disponibles): Outlook, Hotmail,
-          Microsoft 365, AOL y Apple iCloud Mail. No afirmamos que ya se
-          conecten.
+          Microsoft 365 y AOL. No afirmamos que ya se conecten.
         </p>
         <p>
           Con Gmail te enviamos un correo de verificación de Donexto; sin ese
@@ -212,7 +220,7 @@
           <li>
             Autorización de lectura: en Gmail, tokens de Google almacenados
             cifrados. En Yahoo, tokens OAuth de Yahoo almacenados cifrados para
-            IMAP.
+            IMAP. En iCloud, la contraseña específica de app almacenada cifrada.
           </li>
           <li>
             Metadatos y fragmentos de correo: remitente, asunto, fecha y, cuando
@@ -310,11 +318,24 @@
         <p>
           AOL no está disponible todavía.
         </p>
-        <h3>Microsoft (Outlook, Hotmail, Microsoft 365) y Apple iCloud Mail</h3>
+        <h3>Apple iCloud Mail</h3>
         <p>
-          No están disponibles todavía. No usamos APIs de Microsoft ni de Apple
-          para leer correo. Cuando existan, esta política dirá cómo se conectan
-          y cómo se revoca el acceso.
+          iCloud se conecta con una contraseña específica de app (hace falta
+          la verificación en dos pasos en la cuenta Apple). Donexto lee el
+          buzón por IMAP seguro, solo lectura. Guardamos esa contraseña
+          cifrada para seguir leyendo mientras la conexión siga activa. Para
+          dejar de dar acceso: desconecta el buzón en Donexto y revoca la
+          contraseña en
+          <a href="https://account.apple.com" rel="noopener noreferrer"
+            >account.apple.com</a
+          >
+          → Inicio de sesión y seguridad → Contraseñas específicas de app.
+        </p>
+        <h3>Microsoft (Outlook, Hotmail, Microsoft 365)</h3>
+        <p>
+          No están disponibles todavía. No usamos APIs de Microsoft para leer
+          correo. Cuando existan, esta política dirá cómo se conectan y cómo se
+          revoca el acceso.
         </p>
         <p>
           No contemplamos Proton, Tuta ni ningún proveedor de cifrado de extremo

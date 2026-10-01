@@ -4,6 +4,9 @@ import { LoaderCircle, Mail, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AccountVsMailboxHint } from "@/components/auth/AccountVsMailboxHint";
+import { IcloudConnectForm } from "@/components/auth/IcloudConnectForm";
+import { icloudText } from "@/lib/i18n/icloudConnect";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import {
   ACCOUNT_VS_MAILBOX,
   authorizeMailboxTitle,
@@ -18,6 +21,7 @@ type MailboxConnectModalProps = {
   open: boolean;
   connectingYahoo: boolean;
   connectingMicrosoft?: boolean;
+  connectingIcloud?: boolean;
   required?: boolean;
   accountEmail: string;
   mode?: MailboxConnectMode;
@@ -25,6 +29,7 @@ type MailboxConnectModalProps = {
   onConnectGoogle: () => void | Promise<void>;
   onConnectYahoo: () => Promise<void>;
   onConnectMicrosoft?: () => Promise<void>;
+  onConnectIcloud?: (email: string, appPassword: string) => Promise<void>;
   onSignOut?: () => void;
 };
 
@@ -32,6 +37,7 @@ export function MailboxConnectModal({
   open,
   connectingYahoo,
   connectingMicrosoft = false,
+  connectingIcloud = false,
   required = false,
   accountEmail,
   mode = "choose",
@@ -39,8 +45,10 @@ export function MailboxConnectModal({
   onConnectGoogle,
   onConnectYahoo,
   onConnectMicrosoft,
+  onConnectIcloud,
   onSignOut,
 }: MailboxConnectModalProps) {
+  const { language } = useLanguage();
   const [step, setStep] = useState<ProviderChoice>(
     mode === "yahoo" ? "yahoo" : mode === "microsoft" ? "microsoft" : "choose",
   );
@@ -51,6 +59,7 @@ export function MailboxConnectModal({
   const showChooser = mode === "choose" && step === "choose";
   const showYahooForm = mode === "yahoo" || step === "yahoo";
   const showMicrosoftForm = mode === "microsoft" || step === "microsoft";
+  const showIcloudForm = mode === "icloud";
   const canDismiss = !required;
 
   useEffect(() => {
@@ -121,7 +130,9 @@ export function MailboxConnectModal({
   }
 
   const title =
-    mode === "gmail"
+    showIcloudForm
+      ? icloudText(language, "title")
+      : mode === "gmail"
       ? authorizeMailboxTitle(accountEmail)
       : showMicrosoftForm && !showChooser
         ? ACCOUNT_VS_MAILBOX.connectMicrosoftTitle
@@ -130,7 +141,9 @@ export function MailboxConnectModal({
           : ACCOUNT_VS_MAILBOX.connectChooserTitle;
 
   const body =
-    mode === "gmail"
+    showIcloudForm
+      ? icloudText(language, "intro")
+      : mode === "gmail"
       ? ACCOUNT_VS_MAILBOX.connectGmailBody
       : showMicrosoftForm && !showChooser
         ? ACCOUNT_VS_MAILBOX.connectMicrosoftBody
@@ -170,11 +183,41 @@ export function MailboxConnectModal({
         </header>
 
         <div className="dx-connect-body">
+          {showIcloudForm ? (
+            <IcloudConnectForm
+              email={accountEmail}
+              emailLocked
+              busy={connectingIcloud}
+              error={localError}
+              variant="modal"
+              onSubmit={async (email, appPassword) => {
+                setLocalError(null);
+                if (!onConnectIcloud) {
+                  setLocalError(icloudText(language, "imap_failed"));
+                  return;
+                }
+                try {
+                  await onConnectIcloud(email, appPassword);
+                } catch (error) {
+                  const coded = error as Error & { code?: string };
+                  setLocalError(
+                    coded.code
+                      ? coded.message
+                      : error instanceof Error
+                        ? error.message
+                        : icloudText(language, "imap_failed"),
+                  );
+                  throw error;
+                }
+              }}
+            />
+          ) : null}
+
           {mode === "gmail" || showChooser ? (
             <AccountVsMailboxHint variant="connect" email={accountEmail} />
           ) : null}
 
-          {mode === "gmail" ? (
+          {showIcloudForm ? null : mode === "gmail" ? (
             <>
               {localError ? (
                 <div className="dx-connect-error" role="alert">

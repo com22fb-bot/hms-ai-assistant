@@ -391,6 +391,30 @@ def get_google_connection_status() -> GoogleConnectionStatus:
             mail_read_available=settings.yahoo_mail_read_enabled,
         )
 
+    if provider == "icloud":
+        has_secret = bool(credentials and credentials.get("access_token"))
+        metadata = (credentials or {}).get("metadata") or {}
+        app_password_auth = (
+            isinstance(metadata, dict)
+            and str(metadata.get("auth") or "").lower() == "app_password"
+        )
+        connected = bool(has_secret and app_password_auth)
+        return GoogleConnectionStatus(
+            connected=connected,
+            email=account.get("email") or None,
+            provider="icloud",
+            has_access_token=connected,
+            has_refresh_token=False,
+            scopes=list((credentials or {}).get("scopes") or []),
+            message=(
+                "Buzón iCloud conectado en solo lectura."
+                if connected
+                else "Falta volver a conectar iCloud."
+            ),
+            login_url=None,
+            mail_read_available=connected,
+        )
+
     if provider in ("microsoft",):
         scopes = list((credentials or {}).get("scopes") or [])
         mail_read = granted_microsoft_mail_read({"scope": " ".join(scopes)})

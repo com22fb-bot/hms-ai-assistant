@@ -251,6 +251,7 @@ function AdminPage() {
     signInWithYahoo,
     signInWithMicrosoft,
     signInWithProvider,
+    adoptIcloudSession,
     signUp,
     resendSignupEmail,
     sendDonextoVerifyEmail,
@@ -472,6 +473,7 @@ function AdminPage() {
           onSignInWithYahoo={signInWithYahoo}
           onSignInWithMicrosoft={signInWithMicrosoft}
           onSignInWithProvider={signInWithProvider}
+          onIcloudSession={adoptIcloudSession}
           onResendSignupEmail={resendSignupEmail}
           onMagicLink={signInWithMagicLink}
           onResetPassword={resetPassword}

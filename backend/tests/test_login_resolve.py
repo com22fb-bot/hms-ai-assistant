@@ -116,7 +116,8 @@ class LoginResolveTests(unittest.TestCase):
         self.assertEqual(result["provider"], "yahoo")
         self.assertEqual(result["next"], "coming_soon_yahoo")
         self.assertIn("yahoo", result["pending_options"])
-        self.assertEqual(result["active_options"], ["hotmail"])
+        self.assertNotIn("apple", result["pending_options"])
+        self.assertEqual(result["active_options"], ["hotmail", "apple"])
 
     def test_existing_yahoo_goes_to_oauth(self) -> None:
         with patch(
@@ -143,13 +144,24 @@ class LoginResolveTests(unittest.TestCase):
         self.assertEqual(result["domain_status"], "pending_review")
         self.assertIn("Próximamente", result["message"])
 
-    def test_unknown_icloud_is_pending_review(self) -> None:
+    def test_unknown_icloud_opens_imap_connect(self) -> None:
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=False
         ):
             result = self._resolve("nuevo@icloud.com")
-        self.assertEqual(result["next"], "coming_soon_icloud")
+        self.assertEqual(result["next"], "icloud_imap")
         self.assertEqual(result["provider"], "apple")
+        self.assertEqual(result["domain_status"], "active")
+        self.assertTrue(result["read_available"])
+
+    def test_existing_icloud_stays_on_imap_connect(self) -> None:
+        with patch(
+            "app.api.login_resolve.auth_user_exists", return_value=True
+        ):
+            result = self._resolve("ya@me.com")
+        self.assertEqual(result["next"], "icloud_imap")
+        self.assertEqual(result["provider"], "apple")
+        self.assertTrue(result["read_available"])
 
     def test_existing_gmail_still_goes_to_google(self) -> None:
         with patch(
@@ -231,7 +243,7 @@ class LoginResolveTests(unittest.TestCase):
         self.assertEqual(result["next"], "signup")
         self.assertEqual(result["provider"], "hotmail")
         self.assertTrue(result["read_available"])
-        self.assertEqual(result["active_options"], ["hotmail"])
+        self.assertEqual(result["active_options"], ["hotmail", "apple"])
 
     def test_outlook_live_msn_are_live_microsoft(self) -> None:
         with patch(

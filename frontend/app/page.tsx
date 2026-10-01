@@ -723,10 +723,12 @@ function Dashboard({
     connectionError,
     connectingYahoo,
     connectingMicrosoft,
+    connectingIcloud,
     loadGoogleStatus,
     startGoogleConnection,
     startYahooConnection,
     startMicrosoftConnection,
+    connectIcloud,
   } = useGoogleStatus();
 
   const isGoogleMailbox =
@@ -736,6 +738,8 @@ function Dashboard({
     connection?.connected && connection.provider === "yahoo";
   const isMicrosoftMailbox =
     connection?.connected && connection.provider === "microsoft";
+  const isIcloudMailbox =
+    connection?.connected && connection.provider === "icloud";
   const yahooIdentityReady =
     connection?.provider === "yahoo" && Boolean(connection.has_access_token);
   const microsoftIdentityReady =
@@ -754,7 +758,7 @@ function Dashboard({
     !isYahooMailbox &&
     !isMicrosoftMailbox;
   const usesGuidedImport = Boolean(
-    isGoogleMailbox || isYahooMailbox || isMicrosoftMailbox,
+    isGoogleMailbox || isYahooMailbox || isMicrosoftMailbox || isIcloudMailbox,
   );
 
   const {
@@ -1727,6 +1731,7 @@ function Dashboard({
             open={mailboxPickerOpen}
             connectingYahoo={connectingYahoo}
             connectingMicrosoft={connectingMicrosoft}
+            connectingIcloud={connectingIcloud}
             required={!connection?.connected && !yahooIdentityReady && !microsoftIdentityReady}
             accountEmail={session.email}
             mode={mailboxConnectModeFromEmail(session.email)}
@@ -1775,6 +1780,11 @@ function Dashboard({
                   ? requestError
                   : new Error(message);
               }
+            }}
+            onConnectIcloud={async (email, appPassword) => {
+              await connectIcloud(email, appPassword);
+              setMailboxPickerOpen(false);
+              setNotice(null);
             }}
             onConnectMicrosoft={async () => {
               setNotice("Te llevamos a Microsoft para firmar ahí…");
@@ -1861,6 +1871,7 @@ export default function HomePage() {
     signInWithYahoo,
     signInWithMicrosoft,
     signInWithProvider,
+    adoptIcloudSession,
     signUp,
     resendSignupEmail,
     signInWithMagicLink,
@@ -1900,6 +1911,7 @@ export default function HomePage() {
           onSignInWithYahoo={signInWithYahoo}
           onSignInWithMicrosoft={signInWithMicrosoft}
           onSignInWithProvider={signInWithProvider}
+          onIcloudSession={adoptIcloudSession}
           onResendSignupEmail={resendSignupEmail}
           onMagicLink={signInWithMagicLink}
           onResetPassword={resetPassword}

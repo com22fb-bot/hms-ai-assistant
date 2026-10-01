@@ -14,6 +14,11 @@ from app.services.gmail import list_messages
 from app.services.gmail_full_sync import sync_gmail_page
 from app.services.gmail_sync import sync_gmail_messages
 from app.services.oauth_storage import oauth_storage
+from app.services.icloud_imap import (
+    IcloudImapError,
+    list_icloud_messages,
+    stored_icloud_uses_app_password,
+)
 from app.services.yahoo_imap import (
     YahooImapError,
     list_yahoo_messages,
@@ -42,6 +47,48 @@ def create_gmail_router(
     ) -> GmailMessagesResponse:
         _, account = require_google_account()
         provider = str(account.get("provider") or "google")
+
+        if provider == "icloud":
+            credentials = oauth_storage.get_credentials(str(account["id"]))
+            address = str(account.get("email") or "").strip()
+            secret = str((credentials or {}).get("access_token") or "")
+            if (
+                not address
+                or not secret
+                or not stored_icloud_uses_app_password(credentials)
+            ):
+                raise HTTPException(
+                    status_code=401,
+                    detail={
+                        "status": "icloud_credentials_missing",
+                        "code": "icloud_credentials_missing",
+                        "message": (
+                            "Vuelve a conectar iCloud. Donexto ya no tiene "
+                            "la contraseña de app."
+                        ),
+                    },
+                )
+            try:
+                raw_messages = list_icloud_messages(
+                    address,
+                    secret,
+                    max_results=limit,
+                )
+            except IcloudImapError as error:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "status": "icloud_read_failed",
+                        "code": error.code,
+                        "message": str(error),
+                    },
+                ) from error
+
+            messages = [GmailMessage.model_validate(item) for item in raw_messages]
+            return GmailMessagesResponse(
+                total=len(messages),
+                messages=messages,
+            )
 
         if provider in ("yahoo", "imap"):
             credentials = oauth_storage.get_credentials(str(account["id"]))

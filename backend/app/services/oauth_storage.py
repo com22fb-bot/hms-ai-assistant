@@ -43,6 +43,7 @@ SUPPORTED_PROVIDERS = {
     "whatsapp",
     "imap",
     "yahoo",
+    "icloud",
 }
 
 ACTIVE_ACCOUNT_STATUSES = {
@@ -145,6 +146,8 @@ def _normalize_provider(provider: str) -> str:
         "whatsapp_personal": "whatsapp",
         "yahoo_mail": "yahoo",
         "ymail": "yahoo",
+        "apple": "icloud",
+        "icloud_mail": "icloud",
     }
 
     normalized = aliases.get(normalized, normalized)

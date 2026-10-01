@@ -13,9 +13,11 @@ from app.services.gmail_import_inventory import (
 )
 from app.services.guided_import_job_service import (
     get_guided_import_status,
+    is_icloud_provider,
     start_guided_import,
 )
 from app.services.oauth_storage import oauth_storage
+from app.services.icloud_imap import IcloudImapError, stored_icloud_uses_app_password
 from app.services.yahoo_imap import YahooImapError, stored_yahoo_uses_oauth
 from app.services.yahoo_import import is_yahoo_provider, yahoo_inventory
 from app.services.microsoft_import import (
@@ -65,9 +67,46 @@ def _yahoo_secret(account: dict[str, Any]) -> tuple[str, str, bool]:
     return email, token, True
 
 
+def _icloud_secret(account: dict[str, Any]) -> tuple[str, str]:
+    credentials = oauth_storage.get_credentials(str(account["id"]))
+    secret = str((credentials or {}).get("access_token") or "")
+    email = str(account.get("email") or "")
+    if not secret or not email or not stored_icloud_uses_app_password(credentials):
+        raise HTTPException(
+            status_code=401,
+            detail={
+                "status": "icloud_required",
+                "code": "icloud_credentials_missing",
+                "message": (
+                    "Vuelve a conectar iCloud. Donexto ya no tiene "
+                    "la contraseña de app."
+                ),
+            },
+        )
+    return email, secret
+
+
 @router.get("/inventory")
 def import_inventory() -> dict[str, Any]:
     account = _mailbox_account()
+    if is_icloud_provider(account):
+        email, app_password = _icloud_secret(account)
+        try:
+            return yahoo_inventory(
+                email,
+                app_password,
+                oauth=False,
+                mailbox_provider="icloud",
+            )
+        except IcloudImapError as error:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "status": "icloud_inventory_failed",
+                    "code": error.code,
+                    "message": str(error),
+                },
+            ) from error
     if is_yahoo_provider(account):
         email, app_password, oauth = _yahoo_secret(account)
         try:
@@ -103,7 +142,11 @@ def import_status() -> dict[str, Any]:
 def import_start(payload: ImportStartRequest) -> dict[str, Any]:
     account = _mailbox_account()
     credentials = None
-    if not is_yahoo_provider(account) and not is_microsoft_provider(account):
+    if (
+        not is_yahoo_provider(account)
+        and not is_microsoft_provider(account)
+        and not is_icloud_provider(account)
+    ):
         credentials = _google_credentials(account)
 
     try:
@@ -112,6 +155,15 @@ def import_start(payload: ImportStartRequest) -> dict[str, Any]:
             account=account,
             mode=payload.mode,
         )
+    except IcloudImapError as error:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "icloud_import_failed",
+                "code": error.code,
+                "message": str(error),
+            },
+        ) from error
     except YahooImapError as error:
         raise HTTPException(
             status_code=400,
@@ -146,7 +198,11 @@ def import_start(payload: ImportStartRequest) -> dict[str, Any]:
 @router.get("/compare")
 def import_compare() -> dict[str, Any]:
     account = _mailbox_account()
-    if is_yahoo_provider(account) or is_microsoft_provider(account):
+    if (
+        is_yahoo_provider(account)
+        or is_microsoft_provider(account)
+        or is_icloud_provider(account)
+    ):
         raise HTTPException(
             status_code=409,
             detail={

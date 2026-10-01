@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
+import { IcloudConnectForm } from "@/components/auth/IcloudConnectForm";
 import { LanguageStrip } from "@/components/UserSettingsPanel";
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import type { AuthOAuthProvider, YahooAuthIntent } from "@/hooks/useAppAuth";
@@ -28,6 +29,12 @@ import {
   isBrowserNetworkError,
   postPublicHms,
 } from "@/lib/publicHms";
+import {
+  icloudErrorCode,
+  icloudErrorMessage,
+  icloudFailureText,
+  icloudText,
+} from "@/lib/i18n/icloudConnect";
 import {
   isValidSignupEmail,
   resolveMailboxProviderFromEmail,
@@ -70,9 +77,10 @@ type LoginScreenProps = {
   onResendSignupEmail?: (email: string) => Promise<void>;
   onMagicLink: (email: string) => Promise<void>;
   onResetPassword: (email: string) => Promise<void>;
+  onIcloudSession?: (accessToken: string, refreshToken: string) => Promise<void>;
 };
 
-type GateStep = "email" | "confirm" | "waitlist";
+type GateStep = "email" | "confirm" | "waitlist" | "icloud";
 
 type ResolvePayload = {
   next?: string;
@@ -84,14 +92,15 @@ type ResolvePayload = {
 
 /**
  * Acceso Donexto: un correo (el buzón) y un Continuar.
- * Hoy leemos Outlook/Hotmail/M365. Gmail/Yahoo/iCloud: lista de aviso.
- * Donexto no pide contraseña de correo ni de cuenta.
+ * Hoy leemos Outlook/Hotmail/M365 e iCloud (solo lectura).
+ * Gmail/Yahoo: lista de aviso. iCloud usa contraseña específica de app.
  */
 export function LoginScreen({
   onSignInWithGoogle,
   onSignInWithYahoo,
   onSignInWithMicrosoft,
   onSignInWithProvider,
+  onIcloudSession,
 }: LoginScreenProps) {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -268,7 +277,9 @@ export function LoginScreen({
     yahooIntent: YahooAuthIntent = "login",
   ) {
     if (provider === "apple") {
-      openWaitlist("coming_soon", "iCloud");
+      setStep("icloud");
+      setBusy(false);
+      setOauthBusy(null);
       return;
     }
     // Persist the language on this screen before leaving for Microsoft/Yahoo.
@@ -327,7 +338,9 @@ export function LoginScreen({
       return;
     }
     if (provider === "apple") {
-      openWaitlist("coming_soon", "iCloud");
+      setStep("icloud");
+      setBusy(false);
+      setOauthBusy(null);
       return;
     }
     openWaitlist("company", "Microsoft 365");
@@ -361,6 +374,14 @@ export function LoginScreen({
         payload.next,
         payload.provider,
       );
+      if (gate === "icloud_connect") {
+        setStep("icloud");
+        setBusy(false);
+        setOauthBusy(null);
+        setError(null);
+        setMessage(null);
+        return;
+      }
       if (handleComingSoonGate(gate, payload)) {
         return;
       }
@@ -435,6 +456,14 @@ export function LoginScreen({
         payload.next,
         payload.provider,
       );
+      if (gate === "icloud_connect") {
+        setStep("icloud");
+        setBusy(false);
+        setOauthBusy(null);
+        setError(null);
+        setMessage(null);
+        return;
+      }
       if (handleComingSoonGate(gate, payload)) {
         return;
       }
@@ -452,6 +481,45 @@ export function LoginScreen({
       setError(friendlyError(requestError, L("confirmFailed")));
       setBusy(false);
       setOauthBusy(null);
+    }
+  }
+
+  async function submitIcloud(address: string, appPassword: string) {
+    setBusy(true);
+    resetAlerts();
+    try {
+      const resolved = await postPublicHms("/auth/icloud/connect", {
+        email: address,
+        app_password: appPassword,
+      });
+      const payload = resolved.payload as {
+        access_token?: string;
+        refresh_token?: string;
+        detail?: { message?: string; code?: string };
+      };
+      if (!resolved.ok) {
+        const code = icloudErrorCode(resolved.payload);
+        const fallback = icloudErrorMessage(resolved.payload) || L("appleOpenFailed");
+        const message = icloudFailureText(language, code, fallback);
+        setError(message);
+        setBusy(false);
+        throw new Error(message);
+      }
+      const access = payload.access_token || "";
+      const refresh = payload.refresh_token || "";
+      if (!access || !refresh || !onIcloudSession) {
+        const message = L("appleOpenFailed");
+        setError(message);
+        setBusy(false);
+        throw new Error(message);
+      }
+      await onIcloudSession(access, refresh);
+    } catch (requestError) {
+      setError(friendlyError(requestError, L("networkFailed")));
+      setBusy(false);
+      throw requestError instanceof Error
+        ? requestError
+        : new Error(L("networkFailed"));
     }
   }
 
@@ -494,6 +562,7 @@ export function LoginScreen({
 
   const confirming = step === "confirm";
   const waiting = step === "waitlist";
+  const connectingIcloud = step === "icloud";
   const displayEmail = email.trim().toLowerCase();
   const waitlistBody =
     waitlistKind === "company"
@@ -544,13 +613,17 @@ export function LoginScreen({
 
           <header className="dx-login__heading">
             <h2 id="dx-login-title" className="dx-login__title">
-              {waiting
-                ? L("waitlistTitle")
-                : confirming
-                  ? L("confirmTitle")
-                  : L("title")}
+              {connectingIcloud
+                ? icloudText(language, "title")
+                : waiting
+                  ? L("waitlistTitle")
+                  : confirming
+                    ? L("confirmTitle")
+                    : L("title")}
             </h2>
-            {waiting ? (
+            {connectingIcloud ? (
+              <p className="dx-login__slogan">{icloudText(language, "intro")}</p>
+            ) : waiting ? (
               <p className="dx-login__slogan">{waitlistBody}</p>
             ) : confirming ? (
               <p className="dx-login__slogan">{L("confirmHelper")}</p>
@@ -562,7 +635,7 @@ export function LoginScreen({
             )}
           </header>
 
-          {error ? (
+          {error && !connectingIcloud ? (
             <div className="dx-login__alert is-error" role="alert">
               <AlertTriangle size={18} />
               <span>{error}</span>
@@ -590,6 +663,23 @@ export function LoginScreen({
             </div>
           ) : null}
 
+          {connectingIcloud ? (
+            <IcloudConnectForm
+              email={email}
+              emailLocked
+              busy={busy}
+              error={error}
+              variant="login"
+              onSubmit={submitIcloud}
+              onBack={() => {
+                setStep("email");
+                resetAlerts();
+                focusEmail();
+              }}
+            />
+          ) : null}
+
+          {connectingIcloud ? null : (
           <form
             className="dx-login__form"
             onSubmit={(event) => {
@@ -699,6 +789,7 @@ export function LoginScreen({
               </button>
             )}
           </form>
+          )}
 
           {step === "email" ? (
             <div className="dx-login__availability" aria-label={L("servicesKicker")}>
@@ -706,10 +797,11 @@ export function LoginScreen({
                 {L("availableNow")}
               </p>
               <p className="dx-login__providers">{L("serviceMicrosoftTitle")}</p>
+              <p className="dx-login__providers">{L("chipIcloud")}</p>
               <p className="dx-login__upcoming">
                 <span>{L("comingSoonBadge")}</span>{" · "}
                 {L("chipGmail")} / {L("chipWorkspace")}{" · "}
-                {L("chipYahoo")}{" · "}{L("chipIcloud")}
+                {L("chipYahoo")}
               </p>
             </div>
           ) : null}

@@ -11,6 +11,10 @@ from google.oauth2.credentials import Credentials
 from app.services.gmail_full_sync import sync_gmail_page
 from app.services.gmail_import_inventory import initial_import_snapshot
 from app.services.oauth_storage import OAuthStorage
+from app.services.icloud_imap import (
+    IcloudImapError,
+    stored_icloud_uses_app_password,
+)
 from app.services.yahoo_imap import YahooImapError, stored_yahoo_uses_oauth
 from app.services.yahoo_import import (
     YAHOO_PAGE_SIZE,
@@ -75,6 +79,23 @@ def _first(response: Any) -> dict[str, Any] | None:
 
 def _storage() -> OAuthStorage:
     return OAuthStorage()
+
+
+def is_icloud_provider(account: dict[str, Any] | None) -> bool:
+    provider = str((account or {}).get("provider") or "").strip().lower()
+    return provider == "icloud"
+
+
+def _icloud_secret(account: dict[str, Any]) -> tuple[str, str]:
+    email = str(account.get("email") or "").strip()
+    stored = _storage().get_credentials(str(account["id"])) or {}
+    secret = str(stored.get("access_token") or "")
+    if not email or not secret or not stored_icloud_uses_app_password(stored):
+        raise IcloudImapError(
+            "Vuelve a conectar iCloud. Donexto ya no tiene la contraseña de app.",
+            code="icloud_credentials_missing",
+        )
+    return email, secret
 
 
 def _yahoo_secret(account: dict[str, Any]) -> tuple[str, str, bool]:
@@ -238,7 +259,25 @@ def _run_job(job_id: str) -> None:
             if not account:
                 raise RuntimeError("La cuenta de importación ya no existe.")
 
-            if is_yahoo_provider(account):
+            if is_icloud_provider(account):
+                metadata = dict(job.get("metadata") or {})
+                refs = [
+                    str(item)
+                    for item in (metadata.get("icloud_refs") or [])
+                    if item
+                ]
+                offset = int(job.get("next_page_token") or 0)
+                _email, app_password = _icloud_secret(account)
+                sync_page = sync_yahoo_page(
+                    account=account,
+                    app_password=app_password,
+                    refs=refs,
+                    offset=offset,
+                    batch_size=int(job.get("batch_size") or YAHOO_PAGE_SIZE),
+                    oauth=False,
+                    mailbox_provider="icloud",
+                )
+            elif is_yahoo_provider(account):
                 metadata = dict(job.get("metadata") or {})
                 refs = [
                     str(item)
@@ -539,7 +578,32 @@ def start_guided_import(
                 "La importación inicial ya fue completada."
             )
 
-        if is_yahoo_provider(account):
+        if is_icloud_provider(account):
+            email, app_password = _icloud_secret(account)
+            snapshot = yahoo_initial_snapshot(
+                email,
+                app_password,
+                cutoff_at=now,
+                oauth=False,
+                mailbox_provider="icloud",
+            )
+            query = str(snapshot["query"])
+            expected = int(snapshot["eligible_messages"])
+            job_mode = "historical"
+            metadata = {
+                "guided_import": True,
+                "guided_mode": "initial",
+                "history_days": snapshot["history_days"],
+                "period_start_local": snapshot["period_start_local"],
+                "period_end_local": snapshot["period_end_local"],
+                "timezone": snapshot["timezone"],
+                "icloud_refs": snapshot.get("yahoo_refs") or [],
+                "classification_totals": {},
+                "without_case": 0,
+            }
+            selection_categories = ["six_month_history"]
+            batch_size = YAHOO_PAGE_SIZE
+        elif is_yahoo_provider(account):
             email, app_password, oauth = _yahoo_secret(account)
             snapshot = yahoo_initial_snapshot(
                 email,
@@ -613,7 +677,38 @@ def start_guided_import(
                 "Primero debe completarse la importación inicial."
             )
 
-        if is_yahoo_provider(account):
+        if is_icloud_provider(account):
+            email, app_password = _icloud_secret(account)
+            since = now - timedelta(days=7)
+            last_sync_at = account.get("last_sync_at")
+            if last_sync_at:
+                parsed = datetime.fromisoformat(
+                    str(last_sync_at).replace("Z", "+00:00")
+                )
+                if parsed.tzinfo is None:
+                    parsed = parsed.replace(tzinfo=timezone.utc)
+                since = parsed - timedelta(minutes=5)
+            refs = yahoo_incremental_refs(
+                email,
+                app_password,
+                since=since,
+                oauth=False,
+                mailbox_provider="icloud",
+            )
+            query = f"icloud:since:{since.date().isoformat()}"
+            expected = len(refs)
+            job_mode = "incremental"
+            metadata = {
+                "guided_import": True,
+                "guided_mode": "incremental",
+                "timezone": "America/Chihuahua",
+                "icloud_refs": refs,
+                "classification_totals": {},
+                "without_case": 0,
+            }
+            selection_categories = ["new_messages"]
+            batch_size = YAHOO_PAGE_SIZE
+        elif is_yahoo_provider(account):
             email, app_password, oauth = _yahoo_secret(account)
             since = now - timedelta(days=7)
             last_sync_at = account.get("last_sync_at")

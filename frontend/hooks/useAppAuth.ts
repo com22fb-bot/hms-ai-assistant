@@ -990,6 +990,17 @@ export function useAppAuth() {
     }
   }, []);
 
+  const adoptIcloudSession = useCallback(
+    async (accessToken: string, refreshToken: string) => {
+      const session = await establishSessionFromTokens(
+        accessToken,
+        refreshToken,
+      );
+      setRawSession(session);
+    },
+    [],
+  );
+
   const signOut = useCallback(async () => {
     const { error } = await supabase.auth.signOut();
 
@@ -1051,6 +1062,7 @@ export function useAppAuth() {
     signInWithYahoo,
     signInWithMicrosoft,
     signInWithProvider,
+    adoptIcloudSession,
     signUp,
     resendSignupEmail,
     signInWithMagicLink,

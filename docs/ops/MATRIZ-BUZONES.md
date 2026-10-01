@@ -100,12 +100,12 @@ Más adelante, solo si **ellos** autorizan: IMAP u OAuth de esa org. Nunca passw
 
 ---
 
-## Yahoo e iCloud (ya documentado; no se pierde)
+## Yahoo e iCloud
 
-No forman parte de la lista de dominios MX de esta nota, pero P1 sigue cargándolos:
+No forman parte de la lista de dominios MX de esta nota:
 
-- **Yahoo / ymail / rocketmail:** firma en Yahoo (identidad). Lectura del inbox **no** (`mail-r` pendiente). **No** poner `YAHOO_MAIL_READ_ENABLED=true`.
-- **iCloud / me.com / mac.com:** decisión abierta; no pedir contraseña.
+- **Yahoo / ymail / rocketmail:** firma en Yahoo (identidad). Lectura del inbox **no** (`mail-r` pendiente). **No** poner `YAHOO_MAIL_READ_ENABLED=true`. No pedir la clave de Yahoo.
+- **iCloud / me.com / mac.com:** disponible, en paralelo, mientras `mail-r` no llega. Lectura IMAP solo lectura (`imap.mail.me.com:993`) con **contraseña específica de app** de Apple (no la del Apple ID; hace falta 2FA). Se guarda cifrada con `OAUTH_ENCRYPTION_KEY`. Desconectar la borra. Detalle: `docs/ops/ICLOUD_IMAP.md`.
 
 ---
 
@@ -117,6 +117,7 @@ No forman parte de la lista de dominios MX de esta nota, pero P1 sigue cargándo
 4. MX Google → misma fila Gmail/Workspace cuando la app esté suelta; hoy próximamente.
 5. Proofpoint / Trend Micro / servidores propios → waitlist. **No** pedir contraseña.
 6. Yahoo nuevo → no lectura; no activar mail-r a escondidas.
+7. iCloud (`@icloud.com`, `@me.com`, `@mac.com`) → contraseña específica de app, solo lectura. No es la clave del Apple ID.
 
 ---
 

@@ -37,9 +37,9 @@ export const ACCOUNT_VS_MAILBOX = {
   servicesPendingLabel: "En revisión",
   useSuggestedEmail: "Usar este correo",
   domainFixFallback:
-    "Ese dominio no está activo. Ahora leemos Outlook, Hotmail, Live, MSN y Microsoft 365. Gmail, Yahoo e iCloud: Pronto.",
+    "Ese dominio no está activo. Ahora leemos Outlook, Hotmail, Live, MSN, Microsoft 365 e iCloud. Gmail y Yahoo: Pronto.",
   domainPendingFallback:
-    "Gmail, Yahoo e iCloud: Pronto. Ahora leemos Outlook, Hotmail, Live, MSN y Microsoft 365.",
+    "Gmail y Yahoo: Pronto. Ahora leemos Outlook, Hotmail, Live, MSN, Microsoft 365 e iCloud.",
   domainUnsupportedFallback:
     "Donexto solo monitorea Microsoft 365 y (pronto) Google Workspace. Otros servidores de empresa aún no se pueden leer. Ahora leemos Outlook, Hotmail, Live, MSN y Microsoft 365.",
   yahooWaitingMailTitle: "Ya firmaste en Yahoo",
@@ -95,7 +95,7 @@ export const ACCOUNT_VS_MAILBOX = {
   connectBanner: "Esto no pide tu contraseña de Gmail · solo autoriza la lectura",
   connectChooserTitle: "Autoriza la lectura de tu correo",
   connectChooserBody:
-    "El buzón es el mismo correo de tu cuenta Donexto. Outlook y Hotmail autorizan lectura en Microsoft. Gmail y Yahoo, cuando estén listos. Donexto no pide claves de buzón.",
+    "El buzón es el mismo correo de tu cuenta Donexto. Outlook y Hotmail autorizan lectura en Microsoft. iCloud se conecta con una contraseña específica de app, solo lectura. Gmail y Yahoo, cuando estén listos.",
   connectGmailBody:
     "Donexto nunca te pidió la contraseña de Gmail. Esta pantalla de Google es solo para autorizar la lectura de este mismo buzón.",
   connectGmailCta: "Autorizar lectura de este Gmail",
