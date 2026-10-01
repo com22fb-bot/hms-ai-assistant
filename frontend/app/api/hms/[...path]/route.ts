@@ -78,6 +78,13 @@ export async function POST(
   return proxy(request, context);
 }
 
+export async function PUT(
+  request: NextRequest,
+  context: RouteContext,
+) {
+  return proxy(request, context);
+}
+
 export async function PATCH(
   request: NextRequest,
   context: RouteContext,

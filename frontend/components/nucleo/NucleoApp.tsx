@@ -57,6 +57,7 @@ import {
   type NucleoPrefs,
   type NucleoTheme,
 } from "@/lib/nucleo/prefs";
+import { prefsAfterEdit, prefsAfterLoad } from "@/lib/nucleo/prefsSync";
 import { browserName, detectDevice } from "@/lib/nucleo/platform";
 import {
   deactivatePush,
@@ -167,38 +168,72 @@ export function NucleoApp(props: NucleoAppProps) {
   const device = useMemo(() => detectDevice(), []);
   const locale = localeForLanguage(language);
 
+  const hydratedRef = useRef(Boolean(props.preview));
+  const dirtyRef = useRef(false);
+  const saveTimer = useRef<number | null>(null);
+
+  const uploadPrefs = useCallback((next: NucleoPrefs) => {
+    if (props.preview) return;
+    if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      saveTimer.current = null;
+      void hmsJson("/api/hms/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferences: next }),
+      }).catch(() => undefined);
+    }, 500);
+  }, [props.preview]);
+
+  useEffect(() => () => {
+    if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
+  }, []);
+
   const updatePrefs = useCallback((next: NucleoPrefs) => {
     setPrefs(next);
     writeLocalPrefs(props.userId, next);
-  }, [props.userId]);
+    if (prefsAfterEdit({ hydrated: hydratedRef.current }) === "upload") {
+      uploadPrefs(next);
+      return;
+    }
+    dirtyRef.current = true;
+  }, [props.userId, uploadPrefs]);
 
   useEffect(() => {
     if (props.preview) return;
     let cancelled = false;
     void hmsJson<{ preferences: unknown }>("/api/hms/preferences", { cache: "no-store" })
       .then((payload) => {
-        if (cancelled || !payload?.preferences) return;
-        const merged = mergePrefs({ ...readLocalPrefs(props.userId), ...(payload.preferences as object) });
-        setPrefs(merged);
-        writeLocalPrefs(props.userId, merged);
+        if (cancelled) return;
+        const action = prefsAfterLoad({
+          dirty: dirtyRef.current,
+          hasServer: Boolean(payload?.preferences),
+        });
+        hydratedRef.current = true;
+        if (action === "apply-server" && payload?.preferences) {
+          const merged = mergePrefs({ ...readLocalPrefs(props.userId), ...(payload.preferences as object) });
+          setPrefs(merged);
+          writeLocalPrefs(props.userId, merged);
+          return;
+        }
+        if (action === "upload") {
+          dirtyRef.current = false;
+          const local = readLocalPrefs(props.userId);
+          if (local) uploadPrefs(local);
+        }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (cancelled) return;
+        hydratedRef.current = true;
+        if (!dirtyRef.current) return;
+        dirtyRef.current = false;
+        const local = readLocalPrefs(props.userId);
+        if (local) uploadPrefs(local);
+      });
     return () => {
       cancelled = true;
     };
-  }, [props.preview, props.userId]);
-
-  useEffect(() => {
-    if (props.preview) return;
-    const timer = window.setTimeout(() => {
-      void hmsJson("/api/hms/preferences", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ preferences: prefs }),
-      }).catch(() => undefined);
-    }, 500);
-    return () => window.clearTimeout(timer);
-  }, [prefs, props.preview]);
+  }, [props.preview, props.userId, uploadPrefs]);
 
   const loadItems = useCallback(async () => {
     if (props.preview) {
@@ -597,11 +632,7 @@ export function NucleoApp(props: NucleoAppProps) {
                   type="button"
                   className={view === item.id ? "active" : undefined}
                   aria-current={view === item.id ? "page" : undefined}
-                  onClick={() => {
-                    setView(item.id);
-                    setCaseId(null);
-                    setDrawer(false);
-                  }}
+                  onClick={() => show(item.id)}
                 >
                   <Icon aria-hidden />
                   <span>{t(item.label)}</span>
@@ -633,7 +664,7 @@ export function NucleoApp(props: NucleoAppProps) {
             </button>
             {profileOpen ? (
               <div className="card menu-pop" role="menu">
-                <button type="button" className="btn" onClick={() => { setView("settings"); setSettingsTab("account"); setProfileOpen(false); }}>{t("account")}</button>
+                <button type="button" className="btn" onClick={() => { show("settings"); setSettingsTab("account"); setProfileOpen(false); }}>{t("account")}</button>
                 <button type="button" className="btn" onClick={props.onSignOut}>{t("signOut")}</button>
               </div>
             ) : null}
@@ -667,7 +698,7 @@ export function NucleoApp(props: NucleoAppProps) {
               <button type="button" className="mic" aria-label={t("askMic")} onClick={dictate}><Mic className="i" /></button>
               <button type="submit" className="btn primary go">{t("askSubmit")}<ArrowUp className="i" /></button>
             </form>
-            <button type="button" className="icon-btn" aria-label={t("navAlerts")} onClick={() => setView("alerts")}>
+            <button type="button" className="icon-btn" aria-label={t("navAlerts")} onClick={() => show("alerts")}>
               <Bell className="i lg" />
               {alertCount > 0 && prefs.badges ? <span className="dot" /> : null}
             </button>
@@ -773,7 +804,7 @@ export function NucleoApp(props: NucleoAppProps) {
                   <section>
                     <div className="sec-h">
                       <h2 data-help-title={t("doNow")} data-help={t("helpDoNow")}><Spark />{t("doNow")} {doNow.length > 0 ? <span className="badge-n">{doNow.length}</span> : null}</h2>
-                      <div className="meta">{t("sortedBy")}{weekMore > 0 ? <> · <button type="button" className="link" onClick={() => { setView("areas"); setStatusFilter("open"); }}>{t("moreWeek", { count: weekMore })}</button></> : null}</div>
+                      <div className="meta">{t("sortedBy")}{weekMore > 0 ? <> · <button type="button" className="link" onClick={() => { show("areas"); setStatusFilter("open"); }}>{t("moreWeek", { count: weekMore })}</button></> : null}</div>
                     </div>
                     {loading ? <p className="empty">{t("loading")}</p> : doNow.length === 0 ? (
                       <Empty t={t} connected={props.connected} onConnect={props.onConnect} />
@@ -809,7 +840,7 @@ export function NucleoApp(props: NucleoAppProps) {
                     onToggle={() => setShowAreas((value) => !value)}
                     onPick={(area) => {
                       setAreaFilter(area);
-                      setView(area === "all" ? "areas" : area === "money" || area === "bills" ? "money" : area === "orders" ? "orders" : area === "subscriptions" ? "subs" : "areas");
+                      show(area === "all" ? "areas" : area === "money" || area === "bills" ? "money" : area === "orders" ? "orders" : area === "subscriptions" ? "subs" : "areas");
                     }}
                   />
                   <div className="lower">
@@ -824,7 +855,7 @@ export function NucleoApp(props: NucleoAppProps) {
                       onOpen={openItem}
                       onCaption={setCaption}
                     />
-                    <MonthCard t={t} money={money} locale={locale} onMoney={() => setView("money")} onSubs={() => setView("subs")} />
+                    <MonthCard t={t} money={money} locale={locale} onMoney={() => show("money")} onSubs={() => show("subs")} />
                   </div>
                 </>
               ) : (
@@ -851,10 +882,10 @@ export function NucleoApp(props: NucleoAppProps) {
         </main>
       </div>
       <nav className="tabbar" aria-label={t("menu")}>
-        <Tab icon={<Sun />} label={t("navToday")} on={view === "today"} onClick={() => setView("today")} />
-        <Tab icon={<Wallet />} label={t("navMoney")} on={view === "money"} onClick={() => setView("money")} />
-        <Tab icon={<Package />} label={t("navOrders")} on={view === "orders"} onClick={() => setView("orders")} />
-        <Tab icon={<Bell />} label={t("navAlerts")} on={view === "alerts"} onClick={() => setView("alerts")} />
+        <Tab icon={<Sun />} label={t("navToday")} on={view === "today"} onClick={() => show("today")} />
+        <Tab icon={<Wallet />} label={t("navMoney")} on={view === "money"} onClick={() => show("money")} />
+        <Tab icon={<Package />} label={t("navOrders")} on={view === "orders"} onClick={() => show("orders")} />
+        <Tab icon={<Bell />} label={t("navAlerts")} on={view === "alerts"} onClick={() => show("alerts")} />
         <Tab icon={<Menu />} label={t("menu")} on={drawer} onClick={() => setDrawer(true)} />
       </nav>
       {prefs.guide ? (
@@ -882,8 +913,8 @@ export function NucleoApp(props: NucleoAppProps) {
           busy={pushBusy}
           message={pushMessage}
           onEnable={() => void enableNotifications()}
-          onSkip={() => void finishOnboarding(false).then(() => setOnboard(false))}
-          onClose={() => setOnboard(false)}
+          onSkip={() => void finishOnboarding(false)}
+          onClose={() => void finishOnboarding(false)}
         />
       ) : null}
       {shortcuts ? (
@@ -899,6 +930,12 @@ export function NucleoApp(props: NucleoAppProps) {
       ) : null}
     </div>
   );
+
+  function show(next: ViewId) {
+    setView(next);
+    setCaseId(null);
+    setDrawer(false);
+  }
 
   function openItem(item: LifeItem) {
     setAskHits(null);
