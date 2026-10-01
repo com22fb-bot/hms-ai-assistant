@@ -9,6 +9,11 @@ import {
   icloudErrorMessage,
   icloudFailureText,
 } from "@/lib/i18n/icloudConnect";
+import {
+  noticeErrorCode,
+  noticeErrorMessage,
+  yahooFailureText,
+} from "@/lib/i18n/mailboxNotices";
 import { readRememberedLoginLanguage } from "@/lib/i18n/languages";
 
 import type { GoogleConnectionStatus } from "@/types/mail";
@@ -285,6 +290,44 @@ export function useGoogleStatus() {
     }
   }, [loadGoogleStatus]);
 
+  const [connectingYahooImap, setConnectingYahooImap] = useState(false);
+  const connectYahooImap = useCallback(async (email: string, appPassword: string) => {
+    setConnectingYahooImap(true);
+    setConnectionError(null);
+    try {
+      const response = await hmsFetch(`${API_BASE_URL}/auth/yahoo/imap/connect`, {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          app_password: appPassword,
+        }),
+      });
+      let payload: unknown = {};
+      try {
+        payload = await response.json();
+      } catch {
+        payload = {};
+      }
+      if (!response.ok) {
+        const code = noticeErrorCode(payload);
+        const fallback = noticeErrorMessage(payload) || "Yahoo";
+        const message = yahooFailureText(
+          readRememberedLoginLanguage() || "es",
+          code,
+          fallback,
+        );
+        const error = new Error(message) as Error & { code?: string };
+        error.code = code;
+        throw error;
+      }
+      await loadGoogleStatus();
+    } finally {
+      setConnectingYahooImap(false);
+    }
+  }, [loadGoogleStatus]);
+
   return {
     connection,
     loadingConnection,
@@ -292,10 +335,12 @@ export function useGoogleStatus() {
     connectingYahoo,
     connectingMicrosoft,
     connectingIcloud,
+    connectingYahooImap,
     loadGoogleStatus,
     startGoogleConnection,
     startYahooConnection,
     startMicrosoftConnection,
     connectIcloud,
+    connectYahooImap,
   };
 }

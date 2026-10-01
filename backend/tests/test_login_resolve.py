@@ -105,44 +105,48 @@ class LoginResolveTests(unittest.TestCase):
             "app.api.login_resolve.auth_user_exists", return_value=True
         ):
             result = self._resolve("persona@yahoo.com.mx")
-        self.assertEqual(result["next"], "yahoo_oauth")
+        self.assertEqual(result["next"], "yahoo_imap")
         self.assertEqual(result["provider"], "yahoo")
+        self.assertTrue(result["read_available"])
 
-    def test_yahoo_com_mx_unknown_is_coming_soon(self) -> None:
+    def test_yahoo_com_mx_unknown_opens_imap(self) -> None:
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=False
         ):
             result = self._resolve("nuevo@yahoo.com.mx")
         self.assertEqual(result["provider"], "yahoo")
-        self.assertEqual(result["next"], "coming_soon_yahoo")
-        self.assertIn("yahoo", result["pending_options"])
+        self.assertEqual(result["next"], "yahoo_imap")
+        self.assertEqual(result["domain_status"], "active")
+        self.assertNotIn("yahoo", result["pending_options"])
         self.assertNotIn("apple", result["pending_options"])
-        self.assertEqual(result["active_options"], ["hotmail", "apple"])
+        self.assertIn("yahoo", result["active_options"])
+        self.assertTrue(result["read_available"])
 
-    def test_existing_yahoo_goes_to_oauth(self) -> None:
+    def test_existing_yahoo_opens_imap(self) -> None:
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=True
         ):
             result = self._resolve("hsalcidor@yahoo.com")
-        self.assertEqual(result["next"], "yahoo_oauth")
+        self.assertEqual(result["next"], "yahoo_imap")
+        self.assertTrue(result["read_available"])
 
-    def test_unknown_yahoo_is_coming_soon_not_oauth(self) -> None:
+    def test_unknown_yahoo_opens_imap_not_oauth(self) -> None:
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=False
         ):
             result = self._resolve("melgibson@yahoo.com")
-        self.assertEqual(result["next"], "coming_soon_yahoo")
+        self.assertEqual(result["next"], "yahoo_imap")
         self.assertEqual(result["provider"], "yahoo")
-        self.assertFalse(result["read_available"])
+        self.assertTrue(result["read_available"])
 
-    def test_unknown_gmail_is_coming_soon(self) -> None:
+    def test_unknown_gmail_opens_google_oauth(self) -> None:
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=False
         ):
             result = self._resolve("nuevo@gmail.com")
-        self.assertEqual(result["next"], "coming_soon_gmail")
-        self.assertEqual(result["domain_status"], "pending_review")
-        self.assertIn("Próximamente", result["message"])
+        self.assertEqual(result["next"], "google_oauth")
+        self.assertEqual(result["domain_status"], "active")
+        self.assertTrue(result["read_available"])
 
     def test_unknown_icloud_opens_imap_connect(self) -> None:
         with patch(
@@ -243,7 +247,10 @@ class LoginResolveTests(unittest.TestCase):
         self.assertEqual(result["next"], "signup")
         self.assertEqual(result["provider"], "hotmail")
         self.assertTrue(result["read_available"])
-        self.assertEqual(result["active_options"], ["hotmail", "apple"])
+        self.assertEqual(
+            result["active_options"],
+            ["hotmail", "apple", "gmail", "yahoo"],
+        )
 
     def test_outlook_live_msn_are_live_microsoft(self) -> None:
         with patch(
@@ -304,15 +311,15 @@ class LoginResolveTests(unittest.TestCase):
         ):
             result = self._resolve("hmcelinfo@gmail.com")
         self.assertEqual(result["next"], "google_oauth")
-        self.assertFalse(result["read_available"])
+        self.assertTrue(result["read_available"])
 
-    def test_existing_yahoo_tester_still_goes_to_yahoo(self) -> None:
+    def test_existing_yahoo_tester_uses_app_password(self) -> None:
         with patch(
             "app.api.login_resolve.auth_user_exists", return_value=True
         ):
             result = self._resolve("hsalcidor@yahoo.com")
-        self.assertEqual(result["next"], "yahoo_oauth")
-        self.assertFalse(result["read_available"])
+        self.assertEqual(result["next"], "yahoo_imap")
+        self.assertTrue(result["read_available"])
 
     def test_response_omits_exists_flag(self) -> None:
         with patch(

@@ -21,9 +21,12 @@ from app.services.yahoo_domains import YAHOO_MAIL_DOMAINS
 GMAIL_MAIL_DOMAINS = ("gmail.com", "googlemail.com")
 APPLE_MAIL_DOMAINS = ("icloud.com", "me.com", "mac.com")
 
-# Microsoft por OAuth. iCloud por IMAP de solo lectura (contraseña de app).
-ACTIVE_OPTIONS_TEXT = "Outlook, Hotmail, Live, MSN, Microsoft 365 e iCloud"
-PENDING_OPTIONS_TEXT = "Gmail, Google Workspace y Yahoo"
+# Microsoft y Gmail por OAuth de solo lectura. Yahoo e iCloud por IMAP
+# con contraseña de app. Gmail avisa que Google aún no verificó la app.
+ACTIVE_OPTIONS_TEXT = (
+    "Outlook, Hotmail, Live, MSN, Microsoft 365, Gmail, Yahoo e iCloud"
+)
+PENDING_OPTIONS_TEXT = "Otros servidores de empresa"
 
 _LABEL = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$", re.I)
 
@@ -70,8 +73,13 @@ def _roots_for(*groups: tuple[str, ...]) -> tuple[str, ...]:
     return tuple(seen)
 
 
-KNOWN_ACTIVE_DOMAINS = _roots_for(MICROSOFT_MAIL_DOMAINS, APPLE_MAIL_DOMAINS)
-KNOWN_PENDING_DOMAINS = _roots_for(GMAIL_MAIL_DOMAINS, YAHOO_MAIL_DOMAINS)
+KNOWN_ACTIVE_DOMAINS = _roots_for(
+    MICROSOFT_MAIL_DOMAINS,
+    APPLE_MAIL_DOMAINS,
+    GMAIL_MAIL_DOMAINS,
+    YAHOO_MAIL_DOMAINS,
+)
+KNOWN_PENDING_DOMAINS = ()
 KNOWN_MAIL_DOMAINS = _roots_for(KNOWN_ACTIVE_DOMAINS, KNOWN_PENDING_DOMAINS)
 
 MICROSOFT_MX_MARKERS = (
@@ -449,7 +457,7 @@ def classify_mail_domain(
             message=message_for_missing(),
         )
 
-    if provider in {"hotmail", "apple"}:
+    if provider in {"hotmail", "apple", "gmail", "yahoo"}:
         return DomainVerdict(
             email=clean,
             domain=domain,

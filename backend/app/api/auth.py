@@ -369,9 +369,27 @@ def get_google_connection_status() -> GoogleConnectionStatus:
     provider = str(account.get("provider") or "google")
 
     if provider in ("yahoo", "imap"):
+        from app.services.yahoo_imap import stored_yahoo_uses_app_password
+
         scopes = list((credentials or {}).get("scopes") or [])
-        mail_read = granted_mail_read({"scope": " ".join(scopes)})
         has_token = bool(credentials and credentials.get("access_token"))
+        if stored_yahoo_uses_app_password(credentials):
+            return GoogleConnectionStatus(
+                connected=has_token,
+                email=account.get("email") or None,
+                provider="yahoo",
+                has_access_token=has_token,
+                has_refresh_token=False,
+                scopes=scopes,
+                message=(
+                    "Buzón Yahoo conectado en solo lectura con contraseña de app."
+                    if has_token
+                    else "Falta volver a conectar Yahoo."
+                ),
+                login_url=None,
+                mail_read_available=has_token,
+            )
+        mail_read = granted_mail_read({"scope": " ".join(scopes)})
         return GoogleConnectionStatus(
             connected=bool(has_token and mail_read),
             email=account.get("email") or None,
@@ -459,6 +477,128 @@ def get_connected_google_email() -> str:
     if not context.google_account:
         return "Sin cuenta identificada"
     return context.google_account.get("email") or "Sin cuenta identificada"
+
+
+GOOGLE_OAUTH_ENV_NAMES = (
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "GOOGLE_REDIRECT_URI",
+)
+
+_GMAIL_SIGNUP_VIA = "gmail_oauth"
+
+
+def google_oauth_readiness() -> dict[str, object]:
+    """Nombres de variables y ajustes de consola. Nunca los valores."""
+    import os
+
+    missing = [
+        name for name in GOOGLE_OAUTH_ENV_NAMES if not os.getenv(name, "").strip()
+    ]
+    return {
+        "configured": not missing,
+        "missing_variables": missing,
+        "scopes": list(settings.google_scopes),
+        "consent_screen": "In production",
+        "authorized_javascript_origins": ["https://app.donexto.com"],
+        "authorized_redirect_note": (
+            "El URI de redirección autorizado en Google Cloud tiene que ser "
+            "exactamente el valor de GOOGLE_REDIRECT_URI. En producción es "
+            "el callback del API en Railway: "
+            "https://hms-ai-assistant-production.up.railway.app/auth/google/callback"
+        ),
+        "user_cap": (
+            "Google limita las apps no verificadas a 100 usuarios. "
+            "Gmail está en acceso anticipado."
+        ),
+    }
+
+
+@router.api_route("/ready", methods=["GET", "POST"])
+def google_ready() -> dict[str, object]:
+    return google_oauth_readiness()
+
+
+class GooglePublicLoginRequest(BaseModel):
+    return_to: str | None = None
+    login_hint: str | None = None
+
+
+@router.post("/login")
+def google_public_login(
+    request: Request,
+    payload: GooglePublicLoginRequest | None = None,
+) -> dict[str, object]:
+    """Arranque público de Gmail. Si faltan variables, no redirige."""
+    from app.security.rate_limit import allow_request
+    from app.services.yahoo_oauth import encode_login_hint_in_state_prefix
+
+    client_host = getattr(getattr(request, "client", None), "host", None) or "unknown"
+    if not allow_request(f"google-login:{client_host}", max_requests=8, window_seconds=60):
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "status": "rate_limited",
+                "message": "Demasiados intentos seguidos. Espera un momento.",
+            },
+        )
+
+    readiness = google_oauth_readiness()
+    if not readiness["configured"]:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "google_not_configured",
+                "code": "google_not_configured",
+                "message": (
+                    "Gmail todavía no está configurado en el servidor. "
+                    "Faltan variables de Google OAuth."
+                ),
+                "missing_variables": readiness["missing_variables"],
+                "scopes": readiness["scopes"],
+                "consent_screen": readiness["consent_screen"],
+                "authorized_javascript_origins": readiness[
+                    "authorized_javascript_origins"
+                ],
+                "authorized_redirect_note": readiness["authorized_redirect_note"],
+            },
+        )
+
+    hint = (payload.login_hint if payload else None) or None
+    return_to = (
+        payload.return_to.rstrip("/") + "/"
+        if payload and _is_allowed_return_url(payload.return_to)
+        else _default_frontend_url(request)
+    )
+    try:
+        state = oauth_storage.create_oauth_state(
+            provider=GOOGLE_PROVIDER,
+            ttl_minutes=10,
+            return_to=return_to,
+            state_prefix=encode_login_hint_in_state_prefix("gmail", hint),
+        )
+    except OAuthStorageError as error:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": "No fue posible preparar el inicio de sesión de Google.",
+            },
+        ) from error
+
+    flow = create_google_flow(state=state)
+    authorization_url, _returned = flow.authorization_url(
+        access_type="offline",
+        include_granted_scopes="true",
+        prompt="consent",
+        login_hint=(hint or "").strip().lower(),
+        state=state,
+    )
+    return {
+        "status": "ok",
+        "authorization_url": authorization_url,
+        "configured": True,
+    }
 
 
 @router.get("/login")
@@ -633,18 +773,7 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
 
     profile_id = str(state_context.get("profile_id") or "").strip()
     workspace_id = str(state_context.get("workspace_id") or "").strip()
-
-    if not profile_id or not workspace_id:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "unbound_oauth_state",
-                "message": (
-                    "La autorización no está vinculada a una cuenta Donexto y "
-                    "un workspace. Inicia la conexión nuevamente desde Donexto."
-                ),
-            },
-        )
+    public_login = not profile_id or not workspace_id
 
     flow = create_google_flow(state=state)
 
@@ -697,8 +826,50 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
             },
         )
 
-    expected_email = _donexto_profile_email(profile_id)
     authorized_email = account_email.strip().lower()
+    minted_session: dict[str, object] | None = None
+    if public_login:
+        from urllib.parse import urlencode
+
+        from app.services.yahoo_oauth import login_hint_from_oauth_state
+        from app.services.yahoo_session import mint_yahoo_session_or_http
+
+        expected_hint = login_hint_from_oauth_state(state or "")
+        if expected_hint and authorized_email and expected_hint != authorized_email:
+            return_to = str(state_context.get("return_to") or "").strip()
+            frontend_url = (
+                return_to.rstrip("/") + "/"
+                if _is_allowed_return_url(return_to)
+                else _default_frontend_url(request)
+            )
+            query = urlencode(
+                {
+                    "donexto": "oauth_error",
+                    "reason": "gmail_mismatch",
+                }
+            )
+            return RedirectResponse(
+                url=f"{frontend_url.rstrip('/')}?{query}",
+                status_code=302,
+            )
+        if not authorized_email:
+            raise HTTPException(
+                status_code=502,
+                detail={
+                    "status": "error",
+                    "message": "Google no devolvió el correo de la cuenta.",
+                },
+            )
+        minted_session = mint_yahoo_session_or_http(
+            authorized_email,
+            allow_create=True,
+            signup_via=_GMAIL_SIGNUP_VIA,
+            provider_label="Gmail",
+        )
+        profile_id = str(minted_session["user_id"])
+        workspace_id = str(minted_session["workspace_id"])
+
+    expected_email = "" if public_login else _donexto_profile_email(profile_id)
     if expected_email and authorized_email and authorized_email != expected_email:
         return HTMLResponse(
             status_code=400,
@@ -759,6 +930,23 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
         if _is_allowed_return_url(return_to)
         else _default_frontend_url(request)
     )
+
+    if minted_session and minted_session.get("access_token"):
+        from urllib.parse import urlencode
+
+        fragment = urlencode(
+            {
+                "access_token": minted_session.get("access_token") or "",
+                "refresh_token": minted_session.get("refresh_token") or "",
+                "token_type": "bearer",
+                "expires_in": minted_session.get("expires_in") or "3600",
+                "type": "magiclink",
+            }
+        )
+        return RedirectResponse(
+            url=f"{frontend_url.rstrip('/')}/#{fragment}",
+            status_code=302,
+        )
 
     return RedirectResponse(url=frontend_url, status_code=302)
 

@@ -177,16 +177,16 @@
         <ul>
           <li>
             <strong>Gmail</strong> (y Google Workspace, si tu organización lo
-            permite): autorizas la lectura en el sitio de Google. Donexto no te
-            pide la contraseña de Gmail.
+            permite): lectura con el permiso gmail.readonly. Google puede avisar
+            que no ha verificado la app; el acceso es anticipado (hasta 100
+            usuarios) y se revoca en myaccount.google.com/permissions.
           </li>
           <li>
-            <strong>Yahoo</strong>: te llevamos al sitio de Yahoo para firmar
-            (OAuth). Eso abre la app y, si autorizas la lectura, conecta el
-            buzón. No das de alta un usuario Donexto aparte ni escribes la clave
-            de Yahoo en Donexto. Donexto lee el buzón por IMAP (servidor de
-            Yahoo, cifrado) con el token OAuth. Ese token se guarda cifrado
-            solo para seguir leyendo el buzón mientras la conexión siga activa.
+            <strong>Yahoo</strong>: conexión directa por IMAP
+            (<code>imap.mail.yahoo.com</code>, puerto 993, SSL) con una
+            contraseña de app, en espera de la autorización oficial de Yahoo.
+            Solo lectura (EXAMINE y BODY.PEEK) y revocable en Yahoo. La
+            contraseña de app se guarda cifrada.
           </li>
           <li>
             <strong>Apple iCloud Mail</strong> (@icloud.com, @me.com, @mac.com):
@@ -203,10 +203,10 @@
           Microsoft 365 y AOL. No afirmamos que ya se conecten.
         </p>
         <p>
-          Con Gmail te enviamos un correo de verificación de Donexto; sin ese
-          paso no hay acceso ni lectura del buzón. Con Yahoo no: firmar en el
-          sitio de Yahoo es el acceso y la autorización de lectura. Donexto no
-          pide la clave de ningún buzón.
+          Con Gmail, Yahoo e iCloud te enviamos un correo de verificación de
+          Donexto; sin ese paso no hay acceso. Gmail usa el aviso de app no
+          verificada. Yahoo usa contraseña de app mientras falta la
+          autorización oficial. Ninguno marca tus correos como leídos.
         </p>
         <p>
           Según el buzón que conectes, el sistema accede, en la medida necesaria
@@ -219,8 +219,9 @@
           </li>
           <li>
             Autorización de lectura: en Gmail, tokens de Google almacenados
-            cifrados. En Yahoo, tokens OAuth de Yahoo almacenados cifrados para
-            IMAP. En iCloud, la contraseña específica de app almacenada cifrada.
+            cifrados. En Yahoo, la contraseña de app (o, más adelante, el token
+            OAuth si Yahoo autoriza mail-r) almacenada cifrada. En iCloud, la
+            contraseña específica de app almacenada cifrada.
           </li>
           <li>
             Metadatos y fragmentos de correo: remitente, asunto, fecha y, cuando
@@ -247,7 +248,7 @@
           autorización de tu empleador.
         </p>
         <p>
-          Tu buzón completo se queda en el proveedor (Google o Yahoo). Donexto
+          Tu buzón completo se queda en el proveedor (Google, Yahoo o Apple). Donexto
           no es el archivo de tu bandeja. Lo que sí guardamos —y necesitamos
           guardar para que el panel exista al día siguiente— es lo mínimo para
           la capa de atención: la cuenta, la autorización de lectura cifrada,
@@ -264,8 +265,8 @@
 
         <h2 id="buzon">2. Cómo usamos los datos del buzón</h2>
         <p>
-          Donexto se compromete, para los buzones disponibles hoy (Gmail y
-          Yahoo), a esto:
+          Donexto se compromete, para los buzones disponibles hoy (Gmail,
+          Yahoo e iCloud), a esto:
         </p>
         <ul>
           <li>
@@ -306,14 +307,14 @@
         </p>
         <h3>Yahoo</h3>
         <p>
-          Yahoo se conecta con OAuth: firmas en el sitio de Yahoo. Donexto no
-          pide la clave de esa cuenta. Si Yahoo autoriza el alcance de correo,
-          Donexto lee el buzón por IMAP seguro (<code>imap.mail.yahoo.com</code>,
-          puerto 993 con SSL) usando el token OAuth. No hay un usuario Donexto
-          aparte ni una contraseña Donexto. Guardamos ese token cifrado para
-          leer el buzón. Para dejar de dar acceso: desconecta el buzón en
-          Donexto y revoca Donexto en las aplicaciones conectadas de tu cuenta
-          Yahoo.
+          Yahoo se conecta hoy por IMAP seguro
+          (<code>imap.mail.yahoo.com</code>, puerto 993 con SSL) con una
+          contraseña de app que generas tú. No es la contraseña de la cuenta
+          Yahoo. La guardamos cifrada y solo leemos (EXAMINE y BODY.PEEK).
+          Sigue haciendo falta el correo de verificación de Donexto. El acceso
+          OAuth queda para cuando Yahoo autorice mail-r. Para dejar de dar
+          acceso: desconecta el buzón en Donexto (se borra la contraseña de
+          app) y revócala en la seguridad de tu cuenta Yahoo.
         </p>
         <p>
           AOL no está disponible todavía.
@@ -344,9 +345,10 @@
 
         <h2 id="compartida">3. Responsabilidad compartida</h2>
         <p>
-          Donexto cifra la autorización de lectura (tokens de Google o tokens
-          OAuth de Yahoo). Eso no cierra, por sí solo, el permiso del lado del
-          buzón.
+          Donexto cifra la autorización de lectura (tokens de Google, la
+          contraseña de app de Yahoo o de iCloud, y más adelante un token OAuth
+          de Yahoo si llega mail-r). Eso no cierra, por sí solo, el permiso del
+          lado del buzón.
         </p>
         <p>
           Si dejas de usar Donexto: desconecta el buzón o elimina la cuenta en
@@ -369,9 +371,10 @@
             lectura del buzón por la API de Gmail.
           </li>
           <li>
-            Yahoo, si conectas Yahoo: identidad (cuando firmas en Yahoo) y
-            lectura del buzón por IMAP con el token OAuth. Donexto no envía tu
-            clave a Yahoo porque nunca la pide.
+            Yahoo, si conectas Yahoo: lectura del buzón por IMAP con la
+            contraseña de app (no la contraseña de la cuenta). Donexto la envía
+            solo a imap.mail.yahoo.com para abrir el buzón en solo lectura, y
+            la guarda cifrada.
           </li>
           <li>
             Supabase, Railway, Cloudflare y Resend: datos de la cuenta Donexto,

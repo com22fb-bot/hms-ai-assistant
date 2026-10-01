@@ -30,6 +30,7 @@ from app.services.yahoo_imap import (
     imap_search_date,
     normalize_yahoo_address,
     normalize_yahoo_app_password,
+    parse_list_mailbox_flags,
     parse_list_mailbox_name,
 )
 
@@ -91,17 +92,29 @@ def _history_window(
     return start, current
 
 
-def _list_folder_names(client: Any) -> list[str]:
+def _provider_read_error(mailbox_provider: str, message: str) -> Exception:
+    if mailbox_provider == "icloud":
+        from app.services.icloud_imap import IcloudImapError
+
+        return IcloudImapError(message, code="imap_failed")
+    return YahooImapError(message, code="imap_failed")
+
+
+def _provider_label(mailbox_provider: str) -> str:
+    return "iCloud" if mailbox_provider == "icloud" else "Yahoo"
+
+
+def _list_folders(client: Any) -> list[tuple[str, str]]:
     status, data = client.list()
     if status != "OK" or not data:
-        return ["INBOX"]
+        return [("INBOX", "\\Inbox")]
 
-    names: list[str] = []
+    folders: list[tuple[str, str]] = []
     for row in data:
         name = parse_list_mailbox_name(row)
         if name:
-            names.append(name)
-    return names or ["INBOX"]
+            folders.append((name, parse_list_mailbox_flags(row)))
+    return folders or [("INBOX", "\\Inbox")]
 
 
 def _uid_search(client: Any, *criteria: str) -> list[str]:
@@ -113,16 +126,29 @@ def _uid_search(client: Any, *criteria: str) -> list[str]:
     return [item for item in text.split() if item]
 
 
-def _select_folder(client: Any, folder: str) -> None:
+def _select_folder(
+    client: Any,
+    folder: str,
+    mailbox_provider: str = "yahoo",
+) -> None:
     status, _ = client.select(_quoted_mailbox(folder), readonly=True)
     if status != "OK":
         status, _ = client.select(folder, readonly=True)
     if status != "OK":
-        raise YahooImapError(f"No fue posible abrir la carpeta {folder}.")
+        label = _provider_label(mailbox_provider)
+        raise _provider_read_error(
+            mailbox_provider,
+            f"No fue posible abrir la carpeta {folder} de {label}.",
+        )
 
 
-def _folder_uids_since(client: Any, folder: str, since: datetime) -> list[str]:
-    _select_folder(client, folder)
+def _folder_uids_since(
+    client: Any,
+    folder: str,
+    since: datetime,
+    mailbox_provider: str = "yahoo",
+) -> list[str]:
+    _select_folder(client, folder, mailbox_provider)
     return _uid_search(client, "SINCE", imap_search_date(since))
 
 
@@ -131,19 +157,18 @@ def _collect_refs(
     *,
     since: datetime,
     roles: set[str],
+    mailbox_provider: str = "yahoo",
 ) -> dict[str, list[str]]:
     grouped: dict[str, list[str]] = {role: [] for role in roles}
     grouped.setdefault("other", [])
 
-    for folder in _list_folder_names(client):
-        role = classify_yahoo_folder(folder)
+    for folder, flags in _list_folders(client):
+        role = classify_yahoo_folder(folder, flags)
         if role not in roles:
             continue
         try:
-            uids = _folder_uids_since(client, folder, since)
-        except YahooImapError:
-            continue
-        except Exception:
+            uids = _folder_uids_since(client, folder, since, mailbox_provider)
+        except (YahooImapError, Exception):
             continue
         for uid in uids:
             grouped.setdefault(role, []).append(encode_yahoo_ref(folder, uid))
@@ -178,6 +203,7 @@ def yahoo_initial_snapshot(
             client,
             since=start,
             roles={"inbox", "sent", "draft", "spam", "trash"},
+            mailbox_provider=mailbox_provider,
         )
         eligible = grouped.get("inbox", []) + grouped.get("sent", [])
         unread = 0
@@ -186,7 +212,7 @@ def yahoo_initial_snapshot(
         } or {"INBOX"}
         for folder in inbox_folders:
             try:
-                _select_folder(client, folder)
+                _select_folder(client, folder, mailbox_provider)
                 unread += len(
                     _uid_search(
                         client,
@@ -301,6 +327,7 @@ def yahoo_incremental_refs(
             client,
             since=since,
             roles={"inbox", "sent"},
+            mailbox_provider=mailbox_provider,
         )
         return list(dict.fromkeys(grouped.get("inbox", []) + grouped.get("sent", [])))
     finally:
@@ -316,10 +343,18 @@ def _flags_from_fetch(meta: bytes | str) -> str:
     return str(meta)
 
 
-def _fetch_uid_message(client: Any, uid: str) -> tuple[email.message.Message, str]:
+def _fetch_uid_message(
+    client: Any,
+    uid: str,
+    mailbox_provider: str = "yahoo",
+) -> tuple[email.message.Message, str]:
     status, fetched = client.uid("FETCH", uid, PEEK_FULL_SPEC)
+    label = _provider_label(mailbox_provider)
     if status != "OK" or not fetched:
-        raise YahooImapError(f"Yahoo no devolvió el mensaje {uid}.")
+        raise _provider_read_error(
+            mailbox_provider,
+            f"{label} no devolvió el mensaje {uid}.",
+        )
 
     raw_bytes = b""
     flags_text = ""
@@ -333,7 +368,10 @@ def _fetch_uid_message(client: Any, uid: str) -> tuple[email.message.Message, st
             flags_text += _flags_from_fetch(part)
 
     if not raw_bytes:
-        raise YahooImapError(f"Yahoo devolvió un mensaje vacío ({uid}).")
+        raise _provider_read_error(
+            mailbox_provider,
+            f"{label} devolvió un mensaje vacío ({uid}).",
+        )
     return email.message_from_bytes(raw_bytes), flags_text
 
 
@@ -427,9 +465,13 @@ def sync_yahoo_page(
                 continue
             try:
                 if selected_folder != folder:
-                    _select_folder(imap_client, folder)
+                    _select_folder(imap_client, folder, mailbox_provider)
                     selected_folder = folder
-                parsed, flags_text = _fetch_uid_message(imap_client, uid)
+                parsed, flags_text = _fetch_uid_message(
+                    imap_client,
+                    uid,
+                    mailbox_provider,
+                )
                 body_text, body_html, has_attachments = extract_rfc822_bodies(
                     parsed
                 )

@@ -220,7 +220,8 @@
   margin-top: 0.5rem;
 }
 
-.dx-icloud-steps {
+.dx-icloud-steps,
+.dx-mail-steps {
   margin: 0;
   padding-left: 1.15rem;
   display: grid;
@@ -231,6 +232,7 @@
 }
 
 .dx-login .dx-icloud-steps,
+.dx-login .dx-mail-steps,
 .dx-login .dx-icloud .dx-login__note {
   color: #d5e4ea;
 }

@@ -45,6 +45,8 @@ _PUBLIC_PATHS = {
     "/auth/yahoo/enter",
     "/auth/yahoo/login",
     "/auth/yahoo/callback",
+    "/auth/yahoo/imap/connect",
+    "/auth/google/ready",
     "/auth/microsoft/login",
     "/auth/microsoft/callback",
     "/auth/login/resolve",

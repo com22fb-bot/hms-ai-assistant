@@ -11,7 +11,9 @@ export type AuthGateNext =
   | "pending_review"
   | "unsupported"
   | "icloud_unavailable"
-  | "icloud_connect";
+  | "icloud_connect"
+  | "yahoo_connect"
+  | "gmail_notice";
 
 export type AuthGateOAuth = "google" | "azure" | "apple" | "yahoo";
 
@@ -41,9 +43,8 @@ function comingSoonFromNext(next?: string, provider?: string): AuthGateNext | nu
  * Email-first gate: one Continuar.
  * Routing comes from POST /auth/login/resolve (`{ next, provider, message }`).
  * Hotmail/Outlook/M365 can enter and we can read mail.
- * iCloud connects with an app-specific password (read-only IMAP).
- * Gmail/Yahoo first-time go to waitlist; existing testers
- * still get identity login.
+ * iCloud and Yahoo connect with an app-specific password (read-only IMAP).
+ * Gmail shows the unverified-app notice, then Google OAuth (gmail.readonly).
  */
 export function gateNextAfterResolve(
   _intent: AuthGateIntent,
@@ -59,6 +60,21 @@ export function gateNextAfterResolve(
     || next === "coming_soon_icloud"
   ) {
     return "icloud_connect";
+  }
+  if (
+    provider === "yahoo"
+    || next === "yahoo_imap"
+    || next === "yahoo_oauth"
+    || next === "coming_soon_yahoo"
+  ) {
+    return "yahoo_connect";
+  }
+  if (
+    provider === "gmail"
+    || next === "google_oauth"
+    || next === "coming_soon_gmail"
+  ) {
+    return "gmail_notice";
   }
   if (next === "fix_domain" || next === "typo" || next === "invalid_domain") {
     return "fix_domain";

@@ -81,6 +81,13 @@ export function ContactInbox({
   const [note, setNote] = useState<string | null>(null);
 
   const selected = messages.find((item) => item.id === selectedId) ?? null;
+  const draftKey = `${selected?.id ?? ""}\0${selected?.draft_body ?? ""}`;
+  const [draftKeySeen, setDraftKeySeen] = useState(draftKey);
+  if (draftKey !== draftKeySeen) {
+    setDraftKeySeen(draftKey);
+    setReply(selected?.draft_body || "");
+    setConfirming(false);
+  }
 
   const applyList = useCallback(
     (data: ContactListResponse, preferId?: string | null) => {
@@ -122,13 +129,11 @@ export function ContactInbox({
   );
 
   useEffect(() => {
-    void load(reloadToken === 0 ? initialId : null);
+    const frame = window.requestAnimationFrame(() => {
+      void load(reloadToken === 0 ? initialId : null);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [load, initialId, reloadToken]);
-
-  useEffect(() => {
-    setReply(selected?.draft_body || "");
-    setConfirming(false);
-  }, [selected?.id, selected?.draft_body]);
 
   function replaceContact(contact: ContactMessage | undefined, unreadCount?: number) {
     if (!contact) return;

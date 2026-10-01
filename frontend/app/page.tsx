@@ -247,11 +247,13 @@ function Dashboard({
     connectingYahoo,
     connectingMicrosoft,
     connectingIcloud,
+    connectingYahooImap,
     loadGoogleStatus,
     startGoogleConnection,
     startYahooConnection,
     startMicrosoftConnection,
     connectIcloud,
+    connectYahooImap,
   } = useGoogleStatus();
 
   const isGoogleMailbox =
@@ -395,9 +397,9 @@ function Dashboard({
   }
 
   function stayOnYahooPending() {
-    setMailboxPickerOpen(false);
     setGuidedImportOpen(false);
-    setNotice(ACCOUNT_VS_MAILBOX.yahooWaitingMailBody);
+    setMailboxPickerOpen(true);
+    setNotice(null);
   }
 
   function requestMailboxOrExplain() {
@@ -494,6 +496,7 @@ function Dashboard({
             connectingYahoo={connectingYahoo}
             connectingMicrosoft={connectingMicrosoft}
             connectingIcloud={connectingIcloud}
+            connectingYahooImap={connectingYahooImap}
             required={!connection?.connected && !yahooIdentityReady && !microsoftIdentityReady}
             accountEmail={session.email}
             mode={mailboxConnectModeFromEmail(session.email)}
@@ -520,31 +523,13 @@ function Dashboard({
                   : new Error(message);
               }
             }}
-            onConnectYahoo={async () => {
-              if (yahooIdentityReady && !yahooMailReadAvailable) {
-                setMailboxPickerOpen(false);
-                setNotice(ACCOUNT_VS_MAILBOX.yahooWaitingMailBody);
-                return;
-              }
-              setNotice("Te llevamos a Yahoo para firmar ahí…");
-              try {
-                await startYahooConnection({
-                  intent: yahooIdentityReady ? "mailbox" : "login",
-                  loginHint: session.email,
-                });
-              } catch (requestError) {
-                const message =
-                  requestError instanceof Error
-                    ? requestError.message
-                    : "No fue posible abrir Yahoo.";
-                setNotice(message);
-                throw requestError instanceof Error
-                  ? requestError
-                  : new Error(message);
-              }
-            }}
             onConnectIcloud={async (email, appPassword) => {
               await connectIcloud(email, appPassword);
+              setMailboxPickerOpen(false);
+              setNotice(null);
+            }}
+            onConnectYahooImap={async (email, appPassword) => {
+              await connectYahooImap(email, appPassword);
               setMailboxPickerOpen(false);
               setNotice(null);
             }}
@@ -659,6 +644,7 @@ export default function HomePage() {
           onSignInWithMicrosoft={signInWithMicrosoft}
           onSignInWithProvider={signInWithProvider}
           onIcloudSession={adoptIcloudSession}
+          onYahooSession={adoptIcloudSession}
           onResendSignupEmail={resendSignupEmail}
           onMagicLink={signInWithMagicLink}
           onResetPassword={resetPassword}

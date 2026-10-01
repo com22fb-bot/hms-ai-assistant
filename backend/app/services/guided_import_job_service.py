@@ -15,7 +15,7 @@ from app.services.icloud_imap import (
     IcloudImapError,
     stored_icloud_uses_app_password,
 )
-from app.services.yahoo_imap import YahooImapError, stored_yahoo_uses_oauth
+from app.services.yahoo_imap import YahooImapError, yahoo_imap_access
 from app.services.yahoo_import import (
     YAHOO_PAGE_SIZE,
     is_yahoo_provider,
@@ -99,15 +99,8 @@ def _icloud_secret(account: dict[str, Any]) -> tuple[str, str]:
 
 
 def _yahoo_secret(account: dict[str, Any]) -> tuple[str, str, bool]:
-    email = str(account.get("email") or "").strip()
     stored = _storage().get_credentials(str(account["id"])) or {}
-    secret = str(stored.get("access_token") or "")
-    if not email or not secret or not stored_yahoo_uses_oauth(stored):
-        raise YahooImapError(
-            "Vuelve a autorizar Yahoo en el sitio de Yahoo. "
-            "Donexto no pide tu clave."
-        )
-    return email, secret, True
+    return yahoo_imap_access(stored, str(account.get("email") or ""))
 
 
 def _job(job_id: str) -> dict[str, Any]:
@@ -285,20 +278,14 @@ def _run_job(job_id: str) -> None:
                     if item
                 ]
                 offset = int(job.get("next_page_token") or 0)
-                secret = _storage().get_credentials(account_id) or {}
-                app_password = str(secret.get("access_token") or "")
-                if not app_password or not stored_yahoo_uses_oauth(secret):
-                    raise YahooImapError(
-                        "Vuelve a autorizar Yahoo en el sitio de Yahoo. "
-                        "Donexto no pide tu clave."
-                    )
+                _email, app_password, oauth = _yahoo_secret(account)
                 sync_page = sync_yahoo_page(
                     account=account,
                     app_password=app_password,
                     refs=refs,
                     offset=offset,
                     batch_size=int(job.get("batch_size") or YAHOO_PAGE_SIZE),
-                    oauth=True,
+                    oauth=oauth,
                 )
             elif is_microsoft_provider(account):
                 metadata = dict(job.get("metadata") or {})

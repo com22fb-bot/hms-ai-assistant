@@ -22,7 +22,7 @@ from app.services.icloud_imap import (
 from app.services.yahoo_imap import (
     YahooImapError,
     list_yahoo_messages,
-    stored_yahoo_uses_oauth,
+    yahoo_imap_access,
 )
 
 
@@ -92,26 +92,26 @@ def create_gmail_router(
 
         if provider in ("yahoo", "imap"):
             credentials = oauth_storage.get_credentials(str(account["id"]))
-            address = str(account.get("email") or "").strip()
-            token = str((credentials or {}).get("access_token") or "")
-            if not address or not token or not stored_yahoo_uses_oauth(credentials):
+            try:
+                address, token, oauth = yahoo_imap_access(
+                    credentials,
+                    str(account.get("email") or ""),
+                )
+            except YahooImapError as error:
                 raise HTTPException(
                     status_code=401,
                     detail={
                         "status": "yahoo_credentials_missing",
-                        "message": (
-                            "Donexto aún no puede leer este buzón Yahoo. "
-                            "Falta el permiso de correo que Yahoo aprueba "
-                            "en la app. No hace falta volver a firmar."
-                        ),
+                        "code": error.code,
+                        "message": str(error),
                     },
-                )
+                ) from error
             try:
                 raw_messages = list_yahoo_messages(
                     address,
                     token,
                     max_results=limit,
-                    oauth=True,
+                    oauth=oauth,
                 )
             except YahooImapError as error:
                 raise HTTPException(

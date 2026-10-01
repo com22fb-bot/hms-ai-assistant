@@ -1,10 +1,12 @@
 "use client";
 
 import { LoaderCircle, Mail, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { AccountVsMailboxHint } from "@/components/auth/AccountVsMailboxHint";
+import { GmailConnectNotice } from "@/components/auth/GmailConnectNotice";
 import { IcloudConnectForm } from "@/components/auth/IcloudConnectForm";
+import { YahooConnectForm } from "@/components/auth/YahooConnectForm";
 import { icloudText } from "@/lib/i18n/icloudConnect";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import {
@@ -15,21 +17,29 @@ import type { MailboxConnectMode } from "@/lib/mailboxSignup";
 
 import "./mailbox-connect.css";
 
-type ProviderChoice = "choose" | "yahoo" | "microsoft";
+type ProviderChoice = "choose" | "yahoo" | "microsoft" | "gmail";
+
+function stepForMode(mode: MailboxConnectMode): ProviderChoice {
+  if (mode === "yahoo") return "yahoo";
+  if (mode === "microsoft") return "microsoft";
+  if (mode === "gmail") return "gmail";
+  return "choose";
+}
 
 type MailboxConnectModalProps = {
   open: boolean;
   connectingYahoo: boolean;
   connectingMicrosoft?: boolean;
   connectingIcloud?: boolean;
+  connectingYahooImap?: boolean;
   required?: boolean;
   accountEmail: string;
   mode?: MailboxConnectMode;
   onClose: () => void;
   onConnectGoogle: () => void | Promise<void>;
-  onConnectYahoo: () => Promise<void>;
   onConnectMicrosoft?: () => Promise<void>;
   onConnectIcloud?: (email: string, appPassword: string) => Promise<void>;
+  onConnectYahooImap?: (email: string, appPassword: string) => Promise<void>;
   onSignOut?: () => void;
 };
 
@@ -38,47 +48,38 @@ export function MailboxConnectModal({
   connectingYahoo,
   connectingMicrosoft = false,
   connectingIcloud = false,
+  connectingYahooImap = false,
   required = false,
   accountEmail,
   mode = "choose",
   onClose,
   onConnectGoogle,
-  onConnectYahoo,
   onConnectMicrosoft,
   onConnectIcloud,
+  onConnectYahooImap,
   onSignOut,
 }: MailboxConnectModalProps) {
   const { language } = useLanguage();
-  const [step, setStep] = useState<ProviderChoice>(
-    mode === "yahoo" ? "yahoo" : mode === "microsoft" ? "microsoft" : "choose",
-  );
+  const [step, setStep] = useState<ProviderChoice>(() => stepForMode(mode));
   const [localError, setLocalError] = useState<string | null>(null);
   const [connectingGoogle, setConnectingGoogle] = useState(false);
+  const openSession = open ? `${mode}\0${accountEmail}` : "";
+  const [openSessionSeen, setOpenSessionSeen] = useState(openSession);
+  if (openSession !== openSessionSeen) {
+    setOpenSessionSeen(openSession);
+    if (open) {
+      setStep(stepForMode(mode));
+      setLocalError(null);
+      setConnectingGoogle(false);
+    }
+  }
 
-  const yahooLocked = mode === "yahoo";
   const showChooser = mode === "choose" && step === "choose";
   const showYahooForm = mode === "yahoo" || step === "yahoo";
+  const showGmailNotice = mode === "gmail" || step === "gmail";
   const showMicrosoftForm = mode === "microsoft" || step === "microsoft";
   const showIcloudForm = mode === "icloud";
   const canDismiss = !required;
-
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    setStep(
-      mode === "yahoo" ? "yahoo" : mode === "microsoft" ? "microsoft" : "choose",
-    );
-    setLocalError(null);
-    setConnectingGoogle(false);
-  }, [open, mode, accountEmail]);
-
-  useEffect(() => {
-    if (step !== "yahoo" || yahooLocked) {
-      return;
-    }
-    setLocalError(null);
-  }, [step, yahooLocked]);
 
   if (!open) {
     return null;
@@ -96,19 +97,6 @@ export function MailboxConnectModal({
           : "No fue posible iniciar la conexión con Gmail.",
       );
       setConnectingGoogle(false);
-    }
-  }
-
-  async function handleYahooClick() {
-    setLocalError(null);
-    try {
-      await onConnectYahoo();
-    } catch (error) {
-      setLocalError(
-        error instanceof Error
-          ? error.message
-          : "No fue posible abrir Yahoo.",
-      );
     }
   }
 
@@ -217,36 +205,52 @@ export function MailboxConnectModal({
             <AccountVsMailboxHint variant="connect" email={accountEmail} />
           ) : null}
 
-          {showIcloudForm ? null : mode === "gmail" ? (
-            <>
-              {localError ? (
-                <div className="dx-connect-error" role="alert">
-                  {localError}
-                </div>
-              ) : null}
-              <button
-                type="button"
-                className="dx-connect-btn dx-connect-btn--primary"
-                disabled={connectingGoogle}
-                onClick={() => void handleGoogleClick()}
-              >
-                {connectingGoogle ? (
-                  <>
-                    <LoaderCircle size={18} className="app-spin" />
-                    Abriendo Google…
-                  </>
-                ) : (
-                  <>
-                    <Mail size={18} />
-                    {ACCOUNT_VS_MAILBOX.connectGmailCta}
-                  </>
-                )}
-              </button>
-              <p className="dx-connect-hint">
-                {ACCOUNT_VS_MAILBOX.connectGoogleHint}
-              </p>
-            </>
-          ) : showChooser ? (
+          {showGmailNotice && !showIcloudForm ? (
+            <GmailConnectNotice
+              email={accountEmail}
+              busy={connectingGoogle}
+              error={localError}
+              variant="modal"
+              onContinue={async () => {
+                await handleGoogleClick();
+              }}
+              onBack={mode === "choose" ? () => {
+                setStep("choose");
+                setLocalError(null);
+              } : undefined}
+            />
+          ) : null}
+
+          {showYahooForm && !showIcloudForm ? (
+            <YahooConnectForm
+              email={accountEmail}
+              emailLocked
+              busy={connectingYahooImap || connectingYahoo}
+              error={localError}
+              variant="modal"
+              onSubmit={async (email, appPassword) => {
+                setLocalError(null);
+                if (!onConnectYahooImap) {
+                  setLocalError("Yahoo");
+                  return;
+                }
+                try {
+                  await onConnectYahooImap(email, appPassword);
+                } catch (error) {
+                  setLocalError(
+                    error instanceof Error ? error.message : "Yahoo",
+                  );
+                  throw error;
+                }
+              }}
+              onBack={mode === "choose" ? () => {
+                setStep("choose");
+                setLocalError(null);
+              } : undefined}
+            />
+          ) : null}
+
+          {showIcloudForm || showGmailNotice || showYahooForm ? null : showChooser ? (
             <>
               {localError ? (
                 <div className="dx-connect-error" role="alert">
@@ -257,7 +261,10 @@ export function MailboxConnectModal({
                 type="button"
                 className="dx-connect-btn dx-connect-btn--primary"
                 disabled={connectingGoogle || connectingYahoo || connectingMicrosoft}
-                onClick={() => void handleGoogleClick()}
+                onClick={() => {
+                  setLocalError(null);
+                  setStep("gmail");
+                }}
               >
                 {connectingGoogle ? (
                   <>
@@ -279,7 +286,10 @@ export function MailboxConnectModal({
                 type="button"
                 className="dx-connect-btn dx-connect-btn--secondary"
                 disabled={connectingGoogle || connectingYahoo || connectingMicrosoft}
-                onClick={() => void handleYahooClick()}
+                onClick={() => {
+                  setLocalError(null);
+                  setStep("yahoo");
+                }}
               >
                 {connectingYahoo ? (
                   <>
@@ -358,45 +368,7 @@ export function MailboxConnectModal({
                 )}
               </button>
             </div>
-          ) : (
-            <div className="dx-connect-form">
-              {mode === "choose" ? (
-                <button
-                  type="button"
-                  className="dx-connect-back"
-                  onClick={() => {
-                    setStep("choose");
-                    setLocalError(null);
-                  }}
-                >
-                  ← Volver
-                </button>
-              ) : null}
-              <p className="dx-connect-hint">
-                {ACCOUNT_VS_MAILBOX.connectYahooBody}
-              </p>
-              {localError ? (
-                <div className="dx-connect-error" role="alert">
-                  {localError}
-                </div>
-              ) : null}
-              <button
-                type="button"
-                className="dx-connect-btn dx-connect-btn--primary"
-                disabled={connectingYahoo}
-                onClick={() => void handleYahooClick()}
-              >
-                {connectingYahoo ? (
-                  <>
-                    <LoaderCircle size={16} className="app-spin" />
-                    Abriendo Yahoo…
-                  </>
-                ) : (
-                  ACCOUNT_VS_MAILBOX.updateMailboxLabel
-                )}
-              </button>
-            </div>
-          )}
+          ) : null}
         </div>
 
         {onSignOut ? (

@@ -1,20 +1,29 @@
 # Yahoo Mail en Donexto (IMAP)
 
-La identidad y la autorización son **OAuth**. Ver [YAHOO_OAUTH.md](./YAHOO_OAUTH.md).
-Donexto no pide la clave de Yahoo.
+Hay dos caminos. El que lee el buzón **ahora** es la contraseña de app.
+El OAuth se queda para cuando Yahoo entregue `mail-r`.
+**No** activar `YAHOO_MAIL_READ_ENABLED`.
 
-IMAP solo se usa **después** de firmar en Yahoo, con el token OAuth
-(`AUTHENTICATE OAUTHBEARER` en `imap.mail.yahoo.com:993`).
+## Contraseña de app (ruta actual)
 
-## Cómo conectar
+Aviso en la app: conexión directa con Yahoo mediante contraseña de app,
+en espera de la autorización oficial. Solo lectura y revocable.
 
-1. En app.donexto.com: **Continuar con Yahoo**.
-2. Firmas en el sitio de Yahoo.
-3. Eso abre la app y, si Yahoo concedió `mail-r`, conecta el buzón.
-4. Pantalla de **seis meses** → **Descargar y clasificar**.
+1. Seguridad de la cuenta Yahoo → Generar contraseña de app (hace falta 2FA).
+2. En Donexto, correo Yahoo + esa contraseña.
+3. LOGIN real contra `imap.mail.yahoo.com:993` SSL, INBOX con EXAMINE.
+4. La contraseña se guarda cifrada con `OAUTH_ENCRYPTION_KEY`.
+   `signup_via=yahoo_imap` no salta el correo de verificación de Donexto.
+5. Desconectar borra la credencial. Revocar en Yahoo es aparte.
 
-No hay wizard de 16 dígitos, ni portal de Seguridad Yahoo, ni contraseña
-de buzón en Donexto.
+`POST /auth/yahoo/enter` y `POST /auth/yahoo/connect` siguen en 410:
+esos endpoints no aceptan la contraseña de la cuenta. El camino nuevo es
+`POST /auth/yahoo/imap/connect`.
+
+## OAuth (cuando Yahoo autorice mail-r)
+
+Ver [YAHOO_OAUTH.md](./YAHOO_OAUTH.md). El código de firma en Yahoo
+sigue. Sin `mail-r` ese token no abre el inbox.
 
 ## Tras conectar
 
@@ -37,6 +46,7 @@ de buzón en Donexto.
 
 - Host: `imap.mail.yahoo.com`
 - Puerto: `993` SSL
-- Auth: OAUTHBEARER (nunca LOGIN con clave)
+- Auth ahora: LOGIN con contraseña de app
+- Auth más adelante: OAUTHBEARER si Yahoo entrega `mail-r`
 - Backend: `POST /auth/yahoo/login` + `GET /auth/yahoo/callback`
 - Importación: `GET/POST /gmail/import/*` (misma API que Gmail; rama IMAP si `provider=yahoo`)

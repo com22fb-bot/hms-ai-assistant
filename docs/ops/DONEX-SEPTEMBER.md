@@ -26,7 +26,7 @@ En paralelo: Logística 1 (import 6 meses), push+PWA en celular/tablet/PC/laptop
 
 Septiembre: barato. Railway Hobby $5 es obligatorio o la API se pausa. Cloudflare Pages+Worker y Supabase Free. No migrar FastAPI a Workers. No Cloud Agents largos. Código en Codespace; Cursor Windows solo chat. Deploy Worker: CLOUDFLARE_API_TOKEN + cd frontend && npm run deploy. Landing: bash landing/donexto/deploy-production.sh --branch main. No Vercel.
 
-Yahoo: no pedir contraseña. mail-r aún no; no pongas YAHOO_MAIL_READ_ENABLED=true. Verify-email Donexto (#31) no se salta con login Yahoo/Microsoft. iCloud: decisión abierta.
+Yahoo: mail-r aún no; no pongas YAHOO_MAIL_READ_ENABLED=true. Lectura ahora por IMAP con contraseña de app (no la de la cuenta). iCloud igual, contraseña específica de app. Gmail: OAuth gmail.readonly con aviso de app no verificada. Verify-email Donexto (#31) no se salta con Gmail, Yahoo ni iCloud.
 
 Confirma que leíste los tres docs y espera instrucción de Héctor.
 ```

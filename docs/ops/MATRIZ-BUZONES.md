@@ -28,7 +28,7 @@ Ejemplos (no generalizar a todo México):
 | `alguien@tvazteca.com.mx` | “empresa .com.mx” | Proofpoint (`pphosted`) |
 | `hsalcidor@mail.telcel.com` | “mail. = Gmail?” | **No.** `mail.telcel.com` MX `pphosted`. El subdominio `mail.` no lo vuelve Gmail. `@telcel.com` igual. |
 
-Firma siempre en el sitio del proveedor (Microsoft / Google / el que autoricen). **Donexto no pide la contraseña del buzón.** No activar `YAHOO_MAIL_READ_ENABLED`.
+Microsoft y Gmail se autorizan en el sitio del proveedor. iCloud y Yahoo, mientras no haya OAuth de lectura, piden una **contraseña de app** que la persona genera (no la contraseña de la cuenta). No activar `YAHOO_MAIL_READ_ENABLED`.
 
 ---
 
@@ -37,7 +37,7 @@ Firma siempre en el sitio del proveedor (Microsoft / Google / el que autoricen).
 | P1 **sí** es | P1 **no** es |
 |--------------|--------------|
 | Microsoft 365 / Outlook / Hotmail **ya** | “Nunca empresa” |
-| Google Workspace / Gmail **pronto** (cuando Google suelte la app; hoy Testing) | “Nunca gobierno” |
+| Google Workspace / Gmail **ya**, con aviso de app no verificada (acceso anticipado, tope 100) | “Nunca gobierno” |
 | Proofpoint, Trend Micro o servidores propios = **waitlist** (o más adelante IMAP/OAuth que **ellos** autoricen) | Pedir clave de Outlook/Gmail/Yahoo/IMAP en el gate |
 | Muchas dependencias **prohíben** apps de terceros aunque el MX sea Microsoft | Inventar IMAP “porque es .mx” |
 
@@ -61,13 +61,13 @@ Cuentas de prueba de Héctor (no mezclar; ver también `DONEX-SEPTEMBER.md`):
 |--------|-----|
 | `donexto@hotmail.com` | Entra / Hotmail |
 | `hsalcidolapdell@outlook.com` | Outlook de prueba (verify a veces en basura) |
-| `hsalcidor@yahoo.com` | Buzón de prueba personal (Yahoo: identidad sí, inbox no) |
+| `hsalcidor@yahoo.com` | Buzón de prueba personal (Yahoo: IMAP con contraseña de app; mail-r sigue pendiente) |
 | `donexto@yahoo.com` | Empresa / YDN / solicitud mail-r |
 | `hmcelinfo@gmail.com` | Cloudflare + Cursor + `ADMIN_EMAILS` |
 
 ---
 
-## Próximamente — Google Workspace / Gmail
+## Gmail — disponible, con aviso
 
 Misma fila de producto cuando Google suelte la app (consentimiento en **Testing** hoy). No pedir contraseña. No fingir lectura.
 
@@ -104,7 +104,7 @@ Más adelante, solo si **ellos** autorizan: IMAP u OAuth de esa org. Nunca passw
 
 No forman parte de la lista de dominios MX de esta nota:
 
-- **Yahoo / ymail / rocketmail:** firma en Yahoo (identidad). Lectura del inbox **no** (`mail-r` pendiente). **No** poner `YAHOO_MAIL_READ_ENABLED=true`. No pedir la clave de Yahoo.
+- **Yahoo / ymail / rocketmail:** lectura IMAP ahora con **contraseña de app** (`imap.mail.yahoo.com:993`, EXAMINE / BODY.PEEK), cifrada con `OAUTH_ENCRYPTION_KEY`. Aviso: conexión directa en espera de la autorización oficial (`mail-r`). **No** poner `YAHOO_MAIL_READ_ENABLED=true`. El OAuth de Yahoo se queda para cuando llegue mail-r. No es la contraseña de la cuenta Yahoo.
 - **iCloud / me.com / mac.com:** disponible, en paralelo, mientras `mail-r` no llega. Lectura IMAP solo lectura (`imap.mail.me.com:993`) con **contraseña específica de app** de Apple (no la del Apple ID; hace falta 2FA). Se guarda cifrada con `OAUTH_ENCRYPTION_KEY`. Desconectar la borra. Detalle: `docs/ops/ICLOUD_IMAP.md`.
 
 ---
@@ -114,9 +114,9 @@ No forman parte de la lista de dominios MX de esta nota:
 1. El usuario escribe el correo (personal, `@empresa.com.mx`, `@cfe.mx`, `@algo.gob.mx`, etc.).
 2. Donexto **normaliza** y consulta MX (no decide por `.mx` / `.gob.mx` / `.com.mx`).
 3. MX Microsoft → flujo Outlook/Hotmail/Microsoft 365 (si la org no bloquea la app).
-4. MX Google → misma fila Gmail/Workspace cuando la app esté suelta; hoy próximamente.
+4. MX Google → Gmail con aviso de app no verificada (Avanzado → Ir a Donexto). Alcance `gmail.readonly`.
 5. Proofpoint / Trend Micro / servidores propios → waitlist. **No** pedir contraseña.
-6. Yahoo nuevo → no lectura; no activar mail-r a escondidas.
+6. Yahoo → contraseña de app, solo lectura. No activar `YAHOO_MAIL_READ_ENABLED`.
 7. iCloud (`@icloud.com`, `@me.com`, `@mac.com`) → contraseña específica de app, solo lectura. No es la clave del Apple ID.
 
 ---

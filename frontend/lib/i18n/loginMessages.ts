@@ -120,7 +120,7 @@ const es: Record<LoginMessageKey, string> = {
   icloudUnavailable:
     "iCloud se conecta con una contraseña específica de app, en solo lectura. No es la contraseña de tu Apple ID.",
   mustUseKnownMailbox:
-    "Hoy Donexto lee Outlook, Hotmail, Live, MSN, Microsoft 365 e iCloud. Gmail y Yahoo van a llegar.",
+    "Hoy Donexto lee Outlook, Hotmail, Live, MSN, Microsoft 365, Gmail, Yahoo e iCloud, en solo lectura.",
   gmailPending:
     "Gmail aún no se puede monitorear. Si ya entras a Donexto con este Gmail, Continuar te identifica. Si es la primera vez, te podemos avisar cuando esté listo.",
   confirmYahoo:
@@ -226,9 +226,9 @@ const en: Record<LoginMessageKey, string> = {
   icloudUnavailable:
     "iCloud connects with an app-specific password, read-only. It is not your Apple ID password.",
   mustUseKnownMailbox:
-    "For now the mailbox has to be Yahoo, Outlook/Hotmail, or Gmail. If you enter another address, we cannot serve the inbox that matters to you.",
+    "Donexto reads Outlook, Hotmail, Gmail, Yahoo, and iCloud, read-only.",
   gmailPending:
-    "New Gmail accounts are still under Google review. If you already use this Gmail in Donexto, Continue takes you to Google. If this is the first time, use Yahoo or Outlook/Hotmail.",
+    "Gmail is in early access. Google may say it has not verified Donexto. Tap Advanced, then Go to Donexto. Read-only.",
   confirmYahoo:
     "That address is the mailbox Donexto will monitor. When you continue, you sign in at Yahoo. Donexto does not ask for your mailbox password.",
   confirmMicrosoft:
@@ -330,9 +330,9 @@ const fr: Record<LoginMessageKey, string> = {
   icloudUnavailable:
     "iCloud se connecte avec un mot de passe pour application, en lecture seule. Ce n’est pas le mot de passe de l’identifiant Apple.",
   mustUseKnownMailbox:
-    "Pour l’instant, la boîte doit être Yahoo, Outlook/Hotmail ou Gmail. Si vous en mettez une autre, nous ne pouvons pas servir la messagerie qui vous importe.",
+    "Donexto lit Outlook, Hotmail, Gmail, Yahoo et iCloud, en lecture seule.",
   gmailPending:
-    "Les nouveaux comptes Gmail sont encore en revue chez Google. Si vous utilisez déjà ce Gmail dans Donexto, Continuer ouvre Google. Sinon, utilisez Yahoo ou Outlook/Hotmail.",
+    "Gmail est en accès anticipé. Google peut dire qu’il n’a pas validé Donexto. Touchez Paramètres avancés, puis Accéder à Donexto.",
   confirmYahoo:
     "Cette adresse est la boîte que Donexto va surveiller. En continuant, vous vous connectez sur Yahoo. Donexto ne demande pas le mot de passe.",
   confirmMicrosoft:
@@ -436,9 +436,9 @@ const it: Record<LoginMessageKey, string> = {
   icloudUnavailable:
     "iCloud si collega con una password specifica per l’app, in sola lettura. Non è la password dell’ID Apple.",
   mustUseKnownMailbox:
-    "Per ora la casella deve essere Yahoo, Outlook/Hotmail o Gmail. Se ne inserisci un’altra, non possiamo servire la casella che ti importa.",
+    "Donexto legge Outlook, Hotmail, Gmail, Yahoo e iCloud, in sola lettura.",
   gmailPending:
-    "I nuovi account Gmail sono ancora in revisione da Google. Se usi già questo Gmail in Donexto, Continua apre Google. Altrimenti usa Yahoo o Outlook/Hotmail.",
+    "Gmail è in accesso anticipato. Google può dire che non ha verificato Donexto. Tocca Avanzate e poi Vai a Donexto.",
   confirmYahoo:
     "Quell’indirizzo è la casella che Donexto monitorerà. Continuando, accedi su Yahoo. Donexto non chiede la password.",
   confirmMicrosoft:
@@ -542,9 +542,9 @@ const pt: Record<LoginMessageKey, string> = {
   icloudUnavailable:
     "O iCloud conecta com uma senha específica de app, em somente leitura. Não é a senha do ID Apple.",
   mustUseKnownMailbox:
-    "Por agora a caixa tem de ser Yahoo, Outlook/Hotmail ou Gmail. Se puser outra, não podemos servir a caixa que lhe importa.",
+    "A Donexto lê Outlook, Hotmail, Gmail, Yahoo e iCloud, em somente leitura.",
   gmailPending:
-    "Novas contas Gmail ainda estão em revisão da Google. Se já usa este Gmail no Donexto, Continuar abre a Google. Se é a primeira vez, use Yahoo ou Outlook/Hotmail.",
+    "O Gmail está em acesso antecipado. O Google pode dizer que não verificou a Donexto. Toque em Avançado e depois em Ir para Donexto.",
   confirmYahoo:
     "Esse endereço é a caixa que o Donexto vai monitorizar. Ao continuar, entra na Yahoo. O Donexto não pede a palavra-passe.",
   confirmMicrosoft:

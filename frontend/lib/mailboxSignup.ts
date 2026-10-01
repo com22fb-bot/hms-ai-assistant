@@ -140,7 +140,12 @@ export function suggestKnownMailbox(email: string): string | null {
 
 export function isKnownActiveMailbox(email: string): boolean {
   const provider = resolveMailboxProviderFromEmail(email);
-  return provider === "hotmail" || provider === "apple";
+  return (
+    provider === "hotmail"
+    || provider === "apple"
+    || provider === "gmail"
+    || provider === "yahoo"
+  );
 }
 
 export function isValidSignupEmail(email: string): boolean {

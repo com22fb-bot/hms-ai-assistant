@@ -18,7 +18,7 @@ from app.services.guided_import_job_service import (
 )
 from app.services.oauth_storage import oauth_storage
 from app.services.icloud_imap import IcloudImapError, stored_icloud_uses_app_password
-from app.services.yahoo_imap import YahooImapError, stored_yahoo_uses_oauth
+from app.services.yahoo_imap import YahooImapError, yahoo_imap_access
 from app.services.yahoo_import import is_yahoo_provider, yahoo_inventory
 from app.services.microsoft_import import (
     MicrosoftImportError,
@@ -51,20 +51,17 @@ def _google_credentials(account: dict[str, Any]) -> Any:
 
 def _yahoo_secret(account: dict[str, Any]) -> tuple[str, str, bool]:
     credentials = oauth_storage.get_credentials(str(account["id"]))
-    token = str((credentials or {}).get("access_token") or "")
-    email = str(account.get("email") or "")
-    if not token or not email or not stored_yahoo_uses_oauth(credentials):
+    try:
+        return yahoo_imap_access(credentials, str(account.get("email") or ""))
+    except YahooImapError as error:
         raise HTTPException(
             status_code=401,
             detail={
                 "status": "yahoo_required",
-                "message": (
-                    "Vuelve a autorizar Yahoo en el sitio de Yahoo. "
-                    "Donexto no pide tu clave."
-                ),
+                "code": error.code,
+                "message": str(error),
             },
-        )
-    return email, token, True
+        ) from error
 
 
 def _icloud_secret(account: dict[str, Any]) -> tuple[str, str]:
