@@ -238,8 +238,9 @@ export function ContactInbox({
       <header className="dx-admin__section-head">
         <h2>Mensajes</h2>
         <p>
-          Lo que llega del formulario de donexto.com. El borrador no se envía
-          solo: tú lo revisas y autorizas. {unread} por atender.
+          Lo que llega del formulario de donexto.com. Redactar con IA solo
+          corre cuando tú lo pides, y el borrador no se envía solo. {unread}{" "}
+          por atender.
         </p>
       </header>
 

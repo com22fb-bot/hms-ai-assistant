@@ -7,7 +7,7 @@ import threading
 import unittest
 from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
 os.environ.setdefault("SUPABASE_SECRET_KEY", "test-secret-key-not-real")
@@ -22,10 +22,15 @@ from fastapi.testclient import TestClient
 from app.api.admin_contact import router as admin_contact_router
 from app.middleware.authentication_context import AuthenticationContextMiddleware
 from app.services.contact_inbox import (
+    CONTACT_DRAFT_MAX_OUTPUT_TOKENS,
     DONEXTO_REPLY_FACTS,
+    ai_reply_configured,
     authorize_contact_reply,
     build_reply_instructions,
+    contact_ai_model,
+    contact_ai_provider,
     create_contact_draft,
+    generate_reply_text,
     hash_contact_ip,
     persist_public_contact,
     schedule_contact_draft,
@@ -256,7 +261,14 @@ class ContactDraftNeverSendsTests(unittest.TestCase):
         client = TestClient(_app())
         with (
             _signed_in("hmcelinfo@gmail.com"),
-            patch.dict(os.environ, {"AI_PROVIDER": "mock", "OPENAI_API_KEY": ""}),
+            patch.dict(
+                os.environ,
+                {
+                    "AI_PROVIDER": "mock",
+                    "OPENAI_API_KEY": "",
+                    "CONTACT_AI_PROVIDER": "",
+                },
+            ),
             patch("app.services.contact_inbox._client", return_value=fake),
             patch("app.services.contact_inbox.send_contact_reply_email") as send,
             patch("app.services.support_notify.httpx.post") as post,
@@ -280,7 +292,11 @@ class ContactDraftNeverSendsTests(unittest.TestCase):
             _signed_in("hmcelinfo@gmail.com"),
             patch.dict(
                 os.environ,
-                {"AI_PROVIDER": "openai", "OPENAI_API_KEY": "sk-test"},
+                {
+                    "AI_PROVIDER": "mock",
+                    "OPENAI_API_KEY": "sk-test",
+                    "CONTACT_AI_PROVIDER": "",
+                },
             ),
             patch("app.services.contact_inbox._client", return_value=fake),
             patch(
@@ -399,15 +415,136 @@ class ContactDraftNeverSendsTests(unittest.TestCase):
         self.assertEqual(fake.store["contact_messages"][0]["status"], "borrador listo")
         self.assertEqual(fake.store["contact_messages"][0]["draft_body"], "Hola Alex.")
 
-    def test_schedule_skips_when_unconfigured_and_never_sends(self) -> None:
+    def test_off_or_mock_contact_provider_does_not_draft(self) -> None:
+        for provider in ("off", "mock"):
+            with self.subTest(provider=provider):
+                fake = FakeSupabase()
+                _seed(fake)
+                client = TestClient(_app())
+                with (
+                    _signed_in("hmcelinfo@gmail.com"),
+                    patch.dict(
+                        os.environ,
+                        {
+                            "AI_PROVIDER": "openai",
+                            "OPENAI_API_KEY": "sk-test",
+                            "CONTACT_AI_PROVIDER": provider,
+                        },
+                    ),
+                    patch("app.services.contact_inbox._client", return_value=fake),
+                    patch("app.services.contact_inbox.generate_reply_text") as generate,
+                    patch("app.services.contact_inbox.send_contact_reply_email") as send,
+                ):
+                    response = client.post(f"/admin/contact-messages/{MSG}/draft")
+                self.assertEqual(response.status_code, 200)
+                body = response.json()
+                self.assertEqual(body["status"], "unconfigured")
+                self.assertIn("CONTACT_AI_PROVIDER", body["message"])
+                self.assertIn("mano", body["message"])
+                generate.assert_not_called()
+                send.assert_not_called()
+                self.assertEqual(fake.store["contact_messages"][0]["status"], "nuevo")
+
+    def test_schedule_never_drafts_even_when_contact_ai_is_on(self) -> None:
         with (
-            patch.dict(os.environ, {"AI_PROVIDER": "mock", "OPENAI_API_KEY": ""}),
-            patch("app.services.contact_inbox.threading.Thread") as thread,
+            patch.dict(
+                os.environ,
+                {
+                    "AI_PROVIDER": "mock",
+                    "OPENAI_API_KEY": "sk-test",
+                    "CONTACT_AI_PROVIDER": "",
+                },
+            ),
+            patch("app.services.contact_inbox.create_contact_draft") as draft,
             patch("app.services.contact_inbox.send_contact_reply_email") as send,
         ):
+            self.assertTrue(ai_reply_configured())
             schedule_contact_draft(MSG)
-        thread.assert_not_called()
+        draft.assert_not_called()
         send.assert_not_called()
+
+
+class ContactDraftProviderTests(unittest.TestCase):
+    def test_mail_analyzer_mock_does_not_block_contact_draft(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "AI_PROVIDER": "mock",
+                "OPENAI_API_KEY": "sk-test",
+                "CONTACT_AI_PROVIDER": "",
+            },
+        ):
+            self.assertEqual(contact_ai_provider(), "openai")
+            self.assertTrue(ai_reply_configured())
+
+    def test_missing_key_stays_off_even_if_analyzer_is_openai(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "AI_PROVIDER": "openai",
+                "OPENAI_API_KEY": "",
+                "CONTACT_AI_PROVIDER": "",
+            },
+        ):
+            self.assertEqual(contact_ai_provider(), "off")
+            self.assertFalse(ai_reply_configured())
+
+    def test_explicit_openai_without_key_stays_off(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"CONTACT_AI_PROVIDER": "openai", "OPENAI_API_KEY": "  "},
+        ):
+            self.assertFalse(ai_reply_configured())
+
+    def test_model_prefers_contact_then_openai_then_default(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"CONTACT_AI_MODEL": "gpt-5-nano", "OPENAI_MODEL": "gpt-4.1-mini"},
+        ):
+            self.assertEqual(contact_ai_model(), "gpt-5-nano")
+        with patch.dict(
+            os.environ,
+            {"CONTACT_AI_MODEL": "", "OPENAI_MODEL": "gpt-4.1-mini"},
+        ):
+            self.assertEqual(contact_ai_model(), "gpt-4.1-mini")
+        with patch.dict(
+            os.environ,
+            {"CONTACT_AI_MODEL": "", "OPENAI_MODEL": ""},
+        ):
+            self.assertEqual(contact_ai_model(), "gpt-5-mini")
+
+    def test_generate_caps_output_and_ignores_global_provider(self) -> None:
+        client = MagicMock()
+        client.responses.create.return_value = SimpleNamespace(output_text="Hola Alex.")
+        row = {
+            "name": "Alex",
+            "email": "alex@example.com",
+            "country": "MX",
+            "language": "es",
+            "message": "¿Ya leen Outlook?",
+        }
+        with (
+            patch.dict(
+                os.environ,
+                {
+                    "AI_PROVIDER": "mock",
+                    "OPENAI_API_KEY": "sk-test",
+                    "CONTACT_AI_PROVIDER": "",
+                    "CONTACT_AI_MODEL": "gpt-5-mini",
+                    "OPENAI_MODEL": "gpt-4.1",
+                },
+            ),
+            patch("openai.OpenAI", return_value=client) as openai_cls,
+        ):
+            text = generate_reply_text(row)
+        self.assertEqual(text, "Hola Alex.")
+        openai_cls.assert_called_once_with(api_key="sk-test")
+        kwargs = client.responses.create.call_args.kwargs
+        self.assertEqual(kwargs["model"], "gpt-5-mini")
+        self.assertEqual(kwargs["max_output_tokens"], CONTACT_DRAFT_MAX_OUTPUT_TOKENS)
+        self.assertLessEqual(CONTACT_DRAFT_MAX_OUTPUT_TOKENS, 500)
+        self.assertFalse(kwargs["store"])
+        self.assertIn("Outlook", kwargs["instructions"])
 
 
 class ContactAuthorizeSendTests(unittest.TestCase):

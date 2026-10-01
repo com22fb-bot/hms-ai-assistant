@@ -10,7 +10,6 @@ import hashlib
 import logging
 import os
 import re
-import threading
 from datetime import datetime, timezone
 from typing import Any
 
@@ -39,9 +38,14 @@ BLOCKED_SEND_STATUSES = (STATUS_REPLIED, STATUS_ARCHIVED, STATUS_SENDING)
 CONTACT_TABLE = "contact_messages"
 
 UNCONFIGURED_MESSAGE = (
-    "No hay un modelo de IA configurado (AI_PROVIDER=openai y OPENAI_API_KEY). "
-    "Escribe la respuesta a mano y luego autoriza el envío."
+    "No hay IA para redactar esta respuesta. "
+    "Hace falta OPENAI_API_KEY en Railway, o CONTACT_AI_PROVIDER está en off o mock. "
+    "Escribe la respuesta a mano y luego autoriza el envío. "
+    "El análisis de los correos del usuario sigue en reglas y no gasta esta clave."
 )
+CONTACT_DRAFT_MAX_OUTPUT_TOKENS = 400
+_DEFAULT_CONTACT_MODEL = "gpt-5-mini"
+_CONTACT_AI_DISABLED = {"off", "mock"}
 DRAFT_FAILED_MESSAGE = (
     "No se pudo redactar con IA. Escribe la respuesta a mano y luego autoriza el envío."
 )
@@ -102,9 +106,33 @@ def hash_contact_ip(ip: str) -> str:
     return hashlib.sha256(material).hexdigest()
 
 
+def contact_ai_provider() -> str:
+    """Provider for admin reply drafts only. Ignores ``AI_PROVIDER``.
+
+    Unset means ``openai`` when ``OPENAI_API_KEY`` is present, otherwise ``off``.
+    ``off`` and ``mock`` disable drafts even if a key exists.
+    """
+    explicit = os.getenv("CONTACT_AI_PROVIDER", "").strip().lower()
+    if explicit:
+        return explicit
+    if os.getenv("OPENAI_API_KEY", "").strip():
+        return "openai"
+    return "off"
+
+
+def contact_ai_model() -> str:
+    """``CONTACT_AI_MODEL``, then ``OPENAI_MODEL``, then ``gpt-5-mini``."""
+    dedicated = os.getenv("CONTACT_AI_MODEL", "").strip()
+    if dedicated:
+        return dedicated
+    fallback = os.getenv("OPENAI_MODEL", "").strip()
+    return fallback or _DEFAULT_CONTACT_MODEL
+
+
 def ai_reply_configured() -> bool:
-    provider = os.getenv("AI_PROVIDER", "mock").strip().lower()
-    if provider != "openai":
+    if contact_ai_provider() in _CONTACT_AI_DISABLED:
+        return False
+    if contact_ai_provider() != "openai":
         return False
     return bool(os.getenv("OPENAI_API_KEY", "").strip())
 
@@ -147,11 +175,13 @@ def build_reply_input(row: dict[str, Any]) -> str:
 
 
 def generate_reply_text(row: dict[str, Any]) -> str:
-    """Call the same OpenAI config used for mail summaries. Never sends mail."""
+    """Draft with the contact-inbox model. Never sends mail.
+
+    This does not read ``AI_PROVIDER``. Mail analysis stays on its own setting.
+    """
     if not ai_reply_configured():
         raise RuntimeError("ai_unconfigured")
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    model = os.getenv("OPENAI_MODEL", "gpt-5-mini").strip() or "gpt-5-mini"
     try:
         from openai import OpenAI
     except ImportError as error:
@@ -159,10 +189,11 @@ def generate_reply_text(row: dict[str, Any]) -> str:
 
     client = OpenAI(api_key=api_key)
     response = client.responses.create(
-        model=model,
+        model=contact_ai_model(),
         instructions=build_reply_instructions(str(row.get("language") or "")),
         input=build_reply_input(row),
         store=False,
+        max_output_tokens=CONTACT_DRAFT_MAX_OUTPUT_TOKENS,
     )
     text = str(getattr(response, "output_text", "") or "").strip()
     if not text:
@@ -456,23 +487,13 @@ def create_contact_draft(message_id: str) -> dict[str, Any]:
     }
 
 
-def _safe_autodraft(message_id: str) -> None:
-    try:
-        create_contact_draft(message_id)
-    except Exception:  # noqa: BLE001
-        logger.warning("Borrador automático falló", exc_info=True)
-
-
 def schedule_contact_draft(message_id: str) -> None:
-    """Draft in the background when a model is configured. Never sends."""
-    if not message_id or not ai_reply_configured():
-        return
-    threading.Thread(
-        target=_safe_autodraft,
-        args=(message_id,),
-        daemon=True,
-        name="donexto-contact-draft",
-    ).start()
+    """No-op. Drafts run only when the owner clicks Redactar con IA.
+
+    Arrival used to start a background draft. That spent tokens on every
+    message, including when mail analysis stays on ``AI_PROVIDER=mock``.
+    """
+    del message_id
 
 
 def authorize_contact_reply(

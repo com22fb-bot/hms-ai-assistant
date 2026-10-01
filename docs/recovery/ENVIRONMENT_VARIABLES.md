@@ -38,6 +38,12 @@ GOOGLE_CLIENT_SECRET=
 GOOGLE_REDIRECT_URI=
 
 FRONTEND_ORIGINS=
+
+AI_PROVIDER=mock
+OPENAI_API_KEY=
+OPENAI_MODEL=
+CONTACT_AI_PROVIDER=
+CONTACT_AI_MODEL=
 ```
 
 ---
@@ -100,6 +106,41 @@ Puede incluir:
 - URL de desarrollo
 - URL de Codespaces
 - URL de producción
+
+## `AI_PROVIDER`
+
+Proveedor del análisis de correos del usuario (`app/services/ai_analyzer.py`).
+
+En producción se deja en `mock`: el análisis es por reglas y no llama a OpenAI.
+No controla el borrador de respuestas del formulario de contacto.
+
+## `OPENAI_API_KEY`
+
+Clave de OpenAI. El análisis de correos no la usa mientras `AI_PROVIDER=mock`.
+El botón **Redactar con IA** del panel de mensajes sí la usa, si el borrador
+de contacto está habilitado.
+
+## `OPENAI_MODEL`
+
+Modelo del análisis de correos cuando `AI_PROVIDER=openai`.
+Si `CONTACT_AI_MODEL` no está puesta, el borrador de contacto también la toma
+como respaldo.
+
+## `CONTACT_AI_PROVIDER`
+
+Proveedor solo del borrador de respuestas en `/admin` (Mensajes).
+
+- Vacía: `openai` si hay `OPENAI_API_KEY`; si no, queda apagado.
+- `off` o `mock`: no redacta, aunque exista la clave. La respuesta se escribe a mano.
+- `openai`: redacta al pulsar **Redactar con IA**.
+
+No dispara un borrador al llegar el mensaje. No cambia `AI_PROVIDER`.
+
+## `CONTACT_AI_MODEL`
+
+Modelo de ese borrador. Si está vacía, se usa `OPENAI_MODEL` y, si esa
+también está vacía, `gpt-5-mini`. La llamada limita la salida
+(`max_output_tokens`) para no gastar de más.
 
 ## `NEXT_PUBLIC_API_BASE_URL`
 
@@ -165,4 +206,4 @@ Nunca debe incluirse en la documentación pública del proyecto.
 
 # Última actualización
 
-25 de julio de 2026
+1 de octubre de 2026
