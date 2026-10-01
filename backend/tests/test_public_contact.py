@@ -55,6 +55,14 @@ class PublicContactTests(unittest.TestCase):
         for key in list(_hits):
             if str(key).startswith("public-contact:"):
                 del _hits[key]
+        self._persist = patch(
+            "app.api.public_contact.persist_public_contact",
+            return_value="11111111-1111-1111-1111-111111111111",
+        ).start()
+        self._draft = patch(
+            "app.api.public_contact.schedule_contact_draft",
+        ).start()
+        self.addCleanup(patch.stopall)
 
     def _client(self) -> TestClient:
         return TestClient(_app())
@@ -94,7 +102,14 @@ class PublicContactTests(unittest.TestCase):
         self.assertEqual(payload["from"], "Donexto <support@donexto.com>")
         self.assertIn("Quiero saber si Yahoo ya se lee.", payload["text"])
         self.assertIn("alex@example.com", payload["text"])
+        self.assertIn("https://www.donexto.com/admin?tab=mensajes", payload["text"])
         self.assertNotIn("html", payload)
+        self._persist.assert_called_once()
+        self.assertEqual(
+            self._persist.call_args.kwargs["email"],
+            "alex@example.com",
+        )
+        self._draft.assert_called_once()
         self.assertEqual(
             post.call_args.kwargs["headers"]["Authorization"],
             "Bearer re_test",
@@ -113,6 +128,8 @@ class PublicContactTests(unittest.TestCase):
         self.assertEqual(response.json(), {"status": "ok"})
         post.assert_not_called()
         smtp.assert_not_called()
+        self._persist.assert_not_called()
+        self._draft.assert_not_called()
 
     def test_missing_message_is_rejected(self) -> None:
         response = self._client().post(
@@ -150,6 +167,7 @@ class PublicContactTests(unittest.TestCase):
             )
         self.assertEqual(response.status_code, 502)
         self.assertEqual(response.json()["detail"]["status"], "delivery_failed")
+        self._persist.assert_not_called()
 
     def test_missing_resend_key_is_not_2xx_and_does_not_try_smtp(self) -> None:
         with patch.dict(
@@ -167,6 +185,7 @@ class PublicContactTests(unittest.TestCase):
         self.assertEqual(response.json()["detail"]["status"], "delivery_unconfigured")
         smtp.assert_not_called()
         post.assert_not_called()
+        self._persist.assert_not_called()
 
     def test_rate_limit_is_per_ip(self) -> None:
         with patch.dict(os.environ, {"RESEND_API_KEY": "re_test"}), patch(

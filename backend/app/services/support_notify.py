@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_SUPPORT_EMAIL = "support@donexto.com"
 PUBLIC_CONTACT_INBOX = "support@donexto.com"
+ADMIN_CONTACT_INBOX_URL = "https://www.donexto.com/admin?tab=mensajes"
 _NOTIFY_COOLDOWN_SECONDS = 24 * 60 * 60
 _recent_domains: dict[str, float] = {}
 _recent_lock = threading.Lock()
@@ -217,6 +218,30 @@ def send_transactional_email(
     return False
 
 
+def public_contact_subject(name: str) -> str:
+    safe_name = _one_line(name, 80)
+    subject = "Donexto: mensaje desde donexto.com"
+    if safe_name:
+        subject = f"Donexto: mensaje de {safe_name}"[:180]
+    return subject
+
+
+def contact_reply_subject(original: str) -> str:
+    """Thread the visitor reply as ``Re: …`` without stacking another Re:."""
+    base = _one_line(original, 160) or "Donexto: mensaje desde donexto.com"
+    if base.lower().startswith("re:"):
+        return base[:180]
+    return f"Re: {base}"[:180]
+
+
+def admin_contact_inbox_link(message_id: str | None = None) -> str:
+    link = ADMIN_CONTACT_INBOX_URL
+    clean_id = _one_line(message_id or "", 80)
+    if clean_id:
+        return f"{link}&id={clean_id}"
+    return link
+
+
 def send_public_contact_message(
     *,
     name: str,
@@ -224,6 +249,7 @@ def send_public_contact_message(
     country: str,
     message: str,
     lang: str,
+    message_id: str | None = None,
 ) -> bool:
     """Landing contact via Resend HTTP only.
 
@@ -234,9 +260,7 @@ def send_public_contact_message(
     ``SMTPDeliveryError``.
     """
     safe_name = _one_line(name, 80)
-    subject = "Donexto: mensaje desde donexto.com"
-    if safe_name:
-        subject = f"Donexto: mensaje de {safe_name}"[:180]
+    subject = public_contact_subject(name)
     body = "\n".join(
         [
             "Mensaje desde el formulario de donexto.com",
@@ -248,6 +272,8 @@ def send_public_contact_message(
             "",
             message.strip(),
             "",
+            f"Panel de mensajes: {admin_contact_inbox_link(message_id)}",
+            "",
         ]
     )
     return _send_via_resend(
@@ -255,6 +281,21 @@ def send_public_contact_message(
         subject,
         body,
         reply_to=email,
+    )
+
+
+def send_contact_reply_email(*, to_addr: str, subject: str, body: str) -> bool:
+    """Owner-approved reply. Resend HTTP only, never SMTP.
+
+    From and Reply-To are ``support@donexto.com``. Returns False when
+    ``RESEND_API_KEY`` is unset. Transport failures raise ``SMTPDeliveryError``.
+    """
+    return _send_via_resend(
+        to_addr,
+        subject,
+        body,
+        from_addr=PUBLIC_CONTACT_INBOX,
+        reply_to=PUBLIC_CONTACT_INBOX,
     )
 
 

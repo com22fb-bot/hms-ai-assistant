@@ -22,6 +22,7 @@ from app.api.sync_jobs import router as sync_jobs_router
 from app.api.microsoft_mail import router as microsoft_mail_router
 from app.api.yahoo_mail import router as yahoo_mail_router
 from app.api.login_resolve import router as login_resolve_router
+from app.api.admin_contact import router as admin_contact_router
 from app.api.admin_ops import router as admin_ops_router
 from app.api.public_contact import router as public_contact_router
 from app.api.billing import router as billing_router
@@ -186,6 +187,7 @@ app.include_router(microsoft_mail_router)
 app.include_router(login_resolve_router)
 app.include_router(billing_router)
 app.include_router(admin_ops_router)
+app.include_router(admin_contact_router)
 app.include_router(gmail_router)
 app.include_router(guided_import_router)
 app.include_router(sync_jobs_router)

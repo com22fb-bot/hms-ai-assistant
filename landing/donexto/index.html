@@ -30,7 +30,7 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Outfit:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=lang5" />
+    <link rel="stylesheet" href="./styles.css?v=lang6" />
     <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
   </head>
   <body>
@@ -54,12 +54,17 @@
         <a class="nav-link subtle" href="#criterio" data-i18n="nav_levels">Criterio</a>
         <a class="nav-link subtle" href="#consola" data-i18n="nav_console">Consola</a>
         <a class="nav-link subtle" href="#how" data-i18n="nav_how">Cómo</a>
-        <div class="lang-strip" id="langStrip" role="group" aria-label="Idioma">
-          <button type="button" class="lang" data-lang="es">Español</button>
-          <button type="button" class="lang" data-lang="en">English</button>
-          <button type="button" class="lang" data-lang="fr">Français</button>
-          <button type="button" class="lang" data-lang="it">Italiano</button>
-          <button type="button" class="lang" data-lang="pt">Português</button>
+        <div class="lang-strip" id="langStrip">
+          <label class="lang-select" for="langSelect">
+            <span class="visually-hidden" id="langLabel" data-i18n="lang_label">Idioma</span>
+            <select id="langSelect" name="lang" aria-labelledby="langLabel">
+              <option value="es">Español</option>
+              <option value="en">English</option>
+              <option value="fr">Français</option>
+              <option value="it">Italiano</option>
+              <option value="pt">Português</option>
+            </select>
+          </label>
         </div>
         <a
           class="nav-link app"
@@ -536,6 +541,6 @@
       </p>
     </footer>
 
-    <script src="./app.js?v=contact1" defer></script>
+    <script src="./app.js?v=inbox1" defer></script>
   </body>
 </html>
