@@ -2,10 +2,13 @@
   "name": "Donexto",
   "short_name": "Donexto",
   "description": "Do Next To…: cargos, pedidos, seguridad y familia en tu correo.",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#02070b",
-  "theme_color": "#02070b",
+  "background_color": "#070A12",
+  "theme_color": "#070A12",
+  "lang": "es",
   "icons": [
     {
       "src": "/brand/donexto-3d-2026.png",

@@ -1,8 +1,10 @@
 self.addEventListener("push", (event) => {
   let payload = {
-    title: "HMS AI Assistant",
-    body: "Tienes un nuevo aviso.",
+    title: "Donexto",
+    body: "Nueva alerta de Donexto",
     url: "/",
+    lang: "es",
+    vibrate: [80, 40, 80, 40, 160],
   };
 
   try {
@@ -13,16 +15,34 @@ self.addEventListener("push", (event) => {
     if (event.data) payload.body = event.data.text();
   }
 
+  const options = {
+    body: payload.body,
+    icon: "/brand/donexto-3d-2026.png",
+    badge: "/brand/donexto-3d-2026.png",
+    tag: payload.notificationId || payload.type || "donexto-alert",
+    renotify: true,
+    lang: payload.lang || "es",
+    data: { url: payload.url || "/", lang: payload.lang || "es" },
+    vibrate: Array.isArray(payload.vibrate) ? payload.vibrate : [80, 40, 80, 40, 160],
+    actions: [{ action: "open", title: "Abrir Donexto" }],
+  };
+
   event.waitUntil(
-    self.registration.showNotification(payload.title, {
-      body: payload.body,
-      icon: "/hms-import-robot.png",
-      badge: "/hms-import-robot.png",
-      tag: payload.notificationId || payload.type || "hms-notification",
-      renotify: true,
-      data: { url: payload.url || "/" },
-      actions: [{ action: "open", title: "Abrir HMS" }],
-    }),
+    (async () => {
+      await self.registration.showNotification(payload.title || "Donexto", options);
+      const windows = await clients.matchAll({
+        type: "window",
+        includeUncontrolled: true,
+      });
+      for (const client of windows) {
+        client.postMessage({
+          type: "donexto-alert",
+          title: payload.title,
+          body: payload.body,
+          lang: payload.lang || "es",
+        });
+      }
+    })(),
   );
 });
 

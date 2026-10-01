@@ -28,6 +28,8 @@ class SubscriptionRequest(BaseModel):
     endpoint: str
     keys: SubscriptionKeys
     device_label: str | None = Field(default=None, max_length=200)
+    platform: str | None = Field(default=None, max_length=40)
+    locale: str | None = Field(default=None, max_length=12)
 
 
 class DeactivateRequest(BaseModel):
@@ -36,6 +38,9 @@ class DeactivateRequest(BaseModel):
 
 class TestPushRequest(BaseModel):
     endpoint: str | None = Field(default=None, max_length=2000)
+    title: str | None = Field(default=None, max_length=300)
+    body: str | None = Field(default=None, max_length=1000)
+    lang: str | None = Field(default=None, max_length=8)
 
 
 @router.get("/vapid-public-key")
@@ -59,6 +64,8 @@ def subscribe_device(
         auth_secret=payload.keys.auth,
         user_agent=user_agent,
         device_label=payload.device_label,
+        platform=payload.platform,
+        locale=payload.locale,
     )
     return {"status": "ok", "subscription": subscription}
 
@@ -74,7 +81,15 @@ def unsubscribe_device(payload: DeactivateRequest) -> dict[str, Any]:
 @router.post("/test")
 def test_push(payload: TestPushRequest | None = None) -> dict[str, Any]:
     endpoint = payload.endpoint if payload is not None else None
-    return {"status": "ok", **send_test_notification(endpoint=endpoint)}
+    return {
+        "status": "ok",
+        **send_test_notification(
+            endpoint=endpoint,
+            title=payload.title if payload is not None else None,
+            body=payload.body if payload is not None else None,
+            lang=payload.lang if payload is not None else None,
+        ),
+    }
 
 
 @router.get("/notifications")
