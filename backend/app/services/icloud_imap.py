@@ -164,6 +164,10 @@ def open_icloud_client(
         )
     except IcloudImapError:
         raise
+    except ImapMailError as error:
+        if error.code == "network":
+            raise IcloudImapError(_MSG_NETWORK, code="network") from error
+        raise classify_icloud_auth_error(str(error), app_password) from error
     except imaplib.IMAP4.error as error:
         raise classify_icloud_auth_error(str(error), app_password) from error
     except (TimeoutError, socket.timeout, OSError) as error:
@@ -221,6 +225,10 @@ def list_icloud_messages(
     except imaplib.IMAP4.error as error:
         raise classify_icloud_auth_error(str(error), app_password) from error
     except ImapMailError as error:
+        if error.code == "network":
+            raise IcloudImapError(_MSG_NETWORK, code="network") from error
+        if error.code in {"auth_failed", "oauth_rejected"}:
+            raise classify_icloud_auth_error(str(error), app_password) from error
         raise IcloudImapError(
             scrub_secret(str(error), app_password),
             code=error.code,

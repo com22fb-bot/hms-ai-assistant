@@ -175,9 +175,15 @@ def _open_yahoo_client(
             oauth=oauth,
         )
     except ImapMailError as error:
+        if error.code == "network":
+            raise YahooImapError(_YAHOO_NETWORK, code="network") from error
         if oauth or error.code == "oauth_rejected":
             raise YahooImapError(_YAHOO_OAUTH_BLOCKED, code="oauth_rejected") from error
         raise classify_yahoo_app_error(str(error), app_password) from error
+    except imaplib.IMAP4.error as error:
+        raise classify_yahoo_app_error(str(error), app_password) from error
+    except (TimeoutError, socket.timeout, OSError) as error:
+        raise YahooImapError(_YAHOO_NETWORK, code="network") from error
 
 
 def verify_yahoo_login(address: str, app_password: str) -> None:
@@ -249,7 +255,13 @@ def list_yahoo_messages(
     except YahooImapError:
         raise
     except ImapMailError as error:
-        raise YahooImapError(str(error)) from error
+        if error.code == "network":
+            raise YahooImapError(_YAHOO_NETWORK, code="network") from error
+        if oauth or error.code == "oauth_rejected":
+            raise YahooImapError(_YAHOO_OAUTH_BLOCKED, code="oauth_rejected") from error
+        raise classify_yahoo_app_error(str(error), app_password) from error
+    except imaplib.IMAP4.error as error:
+        raise classify_yahoo_app_error(str(error), app_password) from error
     except Exception as error:
         raise YahooImapError(
             f"No fue posible leer correos de Yahoo: {error}"

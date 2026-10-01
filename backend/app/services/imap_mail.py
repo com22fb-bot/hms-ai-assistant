@@ -84,22 +84,23 @@ def open_imap_client(
     """SSL + LOGIN o OAUTHBEARER. No registra el secreto."""
     context = ssl.create_default_context()
     safe_timeout = max(15, int(timeout))
+    client: imaplib.IMAP4_SSL | None = None
     try:
-        client = imaplib.IMAP4_SSL(
-            config.host,
-            config.port,
-            ssl_context=context,
-            timeout=safe_timeout,
-        )
-    except TypeError:
-        socket.setdefaulttimeout(safe_timeout)
-        client = imaplib.IMAP4_SSL(
-            config.host,
-            config.port,
-            ssl_context=context,
-        )
+        try:
+            client = imaplib.IMAP4_SSL(
+                config.host,
+                config.port,
+                ssl_context=context,
+                timeout=safe_timeout,
+            )
+        except TypeError:
+            socket.setdefaulttimeout(safe_timeout)
+            client = imaplib.IMAP4_SSL(
+                config.host,
+                config.port,
+                ssl_context=context,
+            )
 
-    try:
         if oauth:
             initial = (
                 f"n,a={address},\x01host={config.host}\x01port={config.port}"
@@ -118,15 +119,25 @@ def open_imap_client(
                     code="oauth_rejected",
                 ) from error
         else:
-            status, _data = client.login(address, secret)
+            try:
+                status, _data = client.login(address, secret)
+            except imaplib.IMAP4.error as error:
+                _logout_quietly(client)
+                detail = scrub_secret(str(error), secret).strip()
+                raise ImapMailError(
+                    detail or f"{config.label} rechazó el acceso IMAP.",
+                    code="auth_failed",
+                ) from error
     except ImapMailError:
         raise
-    except imaplib.IMAP4.error:
-        _logout_quietly(client)
-        raise
-    except (TimeoutError, socket.timeout, OSError):
-        _logout_quietly(client)
-        raise
+    except (TimeoutError, socket.timeout, ssl.SSLError, OSError) as error:
+        if client is not None:
+            _logout_quietly(client)
+        detail = scrub_secret(str(error), secret).strip()
+        raise ImapMailError(
+            detail or f"No fue posible conectar con {config.label}.",
+            code="network",
+        ) from error
 
     if status != "OK":
         _logout_quietly(client)

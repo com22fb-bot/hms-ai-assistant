@@ -15,6 +15,7 @@ from app.core.config import settings
 from app.schemas.gmail import GoogleConnectionStatus
 from app.security.identity import require_google_account, require_request_context
 from app.security.mutation_guard import require_data_mutations_enabled
+from app.security.redirect import sanitize_return_to
 from app.services.gmail import create_credentials
 from app.services.oauth_storage import (
     OAuthCredentialError,
@@ -488,6 +489,11 @@ GOOGLE_OAUTH_ENV_NAMES = (
 _GMAIL_SIGNUP_VIA = "gmail_oauth"
 
 
+def google_token_redirect_target(return_to: str | None) -> str:
+    """Origen exacto que puede recibir JWT. Un host de preview cae al default."""
+    return sanitize_return_to(return_to)
+
+
 def google_oauth_readiness() -> dict[str, object]:
     """Nombres de variables y ajustes de consola. Nunca los valores."""
     import os
@@ -565,10 +571,10 @@ def google_public_login(
         )
 
     hint = (payload.login_hint if payload else None) or None
-    return_to = (
-        payload.return_to.rstrip("/") + "/"
-        if payload and _is_allowed_return_url(payload.return_to)
-        else _default_frontend_url(request)
+    # Orígenes exactos (app.donexto.com, www, localhost). Nunca *.vercel.app.
+    return_to = google_token_redirect_target(
+        (payload.return_to if payload else None)
+        or request.headers.get("origin")
     )
     try:
         state = oauth_storage.create_oauth_state(
@@ -836,11 +842,8 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
 
         expected_hint = login_hint_from_oauth_state(state or "")
         if expected_hint and authorized_email and expected_hint != authorized_email:
-            return_to = str(state_context.get("return_to") or "").strip()
-            frontend_url = (
-                return_to.rstrip("/") + "/"
-                if _is_allowed_return_url(return_to)
-                else _default_frontend_url(request)
+            frontend_url = google_token_redirect_target(
+                str(state_context.get("return_to") or "")
             )
             query = urlencode(
                 {
@@ -924,16 +927,13 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
             },
         ) from error
 
-    return_to = str(state_context.get("return_to") or "").strip()
-    frontend_url = (
-        return_to.rstrip("/") + "/"
-        if _is_allowed_return_url(return_to)
-        else _default_frontend_url(request)
-    )
+    stored_return = str(state_context.get("return_to") or "").strip()
 
     if minted_session and minted_session.get("access_token"):
         from urllib.parse import urlencode
 
+        # Los JWT solo vuelven a un origen exacto. Un *.vercel.app cae al default.
+        frontend_url = google_token_redirect_target(stored_return)
         fragment = urlencode(
             {
                 "access_token": minted_session.get("access_token") or "",
@@ -948,6 +948,11 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
             status_code=302,
         )
 
+    frontend_url = (
+        stored_return.rstrip("/") + "/"
+        if _is_allowed_return_url(stored_return)
+        else _default_frontend_url(request)
+    )
     return RedirectResponse(url=frontend_url, status_code=302)
 
 
