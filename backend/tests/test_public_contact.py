@@ -59,9 +59,6 @@ class PublicContactTests(unittest.TestCase):
             "app.api.public_contact.persist_public_contact",
             return_value="11111111-1111-1111-1111-111111111111",
         ).start()
-        self._draft = patch(
-            "app.api.public_contact.schedule_contact_draft",
-        ).start()
         self.addCleanup(patch.stopall)
 
     def _client(self) -> TestClient:
@@ -109,7 +106,6 @@ class PublicContactTests(unittest.TestCase):
             self._persist.call_args.kwargs["email"],
             "alex@example.com",
         )
-        self._draft.assert_called_once()
         self.assertEqual(
             post.call_args.kwargs["headers"]["Authorization"],
             "Bearer re_test",
@@ -129,7 +125,6 @@ class PublicContactTests(unittest.TestCase):
         post.assert_not_called()
         smtp.assert_not_called()
         self._persist.assert_not_called()
-        self._draft.assert_not_called()
 
     def test_missing_message_is_rejected(self) -> None:
         response = self._client().post(
