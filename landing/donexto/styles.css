@@ -177,30 +177,78 @@ a {
 }
 
 .lang-strip {
-  display: flex;
-  flex-wrap: wrap;
+  display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
 }
 
-.lang {
-  min-height: 2.2rem;
-  min-width: 2.5rem;
-  padding: 0 0.55rem;
-  border: 1px solid var(--line);
-  border-radius: 0.55rem;
-  background: transparent;
-  color: var(--muted);
+.lang-select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.lang-select select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 2.4rem;
+  max-width: 11.5rem;
+  margin: 0;
+  padding: 0 2.15rem 0 0.8rem;
+  border: 1px solid rgba(90, 216, 213, 0.45);
+  border-radius: 0.6rem;
+  background-color: rgba(7, 11, 18, 0.72);
+  background-image: linear-gradient(
+    180deg,
+    rgba(36, 200, 202, 0.18),
+    rgba(7, 11, 18, 0.15)
+  );
+  color: #f5ffff;
+  color-scheme: dark;
   font: inherit;
   font-weight: 650;
-  font-size: 0.72rem;
+  font-size: 0.88rem;
+  line-height: 1.2;
   cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(36, 200, 202, 0.08);
 }
 
-.lang.is-selected {
-  border-color: var(--teal, #2ee6d6);
+.lang-select select:hover {
+  border-color: rgba(90, 216, 213, 0.75);
+}
+
+.lang-select select:focus {
+  outline: 2px solid rgba(36, 200, 202, 0.85);
+  outline-offset: 2px;
+}
+
+.lang-select select option {
+  background: #0b1220;
   color: #f5ffff;
-  background: rgba(46, 230, 214, 0.12);
+}
+
+.lang-select::after {
+  content: "";
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-right: 2px solid var(--cyan-2);
+  border-bottom: 2px solid var(--cyan-2);
+  transform: translateY(-70%) rotate(45deg);
+  pointer-events: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 main {
@@ -1080,6 +1128,21 @@ main {
 }
 
 @media (max-width: 520px) {
+  .top {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .top-nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .lang-select select {
+    min-height: 2.75rem;
+    font-size: 1rem;
+  }
+
   .hero-actions {
     flex-direction: column;
     align-items: stretch;

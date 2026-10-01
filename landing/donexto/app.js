@@ -5,6 +5,7 @@ const strings = {
     nav_console: "Consola",
     nav_how: "Cómo",
     nav_app: "Abrir app",
+    lang_label: "Idioma",
     kicker: "Atención sobre tu correo",
     hero_title: "Donexto",
     hero_tagline: "Do Next To… lo siguiente que sí importa.",
@@ -116,6 +117,7 @@ const strings = {
     nav_console: "Console",
     nav_how: "How",
     nav_app: "Open app",
+    lang_label: "Language",
     kicker: "Attention on your email",
     hero_title: "Donexto",
     hero_tagline: "Do Next To… the next thing that actually matters.",
@@ -222,6 +224,7 @@ const strings = {
     nav_console: "Console",
     nav_how: "Comment",
     nav_app: "Ouvrir l’app",
+    lang_label: "Langue",
     kicker: "Attention sur votre courrier",
     hero_title: "Donexto",
     hero_tagline: "Do Next To… la prochaine chose qui compte vraiment.",
@@ -328,6 +331,7 @@ const strings = {
     nav_console: "Console",
     nav_how: "Come",
     nav_app: "Apri app",
+    lang_label: "Lingua",
     kicker: "Attenzione sulla tua posta",
     hero_title: "Donexto",
     hero_tagline: "Do Next To… la prossima cosa che conta davvero.",
@@ -434,6 +438,7 @@ const strings = {
     nav_console: "Consola",
     nav_how: "Como",
     nav_app: "Abrir app",
+    lang_label: "Idioma",
     kicker: "Atenção sobre o seu correio",
     hero_title: "Donexto",
     hero_tagline: "Do Next To… o que segue e importa.",
@@ -853,9 +858,10 @@ function applyLang() {
     if (key && dict[key] != null) el.setAttribute("placeholder", dict[key]);
   });
 
-  document.querySelectorAll("#langStrip .lang").forEach((btn) => {
-    btn.classList.toggle("is-selected", btn.getAttribute("data-lang") === lang);
-  });
+  const langSelect = document.getElementById("langSelect");
+  if (langSelect && langSelect.value !== lang) {
+    langSelect.value = lang;
+  }
 
   document.querySelectorAll('a[href^="mailto"]').forEach((mailBtn) => {
     const isCta =
@@ -877,9 +883,8 @@ function applyLang() {
   syncPlayButton();
 }
 
-document.getElementById("langStrip")?.addEventListener("click", (event) => {
-  const btn = event.target.closest("[data-lang]");
-  const next = btn?.getAttribute("data-lang");
+document.getElementById("langSelect")?.addEventListener("change", (event) => {
+  const next = event.target?.value;
   if (!isAppLanguage(next) || next === lang) {
     return;
   }
