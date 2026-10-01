@@ -1,0 +1,442 @@
+.nx {
+  font-family: var(--font-nucleo), var(--font), "Inter", ui-sans-serif, system-ui, sans-serif;
+  position: relative;
+  isolation: isolate;
+}
+.nx button,
+.nx input,
+.nx select {
+  font-family: inherit;
+}
+.nx button {
+  cursor: pointer;
+}
+.nx svg.spark,
+.nx svg.spark path {
+  fill: var(--spark);
+  stroke: none;
+}
+.nx .nav button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  min-height: calc(36px * var(--fs));
+  padding: 0 10px;
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  background: transparent;
+  border: 0;
+  font-size: calc(13.5px * var(--fs));
+  font-weight: 500;
+}
+.nx .nav button svg {
+  width: 17px;
+  height: 17px;
+  color: var(--text-3);
+}
+.nx .nav button.active {
+  background: var(--surface-2);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.nx .nav button.active svg {
+  color: var(--accent);
+}
+.nx .nav button:focus-visible,
+.nx button:focus-visible,
+.nx a:focus-visible,
+.nx input:focus-visible,
+.nx select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.nx .ask input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: calc(14.5px * var(--fs));
+  outline: none;
+}
+.nx .ask input::placeholder {
+  color: var(--text-3);
+}
+.nx .main {
+  overflow: auto;
+}
+.nx .results {
+  position: absolute;
+  z-index: 5;
+  left: 0;
+  right: 72px;
+  top: calc(100% + 8px);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 280px;
+  overflow: auto;
+}
+.nx .askbar {
+  position: relative;
+}
+.nx .result {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+}
+.nx .result:hover,
+.nx .result:focus-visible {
+  background: var(--surface-2);
+}
+.nx .result small {
+  color: var(--text-3);
+}
+.nx .banner {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border-2);
+  background: var(--surface-flat);
+}
+.nx .banner p {
+  color: var(--text-2);
+  margin-top: 4px;
+}
+.nx .filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.nx .empty {
+  padding: 28px 18px;
+  text-align: center;
+  color: var(--text-2);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+}
+.nx .menu-pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 220px;
+  padding: 8px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nx .me {
+  position: relative;
+}
+.nx .me > button.me-hit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  padding: 0;
+}
+.nx .snooze-pop {
+  position: absolute;
+  z-index: 4;
+  right: 12px;
+  bottom: 52px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  min-width: 180px;
+}
+.nx .tabbar {
+  display: none;
+}
+.nx .overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 30;
+  border: 0;
+}
+.nx .onboard {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: color-mix(in srgb, var(--bg) 86%, #000);
+}
+.nx .onboard-card {
+  width: min(560px, 100%);
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.nx .onboard-card h2 {
+  font-size: calc(28px * var(--fs));
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+.nx .onboard-card p,
+.nx .steps {
+  color: var(--text-2);
+  white-space: pre-line;
+  line-height: 1.5;
+}
+.nx .onboard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.nx .flash {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 70;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  font-weight: 650;
+}
+.nx .caption-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 118px;
+  transform: translateX(-50%);
+  z-index: 25;
+  max-width: min(640px, calc(100% - 32px));
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #0b0e14;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+.nx .field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 20px 16px;
+}
+.nx .field input,
+.nx .field select {
+  min-height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border-2);
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 0 10px;
+}
+.nx .rule {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 20px;
+  border-top: 1px solid var(--divider);
+}
+.nx .preview-pill {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--warn);
+  color: #1a1204;
+  font-size: 12px;
+  font-weight: 700;
+}
+.nx .error-line {
+  color: var(--danger);
+  font-size: calc(13px * var(--fs));
+}
+.nx button.cnt,
+.nx button.theme {
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+.nx button.theme {
+  cursor: pointer;
+}
+.nx .themes.four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.nx .tabs button {
+  min-height: calc(26px * var(--fs));
+  padding: 0 10px;
+  border-radius: 7px;
+  font-size: calc(12px * var(--fs));
+  font-weight: 550;
+  color: var(--text-3);
+}
+.nx .tabs button.on {
+  background: var(--surface-3);
+  color: var(--text);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.nx .switch {
+  cursor: pointer;
+  padding: 0;
+}
+.nx[data-contrast="high"] .switch.on::after {
+  background: #000;
+}
+
+@media (max-width: 960px) {
+  .nx .app {
+    grid-template-columns: 1fr;
+    height: 100dvh;
+  }
+  .nx .sidebar {
+    display: none;
+  }
+  .nx .sidebar.is-open {
+    display: flex;
+    position: fixed;
+    z-index: 35;
+    inset: 0 auto 0 0;
+    width: min(320px, 88vw);
+    background: var(--bg-elev, var(--bg));
+    box-shadow: var(--shadow);
+  }
+  .nx .donext {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 6px;
+  }
+  .nx .donext .dn {
+    min-width: min(300px, 86vw);
+    scroll-snap-align: start;
+  }
+  .nx .lower,
+  .nx .set-grid,
+  .nx .case-grid,
+  .nx .hero {
+    grid-template-columns: 1fr;
+  }
+  .nx .main {
+    padding: 16px 16px 108px;
+  }
+  .nx .tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 84px;
+    padding: 8px 8px 12px;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    z-index: 20;
+  }
+  .nx .tabbar button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: 0;
+    color: var(--text-3);
+    font-size: 10.5px;
+    font-weight: 600;
+  }
+  .nx .tabbar button.on {
+    color: var(--text);
+  }
+  .nx .tabbar button.on svg {
+    color: var(--accent);
+  }
+  .nx .bot-dock {
+    bottom: 96px;
+    right: 10px;
+  }
+  .nx .bubble {
+    width: min(240px, 70vw);
+  }
+  .nx .ask .lbl {
+    display: none;
+  }
+  .nx .summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .nx .themes.four,
+  .nx .themes {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .nx .themes,
+  .nx .themes.four {
+    grid-template-columns: 1fr;
+  }
+}
+
+.nx-preview-bar {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  background: #111827;
+  color: #f8fafc;
+  font: 13px/1.3 Inter, ui-sans-serif, system-ui, sans-serif;
+}
+.nx-preview-bar button {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: transparent;
+  color: inherit;
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+.nx-preview-bar button[aria-pressed="true"] {
+  background: #fff;
+  color: #111827;
+}
+
+.nx-external-notice {
+  position: fixed;
+  z-index: 70;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  max-width: min(520px, calc(100vw - 32px));
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: #121826;
+  color: #f4f7fb;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
+  font: 14px/1.45 Inter, ui-sans-serif, system-ui, sans-serif;
+}

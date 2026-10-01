@@ -68,9 +68,10 @@ describe("admin is Spanish-only", () => {
   it("keeps the multi-language strip on the home login", () => {
     const home = source("app/page.tsx");
     const login = source("components/auth/LoginScreen.tsx");
+    const settings = source("components/nucleo/SettingsView.tsx");
     assert.doesNotMatch(home, /lockedLanguage/);
-    assert.match(home, /<LanguageStrip/);
     assert.match(login, /<LanguageStrip compact className="dx-login__language" \/>/);
     assert.match(home, /<LanguageProvider userId=\{session\?\.id \?\? null\}>/);
+    assert.match(settings, /props\.onLanguage\(event\.target\.value as AppLanguage\)/);
   });
 });
