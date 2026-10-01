@@ -17,6 +17,7 @@ from app.api.guided_import import router as guided_import_router
 from app.api.identity import router as identity_router
 from app.api.messages import router as messages_router
 from app.api.push_notifications import router as push_router
+from app.api.preferences import router as preferences_router
 from app.api.system import router as system_router
 from app.api.sync_jobs import router as sync_jobs_router
 from app.api.microsoft_mail import router as microsoft_mail_router
@@ -193,4 +194,5 @@ app.include_router(guided_import_router)
 app.include_router(sync_jobs_router)
 app.include_router(messages_router)
 app.include_router(push_router)
+app.include_router(preferences_router)
 app.include_router(cases_router)

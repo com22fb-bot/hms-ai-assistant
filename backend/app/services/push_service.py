@@ -7,7 +7,8 @@ from typing import Any
 from dotenv import load_dotenv
 from fastapi import HTTPException
 
-from app.security.identity import require_google_account, require_request_context
+from app.security.identity import require_request_context
+from app.services.preferences_service import schema_gap
 from app.services.oauth_storage import OAuthStorage
 from app.services.web_push_sender import send_web_push
 
@@ -53,6 +54,15 @@ def push_configuration() -> dict[str, Any]:
     }
 
 
+_ALERT_COPY = {
+    "es": ("Nueva alerta de Donexto", "Prueba de notificaciones en este dispositivo."),
+    "en": ("New Donexto alert", "Notification test on this device."),
+    "fr": ("Nouvelle alerte Donexto", "Essai de notification sur cet appareil."),
+    "it": ("Nuovo avviso Donexto", "Prova di notifica su questo dispositivo."),
+    "pt": ("Novo alerta da Donexto", "Teste de notificação neste dispositivo."),
+}
+
+
 def save_subscription(
     *,
     endpoint: str,
@@ -60,6 +70,8 @@ def save_subscription(
     auth_secret: str,
     user_agent: str | None,
     device_label: str | None,
+    platform: str | None = None,
+    locale: str | None = None,
 ) -> dict[str, Any]:
     context = require_request_context()
     client = OAuthStorage().client
@@ -94,18 +106,36 @@ def save_subscription(
         "updated_at": "now()",
         "last_error": None,
     }
+    if platform:
+        payload["platform"] = platform.strip()[:40]
+    if locale:
+        payload["locale"] = locale.strip()[:12]
+
+    def _write(body: dict[str, Any]) -> dict[str, Any] | None:
+        if existing:
+            return _first(
+                client.table("push_subscriptions")
+                .update(body)
+                .eq("id", str(existing["id"]))
+                .execute()
+            )
+        return _first(client.table("push_subscriptions").insert(body).execute())
+
+    try:
+        updated = _write(payload)
+    except Exception as error:
+        if not schema_gap(error):
+            raise
+        legacy = {
+            key: value
+            for key, value in payload.items()
+            if key not in {"platform", "locale"}
+        }
+        updated = _write(legacy)
     if existing:
-        updated = _first(
-            client.table("push_subscriptions")
-            .update(payload)
-            .eq("id", str(existing["id"]))
-            .execute()
-        )
         return updated or {**existing, **payload}
 
-    created = _first(
-        client.table("push_subscriptions").insert(payload).execute()
-    )
+    created = updated
     if not created:
         raise HTTPException(
             status_code=503,
@@ -130,16 +160,33 @@ def deactivate_subscription(endpoint: str) -> int:
 
 
 def list_profile_subscriptions(profile_id: str) -> list[dict[str, Any]]:
-    return _rows(
-        OAuthStorage().client.table("push_subscriptions")
-        .select(
-            "id,endpoint,device_label,user_agent,is_active,last_seen_at,"
-            "last_success_at,last_error,created_at"
-        )
-        .eq("profile_id", profile_id)
-        .order("created_at", desc=True)
-        .execute()
+    client = OAuthStorage().client
+    columns = (
+        "id,endpoint,device_label,user_agent,is_active,last_seen_at,"
+        "last_success_at,last_error,created_at,platform,locale"
     )
+    legacy = (
+        "id,endpoint,device_label,user_agent,is_active,last_seen_at,"
+        "last_success_at,last_error,created_at"
+    )
+    try:
+        return _rows(
+            client.table("push_subscriptions")
+            .select(columns)
+            .eq("profile_id", profile_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
+    except Exception as error:
+        if not schema_gap(error):
+            raise
+        return _rows(
+            client.table("push_subscriptions")
+            .select(legacy)
+            .eq("profile_id", profile_id)
+            .order("created_at", desc=True)
+            .execute()
+        )
 
 
 def _deliver_to_profile(
@@ -247,6 +294,7 @@ def create_notification(
     url: str = "/",
     send_push: bool = True,
     target_endpoint: str | None = None,
+    lang: str | None = None,
 ) -> dict[str, Any]:
     client = OAuthStorage().client
     existing = _first(
@@ -292,6 +340,8 @@ def create_notification(
                 "url": url or "/",
                 "notificationId": str(notification["id"]),
                 "type": notification_type,
+                "lang": (lang or "es")[:8],
+                "vibrate": [80, 40, 80, 40, 160],
             },
             target_endpoint=target_endpoint,
         )
@@ -344,8 +394,14 @@ def mark_notification_read(notification_id: str) -> dict[str, Any] | None:
     )
 
 
-def send_test_notification(endpoint: str | None = None) -> dict[str, Any]:
-    context, account = require_google_account()
+def send_test_notification(
+    endpoint: str | None = None,
+    *,
+    title: str | None = None,
+    body: str | None = None,
+    lang: str | None = None,
+) -> dict[str, Any]:
+    context = require_request_context()
     if not _public_key() or not _private_key_path():
         raise HTTPException(
             status_code=503,
@@ -354,26 +410,23 @@ def send_test_notification(endpoint: str | None = None) -> dict[str, Any]:
                 "message": "Las llaves VAPID todavía no están configuradas.",
             },
         )
+    language = (lang or "es").strip().lower()[:8]
+    default_title, default_body = _ALERT_COPY.get(language, _ALERT_COPY["es"])
     target = (endpoint or "").strip() or None
-    device_scope = (
-        "este dispositivo"
-        if target
-        else "todos los dispositivos activos"
-    )
+    account = context.google_account or {}
+    account_id = str(account["id"]) if account.get("id") else None
     return create_notification(
         workspace_id=context.workspace_id,
-        account_id=str(account["id"]),
+        account_id=account_id,
         profile_id=context.user.id,
         notification_type="push_test",
-        title="HMS está listo",
-        body=(
-            f"Prueba de notificaciones hacia {device_scope}. "
-            "Aqui veras avisos de favoritos y asuntos accionables."
-        ),
+        title=(title or default_title)[:300],
+        body=(body or default_body)[:1000],
         dedupe_key=f"push-test:{context.user.id}:{os.urandom(8).hex()}",
         url="/",
         send_push=True,
         target_endpoint=target,
+        lang=language,
     )
 
 
