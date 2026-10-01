@@ -28,9 +28,14 @@ logger = logging.getLogger(__name__)
 
 STATUS_NUEVO = "nuevo"
 STATUS_DRAFT = "borrador listo"
+STATUS_SENDING = "enviando"
 STATUS_REPLIED = "respondido"
 STATUS_ARCHIVED = "archivado"
 UNREAD_STATUSES = (STATUS_NUEVO, STATUS_DRAFT)
+# Estados desde los que se puede reservar el envío. respondido, archivado y
+# enviando quedan fuera para que un reintento no mande el correo dos veces.
+SENDABLE_STATUSES = (STATUS_NUEVO, STATUS_DRAFT)
+BLOCKED_SEND_STATUSES = (STATUS_REPLIED, STATUS_ARCHIVED, STATUS_SENDING)
 CONTACT_TABLE = "contact_messages"
 
 UNCONFIGURED_MESSAGE = (
@@ -39,6 +44,9 @@ UNCONFIGURED_MESSAGE = (
 )
 DRAFT_FAILED_MESSAGE = (
     "No se pudo redactar con IA. Escribe la respuesta a mano y luego autoriza el envío."
+)
+DRAFT_SKIPPED_MESSAGE = (
+    "El mensaje cambió mientras se redactaba. No se reemplazó su estado."
 )
 INBOX_UNAVAILABLE_MESSAGE = (
     "La bandeja de mensajes no está lista. "
@@ -317,29 +325,88 @@ def get_contact_message(message_id: str) -> dict[str, Any]:
 
 
 def _update_message(message_id: str, fields: dict[str, Any]) -> dict[str, Any]:
+    rows = _conditional_update(message_id, fields)
+    if rows:
+        return rows[0]
+    return get_contact_message(message_id)
+
+
+def _conditional_update(
+    message_id: str,
+    fields: dict[str, Any],
+    *,
+    status_eq: str | None = None,
+    status_not_in: tuple[str, ...] | None = None,
+) -> list[dict[str, Any]]:
+    """UPDATE ... WHERE id = ? [AND status = ?] [AND status NOT IN ?] RETURNING."""
     payload = {**fields, "updated_at": _now()}
     try:
-        (
-            _client()
-            .table(CONTACT_TABLE)
-            .update(payload)
-            .eq("id", message_id)
-            .execute()
-        )
+        query = _client().table(CONTACT_TABLE).update(payload).eq("id", message_id)
+        if status_eq is not None:
+            query = query.eq("status", status_eq)
+        if status_not_in:
+            query = query.not_.in_("status", list(status_not_in))
+        response = query.execute()
     except HTTPException:
         raise
     except Exception as error:  # noqa: BLE001
         raise _inbox_error(error) from error
-    return get_contact_message(message_id)
+    return _rows(response)
+
+
+def _send_conflict(status: str) -> HTTPException:
+    if status == STATUS_REPLIED:
+        message = "Este mensaje ya se respondió. No se envía otra vez."
+    elif status == STATUS_ARCHIVED:
+        message = "Este mensaje está archivado. No se envía."
+    elif status == STATUS_SENDING:
+        message = (
+            "Este mensaje ya se está enviando. "
+            "No se manda otra vez para no duplicar el correo."
+        )
+    else:
+        message = "Este mensaje ya no se puede enviar."
+    return HTTPException(
+        status_code=409,
+        detail={"status": "already_handled", "message": message},
+    )
+
+
+def _draft_still_pending(
+    message_id: str,
+    seen_status: str,
+    fields: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Save a draft only while the row is still the status read before the model call.
+
+    A late draft must not turn ``respondido`` or ``archivado`` back into
+    ``borrador listo``.
+    """
+    if seen_status not in SENDABLE_STATUSES:
+        return None
+    rows = _conditional_update(
+        message_id,
+        fields,
+        status_eq=seen_status,
+        status_not_in=BLOCKED_SEND_STATUSES,
+    )
+    return rows[0] if rows else None
 
 
 def create_contact_draft(message_id: str) -> dict[str, Any]:
     """Propose a reply. This function does not send email."""
     row = get_contact_message(message_id)
+    seen_status = str(row.get("status") or "")
     if not ai_reply_configured():
         return {
             "status": "unconfigured",
             "message": UNCONFIGURED_MESSAGE,
+            "contact": public_contact_view(row),
+        }
+    if seen_status not in SENDABLE_STATUSES:
+        return {
+            "status": "skipped",
+            "message": DRAFT_SKIPPED_MESSAGE,
             "contact": public_contact_view(row),
         }
     try:
@@ -349,22 +416,39 @@ def create_contact_draft(message_id: str) -> dict[str, Any]:
             "Borrador de contacto falló: %s",
             type(error).__name__,
         )
-        try:
-            saved = _update_message(message_id, {"draft_error": DRAFT_FAILED_MESSAGE})
-        except HTTPException:
-            saved = row
+        saved = _draft_still_pending(
+            message_id,
+            seen_status,
+            {"draft_error": DRAFT_FAILED_MESSAGE},
+        )
+        if saved is None:
+            saved = get_contact_message(message_id)
+            return {
+                "status": "skipped",
+                "message": DRAFT_SKIPPED_MESSAGE,
+                "contact": public_contact_view(saved),
+            }
         return {
             "status": "draft_failed",
             "message": DRAFT_FAILED_MESSAGE,
             "contact": public_contact_view(saved),
         }
-    fields: dict[str, Any] = {
-        "draft_body": text,
-        "draft_error": None,
-    }
-    if row.get("status") in (STATUS_NUEVO, STATUS_DRAFT, None, ""):
-        fields["status"] = STATUS_DRAFT
-    saved = _update_message(message_id, fields)
+    saved = _draft_still_pending(
+        message_id,
+        seen_status,
+        {
+            "draft_body": text,
+            "draft_error": None,
+            "status": STATUS_DRAFT,
+        },
+    )
+    if saved is None:
+        current = get_contact_message(message_id)
+        return {
+            "status": "skipped",
+            "message": DRAFT_SKIPPED_MESSAGE,
+            "contact": public_contact_view(current),
+        }
     return {
         "status": "draft_ready",
         "message": "Borrador listo. Revísalo antes de autorizar el envío.",
@@ -424,6 +508,9 @@ def authorize_contact_reply(
             },
         )
     row = get_contact_message(message_id)
+    previous = str(row.get("status") or "")
+    if previous not in SENDABLE_STATUSES:
+        raise _send_conflict(previous)
     visitor = str(row.get("email") or "").strip()
     if not visitor or "@" not in visitor:
         raise HTTPException(
@@ -433,6 +520,16 @@ def authorize_contact_reply(
                 "message": "Ese mensaje no tiene un correo de respuesta.",
             },
         )
+    # Reserva atómica: solo una petición pasa de nuevo/borrador listo a enviando.
+    claimed = _conditional_update(
+        message_id,
+        {"status": STATUS_SENDING},
+        status_eq=previous,
+        status_not_in=BLOCKED_SEND_STATUSES,
+    )
+    if not claimed:
+        current = get_contact_message(message_id)
+        raise _send_conflict(str(current.get("status") or ""))
     subject = contact_reply_subject(str(row.get("subject") or ""))
     try:
         delivered = send_contact_reply_email(
@@ -442,6 +539,7 @@ def authorize_contact_reply(
         )
     except SMTPDeliveryError:
         logger.warning("Respuesta de contacto no se pudo enviar")
+        _revert_failed_send(message_id, previous)
         raise HTTPException(
             status_code=502,
             detail={
@@ -450,6 +548,7 @@ def authorize_contact_reply(
             },
         ) from None
     if not delivered:
+        _revert_failed_send(message_id, previous)
         raise HTTPException(
             status_code=503,
             detail={
@@ -459,7 +558,7 @@ def authorize_contact_reply(
         )
     sent_message = f"Respuesta enviada a {visitor} desde {PUBLIC_CONTACT_INBOX}."
     try:
-        saved = _update_message(
+        saved_rows = _conditional_update(
             message_id,
             {
                 "status": STATUS_REPLIED,
@@ -468,8 +567,11 @@ def authorize_contact_reply(
                 "draft_error": None,
                 "replied_at": _now(),
             },
+            status_eq=STATUS_SENDING,
         )
     except HTTPException:
+        saved_rows = []
+    if not saved_rows:
         logger.warning("Respuesta enviada pero la bandeja no se pudo marcar")
         fallback = dict(row)
         fallback["status"] = STATUS_REPLIED
@@ -486,8 +588,21 @@ def authorize_contact_reply(
     return {
         "status": "sent",
         "message": sent_message,
-        "contact": public_contact_view(saved),
+        "contact": public_contact_view(saved_rows[0]),
     }
+
+
+def _revert_failed_send(message_id: str, previous: str) -> None:
+    """Devuelve el estado previo solo si la fila sigue en enviando."""
+    target = previous if previous in SENDABLE_STATUSES else STATUS_NUEVO
+    try:
+        _conditional_update(
+            message_id,
+            {"status": target},
+            status_eq=STATUS_SENDING,
+        )
+    except HTTPException:
+        logger.warning("No se pudo revertir el envío fallido de contacto")
 
 
 def archive_contact_message(message_id: str) -> dict[str, Any]:
