@@ -18,6 +18,9 @@ import "./commandCenter.test.ts";
 import "../mailFrame.test.ts";
 import "./helpKb.test.ts";
 import "./cleanText.test.ts";
+import "./explain.test.ts";
+import "./topTen.test.ts";
+import "./mailRefresh.test.ts";
 import "./nextoDock.test.ts";
 
 test("classifies inbox text into life areas without inventing a bank feed", () => {

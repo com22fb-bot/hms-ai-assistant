@@ -371,6 +371,14 @@ export type LifeItem = {
   reconciled: boolean;
   requestedAction: string | null;
   sourceCount: number;
+  /** Cleaned preview/summary text from the backend (entity extraction). */
+  preview?: string | null;
+  /** Sender address (brand detection for plain-language headlines). */
+  senderEmail?: string | null;
+  /** Original email subject, kept as secondary text under the headline. */
+  subject?: string;
+  /** Event type detected by `explain.ts` (security alert, order shipped…). */
+  kind?: string;
 };
 
 function senderLabel(
@@ -431,6 +439,8 @@ export function buildLifeItems(
       reconciled: false,
       requestedAction: item.requested_action,
       sourceCount: item.source_count,
+      senderEmail: item.requester_email,
+      preview: item.summary,
     };
   });
 
@@ -474,6 +484,8 @@ export function buildLifeItems(
       reconciled: false,
       requestedAction: null,
       sourceCount: 1,
+      preview: thread.summary,
+      senderEmail: thread.sender?.match(/<([^>]+)>/)?.[1] ?? (thread.sender?.includes("@") ? thread.sender : null),
     });
   }
 

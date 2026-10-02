@@ -69,6 +69,11 @@ type ImportStatus = {
     | "failed";
   active: Record<string, unknown> | null;
   latest: Record<string, unknown> | null;
+  failure?: {
+    reason: "auth" | "error";
+    reconnect_required: boolean;
+    message: string;
+  } | null;
   progress: ImportProgress;
   message: string;
 };
@@ -105,9 +110,12 @@ function formatLocalDate(value: string): string {
 export function GuidedImportWizard({
   onClose,
   onComplete,
+  onReconnect,
 }: {
   onClose: () => void;
   onComplete: () => void;
+  /** Opens the mailbox picker so an expired/revoked permission can be renewed. */
+  onReconnect?: () => void;
 }) {
   const [status, setStatus] = useState<ImportStatus | null>(null);
   const [inventory, setInventory] = useState<Inventory | null>(null);
@@ -538,18 +546,39 @@ export function GuidedImportWizard({
             <AlertTriangle size={48} />
             <span>REVISIÓN NECESARIA</span>
             <h2 id="hms-import-title">
-              La descarga no pudo concluir.
+              {status.failure?.reconnect_required
+                ? "Tu correo necesita reconectarse."
+                : "La descarga no pudo concluir."}
             </h2>
             <p>
-              El avance quedó guardado. Reabre esta pantalla para
-              continuar desde el último lote.
+              {status.failure?.message
+                || "El avance quedó guardado. Toca Reintentar para continuar con el correo nuevo."}
             </p>
-            <button
-              type="button"
-              onClick={() => void loadStatus()}
-            >
-              Reintentar
-            </button>
+            <div className="hms-import-actions">
+              {status.failure?.reconnect_required && onReconnect ? (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={onReconnect}
+                >
+                  Reconectar correo
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={starting}
+                onClick={() => void start(
+                  status.initial_import_complete ? "incremental" : "initial",
+                )}
+              >
+                {starting ? (
+                  <LoaderCircle className="app-spin" size={20} />
+                ) : (
+                  <RefreshCw size={20} />
+                )}
+                {starting ? "Reintentando…" : "Reintentar"}
+              </button>
+            </div>
           </section>
         ) : null}
       </section>

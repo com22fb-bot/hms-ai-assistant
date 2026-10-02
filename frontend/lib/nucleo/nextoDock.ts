@@ -57,3 +57,63 @@ export function bubbleSide(pos: DockPos, size: DockSize, view: Viewport, bubbleH
 export function isDrag(dx: number, dy: number, threshold = DRAG_THRESHOLD): boolean {
   return Math.hypot(dx, dy) >= threshold;
 }
+
+/** After the user closes the bubble (X / Esc) or stops typing, hover-help waits this long. */
+export const HELP_COOLDOWN_MS = 4000;
+/** Pixels around the robot that count as "approaching" it. */
+export const APPROACH_PX = 56;
+
+export type BubbleGate = {
+  /** X was pressed: stay closed until the robot itself is hovered or dragged. */
+  muted: boolean;
+  /** Timestamp until which hover-help stays quiet (cooldown). */
+  quietUntil: number;
+  /** The user is typing in an input/textarea/select/contenteditable. */
+  typing: boolean;
+  /** When X was last pressed (0 = never). */
+  closedAt: number;
+};
+
+export const OPEN_GATE: BubbleGate = { muted: false, quietUntil: 0, typing: false, closedAt: 0 };
+
+/** Hover/focus help on page elements may open the bubble. */
+export function canAutoHelp(gate: BubbleGate, now: number): boolean {
+  return !gate.muted && !gate.typing && now >= gate.quietUntil;
+}
+
+export function gateAfterClose(gate: BubbleGate, now: number): BubbleGate {
+  return { ...gate, muted: true, closedAt: now, quietUntil: Math.max(gate.quietUntil, now + HELP_COOLDOWN_MS) };
+}
+
+export function gateAfterTyping(gate: BubbleGate, typing: boolean, now: number): BubbleGate {
+  return typing ? { ...gate, typing: true } : { ...gate, typing: false, quietUntil: Math.max(gate.quietUntil, now + HELP_COOLDOWN_MS) };
+}
+
+/**
+ * Hovering/approaching the robot (or dragging it) un-mutes the guide. A short
+ * grace period right after closing avoids reopening just because the pointer
+ * passed over the robot on its way out.
+ */
+export function gateAfterRobot(gate: BubbleGate, now: number, closeGraceMs = 900): { gate: BubbleGate; reopen: boolean } {
+  if (gate.typing) return { gate, reopen: false };
+  if (gate.muted && now - gate.closedAt < closeGraceMs) return { gate, reopen: false };
+  return { gate: { ...gate, muted: false, quietUntil: 0 }, reopen: gate.muted };
+}
+
+/** True for elements where the user types (the bubble must stay out of the way). */
+export function isTypingTarget(element: { tagName?: string; isContentEditable?: boolean; getAttribute?: (name: string) => string | null; type?: string } | null | undefined): boolean {
+  if (!element) return false;
+  if (element.isContentEditable) return true;
+  const tag = String(element.tagName || "").toUpperCase();
+  if (tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (tag !== "INPUT") return element.getAttribute?.("role") === "textbox";
+  const type = String(element.type || element.getAttribute?.("type") || "text").toLowerCase();
+  return !["button", "submit", "reset", "checkbox", "radio", "range", "color", "file", "image"].includes(type);
+}
+
+/** Distance from a point to a rectangle (0 when inside). */
+export function distanceToRect(x: number, y: number, rect: { left: number; top: number; right: number; bottom: number }): number {
+  const dx = Math.max(rect.left - x, 0, x - rect.right);
+  const dy = Math.max(rect.top - y, 0, y - rect.bottom);
+  return Math.hypot(dx, dy);
+}

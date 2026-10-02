@@ -37,3 +37,41 @@ test("nexto: a tap is not a drag", () => {
   assert.equal(isDrag(2, 3), false);
   assert.equal(isDrag(5, 5), true);
 });
+
+test("nexto: X keeps the bubble closed until the robot itself is approached", async () => {
+  const { OPEN_GATE, canAutoHelp, gateAfterClose, gateAfterRobot, HELP_COOLDOWN_MS } = await import("./nextoDock.ts");
+  const closed = gateAfterClose(OPEN_GATE, 10_000);
+  assert.equal(canAutoHelp(closed, 10_100), false);
+  // Long after the cooldown, hovering other elements still doesn't reopen it (muted).
+  assert.equal(canAutoHelp(closed, 10_000 + HELP_COOLDOWN_MS * 10), false);
+  // Passing over the robot right after closing doesn't reopen it…
+  assert.equal(gateAfterRobot(closed, 10_300).reopen, false);
+  // …but hovering/approaching it later does, and hover-help works again.
+  const back = gateAfterRobot(closed, 12_000);
+  assert.equal(back.reopen, true);
+  assert.equal(canAutoHelp(back.gate, 12_001), true);
+});
+
+test("nexto: typing hides the guide and a short cooldown follows", async () => {
+  const { OPEN_GATE, canAutoHelp, gateAfterTyping, gateAfterRobot, HELP_COOLDOWN_MS } = await import("./nextoDock.ts");
+  const typing = gateAfterTyping(OPEN_GATE, true, 1_000);
+  assert.equal(canAutoHelp(typing, 5_000), false);
+  assert.equal(gateAfterRobot(typing, 5_000).reopen, false);
+  const stopped = gateAfterTyping(typing, false, 6_000);
+  assert.equal(canAutoHelp(stopped, 6_000 + HELP_COOLDOWN_MS - 1), false);
+  assert.equal(canAutoHelp(stopped, 6_000 + HELP_COOLDOWN_MS), true);
+});
+
+test("nexto: typing targets and proximity", async () => {
+  const { isTypingTarget, distanceToRect } = await import("./nextoDock.ts");
+  assert.equal(isTypingTarget({ tagName: "INPUT", type: "text" }), true);
+  assert.equal(isTypingTarget({ tagName: "INPUT", type: "search" }), true);
+  assert.equal(isTypingTarget({ tagName: "INPUT", type: "checkbox" }), false);
+  assert.equal(isTypingTarget({ tagName: "TEXTAREA" }), true);
+  assert.equal(isTypingTarget({ tagName: "DIV", isContentEditable: true }), true);
+  assert.equal(isTypingTarget({ tagName: "BUTTON" }), false);
+  assert.equal(isTypingTarget(null), false);
+  const rect = { left: 100, top: 100, right: 196, bottom: 212 };
+  assert.equal(distanceToRect(150, 150, rect), 0);
+  assert.equal(distanceToRect(60, 150, rect), 40);
+});

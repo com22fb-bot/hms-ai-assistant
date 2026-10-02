@@ -8,6 +8,11 @@ from typing import Any
 
 from google.oauth2.credentials import Credentials
 
+from app.services.import_failure import (
+    failure_message,
+    failure_reason,
+    failure_superseded,
+)
 from app.services.gmail_full_sync import sync_gmail_page
 from app.services.gmail_import_inventory import initial_import_snapshot
 from app.services.oauth_storage import OAuthStorage
@@ -411,8 +416,10 @@ def _run_job(job_id: str) -> None:
             current = _job(job_id)
             retries = int(current.get("retry_count") or 0) + 1
             max_retries = int(current.get("max_retries") or 3)
+            # A revoked/expired permission never heals by retrying.
+            permanent = failure_reason(error) == "auth"
 
-            if retries <= max_retries:
+            if retries <= max_retries and not permanent:
                 _update_job(
                     job_id,
                     {
@@ -477,8 +484,21 @@ def get_guided_import_status(
             and int(active.get("cases_processed") or 0)
             < int(active.get("messages_inserted") or 0)
         ) else "downloading"
-    elif latest and latest.get("status") == "failed":
+    elif (
+        latest
+        and latest.get("status") == "failed"
+        and not failure_superseded(latest, account)
+    ):
         phase = "failed"
+
+    failure: dict[str, Any] | None = None
+    if phase == "failed" and latest:
+        reason = failure_reason(latest.get("last_error"))
+        failure = {
+            "reason": reason,
+            "reconnect_required": reason == "auth",
+            "message": failure_message(reason),
+        }
 
     job = active or latest
     metadata = dict((job or {}).get("metadata") or {})
@@ -505,6 +525,7 @@ def get_guided_import_status(
         "needs_initial_import": needs_initial,
         "initial_import_complete": initial_complete,
         "phase": phase,
+        "failure": failure,
         "active": active,
         "latest": latest,
         "progress": {

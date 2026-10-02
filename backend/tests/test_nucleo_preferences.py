@@ -30,6 +30,12 @@ class NucleoPreferencesTests(unittest.TestCase):
         self.assertEqual(len(clean["alertRules"]), 1)
         self.assertNotIn("extra", clean)
 
+    def test_top10_seen_flag_is_kept(self) -> None:
+        clean = sanitize_preferences({"top10SeenAt": "2026-10-02T22:00:00.000Z"})
+        self.assertEqual(clean["top10SeenAt"], "2026-10-02T22:00:00.000Z")
+        self.assertIsNone(sanitize_preferences({"top10SeenAt": 5})["top10SeenAt"])
+        self.assertIsNone(sanitize_preferences({})["top10SeenAt"])
+
     def test_unknown_theme_falls_back_to_nucleo(self) -> None:
         clean = sanitize_preferences({"theme": "midnight"})
         self.assertEqual(clean["theme"], "nucleo")

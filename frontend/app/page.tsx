@@ -7,7 +7,7 @@ import {
   KeyRound,
   ShieldCheck,
 } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { DonextoMark } from "@/components/brand/DonextoMark";
 import { GuidedImportWizard } from "@/components/GuidedImportWizard";
@@ -17,7 +17,7 @@ import { MailboxConnectModal } from "@/components/MailboxConnectModal";
 import "@/components/hms-mobile-shell.css";
 import "@/components/guided-import.css";
 import { MailInbox, type MailAppearance } from "@/components/MailInbox";
-import { NucleoApp } from "@/components/nucleo/NucleoApp";
+import { NucleoApp, type MailSyncState } from "@/components/nucleo/NucleoApp";
 import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
 import "@/components/mail-inbox.css";
 import { useCases } from "@/hooks/useCases";
@@ -27,6 +27,7 @@ import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import { mailboxConnectModeFromEmail } from "@/lib/mailboxSignup";
 import { HmsApiError, hmsJson } from "@/lib/hmsApi";
 import { DEFAULT_PREFS, readLocalPrefs } from "@/lib/nucleo/prefs";
+import { refreshMailbox, type ImportStatusPayload } from "@/lib/nucleo/mailRefresh";
 import { supabase } from "@/lib/supabase";
 
 /** The reading view follows the Núcleo IA theme and accessibility prefs. */
@@ -316,6 +317,59 @@ function Dashboard({
   const [initialFlowOpened, setInitialFlowOpened] = useState(false);
   const [billingBusy, setBillingBusy] = useState(false);
   const [planNotice, setPlanNotice] = useState<string | null>(null);
+  const [mailSync, setMailSync] = useState<MailSyncState>({ phase: "idle" });
+  const mailSyncBusy = useRef(false);
+
+  /**
+   * "Traer correo nuevo": a real incremental import through the guided
+   * import (read-only), with progress and a result the user can see.
+   */
+  const refreshMailNow = useCallback(async () => {
+    if (!connection?.connected) {
+      setMailboxPickerOpen(true);
+      return;
+    }
+    if (!usesGuidedImport) {
+      await syncAllMessages();
+      return;
+    }
+    if (mailSyncBusy.current) return;
+    mailSyncBusy.current = true;
+    setMailSync({ phase: "running", downloaded: 0 });
+    try {
+      const result = await refreshMailbox({
+        start: () => hmsJson("/api/hms/gmail/import/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ mode: "incremental" }),
+        }),
+        status: () => hmsJson<ImportStatusPayload>("/api/hms/gmail/import/status", { cache: "no-store" }),
+        sleep: (ms) => new Promise((resolve) => window.setTimeout(resolve, ms)),
+        now: () => Date.now(),
+        onProgress: (downloaded) => setMailSync({ phase: "running", downloaded }),
+      });
+      if (result.ok) {
+        setMailSync({ phase: "done", inserted: result.inserted, createdCases: result.createdCases });
+        setImportFlowStatus((current) => current ? { ...current, phase: "ready", active: null } : current);
+        void loadDashboard();
+        window.dispatchEvent(new Event("hms:data-changed"));
+      } else if (result.reason === "initial") {
+        setMailSync({ phase: "idle" });
+        setGuidedImportOpen(true);
+      } else {
+        setMailSync({ phase: "error", reason: result.reason, message: result.message });
+      }
+    } catch (requestError) {
+      const message = requestError instanceof Error ? requestError.message : "";
+      setMailSync({
+        phase: "error",
+        reason: /invalid_grant|revoc|expir|vuelve a conectar|reconnect/i.test(message) ? "auth" : "failed",
+        message,
+      });
+    } finally {
+      mailSyncBusy.current = false;
+    }
+  }, [connection?.connected, loadDashboard, syncAllMessages, usesGuidedImport]);
 
   useEffect(() => {
     if (loadingConnection) {
@@ -481,7 +535,7 @@ function Dashboard({
         connected={Boolean(connection?.connected)}
         mailboxEmail={connection?.email ?? null}
         provider={connection?.provider ?? null}
-        syncing={syncing}
+        syncing={syncing || mailSync.phase === "running"}
         yahooPending={yahooMailPending || yahooIdentityWithoutRead}
         gmailPending={gmailIdentityWithoutRead}
         showPlan={Boolean(isMicrosoftMailbox)}
@@ -493,8 +547,11 @@ function Dashboard({
         onSignOut={onLogout}
         onConnect={requestMailboxOrExplain}
         onRefreshMail={() => {
-          void syncAllMessages();
+          void refreshMailNow();
         }}
+        mailSync={mailSync}
+        onMailSyncDismiss={() => setMailSync({ phase: "idle" })}
+        overlayOpen={guidedImportOpen || mailboxPickerOpen || mailOpen}
         onOpenInbox={openMailView}
         onOpenImport={() => setGuidedImportOpen(true)}
         onPlan={() => {
@@ -587,6 +644,10 @@ function Dashboard({
         {guidedImportOpen ? (
           <GuidedImportWizard
             onClose={() => setGuidedImportOpen(false)}
+            onReconnect={() => {
+              setGuidedImportOpen(false);
+              openMailboxConnect();
+            }}
             onComplete={() => {
               setGuidedImportOpen(false);
               setImportFlowStatus({
