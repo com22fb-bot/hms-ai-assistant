@@ -11,6 +11,7 @@ import {
   extractFlight,
   extractOrder,
   localizeDate,
+  areaForKind,
   localizeItems,
   type EventKind,
   type ExplainInput,
@@ -147,4 +148,23 @@ test("explain: localizeItems keeps the original subject as secondary text", () =
   const [english] = localizeItems([item], "en");
   assert.match(english.line, /^Copy of a Google security alert/);
   assert.equal(english.subject, cases[0].title);
+});
+
+test("explain: app access and other account-safety events land in Seguridad", () => {
+  const base = { case_type: "general", status: "new", priority: "normal", summary: null, requested_action: null, last_activity_at: "2026-10-02T15:07:00Z", due_at: null, source_count: 1 };
+  const cases: InboxCase[] = [
+    { ...base, id: "a1", title: "Permitiste que hms-ai-assistant-production.up.railway.app acceda a algunos de los datos de tu Cuenta de Google hmcelinfo@gmail.com", requester_name: "Google", requester_email: "no-reply@accounts.google.com" },
+    { ...base, id: "a2", title: "You allowed Zapier access to some of your Google Account data", requester_name: "Google", requester_email: "no-reply@accounts.google.com" },
+    { ...base, id: "a3", title: "Verifica el correo de recuperación", requester_name: "Google", requester_email: "no-reply@accounts.google.com" },
+  ];
+  const raw = buildLifeItems(cases, []);
+  assert.equal(raw[0].area, "security", "keyword scoring already says Seguridad");
+  const items = localizeItems(raw, "es");
+  assert.deepEqual(items.map((item) => item.area), ["security", "security", "security"]);
+  assert.equal(items[0].kind, "app_access");
+  // Kind wins even when scoring picked another area.
+  assert.equal(areaForKind("app_access", "work"), "security");
+  assert.equal(areaForKind("verification_code", "other"), "security");
+  assert.equal(areaForKind("verification_code", "money"), "money");
+  assert.equal(areaForKind("order_shipped", "orders"), "orders");
 });

@@ -67,6 +67,11 @@ const AREA_TERMS: Record<Exclude<LifeAreaId, "other">, string[]> = {
     "codigo de verificacion", "codigo de seguridad", "security code", "security alert",
     "alerta de seguridad", "2fa", "suspicious", "sospechos*", "inusual", "unusual",
     "fraude", "fraud*", "mot de passe", "senha", "accesso sospetto", "nouvelle connexion",
+    // Third-party app access to the account ("Permitiste que … acceda a … tu Cuenta de Google").
+    "permitiste que", "acceda a algunos de los datos", "acceso a tu cuenta", "you allowed",
+    "granted access", "has access to your google account", "access to your google account",
+    "third-party access", "acceso de terceros", "vous avez autorise", "hai consentito", "voce permitiu",
+    "correo de recuperacion", "recovery email",
   ],
   travel: [
     "vuelo*", "flight*", "check-in", "boarding", "pase de abordar", "embarque",

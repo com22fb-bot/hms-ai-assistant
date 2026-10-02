@@ -472,6 +472,17 @@ export function explain(input: ExplainInput, lang: ExplainLang): Explanation {
  * Items with `line` replaced by the plain-language headline in `lang`; the
  * original subject stays in `subject` (shown as secondary text).
  */
+/** Account-safety events always live in Seguridad, whatever keyword scoring said. */
+const SECURITY_KINDS = new Set<EventKind>(["app_access", "security_alert", "security_copy", "password", "recovery_email"]);
+/** Codes / sign-in links move to Seguridad only when nothing better matched. */
+const SECURITY_IF_OTHER = new Set<EventKind>(["verification_code", "magic_link"]);
+
+export function areaForKind(kind: EventKind, area: LifeItem["area"]): LifeItem["area"] {
+  if (SECURITY_KINDS.has(kind)) return "security";
+  if (SECURITY_IF_OTHER.has(kind) && area === "other") return "security";
+  return area;
+}
+
 export function localizeItems(items: LifeItem[], lang: ExplainLang): LifeItem[] {
   return items.map((item) => {
     const subject = item.subject ?? item.title;
@@ -489,6 +500,6 @@ export function localizeItems(items: LifeItem[], lang: ExplainLang): LifeItem[] 
       },
       lang,
     );
-    return { ...item, subject, line: result.headline, kind: result.kind };
+    return { ...item, subject, line: result.headline, kind: result.kind, area: areaForKind(result.kind, item.area) };
   });
 }

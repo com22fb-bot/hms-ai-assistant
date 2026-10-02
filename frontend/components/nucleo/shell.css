@@ -1614,3 +1614,15 @@
   .nx .ev .mt { flex-wrap: wrap; row-gap: 2px; }
   .nx .ev .pill { padding-inline: 8px; }
 }
+
+/* Case action result (hecho / posponer / reabrir). Sits above the mail sync toast when both show. */
+.nx .case-toast { z-index: 66; }
+.nx .case-toast .i { flex: none; }
+.nx .case-toast.is-error .i { color: #E5484D; }
+.nx .case-toast.is-ok .i { color: #22C55E; }
+.nx[data-sync-toast="on"] .case-toast { bottom: 86px; }
+@media (max-width: 720px) {
+  .nx .case-toast { bottom: calc(76px + env(safe-area-inset-bottom, 0px)); width: calc(100vw - 24px); }
+  .nx[data-sync-toast="on"] .case-toast { bottom: calc(150px + env(safe-area-inset-bottom, 0px)); }
+  .nx[data-case-toast="on"] .bot-dock .bubble { display: none; }
+}
