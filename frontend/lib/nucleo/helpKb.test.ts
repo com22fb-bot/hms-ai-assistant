@@ -42,6 +42,7 @@ test("help: features and settings are found with synonyms and accents", () => {
   assert.equal(top("cambiar idioma"), "language");
   assert.equal(top("leer en voz alta"), "listen");
   assert.equal(top("posponer un aviso"), "snooze");
+  assert.equal(top("cómo pospongo algo"), "snooze");
   assert.equal(top("marcar como hecho"), "done");
   assert.equal(top("borrar mi cuenta"), "deleteAccount");
   assert.equal(top("activar notificaciones"), "notifications");

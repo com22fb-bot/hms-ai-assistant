@@ -156,7 +156,7 @@ export const HELP_ENTRIES: HelpEntry[] = [
       pt: { title: "Alertas", body: "Reúne avisos de segurança, cobranças importantes, aumentos de preço e o que bate com suas regras, com o motivo.", cta: "Ir para Alertas" },
     }),
   e("snooze", { view: "today", focus: "snooze" },
-    ["posponer", "recordarme", "recordatorio", "recuerdame", "mas tarde", "snooze", "remind me", "reminder", "later", "reporter", "rappel", "rimanda", "ricordamelo", "promemoria", "adiar", "lembrar", "lembrete"],
+    ["posponer", "pospongo", "pospon", "aplazar", "aplazo", "recordarme", "recordatorio", "recuerdame", "mas tarde", "snooze", "remind me", "reminder", "later", "reporter", "rappel", "rimanda", "ricordamelo", "promemoria", "adiar", "lembrar", "lembrete"],
     ["recordar", "remind", "despues"],
     {
       es: { title: "Posponer o recordar", body: "En «Requiere acción hoy», toca el reloj de un caso y elige «En 1 hora», «Mañana» o «En 3 días». Volverá a aparecer en ese momento.", cta: "Ir a Recordarme" },
@@ -166,7 +166,7 @@ export const HELP_ENTRIES: HelpEntry[] = [
       pt: { title: "Adiar ou lembrar", body: "Em «Exige ação hoje», toque no relógio de um caso e escolha 1 hora, amanhã ou 3 dias. Ele volta nesse momento.", cta: "Ir para lá" },
     }),
   e("done", { view: "today", focus: "done" },
-    ["marcar como hecho", "marcar hecho", "ya lo hice", "terminado", "completar", "mark done", "mark as done", "complete", "marquer comme fait", "segna come fatto", "marcar como feito", "resolver caso"],
+    ["marcar como hecho", "marcar hecho", "marco como hecho", "lo marco como hecho", "ya lo hice", "terminado", "completar", "mark done", "mark as done", "complete", "marquer comme fait", "segna come fatto", "marcar como feito", "resolver caso"],
     ["hecho", "done", "resuelto", "fait", "fatto", "feito"],
     {
       es: { title: "Marcar como hecho", body: "Toca la palomita ✓ de un caso (o «Marcar como hecho» dentro del caso). Sale de tus pendientes; el correo no se toca.", cta: "Ir a Marcar como hecho" },
