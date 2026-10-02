@@ -38,7 +38,8 @@ test("top10: overdue bills and due-today items outrank old notices; promos/socia
     item("welcome", { kind: "welcome" }),
     item("old-code", { area: "security", kind: "verification_code", when: "2026-10-01T09:00:00-06:00" }),
     item("bill-overdue", { area: "bills", kind: "bill_due", dueAt: "2026-10-01T12:00:00-06:00", amount: 840, amountRaw: "$840" }),
-    item("today", { area: "government", dueAt: "2026-10-02T20:00:00-06:00" }),
+    // Due 90 min after NOW: same calendar day in every CI timezone (UTC included).
+    item("today", { area: "government", dueAt: "2026-10-02T17:30:00-06:00" }),
     item("signin", { area: "security", kind: "security_alert", when: "2026-10-02T09:00:00-06:00" }),
     item("delivered", { area: "orders", kind: "order_delivered" }),
     item("done", { area: "bills", kind: "bill_due", status: "resolved", dueAt: "2026-10-01T12:00:00-06:00" }),
