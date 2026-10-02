@@ -15,9 +15,11 @@ import re
 
 # All patterns are bounded / non-overlapping so hostile mail (thousands of
 # unclosed "<script" or "<!--") stays linear; block removal is a manual scan.
-_BLOCK_OPEN = re.compile(r"<(head|style|script|noscript|title|xml)\b[^<>]{0,2000}>", re.IGNORECASE)
-_BREAKS = re.compile(r"<\s*(?:br|/p|/div|/tr|/li|/h[1-6])\b[^<>]{0,2000}>", re.IGNORECASE)
-_TAGS = re.compile(r"<[^<>]{1,4000}>")
+_BLOCK_OPEN = re.compile(r"<(head|style|script|noscript|title|xml)\b[^<>]*>", re.IGNORECASE)
+# "[^<>]" stops at the next "<", so each failed attempt is bounded by the next
+# tag start: linear overall, with no length cap (base64 src / long style attrs).
+_BREAKS = re.compile(r"<\s*(?:br|/p|/div|/tr|/li|/h[1-6])\b[^<>]*>", re.IGNORECASE)
+_TAGS = re.compile(r"<[^<>]+>")
 
 _TAG_NAMES = {
     "html", "body", "table", "tbody", "thead", "tfoot", "tr", "td", "th", "div", "span", "p",
@@ -92,6 +94,7 @@ def _drop_blocks(text: str) -> str:
     lower = text.lower()
     out: list[str] = []
     pos = 0
+    unclosed: set[str] = set()  # no closer after an earlier opener => none after later ones
     while True:
         match = _BLOCK_OPEN.search(text, pos)
         if not match:
@@ -99,10 +102,18 @@ def _drop_blocks(text: str) -> str:
             break
         out.append(text[pos:match.start()])
         out.append(" ")
-        closer = f"</{match.group(1).lower()}"
-        end = lower.find(closer, match.end())
+        tag = match.group(1).lower()
+        end = -1 if tag in unclosed else lower.find(f"</{tag}", match.end())
         if end < 0:
-            break
+            unclosed.add(tag)
+            if tag == "head":
+                # </head> is optional in HTML5: the head ends where <body> starts.
+                body = lower.find("<body", match.end())
+                pos = body if body >= 0 else match.end()
+            else:
+                # Unclosed element: drop only the opener; CSS leftovers are cleaned later.
+                pos = match.end()
+            continue
         close_end = lower.find(">", end)
         pos = len(text) if close_end < 0 else close_end + 1
     return "".join(out)

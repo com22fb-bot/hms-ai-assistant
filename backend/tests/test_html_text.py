@@ -71,8 +71,17 @@ class HtmlToTextTest(unittest.TestCase):
             html_to_text(body)
             self.assertLess(time.perf_counter() - started, 1.0, chunk)
 
-    def test_unclosed_style_drops_the_rest(self) -> None:
+    def test_unclosed_style_keeps_text_without_css(self) -> None:
         self.assertEqual(html_to_text("<p>Hola</p><style>table {width:640px}"), "Hola")
+
+    def test_head_without_closing_tag_keeps_body(self) -> None:
+        body = "<html><head><title>Azure</title><style>p {color:red}</style><body><p>Tu factura está lista</p></body></html>"
+        self.assertEqual(html_to_text(body), "Tu factura está lista")
+
+    def test_long_attributes_are_removed(self) -> None:
+        img = '<img src="data:image/png;base64,' + "A" * 9000 + '">'
+        style = '<td style="' + "color:red;" * 600 + '">Pago recibido</td>'
+        self.assertEqual(html_to_text(f"<p>Hola</p>{img}{style}"), "Hola Pago recibido")
 
     def test_empty(self) -> None:
         self.assertEqual(html_to_text(None), "")
