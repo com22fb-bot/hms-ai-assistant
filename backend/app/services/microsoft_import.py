@@ -21,6 +21,7 @@ from app.services.microsoft_oauth import (
     refresh_microsoft_tokens,
 )
 from app.services.oauth_storage import OAuthStorage
+from app.utils.html_text import html_to_text, strip_css_noise
 
 
 MICROSOFT_GRAPH_BASE = "https://graph.microsoft.com/v1.0"
@@ -327,10 +328,11 @@ def _body_parts(payload: dict[str, Any]) -> tuple[str, str]:
     content_type = str(body.get("contentType") or "").lower()
     preview = str(payload.get("bodyPreview") or "")
     if content_type == "html":
-        text = re.sub(r"<[^>]+>", " ", content)
-        text = re.sub(r"\s+", " ", text).strip() or preview
+        # Drop <head>/<style>/<script> and CSS before deriving the text, so
+        # snippets and case summaries never start with "table {width:640px}".
+        text = html_to_text(content) or strip_css_noise(preview)
         return text, content
-    text = re.sub(r"\s+", " ", content or preview).strip()
+    text = strip_css_noise(re.sub(r"\s+", " ", content or preview).strip())
     return text, ""
 
 

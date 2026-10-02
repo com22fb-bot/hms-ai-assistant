@@ -2,13 +2,14 @@
 
 import { Inter } from "next/font/google";
 import {
-  AlarmClock,
   ArrowUp,
   Bell,
   Check,
   ChevronRight,
+  CircleHelp,
   LayoutGrid,
   Lock,
+  LogOut,
   Mail,
   Menu,
   Mic,
@@ -34,18 +35,16 @@ import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { localeForLanguage } from "@/lib/i18n/languages";
 import { hmsJson, HmsApiError } from "@/lib/hmsApi";
 import { ALERT_PHRASE, nx, type NxKey } from "@/lib/nucleo/copy";
+import { askLocal, needsActionToday, summaryParts, type AskResult } from "@/lib/nucleo/commandCenter";
 import {
-  LIFE_AREAS,
+  areaChip,
   buildLifeItems,
   isOpenStatus,
-  matchesQuery,
-  monthMoney,
   urgencyOf,
   type InboxCase,
   type InboxThread,
   type LifeAreaId,
   type LifeItem,
-  type Urgency,
 } from "@/lib/nucleo/lifeAreas";
 import {
   DEFAULT_PREFS,
@@ -72,7 +71,11 @@ import { itemMatchesRules } from "@/lib/nucleo/rules";
 import { playAlertTone, speakText, stopSpeaking, vibrateDevice } from "@/lib/nucleo/speech";
 import { supabase } from "@/lib/supabase";
 
+import { CommandCenter, areaLabel } from "@/components/nucleo/CommandCenter";
 import { Nexto } from "@/components/nucleo/Nexto";
+import { NextoDock } from "@/components/nucleo/NextoDock";
+import { helpForKey, matchHelp, type HelpMatch, type HelpTarget } from "@/lib/nucleo/helpKb";
+import { cleanDisplayText, stripCssNoise } from "@/lib/nucleo/cleanText";
 import { Onboarding } from "@/components/nucleo/Onboarding";
 import { SettingsView, type SettingsTab } from "@/components/nucleo/SettingsView";
 
@@ -136,11 +139,12 @@ export function NucleoApp(props: NucleoAppProps) {
   const [loading, setLoading] = useState(!props.preview);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [askHits, setAskHits] = useState<LifeItem[] | null>(null);
+  const [askHits, setAskHits] = useState<AskResult | null>(null);
+  const [askHelp, setAskHelp] = useState<HelpMatch[]>([]);
+  const [pendingFocus, setPendingFocus] = useState<string | null>(null);
   const [caseId, setCaseId] = useState<string | null>(null);
   const [areaFilter, setAreaFilter] = useState<LifeAreaId | "all">("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
-  const [showAreas, setShowAreas] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
@@ -164,6 +168,10 @@ export function NucleoApp(props: NucleoAppProps) {
     return () => window.clearInterval(timer);
   }, []);
   const askRef = useRef<HTMLInputElement>(null);
+  const hoverTimer = useRef<number | null>(null);
+  const lastHelpNode = useRef<HTMLElement | null>(null);
+  const explainedNode = useRef<HTMLElement | null>(null);
+  const highlightTimer = useRef<number | null>(null);
   const seenRef = useRef<Set<string> | null>(null);
   const device = useMemo(() => detectDevice(), []);
   const locale = localeForLanguage(language);
@@ -345,9 +353,11 @@ export function NucleoApp(props: NucleoAppProps) {
       if (event.key === "Escape") {
         stopSpeaking();
         setBubble(null);
+        lastHelpNode.current = null;
         setShortcuts(false);
         setSnoozeFor(null);
         setAskHits(null);
+        setAskHelp([]);
         setDrawer(false);
       }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -370,36 +380,120 @@ export function NucleoApp(props: NucleoAppProps) {
     };
   }, [language, prefs.captions, prefs.flash, prefs.soundEnabled, prefs.volume, t]);
 
+  /** Title/body for an element with `data-help-key` (5-language KB) or inline `data-help`. */
+  const describe = useCallback((node: HTMLElement | null): { title: string; body: string } | null => {
+    if (!node) return null;
+    const copy = helpForKey(node.dataset.helpKey, language);
+    const title = node.dataset.helpTitle || copy?.title || "";
+    const base = node.dataset.help || copy?.body || "";
+    const body = [node.dataset.helpDetail, base].filter(Boolean).join(" ");
+    return title || body ? { title: title || t("guideTitle"), body } : null;
+  }, [language, t]);
+
+  useEffect(() => () => {
+    if (hoverTimer.current !== null) window.clearTimeout(hoverTimer.current);
+  }, []);
+
   function onHelp(event: SyntheticEvent) {
     if (!prefs.guide) return;
-    const node = (event.target as HTMLElement).closest<HTMLElement>("[data-help]");
-    if (!node) return;
-    setBubble({
-      title: node.dataset.helpTitle || t("guideTitle"),
-      body: node.dataset.help || "",
-    });
+    const target = event.target as HTMLElement;
+    // The robot and its bubble never replace what it is saying (it explains on drop/click).
+    if (target.closest(".bot-dock")) return;
+    const node = target.closest<HTMLElement>("[data-help-key],[data-help]");
+    if (!node || node === lastHelpNode.current) return;
+    if (hoverTimer.current !== null) window.clearTimeout(hoverTimer.current);
+    const immediate = event.type === "focus";
+    const run = () => {
+      hoverTimer.current = null;
+      const help = describe(node);
+      if (!help) return;
+      lastHelpNode.current = node;
+      setBubble(help);
+    };
+    if (immediate) run();
+    else hoverTimer.current = window.setTimeout(run, 260);
   }
 
-  async function submitAsk(text: string) {
+  /** Nexto was dropped (or moved with the keyboard) over an element. */
+  function explainDropped(node: HTMLElement | null) {
+    const help = describe(node);
+    lastHelpNode.current = node;
+    setBubble(help ?? { title: t("guideTitle"), body: t("guideNothing") });
+    // Outline only the element Nexto is explaining right now.
+    explainedNode.current?.classList.remove("nx-explained");
+    explainedNode.current = node && help ? node : null;
+    if (node && help) {
+      node.classList.add("nx-explained");
+      window.setTimeout(() => node.classList.remove("nx-explained"), 1800);
+    }
+  }
+
+  /** Help answer CTA: open the view/tab and highlight the exact option. */
+  function goToHelp(target: HelpTarget) {
+    setAskHits(null);
+    setAskHelp([]);
+    if (target.action === "shortcuts") {
+      setShortcuts(true);
+      return;
+    }
+    if (target.action === "ask") {
+      askRef.current?.focus();
+      return;
+    }
+    if (target.view) show(target.view);
+    if (target.tab) setSettingsTab(target.tab);
+    if (target.focus) setPendingFocus(target.focus);
+  }
+
+  useEffect(() => () => {
+    if (highlightTimer.current !== null) window.clearTimeout(highlightTimer.current);
+  }, []);
+
+  useEffect(() => {
+    if (!pendingFocus) return;
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      tries += 1;
+      const nodes = Array.from(document.querySelectorAll<HTMLElement>(`[data-help-key="${CSS.escape(pendingFocus)}"]`));
+      const visible = nodes.filter((node) => {
+        const rect = node.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.left < window.innerWidth;
+      });
+      // Prefer the copy inside the main area (e.g. Settings › Account › Sign out).
+      const node = visible.find((item) => item.closest("main")) ?? visible[0];
+      if (!node && tries < 20) return;
+      window.clearInterval(timer);
+      setPendingFocus(null);
+      if (!node) return;
+      node.scrollIntoView({ block: "center", behavior: prefs.reducedMotion ? "auto" : "smooth" });
+      const focusable = node.matches("button, a, input, select, textarea, [tabindex]") ? node : node.querySelector<HTMLElement>("button, a, input, select, textarea, [tabindex]");
+      focusable?.focus({ preventScroll: true });
+      node.classList.add("nx-highlight");
+      // Kept in a ref: clearing pendingFocus re-runs this effect and must not cancel the removal.
+      if (highlightTimer.current !== null) window.clearTimeout(highlightTimer.current);
+      highlightTimer.current = window.setTimeout(() => {
+        highlightTimer.current = null;
+        node.classList.remove("nx-highlight");
+      }, 2800);
+    }, 60);
+    return () => window.clearInterval(timer);
+  }, [pendingFocus, prefs.reducedMotion]);
+
+  /**
+   * "Pregunta a Donexto" is a local, rule-based search over the cases and
+   * threads already loaded from the user's own mailbox. No LLM, no new call.
+   */
+  function submitAsk(text: string) {
     const clean = text.trim();
     setQuery(clean);
     if (!clean) {
       setAskHits(null);
+      setAskHelp([]);
       return;
     }
-    if (props.preview || !props.connected) {
-      setAskHits(items.filter((item) => matchesQuery(item, clean)));
-      return;
-    }
-    try {
-      const [casePayload, threadPayload] = await Promise.all([
-        hmsJson<{ cases: InboxCase[] }>(`/api/hms/cases?limit=50&search=${encodeURIComponent(clean)}`, { cache: "no-store" }),
-        hmsJson<{ conversations: InboxThread[] }>(`/api/hms/messages/threads?limit=40&search=${encodeURIComponent(clean)}`, { cache: "no-store" }).catch(() => ({ conversations: [] as InboxThread[] })),
-      ]);
-      setAskHits(buildLifeItems(casePayload.cases ?? [], threadPayload.conversations ?? []));
-    } catch {
-      setAskHits(items.filter((item) => matchesQuery(item, clean)));
-    }
+    // How-to questions about the app first (local rules), then the user's cases.
+    setAskHelp(matchHelp(clean, 3));
+    setAskHits(askLocal(items, clean, new Date()));
   }
 
   function dictate() {
@@ -416,7 +510,7 @@ export function NucleoApp(props: NucleoAppProps) {
     recognition.lang = locale;
     recognition.onresult = (event) => {
       const transcript = event.results?.[0]?.[0]?.transcript ?? "";
-      if (transcript) void submitAsk(transcript);
+      if (transcript) submitAsk(transcript);
     };
     recognition.start();
   }
@@ -560,16 +654,18 @@ export function NucleoApp(props: NucleoAppProps) {
     return Boolean(until && new Date(until).getTime() > clock);
   };
   const openItems = items.filter((item) => isOpenStatus(item.status) && !snoozed(item));
-  const doNow = [...openItems].sort((left, right) => rank(urgencyOf(left)) - rank(urgencyOf(right)) || left.when.localeCompare(right.when)).slice(0, 3);
-  const weekMore = Math.max(0, openItems.length - doNow.length);
-  const counts = countAreas(items.filter((item) => isOpenStatus(item.status)));
-  const money = monthMoney(items);
+  const actionToday = needsActionToday(items, new Date(clock), snoozed);
+  const ordersOpen = openItems.filter((item) => item.area === "orders").length;
   const alertCount = openItems.filter((item) => item.area === "security" || item.priority === "high" || item.priority === "critical" || itemMatchesRules(item, prefs.alertRules)).length + notes.filter((note) => !note.read_at).length;
   const visible = filterItems(items, view, areaFilter, statusFilter, prefs);
-  const summaryParts = doNow.map((item) => item.line).filter(Boolean);
-  const summary = doNow.length === 0
+  const spoken = summaryParts(actionToday.map((item) => item.line), actionToday.length, 3);
+  const summary = actionToday.length === 0
     ? t("summaryEmpty")
-    : `${doNow.length === 1 ? t("summaryOne") : t("summaryMany", { count: doNow.length })} ${summaryParts.join(" ")}`;
+    : [
+        actionToday.length === 1 ? t("summaryOne") : t("summaryMany", { count: actionToday.length }),
+        ...spoken.named,
+        spoken.more > 0 ? t("summaryMore", { count: spoken.more }) : "",
+      ].filter(Boolean).join(" ");
   const hour = new Date().getHours();
   const greet = hour < 12 ? t("greetingMorning") : hour < 19 ? t("greetingAfternoon") : t("greetingEvening");
   const provider = providerName(props.provider, props.mailboxEmail);
@@ -625,13 +721,14 @@ export function NucleoApp(props: NucleoAppProps) {
           <nav className="nav">
             {NAV.map((item) => {
               const Icon = item.icon;
-              const count = item.id === "today" ? doNow.length : item.id === "orders" ? counts.orders : item.id === "alerts" ? alertCount : 0;
+              const count = item.id === "today" ? actionToday.length : item.id === "orders" ? ordersOpen : item.id === "alerts" ? alertCount : 0;
               return (
                 <button
                   key={item.id}
                   type="button"
                   className={view === item.id ? "active" : undefined}
                   aria-current={view === item.id ? "page" : undefined}
+                  data-help-key={`nav-${item.id}`}
                   onClick={() => show(item.id)}
                 >
                   <Icon aria-hidden />
@@ -644,7 +741,7 @@ export function NucleoApp(props: NucleoAppProps) {
             })}
           </nav>
           <div className="side-spacer" />
-          <div className="mailbox">
+          <div className="mailbox" data-help-key="mailbox">
             <div className="mb-row">
               <div className="ms-tile" aria-hidden>{provider.slice(0, 1)}</div>
               <div>
@@ -655,7 +752,7 @@ export function NucleoApp(props: NucleoAppProps) {
             <div className="ro"><Lock className="i sm" />{t("readOnly")}</div>
           </div>
           <div className="me">
-            <button type="button" className="me-hit" aria-expanded={profileOpen} aria-haspopup="menu" onClick={() => setProfileOpen((open) => !open)}>
+            <button type="button" className="me-hit" data-help-key="profile" aria-expanded={profileOpen} aria-haspopup="menu" onClick={() => setProfileOpen((open) => !open)}>
               <div className="avatar" aria-hidden>{initials(props.name || props.email)}</div>
               <div>
                 <div className="n">{props.name || props.email}</div>
@@ -665,21 +762,24 @@ export function NucleoApp(props: NucleoAppProps) {
             {profileOpen ? (
               <div className="card menu-pop" role="menu">
                 <button type="button" className="btn" onClick={() => { show("settings"); setSettingsTab("account"); setProfileOpen(false); }}>{t("account")}</button>
-                <button type="button" className="btn" onClick={props.onSignOut}>{t("signOut")}</button>
+                <button type="button" className="btn" onClick={props.onSignOut}><LogOut className="i" />{t("signOut")}</button>
               </div>
             ) : null}
           </div>
+          <button type="button" className="me-out" data-help-key="logout" onClick={props.onSignOut}>
+            <LogOut className="i" aria-hidden />
+            <span>{t("signOut")}</span>
+          </button>
         </aside>
-        <main className="main">
+        <main className={caseId ? "main is-reading" : view === "today" ? "main is-today" : "main"}>
           <div className="askbar">
             <form
               className="ask"
               role="search"
-              data-help-title={t("askLabel")}
-              data-help={t("helpAsk")}
+              data-help-key="ask"
               onSubmit={(event) => {
                 event.preventDefault();
-                void submitAsk(query);
+                submitAsk(query);
               }}
             >
               <Spark />
@@ -691,26 +791,65 @@ export function NucleoApp(props: NucleoAppProps) {
                 placeholder={t("askPlaceholder")}
                 onChange={(event) => {
                   setQuery(event.target.value);
-                  if (!event.target.value.trim()) setAskHits(null);
+                  if (!event.target.value.trim()) {
+                    setAskHits(null);
+                    setAskHelp([]);
+                  }
                 }}
               />
               <kbd>⌘K</kbd>
-              <button type="button" className="mic" aria-label={t("askMic")} onClick={dictate}><Mic className="i" /></button>
-              <button type="submit" className="btn primary go">{t("askSubmit")}<ArrowUp className="i" /></button>
+              <button type="button" className="mic" data-help-key="dictate" aria-label={t("askMic")} onClick={dictate}><Mic className="i" /></button>
+              <button type="submit" className="btn primary go" aria-label={t("askSubmit")}><span className="go-t">{t("askSubmit")}</span><ArrowUp className="i" /></button>
             </form>
-            <button type="button" className="icon-btn" aria-label={t("navAlerts")} onClick={() => show("alerts")}>
+            <button type="button" className="icon-btn" data-help-key="alerts" aria-label={t("navAlerts")} onClick={() => show("alerts")}>
               <Bell className="i lg" />
               {alertCount > 0 && prefs.badges ? <span className="dot" /> : null}
             </button>
-            {askHits ? (
-              <div className="card results" role="listbox" aria-label={t("askResults")}>
-                {askHits.length === 0 ? <p className="empty">{t("askEmpty")}</p> : askHits.slice(0, 8).map((item) => (
-                  <button key={item.id} type="button" className="result" onClick={() => openItem(item)}>
-                    <span>{item.line || item.title}</span>
-                    <small>{areaName(t, item.area)} · {item.sender}</small>
-                  </button>
-                ))}
-                <button type="button" className="btn sm" onClick={() => setAskHits(null)}>{t("searchClear")}</button>
+            {askHits || askHelp.length ? (
+              <div className="results" role="region" aria-live="polite" aria-label={t("askResults")}>
+                <div className="results-top">
+                  <span className="results-q" title={query}>“{query}”</span>
+                  <button type="button" className="btn sm results-clear" onClick={clearAsk}><X className="i sm" />{t("searchClear")}</button>
+                </div>
+                <div className="results-body">
+                  {askHelp.length ? (
+                    <section className="results-help" aria-label={t("askHelpTitle")}>
+                      <h3 className="results-sec"><CircleHelp className="i sm" aria-hidden />{t("askHelpTitle")}</h3>
+                      {askHelp.map(({ entry }) => {
+                        const copy = entry.copy[language] ?? entry.copy.es;
+                        return (
+                          <article key={entry.id} className="help-card">
+                            <b>{copy.title}</b>
+                            <p>{copy.body}</p>
+                            {copy.cta ? (
+                              <button type="button" className="btn primary sm help-go" onClick={() => goToHelp(entry.target)}>
+                                {copy.cta}<ChevronRight className="i sm" aria-hidden />
+                              </button>
+                            ) : null}
+                          </article>
+                        );
+                      })}
+                    </section>
+                  ) : null}
+                  {askHits && !(askHelp.length && (askHits.vague || askHits.hits.length === 0)) ? (
+                    <section className="results-cases" aria-label={t("askCasesTitle")}>
+                      <div className="results-h">
+                        {askHelp.length ? <span className="results-sec">{t("askCasesTitle")}</span> : null}
+                        {askHits.vague ? null : <span className="results-n">{askHits.hits.length === 1 ? t("askCountOne") : t("askCount", { count: askHits.hits.length })}</span>}
+                        {intentLabels(t, askHits.intent).length ? <span className="results-f">{t("askFilters", { filters: intentLabels(t, askHits.intent).join(" · ") })}</span> : null}
+                      </div>
+                      {askHits.vague ? <p className="results-empty">{t("askVague")}</p> : askHits.hits.length === 0 ? <p className="results-empty">{t("askEmpty")}</p> : askHits.hits.slice(0, 8).map((item) => (
+                        <button key={item.id} type="button" className="result" data-help-key="openCase" onClick={() => openItem(item)}>
+                          <span>{cleanDisplayText(item.line || item.title, item.sender || "—")}</span>
+                          <small>{areaLabel(t, item.area)}{item.sender ? ` · ${item.sender}` : ""}{item.amountRaw ? ` · ${item.amountRaw}` : ""}</small>
+                        </button>
+                      ))}
+                    </section>
+                  ) : null}
+                </div>
+                <div className="results-f2">
+                  <small>{t("askLocalNote")}</small>
+                </div>
               </div>
             ) : null}
           </div>
@@ -789,79 +928,49 @@ export function NucleoApp(props: NucleoAppProps) {
           ) : (
             <>
               {view === "today" ? (
-                <>
-                  <div className="summary" data-help-title={t("listenSummary")} data-help={summary}>
-                    <div>
-                      <div className="eyebrow">{new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }).format(new Date())} · {greet}, {firstName(props.name, props.email)}</div>
-                      <div className="ai-line"><Spark /><span>{summary}</span></div>
-                    </div>
-                    {prefs.readAloud ? (
-                      <button type="button" className="listen" onClick={() => { speakText(summary, language, prefs.speechRate); setCaption(summary); }}>
-                        <Volume2 className="i" />{t("listenSummary")}
-                      </button>
-                    ) : null}
-                  </div>
-                  <section>
-                    <div className="sec-h">
-                      <h2 data-help-title={t("doNow")} data-help={t("helpDoNow")}><Spark />{t("doNow")} {doNow.length > 0 ? <span className="badge-n">{doNow.length}</span> : null}</h2>
-                      <div className="meta">{t("sortedBy")}{weekMore > 0 ? <> · <button type="button" className="link" onClick={() => { show("areas"); setStatusFilter("open"); }}>{t("moreWeek", { count: weekMore })}</button></> : null}</div>
-                    </div>
-                    {loading ? <p className="empty">{t("loading")}</p> : doNow.length === 0 ? (
-                      <Empty t={t} connected={props.connected} onConnect={props.onConnect} />
-                    ) : (
-                      <div className="donext">
-                        {doNow.map((item, index) => (
-                          <ActionCard
-                            key={item.id}
-                            t={t}
-                            item={item}
-                            lead={index === 0}
-                            locale={locale}
-                            readAloud={prefs.readAloud}
-                            language={language}
-                            rate={prefs.speechRate}
-                            snoozeOpen={snoozeFor === item.id}
-                            onOpen={() => openItem(item)}
-                            onDone={() => void markDone(item)}
-                            onSnooze={() => setSnoozeFor(item.id)}
-                            onPickSnooze={(hours) => void snooze(item, hours)}
-                            onCaption={setCaption}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </section>
-                  <AreaChips
-                    t={t}
-                    counts={counts}
-                    total={items.filter((item) => isOpenStatus(item.status)).length}
-                    active={areaFilter}
-                    expanded={showAreas}
-                    onToggle={() => setShowAreas((value) => !value)}
-                    onPick={(area) => {
-                      setAreaFilter(area);
-                      show(area === "all" ? "areas" : area === "money" || area === "bills" ? "money" : area === "orders" ? "orders" : area === "subscriptions" ? "subs" : "areas");
-                    }}
-                  />
-                  <div className="lower">
-                    <Timeline
-                      t={t}
-                      items={items}
-                      loading={loading}
-                      locale={locale}
-                      readAloud={prefs.readAloud}
-                      language={language}
-                      rate={prefs.speechRate}
-                      onOpen={openItem}
-                      onCaption={setCaption}
-                    />
-                    <MonthCard t={t} money={money} locale={locale} onMoney={() => show("money")} onSubs={() => show("subs")} />
-                  </div>
-                </>
+                <CommandCenter
+                  t={t}
+                  locale={locale}
+                  language={language}
+                  items={items}
+                  notes={notes}
+                  loading={loading}
+                  connected={props.connected}
+                  readAloud={prefs.readAloud}
+                  speechRate={prefs.speechRate}
+                  badges={prefs.badges}
+                  now={clock}
+                  eyebrow={`${new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }).format(new Date(clock))} · ${greet}, ${firstName(props.name, props.email)}`}
+                  summary={summary}
+                  snoozed={snoozed}
+                  matchesRule={(item) => itemMatchesRules(item, prefs.alertRules)}
+                  snoozeFor={snoozeFor}
+                  onSnoozeOpen={setSnoozeFor}
+                  onSnooze={(item, hours) => void snooze(item, hours)}
+                  onDone={(item) => void markDone(item)}
+                  onOpen={openItem}
+                  onReadNote={(id) => {
+                    void markPushRead(id).then(refreshPush).catch(() => undefined);
+                  }}
+                  onPickArea={(area) => {
+                    setAreaFilter(area);
+                    setStatusFilter("open");
+                    show("areas");
+                  }}
+                  onViewAlerts={() => show("alerts")}
+                  onViewOpen={() => {
+                    setAreaFilter("all");
+                    setStatusFilter("open");
+                    show("areas");
+                  }}
+                  onConnect={props.onConnect}
+                  onCaption={setCaption}
+                />
               ) : (
                 <ListView
                   t={t}
-                  title={t(NAV.find((item) => item.id === view)?.label || "navAreas")}
+                  title={view === "areas" && areaFilter !== "all" ? areaLabel(t, areaFilter) : t(NAV.find((item) => item.id === view)?.label || "navAreas")}
+                  onClearArea={view === "areas" && areaFilter !== "all" ? () => setAreaFilter("all") : undefined}
                   items={visible}
                   loading={loading}
                   connected={props.connected}
@@ -882,17 +991,22 @@ export function NucleoApp(props: NucleoAppProps) {
         </main>
       </div>
       <nav className="tabbar" aria-label={t("menu")}>
-        <Tab icon={<Sun />} label={t("navToday")} on={view === "today"} onClick={() => show("today")} />
-        <Tab icon={<Wallet />} label={t("navMoney")} on={view === "money"} onClick={() => show("money")} />
-        <Tab icon={<Package />} label={t("navOrders")} on={view === "orders"} onClick={() => show("orders")} />
-        <Tab icon={<Bell />} label={t("navAlerts")} on={view === "alerts"} onClick={() => show("alerts")} />
-        <Tab icon={<Menu />} label={t("menu")} on={drawer} onClick={() => setDrawer(true)} />
+        <Tab icon={<Sun />} helpKey="nav-today" label={t("navToday")} on={view === "today"} onClick={() => show("today")} />
+        <Tab icon={<Wallet />} helpKey="nav-money" label={t("navMoney")} on={view === "money"} onClick={() => show("money")} />
+        <Tab icon={<Package />} helpKey="nav-orders" label={t("navOrders")} on={view === "orders"} onClick={() => show("orders")} />
+        <Tab icon={<Bell />} helpKey="nav-alerts" label={t("navAlerts")} on={view === "alerts"} onClick={() => show("alerts")} />
+        <Tab icon={<Menu />} helpKey="nav-settings" label={t("menu")} on={drawer} onClick={() => setDrawer(true)} />
       </nav>
       {prefs.guide ? (
-        <div className="bot-dock">
-          {bubble ? (
+        <NextoDock
+          label={t("guideTitle")}
+          hint={t("guideDragHint")}
+          onActivate={() => setBubble({ title: t("guideTitle"), body: `${t("helpGuide")} ${t("guideDragHint")}` })}
+          onExplain={explainDropped}
+          robot={<Nexto pose={pose} label="Nexto" />}
+          bubble={bubble ? (
             <div className="bubble card" role="status">
-              <div className="bh"><Spark /><span className="t">{bubble.title}</span><button type="button" className="x" aria-label={t("close")} onClick={() => setBubble(null)}><X className="i sm" /></button></div>
+              <div className="bh"><Spark /><span className="t">{bubble.title}</span><button type="button" className="x" aria-label={t("close")} onClick={() => { setBubble(null); lastHelpNode.current = null; }}><X className="i sm" /></button></div>
               <p>{bubble.body}</p>
               <div className="bf">
                 <span>{t("guideName")}</span>
@@ -900,10 +1014,7 @@ export function NucleoApp(props: NucleoAppProps) {
               </div>
             </div>
           ) : null}
-          <button type="button" className="bot" data-help-title={t("guideTitle")} data-help={t("helpGuide")} aria-label={t("guideTitle")} onClick={() => setBubble({ title: t("guideTitle"), body: t("helpGuide") })}>
-            <Nexto pose={pose} label="Nexto" />
-          </button>
-        </div>
+        />
       ) : null}
       {onboard ? (
         <Onboarding
@@ -937,8 +1048,16 @@ export function NucleoApp(props: NucleoAppProps) {
     setDrawer(false);
   }
 
+  function clearAsk() {
+    setAskHits(null);
+    setAskHelp([]);
+    setQuery("");
+    askRef.current?.focus();
+  }
+
   function openItem(item: LifeItem) {
     setAskHits(null);
+    setAskHelp([]);
     if (item.caseId) {
       setCaseId(item.caseId);
       return;
@@ -977,202 +1096,10 @@ function Empty({ t, connected, onConnect }: { t: (key: NxKey, vars?: Record<stri
   );
 }
 
-function ActionCard(props: {
-  t: (key: NxKey, vars?: Record<string, string | number>) => string;
-  item: LifeItem;
-  lead: boolean;
-  locale: string;
-  readAloud: boolean;
-  language: Parameters<typeof speakText>[1];
-  rate: number;
-  snoozeOpen: boolean;
-  onOpen: () => void;
-  onDone: () => void;
-  onSnooze: () => void;
-  onPickSnooze: (hours: number) => void;
-  onCaption: (text: string) => void;
-}) {
-  const { t, item } = props;
-  const urgency = urgencyOf(item);
-  const chip = LIFE_AREAS.find((area) => area.id === item.area)?.chip ?? "a-events";
-  return (
-    <article className={props.lead ? "card dn lead" : "card dn"}>
-      <div className="dn-top">
-        <span className={`urg u-${urgency === "high" ? "high" : urgency === "med" ? "med" : "low"}`}>{dueLabel(t, item, props.locale)}</span>
-        <span className={`chip ${chip}`}>{areaName(t, item.area)}</span>
-      </div>
-      <div>
-        <h3>{item.line || item.title}</h3>
-        <div className="sub">{item.sender || t("readOnly")}{item.amountRaw ? <> <span className="sep" />{item.amountRaw}</> : null}</div>
-      </div>
-      <div className="next"><ChevronRight className="i" /><span>{item.requestedAction || t("actionFallback")}</span></div>
-      <div className="dn-actions">
-        <button type="button" className={props.lead ? "btn primary sm" : "btn sm"} onClick={props.onSnooze}><AlarmClock className="i" />{t("remind")}</button>
-        {props.readAloud ? (
-          <button type="button" className="listen" onClick={() => { speakText(item.line || item.title, props.language, props.rate); props.onCaption(item.line || item.title); }}>
-            <Volume2 className="i" />{t("listen")}
-          </button>
-        ) : null}
-        <button type="button" className="btn sm sq" aria-label={t("done")} onClick={props.onDone}><Check className="i" /></button>
-        <button type="button" className="btn sm" onClick={props.onOpen}>{t("openCase")}</button>
-      </div>
-      {props.snoozeOpen ? (
-        <div className="card snooze-pop">
-          <button type="button" className="btn sm" onClick={() => props.onPickSnooze(1)}>{t("snoozeHour")}</button>
-          <button type="button" className="btn sm" onClick={() => props.onPickSnooze(15)}>{t("snoozeTomorrow")}</button>
-          <button type="button" className="btn sm" onClick={() => props.onPickSnooze(72)}>{t("snooze3d")}</button>
-        </div>
-      ) : null}
-    </article>
-  );
-}
-
-function AreaChips(props: {
-  t: (key: NxKey, vars?: Record<string, string | number>) => string;
-  counts: Record<LifeAreaId, number>;
-  total: number;
-  active: LifeAreaId | "all";
-  expanded: boolean;
-  onToggle: () => void;
-  onPick: (area: LifeAreaId | "all") => void;
-}) {
-  const visible = props.expanded ? LIFE_AREAS : LIFE_AREAS.slice(0, 7);
-  const hidden = LIFE_AREAS.length - visible.length;
-  return (
-    <div className="areas" data-help-title={props.t("areas")} data-help={props.t("helpAreas")}>
-      <span className="lbl">{props.t("areas")}</span>
-      <button type="button" className={props.active === "all" ? "cnt all" : "cnt all"} onClick={() => props.onPick("all")}>{props.t("all")} <b>{props.total}</b></button>
-      {visible.map((area) => (
-        <button key={area.id} type="button" className={`cnt ${area.chip}`} onClick={() => props.onPick(area.id)}>
-          {areaName(props.t, area.id)} <b>{props.counts[area.id] || 0}</b>
-        </button>
-      ))}
-      {hidden > 0 || props.expanded ? (
-        <button type="button" className="cnt more" onClick={props.onToggle}>
-          {props.expanded ? props.t("lessAreas") : props.t("moreAreas", { count: hidden })}
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
-function Timeline(props: {
-  t: (key: NxKey) => string;
-  items: LifeItem[];
-  loading: boolean;
-  locale: string;
-  readAloud: boolean;
-  language: Parameters<typeof speakText>[1];
-  rate: number;
-  onOpen: (item: LifeItem) => void;
-  onCaption: (text: string) => void;
-}) {
-  const groups = groupByDay(props.items.slice(0, 12), props.locale);
-  return (
-    <section className="card timeline" aria-label={props.t("areas")}>
-      {props.loading ? <p className="empty">{props.t("loading")}</p> : groups.length === 0 ? <p className="empty">{props.t("timelineEmpty")}</p> : groups.map((group) => (
-        <div key={group.label}>
-          <div className="grp">{group.label}</div>
-          {group.items.map((item) => {
-            const chip = LIFE_AREAS.find((area) => area.id === item.area)?.chip ?? "a-events";
-            return (
-              <button key={item.id} type="button" className="ev" onClick={() => props.onOpen(item)} style={{ width: "100%", background: "transparent", border: 0, color: "inherit", textAlign: "left" }}>
-                <span className="tm">{formatClock(item.when, props.locale)}</span>
-                <span className={`dot ${chip}`}><i /></span>
-                <div className="tile" aria-hidden>{(item.sender || "D").slice(0, 1).toUpperCase()}</div>
-                <div style={{ minWidth: 0 }}>
-                  <div className="st">{item.line || item.title}</div>
-                  <div className="mt"><span className={`chip ${chip}`}>{areaName(props.t, item.area)}</span>{item.sender}</div>
-                </div>
-                <div className="pills">
-                  {item.reconciled ? <span className="pill ok">{props.t("reconciled")}</span> : null}
-                  {item.area === "security" ? <span className="pill warn">{props.t("youQuestion")}</span> : null}
-                  {item.amountRaw ? <span className="pill num">{item.amountRaw}</span> : null}
-                </div>
-                {props.readAloud ? (
-                  <span
-                    className="listen icon bare"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={props.t("listen")}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      speakText(item.line || item.title, props.language, props.rate);
-                      props.onCaption(item.line || item.title);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.stopPropagation();
-                        speakText(item.line || item.title, props.language, props.rate);
-                      }
-                    }}
-                  >
-                    <Volume2 className="i" />
-                  </span>
-                ) : <span />}
-              </button>
-            );
-          })}
-        </div>
-      ))}
-    </section>
-  );
-}
-
-function MonthCard({
-  t,
-  money,
-  locale,
-  onMoney,
-  onSubs,
-}: {
-  t: (key: NxKey, vars?: Record<string, string | number>) => string;
-  money: ReturnType<typeof monthMoney>;
-  locale: string;
-  onMoney: () => void;
-  onSubs: () => void;
-}) {
-  const cash = new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "USD",
-    currencyDisplay: "narrowSymbol",
-  }).format(money.outflows);
-  return (
-    <aside className="card mini" data-help-title={t("monthTitle")} data-help={t("helpMonth")}>
-      <div className="h">
-        <div>
-          <h3>{t("monthTitle")}</h3>
-          <div className="note">{t("monthNote")}</div>
-        </div>
-      </div>
-      {money.movements === 0 && money.subscriptions === 0 ? <p className="empty">{t("monthEmpty")}</p> : (
-        <>
-          <button type="button" className="mrow a-money" onClick={onMoney}>
-            <span className="ic"><Wallet className="i" /></span>
-            <div>
-              <div className="k">{t("monthOut")}</div>
-              <div className="v">{cash}</div>
-              <div className="s">{t("monthRefunds", { amount: new Intl.NumberFormat(locale, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol" }).format(money.refunds), count: money.movements })}</div>
-            </div>
-            <ChevronRight className="i sm" />
-          </button>
-          <button type="button" className="mrow a-subs" onClick={onSubs}>
-            <span className="ic"><Repeat className="i" /></span>
-            <div>
-              <div className="k">{t("monthSubs", { count: money.subscriptions })}</div>
-              <div className="s">{money.priceIncreases ? t("monthIncrease", { count: money.priceIncreases }) : t("activeSubs", { count: money.subscriptions })}</div>
-            </div>
-            <ChevronRight className="i sm" />
-          </button>
-        </>
-      )}
-    </aside>
-  );
-}
-
 function ListView(props: {
   t: (key: NxKey, vars?: Record<string, string | number>) => string;
   title: string;
+  onClearArea?: () => void;
   items: LifeItem[];
   loading: boolean;
   connected: boolean;
@@ -1187,7 +1114,10 @@ function ListView(props: {
 }) {
   return (
     <section>
-      <div className="sec-h"><h2>{props.title}</h2></div>
+      <div className="sec-h">
+        <h2>{props.title}</h2>
+        {props.onClearArea ? <button type="button" className="btn sm" onClick={props.onClearArea}><X className="i" />{props.t("clearFilter")}</button> : null}
+      </div>
       <div className="filters" role="toolbar">
         {(["open", "high", "done", "all"] as StatusFilter[]).map((filter) => (
           <button key={filter} type="button" className={props.statusFilter === filter ? "btn primary sm" : "btn sm"} onClick={() => props.onStatus(filter)}>
@@ -1213,13 +1143,13 @@ function ListView(props: {
             </button>
           ))}
           {props.items.map((item) => (
-            <button key={item.id} type="button" className="ev" style={{ width: "100%", background: "transparent", border: 0, color: "inherit", textAlign: "left" }} onClick={() => props.onOpen(item)}>
+            <button key={item.id} type="button" className="ev" data-help-key="openCase" style={{ width: "100%", background: "transparent", border: 0, color: "inherit", textAlign: "left" }} onClick={() => props.onOpen(item)}>
               <span className="tm">{formatClock(item.when, props.locale)}</span>
-              <span className={`dot ${LIFE_AREAS.find((area) => area.id === item.area)?.chip ?? ""}`}><i /></span>
+              <span className={`dot ${areaChip(item.area)}`}><i /></span>
               <div className="tile">{(item.sender || "D").slice(0, 1)}</div>
               <div style={{ minWidth: 0 }}>
                 <div className="st">{item.line || item.title}</div>
-                <div className="mt">{areaName(props.t, item.area)} · {item.sender}</div>
+                <div className="mt">{areaLabel(props.t, item.area)}{item.sender ? ` · ${item.sender}` : ""}</div>
               </div>
               <span className="pill">{item.status}</span>
               <ChevronRight className="i" />
@@ -1264,10 +1194,10 @@ function CaseDetail(props: {
       cancelled = true;
     };
   }, [props.caseId, props.preview]);
-  const line = props.item?.line || detail?.summary || "";
+  const line = props.item?.line || stripCssNoise(detail?.summary) || "";
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <header className="topbar">
+    <div className="case-view">
+      <header className="topbar case-top">
         <div className="crumbs">
           <button type="button" className="back" aria-label={props.t("caseBack")} onClick={props.onBack}><X className="i" /></button>
           <b>{props.item?.title || props.t("openCase")}</b>
@@ -1277,14 +1207,14 @@ function CaseDetail(props: {
           {props.item ? <button type="button" className="btn" onClick={() => props.onDone(props.item as LifeItem)}><Check className="i" />{props.t("done")}</button> : null}
         </div>
       </header>
-      <section className="card hero">
+      <section className="card hero case-hero">
         <div>
           <div className="chips">
-            {props.item ? <span className={`chip ${LIFE_AREAS.find((area) => area.id === props.item?.area)?.chip}`}>{areaName(props.t, props.item.area)}</span> : null}
+            {props.item ? <span className={`chip ${areaChip(props.item.area)}`}>{areaLabel(props.t, props.item.area)}</span> : null}
             {props.item?.reconciled ? <span className="pill ok">{props.t("reconciled")}</span> : null}
           </div>
           <div className="ai-label"><Spark />{props.t("caseOneLine")}</div>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <div className="case-line">
             <h1 className="statement">{line}</h1>
             {props.readAloud ? (
               <button type="button" className="listen" onClick={() => { speakText(line, props.language, props.rate); props.onCaption(line); }}>
@@ -1292,10 +1222,10 @@ function CaseDetail(props: {
               </button>
             ) : null}
           </div>
-          <p style={{ marginTop: 10, color: "var(--text-3)" }}>{props.t("caseNotBalance")}</p>
+          <p className="case-note">{props.t("caseNotBalance")}</p>
         </div>
       </section>
-      <div className="case-grid">
+      <div className="case-grid case-body">
         <section className="card">
           <div className="card-h"><h3>{props.t("caseEvents")}</h3></div>
           <div className="tl">
@@ -1304,13 +1234,13 @@ function CaseDetail(props: {
                 <div className="node" />
                 <div>
                   <div className="hd"><div className="ttl">{event.title}</div><span className="when">{formatWhen(event.created_at, props.locale)}</span></div>
-                  {event.description ? <div className="ds">{event.description}</div> : null}
+                  {event.description && stripCssNoise(event.description) ? <div className="ds">{stripCssNoise(event.description)}</div> : null}
                 </div>
               </div>
             ))}
           </div>
         </section>
-        <aside style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <aside className="case-side">
           <section className="card next-box">
             <div className="ai-label">{props.t("caseNext")}</div>
             <div className="big">{detail?.requested_action || props.item?.requestedAction || props.t("actionFallback")}</div>
@@ -1318,10 +1248,10 @@ function CaseDetail(props: {
           <section className="card">
             <div className="card-h"><h3><Mail className="i" />{props.t("caseSources")}</h3></div>
             {(detail?.messages ?? []).length === 0 ? <p className="empty">{props.t("timelineEmpty")}</p> : detail?.messages?.map((message) => (
-              <button key={message.id} type="button" className="src" style={{ width: "100%", background: "transparent", color: "inherit", textAlign: "left" }} onClick={() => props.onOpenMail(message.id)}>
+              <button key={message.id} type="button" className="src" onClick={() => props.onOpenMail(message.id)}>
                 <Mail className="i" />
-                <div>
-                  <div className="sj">{message.subject || message.snippet}</div>
+                <div className="src-text">
+                  <div className="sj">{cleanDisplayText(message.subject) || cleanDisplayText(message.snippet)}</div>
                   <div className="fr">{message.sender}</div>
                 </div>
                 <span className="dt">{props.t("caseOpenMail")}</span>
@@ -1334,9 +1264,9 @@ function CaseDetail(props: {
   );
 }
 
-function Tab({ icon, label, on, onClick }: { icon: ReactNode; label: string; on: boolean; onClick: () => void }) {
+function Tab({ icon, helpKey, label, on, onClick }: { icon: ReactNode; helpKey?: string; label: string; on: boolean; onClick: () => void }) {
   return (
-    <button type="button" className={on ? "on" : undefined} onClick={onClick}>
+    <button type="button" className={on ? "on" : undefined} data-help-key={helpKey} onClick={onClick}>
       {icon}
       <span>{label}</span>
     </button>
@@ -1348,18 +1278,6 @@ type Dictation = {
   start: () => void;
   onresult: ((event: { results?: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
 };
-
-function rank(urgency: Urgency): number {
-  if (urgency === "high") return 0;
-  if (urgency === "med") return 1;
-  return 2;
-}
-
-function countAreas(items: LifeItem[]): Record<LifeAreaId, number> {
-  const counts = Object.fromEntries(LIFE_AREAS.map((area) => [area.id, 0])) as Record<LifeAreaId, number>;
-  for (const item of items) counts[item.area] += 1;
-  return counts;
-}
 
 function filterItems(items: LifeItem[], view: ViewId, area: LifeAreaId | "all", status: StatusFilter, prefs: NucleoPrefs): LifeItem[] {
   return items.filter((item) => {
@@ -1375,37 +1293,6 @@ function filterItems(items: LifeItem[], view: ViewId, area: LifeAreaId | "all", 
   });
 }
 
-const AREA_LABELS: Record<LifeAreaId, Record<string, string>> = {
-  money: { es: "Dinero", en: "Money", fr: "Argent", it: "Denaro", pt: "Dinheiro" },
-  orders: { es: "Pedidos", en: "Orders", fr: "Commandes", it: "Ordini", pt: "Pedidos" },
-  subscriptions: { es: "Suscripciones", en: "Subscriptions", fr: "Abonnements", it: "Abbonamenti", pt: "Assinaturas" },
-  work: { es: "Trabajo", en: "Work", fr: "Travail", it: "Lavoro", pt: "Trabalho" },
-  home: { es: "Hogar y familia", en: "Home & family", fr: "Foyer", it: "Casa e famiglia", pt: "Casa e família" },
-  health: { es: "Salud", en: "Health", fr: "Santé", it: "Salute", pt: "Saúde" },
-  bills: { es: "Facturas", en: "Bills", fr: "Factures", it: "Fatture", pt: "Faturas" },
-  travel: { es: "Viajes", en: "Travel", fr: "Voyages", it: "Viaggi", pt: "Viagens" },
-  security: { es: "Seguridad", en: "Security", fr: "Sécurité", it: "Sicurezza", pt: "Segurança" },
-  government: { es: "Gobierno", en: "Government", fr: "Administration", it: "Governo", pt: "Governo" },
-  insurance: { es: "Seguros", en: "Insurance", fr: "Assurance", it: "Assicurazione", pt: "Seguros" },
-  education: { es: "Educación", en: "Education", fr: "Éducation", it: "Istruzione", pt: "Educação" },
-  social: { es: "Social", en: "Social", fr: "Social", it: "Social", pt: "Social" },
-  events: { es: "Eventos", en: "Events", fr: "Événements", it: "Eventi", pt: "Eventos" },
-  promos: { es: "Promociones", en: "Promotions", fr: "Promotions", it: "Promozioni", pt: "Promoções" },
-};
-
-function areaName(_t: (key: NxKey) => string, area: LifeAreaId): string {
-  if (typeof document === "undefined") return AREA_LABELS[area].es;
-  const lang = document.documentElement.lang?.slice(0, 2) || "es";
-  return AREA_LABELS[area][lang] || AREA_LABELS[area].en;
-}
-
-function dueLabel(t: (key: NxKey, vars?: Record<string, string | number>) => string, item: LifeItem, locale: string): string {
-  if (!item.dueAt) return urgencyOf(item) === "high" ? t("urgentHigh") : t("noDue");
-  const due = new Date(item.dueAt);
-  if (due.getTime() < Date.now()) return t("overdue");
-  return t("dueIn", { when: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(due) });
-}
-
 function formatWhen(iso: string, locale: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
@@ -1418,15 +1305,17 @@ function formatClock(iso: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(date);
 }
 
-function groupByDay(items: LifeItem[], locale: string): Array<{ label: string; items: LifeItem[] }> {
-  const groups = new Map<string, LifeItem[]>();
-  for (const item of items) {
-    const label = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "short" }).format(new Date(item.when));
-    const bucket = groups.get(label) ?? [];
-    bucket.push(item);
-    groups.set(label, bucket);
-  }
-  return [...groups.entries()].map(([label, rows]) => ({ label, items: rows }));
+function intentLabels(t: (key: NxKey, vars?: Record<string, string | number>) => string, intent: AskResult["intent"]): string[] {
+  const labels = intent.areas.map((area) => areaLabel(t, area));
+  if (intent.time === "today") labels.push(t("askTimeToday"));
+  if (intent.time === "tomorrow") labels.push(t("askTimeTomorrow"));
+  if (intent.time === "week") labels.push(t("askTimeWeek"));
+  if (intent.time === "overdue") labels.push(t("askTimeOverdue"));
+  if (intent.time === "month") labels.push(t("askTimeMonth"));
+  if (intent.status === "open") labels.push(t("askStatusOpen"));
+  if (intent.status === "done") labels.push(t("askStatusDone"));
+  if (intent.amount !== null) labels.push(`$${intent.amount.toFixed(2)}`);
+  return labels;
 }
 
 function initials(value: string): string {

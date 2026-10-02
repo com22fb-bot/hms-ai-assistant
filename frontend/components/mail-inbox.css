@@ -1,10 +1,106 @@
+/* Correos + reading view. Colours come from the Núcleo IA tokens so the
+   overlay follows the user's theme (dark "Núcleo IA" or light "Claro"). */
 .hms-mailbox-overlay {
+  --mx-bg: #070a12;
+  --mx-elev: #0b0f1b;
+  --mx-surface: rgba(255, 255, 255, 0.045);
+  --mx-surface-2: rgba(255, 255, 255, 0.07);
+  --mx-border: rgba(255, 255, 255, 0.09);
+  --mx-border-2: rgba(255, 255, 255, 0.14);
+  --mx-text: #f5f7fc;
+  --mx-text-2: #b4bbcf;
+  --mx-text-3: #8a93ab;
+  --mx-accent: #9b8cff;
+  --mx-accent-2: #22d3ee;
+  --mx-accent-soft: rgba(139, 124, 255, 0.14);
+  --mx-accent-line: rgba(155, 140, 255, 0.38);
+  --mx-btn-bg: #f5f7fc;
+  --mx-btn-ink: #0a0d17;
+  --mx-danger: #ff6b81;
+  --mx-fav: #ff6f91;
+  --mx-glow: radial-gradient(900px 420px at 70% -10%, rgba(124, 92, 255, 0.18), transparent 70%),
+    radial-gradient(700px 380px at 0% 0%, rgba(34, 211, 238, 0.08), transparent 70%);
+  --mx-fs: 1;
   position: fixed;
   inset: 0;
   z-index: 150;
   overflow: hidden;
-  background: #031218;
-  color: #eaffff;
+  background: var(--mx-glow), var(--mx-bg);
+  color: var(--mx-text);
+  color-scheme: dark;
+  font-size: calc(15px * var(--mx-fs));
+}
+
+.hms-mailbox-overlay[data-appearance="light"] {
+  --mx-bg: #f3f4fb;
+  --mx-elev: #ffffff;
+  --mx-surface: rgba(255, 255, 255, 0.82);
+  --mx-surface-2: #f4f3fd;
+  --mx-border: rgba(76, 70, 180, 0.13);
+  --mx-border-2: rgba(76, 70, 180, 0.22);
+  --mx-text: #0d1130;
+  --mx-text-2: #454c6b;
+  --mx-text-3: #535a79;
+  --mx-accent: #5b3fe6;
+  --mx-accent-2: #0e7490;
+  --mx-accent-soft: rgba(109, 75, 255, 0.09);
+  --mx-accent-line: rgba(109, 75, 255, 0.32);
+  --mx-btn-bg: #5b3fe6;
+  --mx-btn-ink: #ffffff;
+  --mx-danger: #c42b3a;
+  --mx-fav: #be185d;
+  --mx-glow: radial-gradient(1100px 480px at 60% -10%, rgba(139, 92, 246, 0.1), transparent 70%),
+    radial-gradient(800px 500px at 100% 0%, rgba(14, 165, 198, 0.08), transparent 70%);
+  color-scheme: light;
+}
+
+.hms-mailbox-overlay[data-contrast="high"] {
+  --mx-bg: #000000;
+  --mx-elev: #07090d;
+  --mx-surface: #07090d;
+  --mx-surface-2: #11141a;
+  --mx-border: #8a93a6;
+  --mx-border-2: #b9c0ce;
+  --mx-text: #ffffff;
+  --mx-text-2: #f1f3f7;
+  --mx-text-3: #d5dae3;
+  --mx-accent: #b8beff;
+  --mx-accent-line: #b8beff;
+  --mx-glow: none;
+}
+
+.hms-mailbox-overlay[data-appearance="light"][data-contrast="high"] {
+  --mx-bg: #ffffff;
+  --mx-elev: #ffffff;
+  --mx-surface: #ffffff;
+  --mx-surface-2: #f2f2f2;
+  --mx-border: #4a4f5a;
+  --mx-border-2: #2b2f37;
+  --mx-text: #000000;
+  --mx-text-2: #111216;
+  --mx-text-3: #2e3138;
+  --mx-accent: #2f27c9;
+  --mx-accent-line: #2f27c9;
+}
+
+.hms-mailbox-overlay[data-motion="reduce"] *,
+.hms-mailbox-overlay[data-motion="reduce"] *::before,
+.hms-mailbox-overlay[data-motion="reduce"] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+.hms-mailbox-overlay button {
+  font: inherit;
+}
+
+.hms-mailbox-overlay button:focus-visible,
+.hms-mailbox-overlay input:focus-visible,
+.hms-mailbox-overlay select:focus-visible,
+.hms-mailbox-overlay summary:focus-visible,
+.hms-mail-reading:focus-visible {
+  outline: 2px solid var(--mx-accent);
+  outline-offset: 2px;
 }
 
 .hms-mailbox-shell {
@@ -17,6 +113,12 @@
   grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
   gap: 10px;
   overflow: hidden;
+}
+
+/* While a conversation is open the list underneath is hidden and inert, so
+   the reading view is the only scrollable surface on screen. */
+.hms-mailbox-overlay.is-reading .hms-mailbox-shell {
+  visibility: hidden;
 }
 
 .hms-mailbox-header,
@@ -32,13 +134,13 @@
 
 .hms-mailbox-header {
   padding-bottom: 12px;
-  border-bottom: 1px solid rgba(97, 200, 211, 0.18);
+  border-bottom: 1px solid var(--mx-border);
 }
 
 .hms-mailbox-header span {
-  color: #2fe3df;
+  color: var(--mx-accent);
   font-size: 0.72rem;
-  font-weight: 900;
+  font-weight: 800;
   letter-spacing: 0.14em;
 }
 
@@ -50,7 +152,7 @@
 
 .hms-mailbox-header p {
   margin: 0;
-  color: #9db9c2;
+  color: var(--mx-text-2);
   font-size: 0.92rem;
 }
 
@@ -61,11 +163,12 @@
   align-items: center;
   gap: 8px;
   padding: 0 13px;
-  border: 1px solid rgba(109, 204, 214, 0.22);
+  border: 1px solid var(--mx-border-2);
   border-radius: 13px;
-  background: rgba(6, 35, 44, 0.9);
-  color: #eaffff;
+  background: var(--mx-surface);
+  color: var(--mx-text);
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .hms-mailbox-toolbar form {
@@ -76,9 +179,10 @@
   align-items: center;
   gap: 9px;
   padding-left: 14px;
-  border: 1px solid rgba(92, 193, 204, 0.2);
+  border: 1px solid var(--mx-border-2);
   border-radius: 15px;
-  background: rgba(7, 34, 43, 0.92);
+  background: var(--mx-surface);
+  color: var(--mx-text-3);
 }
 
 .hms-mailbox-toolbar input {
@@ -86,7 +190,7 @@
   border: 0;
   outline: 0;
   background: transparent;
-  color: #eaffff;
+  color: var(--mx-text);
   font: inherit;
 }
 
@@ -100,16 +204,16 @@
   padding: 0 15px;
   border: 0;
   border-radius: 13px;
-  background: #2bd9d7;
-  color: #00171b;
-  font-weight: 900;
+  background: var(--mx-btn-bg);
+  color: var(--mx-btn-ink);
+  font-weight: 800;
   cursor: pointer;
 }
 
 .hms-mailbox-toolbar form button.clear {
-  border: 1px solid rgba(108, 202, 211, 0.2);
+  border: 1px solid var(--mx-border-2);
   background: transparent;
-  color: #b8d0d6;
+  color: var(--mx-text-2);
 }
 
 .hms-mailbox-filters {
@@ -125,44 +229,44 @@
   align-items: center;
   gap: 6px;
   padding: 0 11px;
-  border: 1px solid rgba(98, 189, 200, 0.18);
+  border: 1px solid var(--mx-border);
   border-radius: 999px;
-  background: rgba(7, 34, 43, 0.82);
-  color: #b8d0d6;
+  background: var(--mx-surface);
+  color: var(--mx-text-2);
   cursor: pointer;
   font-size: 0.84rem;
 }
 
 .hms-mailbox-filters button.is-active {
-  border-color: #2fe3df;
-  background: rgba(47, 227, 223, 0.14);
-  color: #eaffff;
+  border-color: var(--mx-accent-line);
+  background: var(--mx-accent-soft);
+  color: var(--mx-text);
 }
 
 .hms-mailbox-count {
   justify-content: flex-start;
-  color: #95b0b8;
+  color: var(--mx-text-3);
   font-size: 0.88rem;
 }
 
-.hms-mailbox-count strong { color: #eaffff; }
+.hms-mailbox-count strong { color: var(--mx-text); }
 
 .hms-mailbox-list {
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  border: 1px solid rgba(91, 187, 198, 0.17);
+  border: 1px solid var(--mx-border);
   border-radius: 18px;
-  background: rgba(5, 27, 35, 0.75);
+  background: var(--mx-surface);
 }
 
 .hms-mail-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 54px;
-  border-bottom: 1px solid rgba(91, 187, 198, 0.12);
+  border-bottom: 1px solid var(--mx-border);
 }
 .hms-mail-row:last-child { border-bottom: 0; }
-.hms-mail-row.is-unread { background: rgba(24, 92, 101, 0.13); }
+.hms-mail-row.is-unread { background: var(--mx-accent-soft); }
 
 .hms-mail-row-main {
   width: 100%;
@@ -184,8 +288,8 @@
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: rgba(47, 227, 223, 0.11);
-  color: #2fe3df;
+  background: var(--mx-accent-soft);
+  color: var(--mx-accent);
 }
 
 .hms-mail-row-copy,
@@ -207,12 +311,12 @@
 }
 .hms-mail-row-top time {
   flex: 0 0 auto;
-  color: #849fa8;
+  color: var(--mx-text-3);
   font-size: 0.76rem;
 }
 .hms-mail-row-copy b { display: block; margin: 3px 0; font-size: 0.96rem; }
 .hms-mail-row-copy small {
-  color: #9db6be;
+  color: var(--mx-text-2);
   line-height: 1.35;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -222,7 +326,7 @@
 .hms-mail-row-meta {
   flex-wrap: wrap;
   margin-top: 6px;
-  color: #8baab2;
+  color: var(--mx-text-3);
   font-size: 0.72rem;
 }
 .hms-mail-row-meta em,
@@ -232,18 +336,18 @@
   gap: 4px;
   padding: 3px 7px;
   border-radius: 999px;
-  background: rgba(62, 164, 174, 0.12);
+  background: var(--mx-surface-2);
   font-style: normal;
 }
 
 .hms-mail-favorite {
   border: 0;
-  border-left: 1px solid rgba(91, 187, 198, 0.12);
+  border-left: 1px solid var(--mx-border);
   background: transparent;
-  color: #7f9ba3;
+  color: var(--mx-text-3);
   cursor: pointer;
 }
-.hms-mail-favorite.is-active { color: #ff6f91; }
+.hms-mail-favorite.is-active { color: var(--mx-fav); }
 
 .hms-mailbox-empty,
 .hms-mail-detail-loading {
@@ -252,7 +356,7 @@
   place-items: center;
   align-content: center;
   gap: 10px;
-  color: #9db6be;
+  color: var(--mx-text-2);
 }
 
 .hms-mailbox-pagination { font-size: 0.86rem; }
@@ -262,37 +366,41 @@
   align-items: center;
   gap: 6px;
   padding: 0 12px;
-  border: 1px solid rgba(90, 188, 198, 0.2);
+  border: 1px solid var(--mx-border-2);
   border-radius: 12px;
-  background: rgba(7, 34, 43, 0.9);
-  color: #dffcff;
+  background: var(--mx-surface);
+  color: var(--mx-text);
   cursor: pointer;
 }
 .hms-mailbox-pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .hms-mailbox-error {
   padding: 11px 14px;
-  border: 1px solid rgba(255, 118, 97, 0.35);
+  border: 1px solid color-mix(in srgb, var(--mx-danger) 40%, transparent);
   border-radius: 13px;
-  background: rgba(127, 35, 29, 0.18);
-  color: #ffd8d1;
+  background: color-mix(in srgb, var(--mx-danger) 12%, transparent);
+  color: var(--mx-text);
 }
 
+/* ------------------------------------------------------------------ */
+/* Reading view: exactly one viewport, header fixed, ONE scroll area. */
+/* ------------------------------------------------------------------ */
 .hms-mail-detail {
   position: fixed;
   inset: 0;
   z-index: 170;
-  overflow-y: auto;
-  padding: 14px clamp(14px, 3.5vw, 52px) 32px;
-  background: #06161c;
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
+  background: var(--mx-glow), var(--mx-bg);
 }
 .hms-mail-detail > header {
-  position: sticky;
-  top: 0;
-  z-index: 5;
   min-height: 58px;
-  padding: 6px 0 10px;
-  background: #06161c;
+  padding: 8px clamp(12px, 3.5vw, 52px);
+  border-bottom: 1px solid var(--mx-border);
+  background: color-mix(in srgb, var(--mx-bg) 88%, transparent);
+  backdrop-filter: blur(14px);
 }
 .hms-mail-detail > header > div {
   min-width: 0;
@@ -300,12 +408,21 @@
   text-align: center;
 }
 .hms-mail-detail > header strong {
-  max-width: 60vw;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.hms-mail-detail > header span { color: #8baab2; font-size: 0.76rem; }
+.hms-mail-detail > header span { color: var(--mx-text-3); font-size: 0.76rem; }
+.hms-mail-detail-actions { display: flex; gap: 8px; flex: none; }
+
+.hms-mail-reading {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding: 14px clamp(12px, 3.5vw, 52px) 24px;
+}
 
 .hms-mail-ai-summary,
 .hms-conversation-timeline {
@@ -318,30 +435,50 @@
   display: flex;
   gap: 12px;
   margin-bottom: 12px;
-  padding: 14px 16px;
-  border: 1px solid rgba(73, 207, 208, 0.2);
+  padding: 12px 16px;
+  border: 1px solid var(--mx-accent-line);
   border-radius: 16px;
-  background: rgba(12, 50, 60, 0.72);
+  background: linear-gradient(120deg, var(--mx-accent-soft), transparent 70%), var(--mx-surface);
 }
+.hms-mail-ai-summary > svg,
+.hms-message-summary > svg { flex: none; color: var(--mx-accent); }
+.hms-mail-ai-summary > div,
+.hms-message-summary > div { min-width: 0; }
 .hms-mail-ai-summary p,
-.hms-message-summary p { margin: 4px 0; color: #bdd0d6; }
+.hms-message-summary p { margin: 4px 0; color: var(--mx-text-2); overflow-wrap: anywhere; }
 .hms-mail-ai-summary small,
-.hms-message-summary small { color: #8faab2; }
+.hms-message-summary small { color: var(--mx-text-3); overflow-wrap: anywhere; }
+.hms-mail-listen {
+  flex: none;
+  align-self: flex-start;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--mx-border-2);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--mx-text-2);
+  cursor: pointer;
+  margin-left: auto;
+}
+.hms-mail-listen svg { color: var(--mx-accent); }
 
 .hms-conversation-timeline details {
   margin-bottom: 12px;
   overflow: hidden;
-  border: 1px solid rgba(91, 187, 198, 0.17);
+  border: 1px solid var(--mx-border);
   border-radius: 18px;
-  background: rgba(5, 27, 35, 0.75);
+  background: var(--mx-surface);
 }
 .hms-conversation-timeline summary {
-  min-height: 64px;
+  min-height: 58px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  padding: 12px 16px;
+  padding: 10px 16px;
   cursor: pointer;
 }
 .hms-conversation-timeline summary span { min-width: 0; display: grid; }
@@ -351,43 +488,50 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.hms-conversation-timeline summary small { color: #94afb7; }
-.hms-conversation-timeline summary time { flex: 0 0 auto; color: #849fa8; font-size: 0.78rem; }
+.hms-conversation-timeline summary small { color: var(--mx-text-3); }
+.hms-conversation-timeline summary time { flex: 0 0 auto; color: var(--mx-text-3); font-size: 0.78rem; }
 .hms-message-metadata {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   padding: 0 16px 12px;
-  color: #9fb6bd;
+  color: var(--mx-text-2);
   font-size: 0.78rem;
+  overflow-wrap: anywhere;
 }
-.hms-message-metadata em { margin-left: auto; font-style: normal; color: #2fe3df; }
+.hms-message-metadata em { margin-left: auto; font-style: normal; color: var(--mx-accent); }
 .hms-message-summary,
 .hms-mail-related-case { margin-inline: 14px; }
 .hms-mail-related-case { flex-direction: column; }
 
+/* The message body grows to its full height (no inner scrollbar). */
 .hms-mail-content {
-  min-height: 360px;
   margin: 0 14px 14px;
   overflow: hidden;
   border-radius: 14px;
   background: #fff;
 }
-.hms-mail-content iframe { width: 100%; min-height: 560px; border: 0; background: #fff; }
+.hms-mail-content iframe {
+  display: block;
+  width: 100%;
+  /* Initial height until MailBody measures the content (JS sets it). */
+  height: 320px;
+  border: 0;
+  background: #fff;
+}
 .hms-mail-content pre {
-  min-height: 360px;
   margin: 0;
   padding: 22px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   color: #172126;
-  font: 0.94rem/1.55 Arial, sans-serif;
+  font: calc(0.94rem * var(--mx-fs)) / 1.55 Arial, sans-serif;
 }
 .hms-mail-detail-loading {
   position: fixed;
   inset: 0;
   z-index: 180;
-  background: rgba(2, 17, 22, 0.86);
+  background: color-mix(in srgb, var(--mx-bg) 86%, transparent);
 }
 
 .hms-favorite-dialog-backdrop {
@@ -397,7 +541,7 @@
   display: grid;
   place-items: center;
   padding: 18px;
-  background: rgba(0, 10, 14, 0.84);
+  background: color-mix(in srgb, var(--mx-bg) 84%, #000);
 }
 .hms-favorite-dialog,
 .hms-rule-dialog {
@@ -405,16 +549,17 @@
   max-height: calc(100dvh - 36px);
   overflow-y: auto;
   padding: 24px;
-  border: 1px solid rgba(255, 111, 145, 0.28);
+  border: 1px solid var(--mx-accent-line);
   border-radius: 21px;
-  background: #09212a;
+  background: var(--mx-elev);
+  color: var(--mx-text);
 }
 .hms-favorite-dialog { text-align: center; }
-.hms-favorite-dialog > svg { color: #ff6f91; }
+.hms-favorite-dialog > svg { color: var(--mx-fav); }
 .hms-favorite-dialog h3,
 .hms-rule-dialog h3 { margin: 8px 0 6px; font-size: 1.4rem; }
 .hms-favorite-dialog p,
-.hms-rule-dialog p { color: #aac2c9; line-height: 1.45; }
+.hms-rule-dialog p { color: var(--mx-text-2); line-height: 1.45; }
 .hms-favorite-dialog button,
 .hms-rule-dialog > button {
   width: 100%;
@@ -426,27 +571,27 @@
   margin-top: 8px;
   border: 0;
   border-radius: 12px;
-  background: #2bd9d7;
-  color: #00171b;
-  font-weight: 900;
+  background: var(--mx-btn-bg);
+  color: var(--mx-btn-ink);
+  font-weight: 800;
   cursor: pointer;
 }
 .hms-favorite-dialog button.secondary,
 .hms-rule-dialog > button.secondary {
-  border: 1px solid rgba(108, 202, 211, 0.2);
-  background: rgba(5, 31, 39, 0.8);
-  color: #dffcff;
+  border: 1px solid var(--mx-border-2);
+  background: var(--mx-surface);
+  color: var(--mx-text);
 }
-.hms-favorite-dialog button.danger { background: #ff6f91; }
-.hms-rule-dialog label { display: grid; gap: 6px; margin-top: 12px; color: #dffcff; }
+.hms-favorite-dialog button.danger { background: var(--mx-fav); color: #fff; }
+.hms-rule-dialog label { display: grid; gap: 6px; margin-top: 12px; color: var(--mx-text); }
 .hms-rule-dialog input,
 .hms-rule-dialog select {
   min-height: 43px;
   padding: 0 11px;
-  border: 1px solid rgba(108, 202, 211, 0.22);
+  border: 1px solid var(--mx-border-2);
   border-radius: 11px;
-  background: #06191f;
-  color: #eaffff;
+  background: var(--mx-surface-2);
+  color: var(--mx-text);
 }
 .hms-rule-dialog label.check { grid-template-columns: auto 1fr; align-items: center; }
 .hms-rule-dialog label.check input { min-height: auto; }
@@ -461,6 +606,7 @@
 
 @media (max-width: 760px) {
   .hms-mailbox-overlay { overflow-y: auto; }
+  .hms-mailbox-overlay.is-reading { overflow: hidden; }
   .hms-mailbox-shell {
     height: auto;
     min-height: 100dvh;
@@ -481,11 +627,14 @@
   .hms-mail-direction { width: 34px; height: 34px; }
   .hms-mail-row-top { align-items: flex-start; flex-direction: column; gap: 2px; }
   .hms-mailbox-pagination { margin-top: 12px; }
-  .hms-mail-detail { padding-inline: 10px; }
-  .hms-mail-detail > header { align-items: flex-start; }
+  .hms-mail-detail > header { padding-inline: 10px; gap: 8px; }
   .hms-mail-detail > header > div { display: none; }
-  .hms-mail-detail > header button { padding-inline: 10px; }
-  .hms-conversation-timeline summary { align-items: flex-start; flex-direction: column; }
+  .hms-mail-detail > header button { padding-inline: 10px; min-height: 40px; }
+  .hms-mail-reading { padding: 10px 10px 20px; scrollbar-gutter: auto; }
+  .hms-mail-ai-summary { flex-wrap: wrap; }
+  .hms-conversation-timeline summary { align-items: flex-start; flex-direction: column; gap: 4px; }
   .hms-message-metadata em { margin-left: 0; }
-  .hms-mail-content iframe { min-height: 480px; }
+  .hms-message-summary,
+  .hms-mail-related-case { margin-inline: 8px; }
+  .hms-mail-content { margin: 0 8px 8px; }
 }

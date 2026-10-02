@@ -12,6 +12,7 @@ from app.services.event_engine import create_case_event
 from app.services.learning_engine import register_pattern
 from app.security.identity import require_google_account
 from app.services.oauth_storage import OAuthStorage
+from app.utils.html_text import strip_css_noise
 
 
 _OPEN_STATUSES = [
@@ -437,8 +438,10 @@ def process_message(
 ) -> tuple[str, str]:
     message_id = str(message["id"])
     received_at = _to_iso(message.get("received_at"))
-    subject = str(message.get("subject") or "(Sin asunto)")
+    subject = strip_css_noise(str(message.get("subject") or "")) or "(Sin asunto)"
     body = str(message.get("body_text") or message.get("snippet") or "")
+    if "{" in body:
+        body = strip_css_noise(body)
     normalized_subject = normalize_subject(subject)
     direction = _message_direction(message)
     sender_name, sender_email = _sender_parts(message.get("sender"))
@@ -491,7 +494,7 @@ def process_message(
                     "risk_score": risk,
                     "confidence": 0.7000,
                     "summary": (
-                        str(message.get("snippet") or body)[:500]
+                        (strip_css_noise(str(message.get("snippet") or "")) or body)[:500]
                         or None
                     ),
                     "requested_action": _requested_action(text),

@@ -16,7 +16,7 @@ import { LoginScreen } from "@/components/auth/LoginScreen";
 import { MailboxConnectModal } from "@/components/MailboxConnectModal";
 import "@/components/hms-mobile-shell.css";
 import "@/components/guided-import.css";
-import { MailInbox } from "@/components/MailInbox";
+import { MailInbox, type MailAppearance } from "@/components/MailInbox";
 import { NucleoApp } from "@/components/nucleo/NucleoApp";
 import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
 import "@/components/mail-inbox.css";
@@ -26,6 +26,21 @@ import { useAppAuth } from "@/hooks/useAppAuth";
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import { mailboxConnectModeFromEmail } from "@/lib/mailboxSignup";
 import { HmsApiError, hmsJson } from "@/lib/hmsApi";
+import { DEFAULT_PREFS, readLocalPrefs } from "@/lib/nucleo/prefs";
+import { supabase } from "@/lib/supabase";
+
+/** The reading view follows the Núcleo IA theme and accessibility prefs. */
+function mailAppearance(userId: string): MailAppearance {
+  const prefs = readLocalPrefs(userId) ?? DEFAULT_PREFS;
+  return {
+    theme: prefs.theme === "nucleo-claro" || prefs.theme === "day" ? "light" : "dark",
+    highContrast: prefs.highContrast,
+    reducedMotion: prefs.reducedMotion,
+    fontScale: prefs.fontScale,
+    readAloud: prefs.readAloud,
+    speechRate: prefs.speechRate,
+  };
+}
 
 type ThemeId =
   | "midnight"
@@ -559,6 +574,7 @@ function Dashboard({
           <MailInbox
             initialCategory={mailCategory}
             initialMessageId={mailInitialMessageId}
+            appearance={mailAppearance(session.id)}
             onClose={() => {
               setMailOpen(false);
               setMailInitialMessageId(null);
@@ -660,7 +676,11 @@ export default function HomePage() {
         <Dashboard
           session={session}
           onLogout={() => {
-            void signOut();
+            // Sign out with Supabase; if the network call fails, still drop the
+            // local session so the user is never stuck inside the app.
+            void signOut()
+              .catch(() => supabase.auth.signOut({ scope: "local" }).catch(() => undefined))
+              .finally(() => window.location.replace("/"));
           }}
         />
       )}
