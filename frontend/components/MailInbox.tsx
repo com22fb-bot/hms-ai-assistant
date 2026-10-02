@@ -32,6 +32,7 @@ import {
 import { hmsJson } from "@/lib/hmsApi";
 import { INITIAL_MAIL_FRAME, nextMailFrameHeight, withoutViewportUnits, type MailFrameState } from "@/lib/mailFrame";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { cleanDisplayText, stripCssNoise } from "@/lib/nucleo/cleanText";
 import { nx } from "@/lib/nucleo/copy";
 import { speakText } from "@/lib/nucleo/speech";
 
@@ -576,8 +577,8 @@ export function MailInbox({
                       <strong>{row.sender || "Sin remitente"}</strong>
                       <time>{formatDate(row.latest_received_at)}</time>
                     </span>
-                    <b>{row.subject || "Sin asunto"}</b>
-                    <small>{row.summary}</small>
+                    <b>{cleanDisplayText(row.subject, "Sin asunto")}</b>
+                    <small>{stripCssNoise(row.summary)}</small>
                     <span className="hms-mail-row-meta">
                       <em>{CATEGORY_LABELS[row.triage_category] || row.triage_category}</em>
                       <span><MessageSquareText size={13} /> {row.message_count} mensajes</span>
@@ -632,7 +633,7 @@ export function MailInbox({
           <div className="hms-mail-reading" tabIndex={0} aria-label={detail.subject || "Sin asunto"}>
             <section className="hms-mail-ai-summary">
               <ShieldCheck size={21} />
-              <div><strong>Resumen de la conversación</strong><p>{detail.summary}</p><small>{detail.participants.join(" · ")}</small></div>
+              <div><strong>Resumen de la conversación</strong><p>{stripCssNoise(detail.summary)}</p><small>{detail.participants.join(" · ")}</small></div>
               {appearance?.readAloud ? (
                 <button
                   type="button"
@@ -656,7 +657,7 @@ export function MailInbox({
                     {textList(message.cc) !== "—" ? <span>CC: {textList(message.cc)}</span> : null}
                     <em>{CATEGORY_LABELS[message.triage_category] || message.triage_category}</em>
                   </div>
-                  <section className="hms-message-summary"><ShieldCheck size={18} /><div><strong>Resumen Donexto</strong><p>{message.summary}</p><small>{message.triage_reason || "Sin explicación adicional."}</small></div></section>
+                  <section className="hms-message-summary"><ShieldCheck size={18} /><div><strong>Resumen Donexto</strong><p>{stripCssNoise(message.summary)}</p><small>{message.triage_reason || "Sin explicación adicional."}</small></div></section>
                   {message.related_cases?.length ? (
                     <div className="hms-mail-related-case">
                       <strong>Caso relacionado</strong>

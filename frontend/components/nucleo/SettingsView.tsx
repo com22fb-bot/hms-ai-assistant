@@ -9,6 +9,7 @@ import {
   Globe,
   Keyboard,
   Lock,
+  LogOut,
   Mail,
   Palette,
   Pause,
@@ -107,6 +108,7 @@ export function SettingsView(props: {
                 aria-selected={props.tab === tab}
                 className={props.tab === tab ? "on" : undefined}
                 onClick={() => props.onTab(tab)}
+                data-help-key={`tab${tab.charAt(0).toUpperCase()}${tab.slice(1)}`}
                 style={{ background: "transparent", border: 0, color: "inherit", font: "inherit" }}
               >
                 {tabLabel(t, tab)}
@@ -129,7 +131,7 @@ export function SettingsView(props: {
               <div className="d">{props.email}</div>
             </div>
           </div>
-          <div className="field">
+          <div className="field" data-help-key="language">
             <label htmlFor="nx-lang">{t("language")}</label>
             <select
               id="nx-lang"
@@ -161,13 +163,13 @@ export function SettingsView(props: {
               <div className="t">{props.name}</div>
               <div className="d">{t("personal")}</div>
             </div>
-            <button type="button" className="btn" onClick={props.onSignOut}>{t("signOut")}</button>
+            <button type="button" className="btn logout-btn" data-help-key="logout" onClick={props.onSignOut}><LogOut className="i" />{t("signOut")}</button>
           </div>
         </section>
       ) : null}
 
       {props.tab === "mail" ? (
-        <section className="card set-card">
+        <section className="card set-card" data-help-key="mail-card">
           <div className="set-row">
             <span className="ic"><Mail className="i" /></span>
             <div>
@@ -176,16 +178,16 @@ export function SettingsView(props: {
             </div>
           </div>
           <div className="onboard-actions" style={{ padding: "0 20px 16px" }}>
-            <button type="button" className="btn primary sm" onClick={props.onConnect}>{t("connect")}</button>
-            <button type="button" className="btn sm" onClick={props.onRefresh}>{t("refreshMail")}</button>
-            <button type="button" className="btn sm" onClick={props.onInbox}>{t("openInbox")}</button>
-            <button type="button" className="btn sm" onClick={props.onImport}>{t("importMail")}</button>
+            <button type="button" className="btn primary sm" data-help-key="connect-mail" onClick={props.onConnect}>{t("connect")}</button>
+            <button type="button" className="btn sm" data-help-key="refresh-mail" onClick={props.onRefresh}>{t("refreshMail")}</button>
+            <button type="button" className="btn sm" data-help-key="open-inbox" onClick={props.onInbox}>{t("openInbox")}</button>
+            <button type="button" className="btn sm" data-help-key="importMail" onClick={props.onImport}>{t("importMail")}</button>
           </div>
         </section>
       ) : null}
 
       {props.tab === "notifications" ? (
-        <section className="card set-card">
+        <section className="card set-card" data-help-key="push">
           <div className="card-h">
             <h3><Bell className="i" />{t("notifTitle")}</h3>
           </div>
@@ -243,14 +245,14 @@ export function SettingsView(props: {
       ) : null}
 
       {props.tab === "privacy" ? (
-        <section className="card set-card">
+        <section className="card set-card" data-help-key="privacy">
           <div className="card-h"><h3><Shield className="i" />{t("privacyTitle")}</h3></div>
           <p style={{ padding: "0 20px 18px", color: "var(--text-2)", lineHeight: 1.5 }}>{t("privacyBody")}</p>
         </section>
       ) : null}
 
       {props.tab === "alerts" ? (
-        <section className="card set-card">
+        <section className="card set-card" data-help-key="rules">
           <div className="card-h"><h3><Bell className="i" />{t("rulesTitle")}</h3></div>
           <p style={{ padding: "0 20px 12px", color: "var(--text-2)" }}>{t("rulesHelp")}</p>
           <div className="field">
@@ -308,7 +310,7 @@ function Appearance({
   return (
     <>
       <div className="set-grid">
-        <section className="card set-card" style={{ gridColumn: "1 / span 2" }}>
+        <section className="card set-card" style={{ gridColumn: "1 / span 2" }} data-help-key="theme">
           <div className="card-h"><h3><Palette className="i" />{t("themeTitle")}</h3><span className="meta">{t("themeDefault")}: {t("themeNucleo")}</span></div>
           <div className="themes four" role="radiogroup" aria-label={t("themeTitle")}>
             {NUCLEO_THEMES.map((theme) => (
@@ -338,7 +340,7 @@ function Appearance({
         </aside>
         <section className="card set-card">
           <div className="card-h"><h3><Eye className="i" />{t("reading")}</h3></div>
-          <div className="set-row">
+          <div className="set-row" data-help-key="text-size">
             <span className="ic"><Type className="i" /></span>
             <div>
               <div className="t">{t("textSize")}</div>
@@ -346,7 +348,7 @@ function Appearance({
             </div>
             <span className="valtag">{Math.round(prefs.fontScale * 100)}%</span>
           </div>
-          <div className="slider">
+          <div className="slider" data-help-key="textSize">
             <span className="a1">A</span>
             <input
               aria-label={t("textSize")}
@@ -359,13 +361,13 @@ function Appearance({
             />
             <span className="a2">A</span>
           </div>
-          <ToggleRow icon={<Contrast className="i" />} title={t("contrast")} help={t("contrastHelp")} on={prefs.highContrast} t={t} onToggle={() => patch({ highContrast: !prefs.highContrast })} />
-          <ToggleRow icon={<Pause className="i" />} title={t("motion")} help={t("motionHelp")} on={prefs.reducedMotion} t={t} onToggle={() => patch({ reducedMotion: !prefs.reducedMotion })} />
+          <ToggleRow icon={<Contrast className="i" />} helpKey="contrast" title={t("contrast")} help={t("contrastHelp")} on={prefs.highContrast} t={t} onToggle={() => patch({ highContrast: !prefs.highContrast })} />
+          <ToggleRow icon={<Pause className="i" />} helpKey="motion" title={t("motion")} help={t("motionHelp")} on={prefs.reducedMotion} t={t} onToggle={() => patch({ reducedMotion: !prefs.reducedMotion })} />
         </section>
         <section className="card set-card">
           <div className="card-h"><h3><Waves className="i" />{t("voiceTitle")}</h3></div>
           <ToggleRow icon={<Eye className="i" />} title={t("screenReader")} help={t("screenReaderHelp")} on={prefs.screenReader} t={t} onToggle={() => patch({ screenReader: !prefs.screenReader })} />
-          <ToggleRow icon={<Volume2 className="i" />} title={t("readAloud")} help={t("readAloudHelp")} on={prefs.readAloud} t={t} onToggle={() => patch({ readAloud: !prefs.readAloud })} />
+          <ToggleRow icon={<Volume2 className="i" />} helpKey="read-aloud" title={t("readAloud")} help={t("readAloudHelp")} on={prefs.readAloud} t={t} onToggle={() => patch({ readAloud: !prefs.readAloud })} />
           <div className="voice">
             <label className="select">
               {t("volume")}
@@ -392,7 +394,7 @@ function Appearance({
             <Opt on={prefs.transcript} label={t("transcript")} onClick={() => patch({ transcript: !prefs.transcript })} />
           </div>
         </section>
-        <section className="card set-card">
+        <section className="card set-card" data-help-key="guide">
           <div className="set-row">
             <span style={{ width: 64, height: 72, display: "block" }}>
               <Nexto pose="idle" label="Nexto" />
@@ -412,6 +414,7 @@ function Appearance({
 
 function ToggleRow({
   icon,
+  helpKey,
   title,
   help,
   on,
@@ -419,6 +422,7 @@ function ToggleRow({
   t,
 }: {
   icon: ReactNode;
+  helpKey?: string;
   title: string;
   help: string;
   on: boolean;
@@ -426,7 +430,7 @@ function ToggleRow({
   t: T;
 }) {
   return (
-    <div className="set-row">
+    <div className="set-row" data-help-key={helpKey}>
       <span className="ic">{icon}</span>
       <div>
         <div className="t">{title}</div>

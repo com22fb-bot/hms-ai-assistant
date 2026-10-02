@@ -3,6 +3,8 @@
  * cases and threads that already came from the user's inbox.
  */
 
+import { cleanDisplayText, stripCssNoise } from "./cleanText.ts";
+
 export const LIFE_AREA_IDS = [
   "money",
   "orders",
@@ -393,7 +395,16 @@ export function buildLifeItems(
   cases: InboxCase[],
   threads: InboxThread[],
 ): LifeItem[] {
-  const items: LifeItem[] = cases.map((item) => {
+  const items: LifeItem[] = cases.map((raw) => {
+    // Titles/summaries built from HTML mail can carry raw CSS (stored cases
+    // included); clean them before anything is classified or displayed.
+    const summary = stripCssNoise(raw.summary) || null;
+    const item: InboxCase = {
+      ...raw,
+      title: cleanDisplayText(raw.title, summary || senderLabel(raw.requester_name, raw.requester_email) || "—"),
+      summary,
+      requested_action: stripCssNoise(raw.requested_action) || null,
+    };
     const blob = [item.title, item.summary, item.requested_action, item.requester_email]
       .filter(Boolean)
       .join(" ");
@@ -427,8 +438,9 @@ export function buildLifeItems(
     items.map((item) => subjectKey(item.title)).filter(Boolean),
   );
 
-  for (const thread of threads) {
-    const subject = (thread.subject || "").trim();
+  for (const rawThread of threads) {
+    const thread: InboxThread = { ...rawThread, summary: stripCssNoise(rawThread.summary) || null };
+    const subject = cleanDisplayText(rawThread.subject, "");
     const key = subjectKey(subject);
     if (!thread.latest_message_id || !key) continue;
     if ([...caseSubjects].some((existing) => existing.includes(key) || key.includes(existing))) {

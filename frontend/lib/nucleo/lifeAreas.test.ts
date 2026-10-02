@@ -16,6 +16,9 @@ import {
 // CI runs this file explicitly; pull in the command-center rules too.
 import "./commandCenter.test.ts";
 import "../mailFrame.test.ts";
+import "./helpKb.test.ts";
+import "./cleanText.test.ts";
+import "./nextoDock.test.ts";
 
 test("classifies inbox text into life areas without inventing a bank feed", () => {
   assert.equal(

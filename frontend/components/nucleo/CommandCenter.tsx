@@ -165,20 +165,20 @@ export function CommandCenter(props: CommandCenterProps) {
 
   return (
     <div className="cc">
-      <div className="summary cc-summary" data-help-title={t("listenSummary")} data-help={props.summary}>
+      <div className="summary cc-summary" data-help-key="summary">
         <div className="cc-summary-text">
           <div className="eyebrow">{props.eyebrow}</div>
           <div className="ai-line"><Spark /><span>{props.summary}</span></div>
         </div>
         {props.readAloud ? (
-          <button type="button" className="listen" onClick={() => speak(props.summary)}>
+          <button type="button" className="listen" data-help-key="listenItem" onClick={() => speak(props.summary)}>
             <Volume2 className="i" />{t("listenSummary")}
           </button>
         ) : null}
       </div>
 
       <div className="cc-top">
-        <section className="card cc-card cc-action" aria-labelledby="cc-action-h" data-help-title={t("actionToday")} data-help={t("helpDoNow")}>
+        <section className="card cc-card cc-action" aria-labelledby="cc-action-h" data-help-key="actionToday">
           <header className="cc-h">
             <h2 id="cc-action-h"><Spark />{t("actionToday")}{action.length > 0 && props.badges ? <span className="badge-n">{action.length}</span> : null}</h2>
             <span className="cc-note">{t("sortedBy")}</span>
@@ -192,7 +192,7 @@ export function CommandCenter(props: CommandCenterProps) {
                 const line = item.line || item.title;
                 return (
                   <li key={item.id} className="cc-row">
-                    <button type="button" className="cc-row-main" onClick={() => props.onOpen(item)}>
+                    <button type="button" className="cc-row-main" data-help-key="openCase" onClick={() => props.onOpen(item)}>
                       <span className={`cc-urg u-${urgency}`} aria-hidden />
                       <span className="cc-row-text">
                         <b>{line}</b>
@@ -202,11 +202,12 @@ export function CommandCenter(props: CommandCenterProps) {
                     </button>
                     <span className="cc-row-acts">
                       {props.readAloud ? (
-                        <button type="button" className="cc-icon" aria-label={t("listen")} onClick={() => speak(line)}><Volume2 className="i sm" /></button>
+                        <button type="button" className="cc-icon" data-help-key="listenItem" aria-label={t("listen")} onClick={() => speak(line)}><Volume2 className="i sm" /></button>
                       ) : null}
                       <button
                         type="button"
                         className="cc-icon"
+                        data-help-key="snooze"
                         aria-label={t("remind")}
                         aria-haspopup="menu"
                         aria-expanded={props.snoozeFor === item.id}
@@ -216,7 +217,7 @@ export function CommandCenter(props: CommandCenterProps) {
                           props.onSnoozeOpen(opening ? item.id : null);
                         }}
                       ><AlarmClock className="i sm" /></button>
-                      <button type="button" className="cc-icon" aria-label={t("done")} onClick={() => props.onDone(item)}><Check className="i sm" /></button>
+                      <button type="button" className="cc-icon" data-help-key="done" aria-label={t("done")} onClick={() => props.onDone(item)}><Check className="i sm" /></button>
                     </span>
                     {props.snoozeFor === item.id && snoozeAnchor ? (
                       <SnoozePopover anchor={snoozeAnchor} label={t("remind")} onClose={() => props.onSnoozeOpen(null)}>
@@ -235,7 +236,7 @@ export function CommandCenter(props: CommandCenterProps) {
           ) : null}
         </section>
 
-        <section className="card cc-card cc-upcoming" aria-labelledby="cc-up-h">
+        <section className="card cc-card cc-upcoming" aria-labelledby="cc-up-h" data-help-key="upcoming">
           <header className="cc-h">
             <h2 id="cc-up-h"><CalendarClock className="i" />{t("upcomingTitle")}{upcomingCount > 0 && props.badges ? <span className="badge-n">{upcomingCount}</span> : null}</h2>
             <span className="cc-note cc-note-opt">{t("upcomingNote")}</span>
@@ -250,7 +251,7 @@ export function CommandCenter(props: CommandCenterProps) {
                   <ul className="cc-list">
                     {day.items.map((item) => (
                       <li key={item.id}>
-                        <button type="button" className="cc-ev" onClick={() => props.onOpen(item)}>
+                        <button type="button" className="cc-ev" data-help-key="openCase" onClick={() => props.onOpen(item)}>
                           <span className="cc-time">{day.offset < 0 ? formatDay(item.dueAt, locale) : formatClock(item.dueAt, locale)}</span>
                           <span className={`cc-dot ${areaChip(item.area)}`} aria-hidden />
                           <span className="cc-row-text"><b>{item.line || item.title}</b><small>{[areaLabel(t, item.area), item.sender].filter(Boolean).join(" · ")}</small></span>
@@ -268,10 +269,10 @@ export function CommandCenter(props: CommandCenterProps) {
           ) : null}
         </section>
 
-        <section className="card cc-card cc-alerts" aria-labelledby="cc-al-h">
+        <section className="card cc-card cc-alerts" aria-labelledby="cc-al-h" data-help-key="recentAlerts">
           <header className="cc-h">
             <h2 id="cc-al-h"><ShieldAlert className="i" />{t("alertsRecent")}{alerts.length > 0 && props.badges ? <span className="badge-n hot">{alerts.length}</span> : null}</h2>
-            <button type="button" className="cc-link" onClick={props.onViewAlerts}>{t("viewAll")}</button>
+            <button type="button" className="cc-link" data-help-key="alerts" onClick={props.onViewAlerts}>{t("viewAll")}</button>
           </header>
           {props.loading ? <Skeleton /> : alerts.length === 0 ? (
             <CardEmpty icon={ShieldAlert} text={t("alertsRecentEmpty")} />
@@ -294,7 +295,7 @@ export function CommandCenter(props: CommandCenterProps) {
         </section>
       </div>
 
-      <section className="cc-areas" aria-labelledby="cc-areas-h" data-help-title={t("areas")} data-help={t("helpAreas")}>
+      <section className="cc-areas" aria-labelledby="cc-areas-h" data-help-key="areas">
         <header className="cc-h">
           <h2 id="cc-areas-h">{t("areas")}<span className="cc-note">{t("areasHint")}</span></h2>
           <button type="button" className="cnt all" onClick={() => props.onPickArea("all")}>{t("all")} <b>{totalOpen}</b></button>
@@ -312,6 +313,10 @@ export function CommandCenter(props: CommandCenterProps) {
                 type="button"
                 className={open > 0 ? `cc-tile ${areaChip(area)}` : `cc-tile ${areaChip(area)} is-quiet`}
                 onClick={() => props.onPickArea(area)}
+                data-help-key="areaTile"
+                data-help-title={name}
+                data-help-detail={`${t("areaOpen", { count: open })}. ${insight.text}${insight.note ? `. ${insight.note}` : ""}`}
+                data-area={area}
                 aria-label={`${name}: ${t("areaOpen", { count: open })}. ${insight.text}${insight.note ? `. ${insight.note}` : ""}`}
                 title={insight.note || undefined}
               >
@@ -398,7 +403,7 @@ function SnoozePopover(props: { anchor: HTMLElement; label: string; onClose: () 
   }, [anchor]);
 
   return createPortal(
-    <div ref={ref} className="card snooze-pop is-floating" role="menu" aria-label={props.label}>
+    <div ref={ref} className="card snooze-pop is-floating" role="menu" aria-label={props.label} data-help-key="snooze">
       {props.children}
     </div>,
     host,

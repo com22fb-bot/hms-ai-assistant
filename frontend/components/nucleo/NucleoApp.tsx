@@ -6,8 +6,10 @@ import {
   Bell,
   Check,
   ChevronRight,
+  CircleHelp,
   LayoutGrid,
   Lock,
+  LogOut,
   Mail,
   Menu,
   Mic,
@@ -71,6 +73,9 @@ import { supabase } from "@/lib/supabase";
 
 import { CommandCenter, areaLabel } from "@/components/nucleo/CommandCenter";
 import { Nexto } from "@/components/nucleo/Nexto";
+import { NextoDock } from "@/components/nucleo/NextoDock";
+import { helpForKey, matchHelp, type HelpMatch, type HelpTarget } from "@/lib/nucleo/helpKb";
+import { cleanDisplayText, stripCssNoise } from "@/lib/nucleo/cleanText";
 import { Onboarding } from "@/components/nucleo/Onboarding";
 import { SettingsView, type SettingsTab } from "@/components/nucleo/SettingsView";
 
@@ -135,6 +140,8 @@ export function NucleoApp(props: NucleoAppProps) {
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [askHits, setAskHits] = useState<AskResult | null>(null);
+  const [askHelp, setAskHelp] = useState<HelpMatch[]>([]);
+  const [pendingFocus, setPendingFocus] = useState<string | null>(null);
   const [caseId, setCaseId] = useState<string | null>(null);
   const [areaFilter, setAreaFilter] = useState<LifeAreaId | "all">("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
@@ -345,6 +352,7 @@ export function NucleoApp(props: NucleoAppProps) {
         setShortcuts(false);
         setSnoozeFor(null);
         setAskHits(null);
+        setAskHelp([]);
         setDrawer(false);
       }
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -367,15 +375,102 @@ export function NucleoApp(props: NucleoAppProps) {
     };
   }, [language, prefs.captions, prefs.flash, prefs.soundEnabled, prefs.volume, t]);
 
+  /** Title/body for an element with `data-help-key` (5-language KB) or inline `data-help`. */
+  const describe = useCallback((node: HTMLElement | null): { title: string; body: string } | null => {
+    if (!node) return null;
+    const copy = helpForKey(node.dataset.helpKey, language);
+    const title = node.dataset.helpTitle || copy?.title || "";
+    const base = node.dataset.help || copy?.body || "";
+    const body = [node.dataset.helpDetail, base].filter(Boolean).join(" ");
+    return title || body ? { title: title || t("guideTitle"), body } : null;
+  }, [language, t]);
+
+  const hoverTimer = useRef<number | null>(null);
+  const lastHelpNode = useRef<HTMLElement | null>(null);
+  const explainedNode = useRef<HTMLElement | null>(null);
+  useEffect(() => () => {
+    if (hoverTimer.current !== null) window.clearTimeout(hoverTimer.current);
+  }, []);
+
   function onHelp(event: SyntheticEvent) {
     if (!prefs.guide) return;
-    const node = (event.target as HTMLElement).closest<HTMLElement>("[data-help]");
-    if (!node) return;
-    setBubble({
-      title: node.dataset.helpTitle || t("guideTitle"),
-      body: node.dataset.help || "",
-    });
+    const target = event.target as HTMLElement;
+    // The robot and its bubble never replace what it is saying (it explains on drop/click).
+    if (target.closest(".bot-dock")) return;
+    const node = target.closest<HTMLElement>("[data-help-key],[data-help]");
+    if (!node || node === lastHelpNode.current) return;
+    if (hoverTimer.current !== null) window.clearTimeout(hoverTimer.current);
+    const immediate = event.type === "focus";
+    const run = () => {
+      hoverTimer.current = null;
+      const help = describe(node);
+      if (!help) return;
+      lastHelpNode.current = node;
+      setBubble(help);
+    };
+    if (immediate) run();
+    else hoverTimer.current = window.setTimeout(run, 260);
   }
+
+  /** Nexto was dropped (or moved with the keyboard) over an element. */
+  function explainDropped(node: HTMLElement | null) {
+    const help = describe(node);
+    lastHelpNode.current = node;
+    setBubble(help ?? { title: t("guideTitle"), body: t("guideNothing") });
+    // Outline only the element Nexto is explaining right now.
+    explainedNode.current?.classList.remove("nx-explained");
+    explainedNode.current = node && help ? node : null;
+    if (node && help) {
+      node.classList.add("nx-explained");
+      window.setTimeout(() => node.classList.remove("nx-explained"), 1800);
+    }
+  }
+
+  /** Help answer CTA: open the view/tab and highlight the exact option. */
+  function goToHelp(target: HelpTarget) {
+    setAskHits(null);
+    setAskHelp([]);
+    if (target.action === "shortcuts") {
+      setShortcuts(true);
+      return;
+    }
+    if (target.action === "ask") {
+      askRef.current?.focus();
+      return;
+    }
+    if (target.view) show(target.view);
+    if (target.tab) setSettingsTab(target.tab);
+    if (target.focus) setPendingFocus(target.focus);
+  }
+
+  useEffect(() => {
+    if (!pendingFocus) return;
+    let tries = 0;
+    let clearTimer = 0;
+    const timer = window.setInterval(() => {
+      tries += 1;
+      const nodes = Array.from(document.querySelectorAll<HTMLElement>(`[data-help-key="${CSS.escape(pendingFocus)}"]`));
+      const visible = nodes.filter((node) => {
+        const rect = node.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0 && rect.right > 0 && rect.left < window.innerWidth;
+      });
+      // Prefer the copy inside the main area (e.g. Settings › Account › Sign out).
+      const node = visible.find((item) => item.closest("main")) ?? visible[0];
+      if (!node && tries < 20) return;
+      window.clearInterval(timer);
+      setPendingFocus(null);
+      if (!node) return;
+      node.scrollIntoView({ block: "center", behavior: prefs.reducedMotion ? "auto" : "smooth" });
+      const focusable = node.matches("button, a, input, select, textarea, [tabindex]") ? node : node.querySelector<HTMLElement>("button, a, input, select, textarea, [tabindex]");
+      focusable?.focus({ preventScroll: true });
+      node.classList.add("nx-highlight");
+      clearTimer = window.setTimeout(() => node.classList.remove("nx-highlight"), 2800);
+    }, 60);
+    return () => {
+      window.clearInterval(timer);
+      if (clearTimer) window.clearTimeout(clearTimer);
+    };
+  }, [pendingFocus, prefs.reducedMotion]);
 
   /**
    * "Pregunta a Donexto" is a local, rule-based search over the cases and
@@ -386,8 +481,11 @@ export function NucleoApp(props: NucleoAppProps) {
     setQuery(clean);
     if (!clean) {
       setAskHits(null);
+      setAskHelp([]);
       return;
     }
+    // How-to questions about the app first (local rules), then the user's cases.
+    setAskHelp(matchHelp(clean, 3));
     setAskHits(askLocal(items, clean, new Date()));
   }
 
@@ -623,6 +721,7 @@ export function NucleoApp(props: NucleoAppProps) {
                   type="button"
                   className={view === item.id ? "active" : undefined}
                   aria-current={view === item.id ? "page" : undefined}
+                  data-help-key={`nav-${item.id}`}
                   onClick={() => show(item.id)}
                 >
                   <Icon aria-hidden />
@@ -635,7 +734,7 @@ export function NucleoApp(props: NucleoAppProps) {
             })}
           </nav>
           <div className="side-spacer" />
-          <div className="mailbox">
+          <div className="mailbox" data-help-key="mailbox">
             <div className="mb-row">
               <div className="ms-tile" aria-hidden>{provider.slice(0, 1)}</div>
               <div>
@@ -646,7 +745,7 @@ export function NucleoApp(props: NucleoAppProps) {
             <div className="ro"><Lock className="i sm" />{t("readOnly")}</div>
           </div>
           <div className="me">
-            <button type="button" className="me-hit" aria-expanded={profileOpen} aria-haspopup="menu" onClick={() => setProfileOpen((open) => !open)}>
+            <button type="button" className="me-hit" data-help-key="profile" aria-expanded={profileOpen} aria-haspopup="menu" onClick={() => setProfileOpen((open) => !open)}>
               <div className="avatar" aria-hidden>{initials(props.name || props.email)}</div>
               <div>
                 <div className="n">{props.name || props.email}</div>
@@ -656,18 +755,21 @@ export function NucleoApp(props: NucleoAppProps) {
             {profileOpen ? (
               <div className="card menu-pop" role="menu">
                 <button type="button" className="btn" onClick={() => { show("settings"); setSettingsTab("account"); setProfileOpen(false); }}>{t("account")}</button>
-                <button type="button" className="btn" onClick={props.onSignOut}>{t("signOut")}</button>
+                <button type="button" className="btn" onClick={props.onSignOut}><LogOut className="i" />{t("signOut")}</button>
               </div>
             ) : null}
           </div>
+          <button type="button" className="me-out" data-help-key="logout" onClick={props.onSignOut}>
+            <LogOut className="i" aria-hidden />
+            <span>{t("signOut")}</span>
+          </button>
         </aside>
         <main className={caseId ? "main is-reading" : view === "today" ? "main is-today" : "main"}>
           <div className="askbar">
             <form
               className="ask"
               role="search"
-              data-help-title={t("askLabel")}
-              data-help={t("helpAsk")}
+              data-help-key="ask"
               onSubmit={(event) => {
                 event.preventDefault();
                 submitAsk(query);
@@ -682,32 +784,64 @@ export function NucleoApp(props: NucleoAppProps) {
                 placeholder={t("askPlaceholder")}
                 onChange={(event) => {
                   setQuery(event.target.value);
-                  if (!event.target.value.trim()) setAskHits(null);
+                  if (!event.target.value.trim()) {
+                    setAskHits(null);
+                    setAskHelp([]);
+                  }
                 }}
               />
               <kbd>⌘K</kbd>
-              <button type="button" className="mic" aria-label={t("askMic")} onClick={dictate}><Mic className="i" /></button>
+              <button type="button" className="mic" data-help-key="dictate" aria-label={t("askMic")} onClick={dictate}><Mic className="i" /></button>
               <button type="submit" className="btn primary go" aria-label={t("askSubmit")}><span className="go-t">{t("askSubmit")}</span><ArrowUp className="i" /></button>
             </form>
-            <button type="button" className="icon-btn" aria-label={t("navAlerts")} onClick={() => show("alerts")}>
+            <button type="button" className="icon-btn" data-help-key="alerts" aria-label={t("navAlerts")} onClick={() => show("alerts")}>
               <Bell className="i lg" />
               {alertCount > 0 && prefs.badges ? <span className="dot" /> : null}
             </button>
-            {askHits ? (
-              <div className="card results" role="region" aria-live="polite" aria-label={t("askResults")}>
-                <div className="results-h">
-                  {askHits.vague ? null : <span className="results-n">{askHits.hits.length === 1 ? t("askCountOne") : t("askCount", { count: askHits.hits.length })}</span>}
-                  {intentLabels(t, askHits.intent).length ? <span className="results-f">{t("askFilters", { filters: intentLabels(t, askHits.intent).join(" · ") })}</span> : null}
+            {askHits || askHelp.length ? (
+              <div className="results" role="region" aria-live="polite" aria-label={t("askResults")}>
+                <div className="results-top">
+                  <span className="results-q" title={query}>“{query}”</span>
+                  <button type="button" className="btn sm results-clear" onClick={clearAsk}><X className="i sm" />{t("searchClear")}</button>
                 </div>
-                {askHits.vague ? <p className="empty">{t("askVague")}</p> : askHits.hits.length === 0 ? <p className="empty">{t("askEmpty")}</p> : askHits.hits.slice(0, 8).map((item) => (
-                  <button key={item.id} type="button" className="result" onClick={() => openItem(item)}>
-                    <span>{item.line || item.title}</span>
-                    <small>{areaLabel(t, item.area)}{item.sender ? ` · ${item.sender}` : ""}{item.amountRaw ? ` · ${item.amountRaw}` : ""}</small>
-                  </button>
-                ))}
+                <div className="results-body">
+                  {askHelp.length ? (
+                    <section className="results-help" aria-label={t("askHelpTitle")}>
+                      <h3 className="results-sec"><CircleHelp className="i sm" aria-hidden />{t("askHelpTitle")}</h3>
+                      {askHelp.map(({ entry }) => {
+                        const copy = entry.copy[language] ?? entry.copy.es;
+                        return (
+                          <article key={entry.id} className="help-card">
+                            <b>{copy.title}</b>
+                            <p>{copy.body}</p>
+                            {copy.cta ? (
+                              <button type="button" className="btn primary sm help-go" onClick={() => goToHelp(entry.target)}>
+                                {copy.cta}<ChevronRight className="i sm" aria-hidden />
+                              </button>
+                            ) : null}
+                          </article>
+                        );
+                      })}
+                    </section>
+                  ) : null}
+                  {askHits && !(askHelp.length && (askHits.vague || askHits.hits.length === 0)) ? (
+                    <section className="results-cases" aria-label={t("askCasesTitle")}>
+                      <div className="results-h">
+                        {askHelp.length ? <span className="results-sec">{t("askCasesTitle")}</span> : null}
+                        {askHits.vague ? null : <span className="results-n">{askHits.hits.length === 1 ? t("askCountOne") : t("askCount", { count: askHits.hits.length })}</span>}
+                        {intentLabels(t, askHits.intent).length ? <span className="results-f">{t("askFilters", { filters: intentLabels(t, askHits.intent).join(" · ") })}</span> : null}
+                      </div>
+                      {askHits.vague ? <p className="results-empty">{t("askVague")}</p> : askHits.hits.length === 0 ? <p className="results-empty">{t("askEmpty")}</p> : askHits.hits.slice(0, 8).map((item) => (
+                        <button key={item.id} type="button" className="result" data-help-key="openCase" onClick={() => openItem(item)}>
+                          <span>{cleanDisplayText(item.line || item.title, item.sender || "—")}</span>
+                          <small>{areaLabel(t, item.area)}{item.sender ? ` · ${item.sender}` : ""}{item.amountRaw ? ` · ${item.amountRaw}` : ""}</small>
+                        </button>
+                      ))}
+                    </section>
+                  ) : null}
+                </div>
                 <div className="results-f2">
                   <small>{t("askLocalNote")}</small>
-                  <button type="button" className="btn sm" onClick={() => { setAskHits(null); setQuery(""); }}>{t("searchClear")}</button>
                 </div>
               </div>
             ) : null}
@@ -850,17 +984,22 @@ export function NucleoApp(props: NucleoAppProps) {
         </main>
       </div>
       <nav className="tabbar" aria-label={t("menu")}>
-        <Tab icon={<Sun />} label={t("navToday")} on={view === "today"} onClick={() => show("today")} />
-        <Tab icon={<Wallet />} label={t("navMoney")} on={view === "money"} onClick={() => show("money")} />
-        <Tab icon={<Package />} label={t("navOrders")} on={view === "orders"} onClick={() => show("orders")} />
-        <Tab icon={<Bell />} label={t("navAlerts")} on={view === "alerts"} onClick={() => show("alerts")} />
-        <Tab icon={<Menu />} label={t("menu")} on={drawer} onClick={() => setDrawer(true)} />
+        <Tab icon={<Sun />} helpKey="nav-today" label={t("navToday")} on={view === "today"} onClick={() => show("today")} />
+        <Tab icon={<Wallet />} helpKey="nav-money" label={t("navMoney")} on={view === "money"} onClick={() => show("money")} />
+        <Tab icon={<Package />} helpKey="nav-orders" label={t("navOrders")} on={view === "orders"} onClick={() => show("orders")} />
+        <Tab icon={<Bell />} helpKey="nav-alerts" label={t("navAlerts")} on={view === "alerts"} onClick={() => show("alerts")} />
+        <Tab icon={<Menu />} helpKey="nav-settings" label={t("menu")} on={drawer} onClick={() => setDrawer(true)} />
       </nav>
       {prefs.guide ? (
-        <div className="bot-dock">
-          {bubble ? (
+        <NextoDock
+          label={t("guideTitle")}
+          hint={t("guideDragHint")}
+          onActivate={() => setBubble({ title: t("guideTitle"), body: `${t("helpGuide")} ${t("guideDragHint")}` })}
+          onExplain={explainDropped}
+          robot={<Nexto pose={pose} label="Nexto" />}
+          bubble={bubble ? (
             <div className="bubble card" role="status">
-              <div className="bh"><Spark /><span className="t">{bubble.title}</span><button type="button" className="x" aria-label={t("close")} onClick={() => setBubble(null)}><X className="i sm" /></button></div>
+              <div className="bh"><Spark /><span className="t">{bubble.title}</span><button type="button" className="x" aria-label={t("close")} onClick={() => { setBubble(null); lastHelpNode.current = null; }}><X className="i sm" /></button></div>
               <p>{bubble.body}</p>
               <div className="bf">
                 <span>{t("guideName")}</span>
@@ -868,10 +1007,7 @@ export function NucleoApp(props: NucleoAppProps) {
               </div>
             </div>
           ) : null}
-          <button type="button" className="bot" data-help-title={t("guideTitle")} data-help={t("helpGuide")} aria-label={t("guideTitle")} onClick={() => setBubble({ title: t("guideTitle"), body: t("helpGuide") })}>
-            <Nexto pose={pose} label="Nexto" />
-          </button>
-        </div>
+        />
       ) : null}
       {onboard ? (
         <Onboarding
@@ -905,8 +1041,16 @@ export function NucleoApp(props: NucleoAppProps) {
     setDrawer(false);
   }
 
+  function clearAsk() {
+    setAskHits(null);
+    setAskHelp([]);
+    setQuery("");
+    askRef.current?.focus();
+  }
+
   function openItem(item: LifeItem) {
     setAskHits(null);
+    setAskHelp([]);
     if (item.caseId) {
       setCaseId(item.caseId);
       return;
@@ -992,7 +1136,7 @@ function ListView(props: {
             </button>
           ))}
           {props.items.map((item) => (
-            <button key={item.id} type="button" className="ev" style={{ width: "100%", background: "transparent", border: 0, color: "inherit", textAlign: "left" }} onClick={() => props.onOpen(item)}>
+            <button key={item.id} type="button" className="ev" data-help-key="openCase" style={{ width: "100%", background: "transparent", border: 0, color: "inherit", textAlign: "left" }} onClick={() => props.onOpen(item)}>
               <span className="tm">{formatClock(item.when, props.locale)}</span>
               <span className={`dot ${areaChip(item.area)}`}><i /></span>
               <div className="tile">{(item.sender || "D").slice(0, 1)}</div>
@@ -1043,7 +1187,7 @@ function CaseDetail(props: {
       cancelled = true;
     };
   }, [props.caseId, props.preview]);
-  const line = props.item?.line || detail?.summary || "";
+  const line = props.item?.line || stripCssNoise(detail?.summary) || "";
   return (
     <div className="case-view">
       <header className="topbar case-top">
@@ -1083,7 +1227,7 @@ function CaseDetail(props: {
                 <div className="node" />
                 <div>
                   <div className="hd"><div className="ttl">{event.title}</div><span className="when">{formatWhen(event.created_at, props.locale)}</span></div>
-                  {event.description ? <div className="ds">{event.description}</div> : null}
+                  {event.description && stripCssNoise(event.description) ? <div className="ds">{stripCssNoise(event.description)}</div> : null}
                 </div>
               </div>
             ))}
@@ -1100,7 +1244,7 @@ function CaseDetail(props: {
               <button key={message.id} type="button" className="src" onClick={() => props.onOpenMail(message.id)}>
                 <Mail className="i" />
                 <div className="src-text">
-                  <div className="sj">{message.subject || message.snippet}</div>
+                  <div className="sj">{cleanDisplayText(message.subject) || cleanDisplayText(message.snippet)}</div>
                   <div className="fr">{message.sender}</div>
                 </div>
                 <span className="dt">{props.t("caseOpenMail")}</span>
@@ -1113,9 +1257,9 @@ function CaseDetail(props: {
   );
 }
 
-function Tab({ icon, label, on, onClick }: { icon: ReactNode; label: string; on: boolean; onClick: () => void }) {
+function Tab({ icon, helpKey, label, on, onClick }: { icon: ReactNode; helpKey?: string; label: string; on: boolean; onClick: () => void }) {
   return (
-    <button type="button" className={on ? "on" : undefined} onClick={onClick}>
+    <button type="button" className={on ? "on" : undefined} data-help-key={helpKey} onClick={onClick}>
       {icon}
       <span>{label}</span>
     </button>

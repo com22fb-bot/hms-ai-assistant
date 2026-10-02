@@ -27,6 +27,7 @@ import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import { mailboxConnectModeFromEmail } from "@/lib/mailboxSignup";
 import { HmsApiError, hmsJson } from "@/lib/hmsApi";
 import { DEFAULT_PREFS, readLocalPrefs } from "@/lib/nucleo/prefs";
+import { supabase } from "@/lib/supabase";
 
 /** The reading view follows the Núcleo IA theme and accessibility prefs. */
 function mailAppearance(userId: string): MailAppearance {
@@ -675,7 +676,11 @@ export default function HomePage() {
         <Dashboard
           session={session}
           onLogout={() => {
-            void signOut();
+            // Sign out with Supabase; if the network call fails, still drop the
+            // local session so the user is never stuck inside the app.
+            void signOut()
+              .catch(() => supabase.auth.signOut({ scope: "local" }).catch(() => undefined))
+              .finally(() => window.location.replace("/"));
           }}
         />
       )}
