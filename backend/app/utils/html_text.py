@@ -103,7 +103,8 @@ def _drop_blocks(text: str) -> str:
         out.append(text[pos:match.start()])
         out.append(" ")
         tag = match.group(1).lower()
-        end = -1 if tag in unclosed else lower.find(f"</{tag}", match.end())
+        close = None if tag in unclosed else re.compile(rf"</{tag}\s*>").search(lower, match.end())
+        end = close.start() if close else -1  # "</head>" must not match "</header>"
         if end < 0:
             unclosed.add(tag)
             if tag == "head":

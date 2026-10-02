@@ -78,6 +78,10 @@ class HtmlToTextTest(unittest.TestCase):
         body = "<html><head><title>Azure</title><style>p {color:red}</style><body><p>Tu factura está lista</p></body></html>"
         self.assertEqual(html_to_text(body), "Tu factura está lista")
 
+    def test_head_closer_does_not_match_header(self) -> None:
+        body = "<head><style>p {color:red}</style><body><header>Azure</header><p>Tu factura está lista</p></body>"
+        self.assertEqual(html_to_text(body), "Azure Tu factura está lista")
+
     def test_long_attributes_are_removed(self) -> None:
         img = '<img src="data:image/png;base64,' + "A" * 9000 + '">'
         style = '<td style="' + "color:red;" * 600 + '">Pago recibido</td>'
