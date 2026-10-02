@@ -621,7 +621,7 @@ export function MailInbox({
             <button type="button" onClick={() => setDetail(null)}><ArrowLeft size={19} /> Volver</button>
             <div>
               <span>{detail.message_count} mensajes</span>
-              <strong id="hms-mail-detail-title">{detail.subject || "Sin asunto"}</strong>
+              <strong id="hms-mail-detail-title">{cleanDisplayText(detail.subject, "Sin asunto")}</strong>
             </div>
             <div className="hms-mail-detail-actions">
               <button type="button" onClick={() => setRuleTarget(detail.messages[detail.messages.length - 1] || null)}>
@@ -630,7 +630,7 @@ export function MailInbox({
             </div>
           </header>
 
-          <div className="hms-mail-reading" tabIndex={0} aria-label={detail.subject || "Sin asunto"}>
+          <div className="hms-mail-reading" tabIndex={0} aria-label={cleanDisplayText(detail.subject, "Sin asunto")}>
             <section className="hms-mail-ai-summary">
               <ShieldCheck size={21} />
               <div><strong>Resumen de la conversación</strong><p>{stripCssNoise(detail.summary)}</p><small>{detail.participants.join(" · ")}</small></div>
@@ -638,7 +638,7 @@ export function MailInbox({
                 <button
                   type="button"
                   className="hms-mail-listen"
-                  onClick={() => speakText(`${detail.subject || ""}. ${detail.summary}`, language, appearance.speechRate)}
+                  onClick={() => speakText(`${cleanDisplayText(detail.subject, "")}. ${stripCssNoise(detail.summary)}`, language, appearance.speechRate)}
                 >
                   <Volume2 size={16} />{nx(language, "listen")}
                 </button>

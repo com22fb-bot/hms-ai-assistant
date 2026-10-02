@@ -168,6 +168,10 @@ export function NucleoApp(props: NucleoAppProps) {
     return () => window.clearInterval(timer);
   }, []);
   const askRef = useRef<HTMLInputElement>(null);
+  const hoverTimer = useRef<number | null>(null);
+  const lastHelpNode = useRef<HTMLElement | null>(null);
+  const explainedNode = useRef<HTMLElement | null>(null);
+  const highlightTimer = useRef<number | null>(null);
   const seenRef = useRef<Set<string> | null>(null);
   const device = useMemo(() => detectDevice(), []);
   const locale = localeForLanguage(language);
@@ -349,6 +353,7 @@ export function NucleoApp(props: NucleoAppProps) {
       if (event.key === "Escape") {
         stopSpeaking();
         setBubble(null);
+        lastHelpNode.current = null;
         setShortcuts(false);
         setSnoozeFor(null);
         setAskHits(null);
@@ -385,9 +390,6 @@ export function NucleoApp(props: NucleoAppProps) {
     return title || body ? { title: title || t("guideTitle"), body } : null;
   }, [language, t]);
 
-  const hoverTimer = useRef<number | null>(null);
-  const lastHelpNode = useRef<HTMLElement | null>(null);
-  const explainedNode = useRef<HTMLElement | null>(null);
   useEffect(() => () => {
     if (hoverTimer.current !== null) window.clearTimeout(hoverTimer.current);
   }, []);
@@ -443,10 +445,13 @@ export function NucleoApp(props: NucleoAppProps) {
     if (target.focus) setPendingFocus(target.focus);
   }
 
+  useEffect(() => () => {
+    if (highlightTimer.current !== null) window.clearTimeout(highlightTimer.current);
+  }, []);
+
   useEffect(() => {
     if (!pendingFocus) return;
     let tries = 0;
-    let clearTimer = 0;
     const timer = window.setInterval(() => {
       tries += 1;
       const nodes = Array.from(document.querySelectorAll<HTMLElement>(`[data-help-key="${CSS.escape(pendingFocus)}"]`));
@@ -464,12 +469,14 @@ export function NucleoApp(props: NucleoAppProps) {
       const focusable = node.matches("button, a, input, select, textarea, [tabindex]") ? node : node.querySelector<HTMLElement>("button, a, input, select, textarea, [tabindex]");
       focusable?.focus({ preventScroll: true });
       node.classList.add("nx-highlight");
-      clearTimer = window.setTimeout(() => node.classList.remove("nx-highlight"), 2800);
+      // Kept in a ref: clearing pendingFocus re-runs this effect and must not cancel the removal.
+      if (highlightTimer.current !== null) window.clearTimeout(highlightTimer.current);
+      highlightTimer.current = window.setTimeout(() => {
+        highlightTimer.current = null;
+        node.classList.remove("nx-highlight");
+      }, 2800);
     }, 60);
-    return () => {
-      window.clearInterval(timer);
-      if (clearTimer) window.clearTimeout(clearTimer);
-    };
+    return () => window.clearInterval(timer);
   }, [pendingFocus, prefs.reducedMotion]);
 
   /**

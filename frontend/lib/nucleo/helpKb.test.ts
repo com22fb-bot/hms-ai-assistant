@@ -85,3 +85,12 @@ test("help: data-help-key resolves by entry id or by focus key", async () => {
   assert.equal(helpForKey("areaTile", "pt")?.title, "Área da vida");
   assert.equal(helpForKey("nope", "es"), null);
 });
+
+test("help: provider names and generic verbs alone stay case searches", () => {
+  assert.equal(top("gmail"), null);
+  assert.equal(top("outlook factura"), null);
+  assert.equal(top("salir de netflix"), null);
+  assert.equal(top("cómo conecto gmail"), "connectMail");
+  assert.equal(top("conectar yahoo"), "connectMail");
+  assert.equal(top("salir de la app"), "logout");
+});

@@ -46,8 +46,9 @@ const e = (
 
 export const HELP_ENTRIES: HelpEntry[] = [
   e("logout", { view: "settings", tab: "account", focus: "logout" },
-    ["cerrar sesion", "cerrar la sesion", "cierro sesion", "cierre de sesion", "salir", "salirme", "logout", "log out", "sign out", "signout", "log off", "se deconnecter", "deconnexion", "me deconnecter", "esci", "uscire", "disconnettersi", "logout", "sair", "terminar sessao", "encerrar sessao", "desloguear", "deslogear"],
-    ["sesion", "session", "sessao", "sessione", "exit", "quit", "irme"],
+    ["cerrar sesion", "cerrar la sesion", "cierro sesion", "cierre de sesion", "salir de la app", "salir de la aplicacion", "salir de donexto", "logout", "log out", "sign out", "signout", "log off", "se deconnecter", "deconnexion", "me deconnecter", "disconnettersi", "terminar sessao", "encerrar sessao", "desloguear", "deslogear"],
+    // Generic verbs ("salir de netflix") only count with a how-to word.
+    ["sesion", "session", "sessao", "sessione", "exit", "quit", "irme", "salir", "salirme", "esci", "uscire", "sair"],
     {
       es: { title: "Cerrar sesión", body: "Abajo a la izquierda, junto a tu nombre (en el celular: Menú), toca «Cerrar sesión». También está en Configuración › Cuenta. Para volver, solo inicia sesión otra vez.", cta: "Ir a Cerrar sesión" },
       en: { title: "Sign out", body: "Bottom left, next to your name (on a phone: Menu), tap “Sign out”. It is also in Settings › Account. To come back, just sign in again.", cta: "Go to Sign out" },
@@ -56,8 +57,9 @@ export const HELP_ENTRIES: HelpEntry[] = [
       pt: { title: "Sair", body: "No canto inferior esquerdo, ao lado do seu nome (no celular: Menu), toque em «Sair». Também está em Configuração › Conta. Para voltar, entre novamente.", cta: "Ir para Sair" },
     }),
   e("connectMail", { view: "settings", tab: "mail", focus: "connect-mail" },
-    ["conectar correo", "conectar mi correo", "conectar buzon", "agregar correo", "anadir correo", "cambiar correo", "otro correo", "connect mail", "connect email", "connect mailbox", "add mailbox", "connecter", "connetti", "conectar caixa", "conectar e-mail", "conectar email", "gmail", "outlook", "hotmail", "yahoo", "icloud", "microsoft 365", "office 365"],
-    ["conectar", "connect", "buzon", "mailbox", "cuenta de correo", "casella", "caixa"],
+    ["conectar correo", "conectar mi correo", "conectar buzon", "agregar correo", "anadir correo", "cambiar correo", "otro correo", "connect mail", "connect email", "connect mailbox", "add mailbox", "connecter", "connetti", "conectar caixa", "conectar e-mail", "conectar email", "microsoft 365", "office 365"],
+    // Provider names alone are normal searches ("gmail", "outlook factura").
+    ["conectar", "conecto", "connect", "buzon", "mailbox", "cuenta de correo", "casella", "caixa", "gmail", "outlook", "hotmail", "yahoo", "icloud"],
     {
       es: { title: "Conectar tu correo", body: "En Configuración › Correo toca «Conectar buzón» y elige Gmail, Outlook/Microsoft, Yahoo o iCloud. Donexto solo lee: no envía, no borra ni mueve correos.", cta: "Abrir Configuración › Correo" },
       en: { title: "Connect your mail", body: "In Settings › Mail tap “Connect mailbox” and pick Gmail, Outlook/Microsoft, Yahoo or iCloud. Donexto only reads: it never sends, deletes or moves mail.", cta: "Open Settings › Mail" },
