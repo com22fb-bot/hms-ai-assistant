@@ -16,6 +16,7 @@ import {
   Send,
   Settings2,
   ShieldCheck,
+  Volume2,
   X,
 } from "lucide-react";
 import {
@@ -23,10 +24,25 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
+  type CSSProperties,
 } from "react";
 
 import { hmsJson } from "@/lib/hmsApi";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { nx } from "@/lib/nucleo/copy";
+import { speakText } from "@/lib/nucleo/speech";
+
+/** Visual + accessibility settings copied from the user's Núcleo IA prefs. */
+export type MailAppearance = {
+  theme: "dark" | "light";
+  highContrast: boolean;
+  reducedMotion: boolean;
+  fontScale: number;
+  readAloud: boolean;
+  speechRate: number;
+};
 
 
 type FavoriteRule = {
@@ -176,7 +192,7 @@ function textList(value: unknown): string {
   return String(value);
 }
 
-function sanitizeEmailHtml(value: string): string {
+function sanitizeEmailHtml(value: string, fontScale = 1): string {
   const clean = value
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<iframe[\s\S]*?<\/iframe>/gi, "")
@@ -190,19 +206,80 @@ function sanitizeEmailHtml(value: string): string {
 
   return `<!doctype html><html lang="es"><head><meta charset="utf-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: cid:; style-src 'unsafe-inline'; font-src data:;" />
-<style>body{font-family:Arial,sans-serif;margin:22px;color:#172126;line-height:1.55;overflow-wrap:anywhere}img,table{max-width:100%;height:auto}a{color:#087b80}</style>
+<style>html{font-size:${Math.round(16 * fontScale)}px;overflow-x:hidden}body{font-family:Arial,sans-serif;margin:22px;color:#172126;line-height:1.55;overflow-wrap:anywhere;overflow-x:hidden}img,video{max-width:100%!important;height:auto!important}table{max-width:100%!important}td,th{word-break:break-word}pre{white-space:pre-wrap}a{color:#4f46e5}@media (max-width:480px){body{margin:14px}}</style>
 </head><body>${clean}</body></html>`;
+}
+
+/**
+ * Renders the sanitised HTML at its full height so the reading view keeps a
+ * single scroll area (no scrollbar inside the iframe). The sandbox allows
+ * same-origin only to measure the document; scripts stay disabled and the CSP
+ * above blocks every remote resource.
+ */
+function MailBody({ html, title, fontScale }: { html: string; title: string; fontScale: number }) {
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const srcDoc = useMemo(() => sanitizeEmailHtml(html, fontScale), [fontScale, html]);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    let observer: ResizeObserver | null = null;
+    let raf = 0;
+    const fit = () => {
+      window.cancelAnimationFrame(raf);
+      raf = window.requestAnimationFrame(() => {
+        const doc = frame.contentDocument;
+        const root = doc?.documentElement;
+        if (!doc || !root || frame.clientWidth === 0) return;
+        root.style.overflowY = "hidden";
+        const height = Math.ceil(Math.max(root.getBoundingClientRect().height, doc.body?.scrollHeight ?? 0));
+        if (height > 0 && Math.abs(frame.clientHeight - height) > 1) {
+          frame.style.height = `${height}px`;
+        }
+      });
+    };
+    const attach = () => {
+      fit();
+      observer?.disconnect();
+      observer = new ResizeObserver(fit);
+      observer.observe(frame);
+      const body = frame.contentDocument?.body;
+      if (body) observer.observe(body);
+    };
+    frame.addEventListener("load", attach);
+    if (frame.contentDocument?.readyState === "complete") attach();
+    return () => {
+      frame.removeEventListener("load", attach);
+      observer?.disconnect();
+      window.cancelAnimationFrame(raf);
+    };
+  }, [srcDoc]);
+
+  return (
+    <iframe
+      ref={frameRef}
+      title={title}
+      sandbox="allow-same-origin"
+      referrerPolicy="no-referrer"
+      scrolling="no"
+      srcDoc={srcDoc}
+    />
+  );
 }
 
 export function MailInbox({
   initialCategory,
   initialMessageId = null,
+  appearance,
   onClose,
 }: {
   initialCategory: string | null;
   initialMessageId?: string | null;
+  appearance?: MailAppearance;
   onClose: () => void;
 }) {
+  const { language } = useLanguage();
+  const fontScale = appearance?.fontScale ?? 1;
   const initialFilter = FILTERS.find(
     (item) => item.category === initialCategory,
   )?.key ?? "all";
@@ -353,8 +430,17 @@ export function MailInbox({
   const pageCount = Math.max(Math.ceil(total / PAGE_SIZE), 1);
 
   return (
-    <div className="hms-mailbox-overlay" role="dialog" aria-modal="true">
-      <section className="hms-mailbox-shell">
+    <div
+      className={detail ? "hms-mailbox-overlay is-reading" : "hms-mailbox-overlay"}
+      role="dialog"
+      aria-modal="true"
+      aria-label={detail?.subject || "Correos"}
+      data-appearance={appearance?.theme ?? "dark"}
+      data-contrast={appearance?.highContrast ? "high" : undefined}
+      data-motion={appearance?.reducedMotion ? "reduce" : undefined}
+      style={{ ["--mx-fs" as string]: String(fontScale) } as CSSProperties}
+    >
+      <section className="hms-mailbox-shell" inert={detail ? true : undefined} aria-hidden={detail ? true : undefined}>
         <header className="hms-mailbox-header">
           <div>
             <span>BANDEJA INTELIGENTE</span>
@@ -492,51 +578,64 @@ export function MailInbox({
       ) : null}
 
       {detail ? (
-        <section className="hms-mail-detail">
+        <section className="hms-mail-detail" aria-labelledby="hms-mail-detail-title">
           <header>
             <button type="button" onClick={() => setDetail(null)}><ArrowLeft size={19} /> Volver</button>
             <div>
               <span>{detail.message_count} mensajes</span>
-              <strong>{detail.subject || "Sin asunto"}</strong>
+              <strong id="hms-mail-detail-title">{detail.subject || "Sin asunto"}</strong>
             </div>
-            <button type="button" onClick={() => setRuleTarget(detail.messages[detail.messages.length - 1] || null)}>
-              <Settings2 size={18} /> Crear regla
-            </button>
+            <div className="hms-mail-detail-actions">
+              <button type="button" onClick={() => setRuleTarget(detail.messages[detail.messages.length - 1] || null)}>
+                <Settings2 size={18} /> Crear regla
+              </button>
+            </div>
           </header>
 
-          <section className="hms-mail-ai-summary">
-            <ShieldCheck size={21} />
-            <div><strong>Resumen de la conversación</strong><p>{detail.summary}</p><small>{detail.participants.join(" · ")}</small></div>
-          </section>
+          <div className="hms-mail-reading" tabIndex={0} aria-label={detail.subject || "Sin asunto"}>
+            <section className="hms-mail-ai-summary">
+              <ShieldCheck size={21} />
+              <div><strong>Resumen de la conversación</strong><p>{detail.summary}</p><small>{detail.participants.join(" · ")}</small></div>
+              {appearance?.readAloud ? (
+                <button
+                  type="button"
+                  className="hms-mail-listen"
+                  onClick={() => speakText(`${detail.subject || ""}. ${detail.summary}`, language, appearance.speechRate)}
+                >
+                  <Volume2 size={16} />{nx(language, "listen")}
+                </button>
+              ) : null}
+            </section>
 
-          <div className="hms-conversation-timeline">
-            {detail.messages.map((message, index) => (
-              <details key={message.id} open={index === detail.messages.length - 1}>
-                <summary>
-                  <span><strong>{message.sender || "Sin remitente"}</strong><small>{message.subject || "Sin asunto"}</small></span>
-                  <time>{formatDate(message.received_at)}</time>
-                </summary>
-                <div className="hms-message-metadata">
-                  <span>Para: {textList(message.recipients)}</span>
-                  {textList(message.cc) !== "—" ? <span>CC: {textList(message.cc)}</span> : null}
-                  <em>{CATEGORY_LABELS[message.triage_category] || message.triage_category}</em>
-                </div>
-                <section className="hms-message-summary"><ShieldCheck size={18} /><div><strong>Resumen Donexto</strong><p>{message.summary}</p><small>{message.triage_reason || "Sin explicación adicional."}</small></div></section>
-                {message.related_cases?.length ? (
-                  <div className="hms-mail-related-case">
-                    <strong>Caso relacionado</strong>
-                    {message.related_cases.map((item) => <span key={item.id}>{item.title} · {item.priority}</span>)}
+            <div className="hms-conversation-timeline">
+              {detail.messages.map((message, index) => (
+                <details key={message.id} open={index === detail.messages.length - 1}>
+                  <summary>
+                    <span><strong>{message.sender || "Sin remitente"}</strong><small>{message.subject || "Sin asunto"}</small></span>
+                    <time>{formatDate(message.received_at)}</time>
+                  </summary>
+                  <div className="hms-message-metadata">
+                    <span>Para: {textList(message.recipients)}</span>
+                    {textList(message.cc) !== "—" ? <span>CC: {textList(message.cc)}</span> : null}
+                    <em>{CATEGORY_LABELS[message.triage_category] || message.triage_category}</em>
                   </div>
-                ) : null}
-                <div className="hms-mail-content">
-                  {message.body_html ? (
-                    <iframe title={`Contenido de ${message.subject || "correo"}`} sandbox="" referrerPolicy="no-referrer" srcDoc={sanitizeEmailHtml(message.body_html)} />
-                  ) : (
-                    <pre>{message.body_text || "Este mensaje no contiene cuerpo disponible."}</pre>
-                  )}
-                </div>
-              </details>
-            ))}
+                  <section className="hms-message-summary"><ShieldCheck size={18} /><div><strong>Resumen Donexto</strong><p>{message.summary}</p><small>{message.triage_reason || "Sin explicación adicional."}</small></div></section>
+                  {message.related_cases?.length ? (
+                    <div className="hms-mail-related-case">
+                      <strong>Caso relacionado</strong>
+                      {message.related_cases.map((item) => <span key={item.id}>{item.title} · {item.priority}</span>)}
+                    </div>
+                  ) : null}
+                  <div className="hms-mail-content">
+                    {message.body_html ? (
+                      <MailBody html={message.body_html} title={`Contenido de ${message.subject || "correo"}`} fontScale={fontScale} />
+                    ) : (
+                      <pre>{message.body_text || "Este mensaje no contiene cuerpo disponible."}</pre>
+                    )}
+                  </div>
+                </details>
+              ))}
+            </div>
           </div>
         </section>
       ) : null}

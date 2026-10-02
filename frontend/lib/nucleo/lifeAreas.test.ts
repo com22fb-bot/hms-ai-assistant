@@ -3,13 +3,18 @@ import test from "node:test";
 
 import {
   amountsMatch,
+  areaChip,
   buildLifeItems,
   classifyText,
+  hasTerm,
   monthMoney,
   normalizeAmount,
   oneLineStatement,
   parseAmounts,
 } from "./lifeAreas.ts";
+
+// CI runs this file explicitly; pull in the command-center rules too.
+import "./commandCenter.test.ts";
 
 test("classifies inbox text into life areas without inventing a bank feed", () => {
   assert.equal(
@@ -85,4 +90,28 @@ test("parses money mentions and reconciles a charge with an order", () => {
   const stats = monthMoney(items, new Date("2026-10-15T12:00:00.000Z"));
   assert.equal(stats.movements, 2);
   assert.ok(stats.outflows > 50);
+});
+
+test("matches whole words, so short terms do not leak into other words", () => {
+  assert.equal(hasTerm("pay your irs taxes", "irs"), true);
+  assert.equal(hasTerm("see you saturday", "sat"), false);
+  assert.equal(hasTerm("border control", "order"), false);
+  assert.equal(hasTerm("tu suscripcion", "suscripci*"), true);
+  assert.equal(hasTerm("aviso de irs.gov", ".gov"), true);
+  assert.equal(classifyText("Privacy policy update").area, "other");
+  assert.equal(classifyText("Groups update for Saturday").area, "other");
+});
+
+test("scores every area and breaks ties by consequence", () => {
+  assert.equal(classifyText("El SAT te recuerda tu declaración mensual").area, "government");
+  assert.equal(classifyText("Tu póliza de seguro de auto se renueva").area, "insurance");
+  assert.equal(classifyText("Colegiatura de octubre de la universidad").area, "education");
+  assert.equal(classifyText("Tus boletos para el concierto").area, "events");
+  assert.equal(classifyText("Recordatorio de tu cita en Kaiser Permanente", "meeting").area, "health");
+  assert.equal(classifyText("Cotización solicitada por el cliente Acme", "quotation").area, "work");
+  assert.equal(classifyText("El cargo de $58.47 en Chase coincide con tu pedido").area, "money");
+  assert.equal(classifyText("Nouvelle connexion: mot de passe modifié").area, "security");
+  assert.equal(classifyText("Contraseña cambiada en tu cuenta").area, "security");
+  assert.equal(classifyText("Hola, ¿cómo estás?").area, "other");
+  assert.equal(areaChip("other"), "a-other");
 });

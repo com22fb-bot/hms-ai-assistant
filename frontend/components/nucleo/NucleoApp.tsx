@@ -2,7 +2,6 @@
 
 import { Inter } from "next/font/google";
 import {
-  AlarmClock,
   ArrowUp,
   Bell,
   Check,
@@ -34,18 +33,16 @@ import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { localeForLanguage } from "@/lib/i18n/languages";
 import { hmsJson, HmsApiError } from "@/lib/hmsApi";
 import { ALERT_PHRASE, nx, type NxKey } from "@/lib/nucleo/copy";
+import { askLocal, needsActionToday, type AskIntent } from "@/lib/nucleo/commandCenter";
 import {
-  LIFE_AREAS,
+  areaChip,
   buildLifeItems,
   isOpenStatus,
-  matchesQuery,
-  monthMoney,
   urgencyOf,
   type InboxCase,
   type InboxThread,
   type LifeAreaId,
   type LifeItem,
-  type Urgency,
 } from "@/lib/nucleo/lifeAreas";
 import {
   DEFAULT_PREFS,
@@ -72,6 +69,7 @@ import { itemMatchesRules } from "@/lib/nucleo/rules";
 import { playAlertTone, speakText, stopSpeaking, vibrateDevice } from "@/lib/nucleo/speech";
 import { supabase } from "@/lib/supabase";
 
+import { CommandCenter, areaLabel } from "@/components/nucleo/CommandCenter";
 import { Nexto } from "@/components/nucleo/Nexto";
 import { Onboarding } from "@/components/nucleo/Onboarding";
 import { SettingsView, type SettingsTab } from "@/components/nucleo/SettingsView";
@@ -136,11 +134,10 @@ export function NucleoApp(props: NucleoAppProps) {
   const [loading, setLoading] = useState(!props.preview);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [askHits, setAskHits] = useState<LifeItem[] | null>(null);
+  const [askHits, setAskHits] = useState<{ hits: LifeItem[]; intent: AskIntent } | null>(null);
   const [caseId, setCaseId] = useState<string | null>(null);
   const [areaFilter, setAreaFilter] = useState<LifeAreaId | "all">("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
-  const [showAreas, setShowAreas] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [shortcuts, setShortcuts] = useState(false);
@@ -380,26 +377,18 @@ export function NucleoApp(props: NucleoAppProps) {
     });
   }
 
-  async function submitAsk(text: string) {
+  /**
+   * "Pregunta a Donexto" is a local, rule-based search over the cases and
+   * threads already loaded from the user's own mailbox. No LLM, no new call.
+   */
+  function submitAsk(text: string) {
     const clean = text.trim();
     setQuery(clean);
     if (!clean) {
       setAskHits(null);
       return;
     }
-    if (props.preview || !props.connected) {
-      setAskHits(items.filter((item) => matchesQuery(item, clean)));
-      return;
-    }
-    try {
-      const [casePayload, threadPayload] = await Promise.all([
-        hmsJson<{ cases: InboxCase[] }>(`/api/hms/cases?limit=50&search=${encodeURIComponent(clean)}`, { cache: "no-store" }),
-        hmsJson<{ conversations: InboxThread[] }>(`/api/hms/messages/threads?limit=40&search=${encodeURIComponent(clean)}`, { cache: "no-store" }).catch(() => ({ conversations: [] as InboxThread[] })),
-      ]);
-      setAskHits(buildLifeItems(casePayload.cases ?? [], threadPayload.conversations ?? []));
-    } catch {
-      setAskHits(items.filter((item) => matchesQuery(item, clean)));
-    }
+    setAskHits(askLocal(items, clean, new Date()));
   }
 
   function dictate() {
@@ -416,7 +405,7 @@ export function NucleoApp(props: NucleoAppProps) {
     recognition.lang = locale;
     recognition.onresult = (event) => {
       const transcript = event.results?.[0]?.[0]?.transcript ?? "";
-      if (transcript) void submitAsk(transcript);
+      if (transcript) submitAsk(transcript);
     };
     recognition.start();
   }
@@ -560,16 +549,15 @@ export function NucleoApp(props: NucleoAppProps) {
     return Boolean(until && new Date(until).getTime() > clock);
   };
   const openItems = items.filter((item) => isOpenStatus(item.status) && !snoozed(item));
-  const doNow = [...openItems].sort((left, right) => rank(urgencyOf(left)) - rank(urgencyOf(right)) || left.when.localeCompare(right.when)).slice(0, 3);
-  const weekMore = Math.max(0, openItems.length - doNow.length);
-  const counts = countAreas(items.filter((item) => isOpenStatus(item.status)));
-  const money = monthMoney(items);
+  const actionToday = needsActionToday(items, new Date(clock), snoozed);
+  const doNow = actionToday.slice(0, 3);
+  const ordersOpen = openItems.filter((item) => item.area === "orders").length;
   const alertCount = openItems.filter((item) => item.area === "security" || item.priority === "high" || item.priority === "critical" || itemMatchesRules(item, prefs.alertRules)).length + notes.filter((note) => !note.read_at).length;
   const visible = filterItems(items, view, areaFilter, statusFilter, prefs);
   const summaryParts = doNow.map((item) => item.line).filter(Boolean);
-  const summary = doNow.length === 0
+  const summary = actionToday.length === 0
     ? t("summaryEmpty")
-    : `${doNow.length === 1 ? t("summaryOne") : t("summaryMany", { count: doNow.length })} ${summaryParts.join(" ")}`;
+    : `${actionToday.length === 1 ? t("summaryOne") : t("summaryMany", { count: actionToday.length })} ${summaryParts.join(" ")}`;
   const hour = new Date().getHours();
   const greet = hour < 12 ? t("greetingMorning") : hour < 19 ? t("greetingAfternoon") : t("greetingEvening");
   const provider = providerName(props.provider, props.mailboxEmail);
@@ -625,7 +613,7 @@ export function NucleoApp(props: NucleoAppProps) {
           <nav className="nav">
             {NAV.map((item) => {
               const Icon = item.icon;
-              const count = item.id === "today" ? doNow.length : item.id === "orders" ? counts.orders : item.id === "alerts" ? alertCount : 0;
+              const count = item.id === "today" ? actionToday.length : item.id === "orders" ? ordersOpen : item.id === "alerts" ? alertCount : 0;
               return (
                 <button
                   key={item.id}
@@ -670,7 +658,7 @@ export function NucleoApp(props: NucleoAppProps) {
             ) : null}
           </div>
         </aside>
-        <main className="main">
+        <main className={caseId ? "main is-reading" : view === "today" ? "main is-today" : "main"}>
           <div className="askbar">
             <form
               className="ask"
@@ -679,7 +667,7 @@ export function NucleoApp(props: NucleoAppProps) {
               data-help={t("helpAsk")}
               onSubmit={(event) => {
                 event.preventDefault();
-                void submitAsk(query);
+                submitAsk(query);
               }}
             >
               <Spark />
@@ -696,21 +684,28 @@ export function NucleoApp(props: NucleoAppProps) {
               />
               <kbd>⌘K</kbd>
               <button type="button" className="mic" aria-label={t("askMic")} onClick={dictate}><Mic className="i" /></button>
-              <button type="submit" className="btn primary go">{t("askSubmit")}<ArrowUp className="i" /></button>
+              <button type="submit" className="btn primary go" aria-label={t("askSubmit")}><span className="go-t">{t("askSubmit")}</span><ArrowUp className="i" /></button>
             </form>
             <button type="button" className="icon-btn" aria-label={t("navAlerts")} onClick={() => show("alerts")}>
               <Bell className="i lg" />
               {alertCount > 0 && prefs.badges ? <span className="dot" /> : null}
             </button>
             {askHits ? (
-              <div className="card results" role="listbox" aria-label={t("askResults")}>
-                {askHits.length === 0 ? <p className="empty">{t("askEmpty")}</p> : askHits.slice(0, 8).map((item) => (
+              <div className="card results" role="region" aria-live="polite" aria-label={t("askResults")}>
+                <div className="results-h">
+                  <span className="results-n">{t("askCount", { count: askHits.hits.length })}</span>
+                  {intentLabels(t, askHits.intent).length ? <span className="results-f">{t("askFilters", { filters: intentLabels(t, askHits.intent).join(" · ") })}</span> : null}
+                </div>
+                {askHits.hits.length === 0 ? <p className="empty">{t("askEmpty")}</p> : askHits.hits.slice(0, 8).map((item) => (
                   <button key={item.id} type="button" className="result" onClick={() => openItem(item)}>
                     <span>{item.line || item.title}</span>
-                    <small>{areaName(t, item.area)} · {item.sender}</small>
+                    <small>{areaLabel(t, item.area)}{item.sender ? ` · ${item.sender}` : ""}{item.amountRaw ? ` · ${item.amountRaw}` : ""}</small>
                   </button>
                 ))}
-                <button type="button" className="btn sm" onClick={() => setAskHits(null)}>{t("searchClear")}</button>
+                <div className="results-f2">
+                  <small>{t("askLocalNote")}</small>
+                  <button type="button" className="btn sm" onClick={() => { setAskHits(null); setQuery(""); }}>{t("searchClear")}</button>
+                </div>
               </div>
             ) : null}
           </div>
@@ -789,79 +784,49 @@ export function NucleoApp(props: NucleoAppProps) {
           ) : (
             <>
               {view === "today" ? (
-                <>
-                  <div className="summary" data-help-title={t("listenSummary")} data-help={summary}>
-                    <div>
-                      <div className="eyebrow">{new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }).format(new Date())} · {greet}, {firstName(props.name, props.email)}</div>
-                      <div className="ai-line"><Spark /><span>{summary}</span></div>
-                    </div>
-                    {prefs.readAloud ? (
-                      <button type="button" className="listen" onClick={() => { speakText(summary, language, prefs.speechRate); setCaption(summary); }}>
-                        <Volume2 className="i" />{t("listenSummary")}
-                      </button>
-                    ) : null}
-                  </div>
-                  <section>
-                    <div className="sec-h">
-                      <h2 data-help-title={t("doNow")} data-help={t("helpDoNow")}><Spark />{t("doNow")} {doNow.length > 0 ? <span className="badge-n">{doNow.length}</span> : null}</h2>
-                      <div className="meta">{t("sortedBy")}{weekMore > 0 ? <> · <button type="button" className="link" onClick={() => { show("areas"); setStatusFilter("open"); }}>{t("moreWeek", { count: weekMore })}</button></> : null}</div>
-                    </div>
-                    {loading ? <p className="empty">{t("loading")}</p> : doNow.length === 0 ? (
-                      <Empty t={t} connected={props.connected} onConnect={props.onConnect} />
-                    ) : (
-                      <div className="donext">
-                        {doNow.map((item, index) => (
-                          <ActionCard
-                            key={item.id}
-                            t={t}
-                            item={item}
-                            lead={index === 0}
-                            locale={locale}
-                            readAloud={prefs.readAloud}
-                            language={language}
-                            rate={prefs.speechRate}
-                            snoozeOpen={snoozeFor === item.id}
-                            onOpen={() => openItem(item)}
-                            onDone={() => void markDone(item)}
-                            onSnooze={() => setSnoozeFor(item.id)}
-                            onPickSnooze={(hours) => void snooze(item, hours)}
-                            onCaption={setCaption}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </section>
-                  <AreaChips
-                    t={t}
-                    counts={counts}
-                    total={items.filter((item) => isOpenStatus(item.status)).length}
-                    active={areaFilter}
-                    expanded={showAreas}
-                    onToggle={() => setShowAreas((value) => !value)}
-                    onPick={(area) => {
-                      setAreaFilter(area);
-                      show(area === "all" ? "areas" : area === "money" || area === "bills" ? "money" : area === "orders" ? "orders" : area === "subscriptions" ? "subs" : "areas");
-                    }}
-                  />
-                  <div className="lower">
-                    <Timeline
-                      t={t}
-                      items={items}
-                      loading={loading}
-                      locale={locale}
-                      readAloud={prefs.readAloud}
-                      language={language}
-                      rate={prefs.speechRate}
-                      onOpen={openItem}
-                      onCaption={setCaption}
-                    />
-                    <MonthCard t={t} money={money} locale={locale} onMoney={() => show("money")} onSubs={() => show("subs")} />
-                  </div>
-                </>
+                <CommandCenter
+                  t={t}
+                  locale={locale}
+                  language={language}
+                  items={items}
+                  notes={notes}
+                  loading={loading}
+                  connected={props.connected}
+                  readAloud={prefs.readAloud}
+                  speechRate={prefs.speechRate}
+                  badges={prefs.badges}
+                  now={clock}
+                  eyebrow={`${new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long" }).format(new Date(clock))} · ${greet}, ${firstName(props.name, props.email)}`}
+                  summary={summary}
+                  snoozed={snoozed}
+                  matchesRule={(item) => itemMatchesRules(item, prefs.alertRules)}
+                  snoozeFor={snoozeFor}
+                  onSnoozeOpen={setSnoozeFor}
+                  onSnooze={(item, hours) => void snooze(item, hours)}
+                  onDone={(item) => void markDone(item)}
+                  onOpen={openItem}
+                  onReadNote={(id) => {
+                    void markPushRead(id).then(refreshPush).catch(() => undefined);
+                  }}
+                  onPickArea={(area) => {
+                    setAreaFilter(area);
+                    setStatusFilter("open");
+                    show("areas");
+                  }}
+                  onViewAlerts={() => show("alerts")}
+                  onViewOpen={() => {
+                    setAreaFilter("all");
+                    setStatusFilter("open");
+                    show("areas");
+                  }}
+                  onConnect={props.onConnect}
+                  onCaption={setCaption}
+                />
               ) : (
                 <ListView
                   t={t}
-                  title={t(NAV.find((item) => item.id === view)?.label || "navAreas")}
+                  title={view === "areas" && areaFilter !== "all" ? areaLabel(t, areaFilter) : t(NAV.find((item) => item.id === view)?.label || "navAreas")}
+                  onClearArea={view === "areas" && areaFilter !== "all" ? () => setAreaFilter("all") : undefined}
                   items={visible}
                   loading={loading}
                   connected={props.connected}
@@ -977,202 +942,10 @@ function Empty({ t, connected, onConnect }: { t: (key: NxKey, vars?: Record<stri
   );
 }
 
-function ActionCard(props: {
-  t: (key: NxKey, vars?: Record<string, string | number>) => string;
-  item: LifeItem;
-  lead: boolean;
-  locale: string;
-  readAloud: boolean;
-  language: Parameters<typeof speakText>[1];
-  rate: number;
-  snoozeOpen: boolean;
-  onOpen: () => void;
-  onDone: () => void;
-  onSnooze: () => void;
-  onPickSnooze: (hours: number) => void;
-  onCaption: (text: string) => void;
-}) {
-  const { t, item } = props;
-  const urgency = urgencyOf(item);
-  const chip = LIFE_AREAS.find((area) => area.id === item.area)?.chip ?? "a-events";
-  return (
-    <article className={props.lead ? "card dn lead" : "card dn"}>
-      <div className="dn-top">
-        <span className={`urg u-${urgency === "high" ? "high" : urgency === "med" ? "med" : "low"}`}>{dueLabel(t, item, props.locale)}</span>
-        <span className={`chip ${chip}`}>{areaName(t, item.area)}</span>
-      </div>
-      <div>
-        <h3>{item.line || item.title}</h3>
-        <div className="sub">{item.sender || t("readOnly")}{item.amountRaw ? <> <span className="sep" />{item.amountRaw}</> : null}</div>
-      </div>
-      <div className="next"><ChevronRight className="i" /><span>{item.requestedAction || t("actionFallback")}</span></div>
-      <div className="dn-actions">
-        <button type="button" className={props.lead ? "btn primary sm" : "btn sm"} onClick={props.onSnooze}><AlarmClock className="i" />{t("remind")}</button>
-        {props.readAloud ? (
-          <button type="button" className="listen" onClick={() => { speakText(item.line || item.title, props.language, props.rate); props.onCaption(item.line || item.title); }}>
-            <Volume2 className="i" />{t("listen")}
-          </button>
-        ) : null}
-        <button type="button" className="btn sm sq" aria-label={t("done")} onClick={props.onDone}><Check className="i" /></button>
-        <button type="button" className="btn sm" onClick={props.onOpen}>{t("openCase")}</button>
-      </div>
-      {props.snoozeOpen ? (
-        <div className="card snooze-pop">
-          <button type="button" className="btn sm" onClick={() => props.onPickSnooze(1)}>{t("snoozeHour")}</button>
-          <button type="button" className="btn sm" onClick={() => props.onPickSnooze(15)}>{t("snoozeTomorrow")}</button>
-          <button type="button" className="btn sm" onClick={() => props.onPickSnooze(72)}>{t("snooze3d")}</button>
-        </div>
-      ) : null}
-    </article>
-  );
-}
-
-function AreaChips(props: {
-  t: (key: NxKey, vars?: Record<string, string | number>) => string;
-  counts: Record<LifeAreaId, number>;
-  total: number;
-  active: LifeAreaId | "all";
-  expanded: boolean;
-  onToggle: () => void;
-  onPick: (area: LifeAreaId | "all") => void;
-}) {
-  const visible = props.expanded ? LIFE_AREAS : LIFE_AREAS.slice(0, 7);
-  const hidden = LIFE_AREAS.length - visible.length;
-  return (
-    <div className="areas" data-help-title={props.t("areas")} data-help={props.t("helpAreas")}>
-      <span className="lbl">{props.t("areas")}</span>
-      <button type="button" className={props.active === "all" ? "cnt all" : "cnt all"} onClick={() => props.onPick("all")}>{props.t("all")} <b>{props.total}</b></button>
-      {visible.map((area) => (
-        <button key={area.id} type="button" className={`cnt ${area.chip}`} onClick={() => props.onPick(area.id)}>
-          {areaName(props.t, area.id)} <b>{props.counts[area.id] || 0}</b>
-        </button>
-      ))}
-      {hidden > 0 || props.expanded ? (
-        <button type="button" className="cnt more" onClick={props.onToggle}>
-          {props.expanded ? props.t("lessAreas") : props.t("moreAreas", { count: hidden })}
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
-function Timeline(props: {
-  t: (key: NxKey) => string;
-  items: LifeItem[];
-  loading: boolean;
-  locale: string;
-  readAloud: boolean;
-  language: Parameters<typeof speakText>[1];
-  rate: number;
-  onOpen: (item: LifeItem) => void;
-  onCaption: (text: string) => void;
-}) {
-  const groups = groupByDay(props.items.slice(0, 12), props.locale);
-  return (
-    <section className="card timeline" aria-label={props.t("areas")}>
-      {props.loading ? <p className="empty">{props.t("loading")}</p> : groups.length === 0 ? <p className="empty">{props.t("timelineEmpty")}</p> : groups.map((group) => (
-        <div key={group.label}>
-          <div className="grp">{group.label}</div>
-          {group.items.map((item) => {
-            const chip = LIFE_AREAS.find((area) => area.id === item.area)?.chip ?? "a-events";
-            return (
-              <button key={item.id} type="button" className="ev" onClick={() => props.onOpen(item)} style={{ width: "100%", background: "transparent", border: 0, color: "inherit", textAlign: "left" }}>
-                <span className="tm">{formatClock(item.when, props.locale)}</span>
-                <span className={`dot ${chip}`}><i /></span>
-                <div className="tile" aria-hidden>{(item.sender || "D").slice(0, 1).toUpperCase()}</div>
-                <div style={{ minWidth: 0 }}>
-                  <div className="st">{item.line || item.title}</div>
-                  <div className="mt"><span className={`chip ${chip}`}>{areaName(props.t, item.area)}</span>{item.sender}</div>
-                </div>
-                <div className="pills">
-                  {item.reconciled ? <span className="pill ok">{props.t("reconciled")}</span> : null}
-                  {item.area === "security" ? <span className="pill warn">{props.t("youQuestion")}</span> : null}
-                  {item.amountRaw ? <span className="pill num">{item.amountRaw}</span> : null}
-                </div>
-                {props.readAloud ? (
-                  <span
-                    className="listen icon bare"
-                    role="button"
-                    tabIndex={0}
-                    aria-label={props.t("listen")}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      speakText(item.line || item.title, props.language, props.rate);
-                      props.onCaption(item.line || item.title);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.stopPropagation();
-                        speakText(item.line || item.title, props.language, props.rate);
-                      }
-                    }}
-                  >
-                    <Volume2 className="i" />
-                  </span>
-                ) : <span />}
-              </button>
-            );
-          })}
-        </div>
-      ))}
-    </section>
-  );
-}
-
-function MonthCard({
-  t,
-  money,
-  locale,
-  onMoney,
-  onSubs,
-}: {
-  t: (key: NxKey, vars?: Record<string, string | number>) => string;
-  money: ReturnType<typeof monthMoney>;
-  locale: string;
-  onMoney: () => void;
-  onSubs: () => void;
-}) {
-  const cash = new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency: "USD",
-    currencyDisplay: "narrowSymbol",
-  }).format(money.outflows);
-  return (
-    <aside className="card mini" data-help-title={t("monthTitle")} data-help={t("helpMonth")}>
-      <div className="h">
-        <div>
-          <h3>{t("monthTitle")}</h3>
-          <div className="note">{t("monthNote")}</div>
-        </div>
-      </div>
-      {money.movements === 0 && money.subscriptions === 0 ? <p className="empty">{t("monthEmpty")}</p> : (
-        <>
-          <button type="button" className="mrow a-money" onClick={onMoney}>
-            <span className="ic"><Wallet className="i" /></span>
-            <div>
-              <div className="k">{t("monthOut")}</div>
-              <div className="v">{cash}</div>
-              <div className="s">{t("monthRefunds", { amount: new Intl.NumberFormat(locale, { style: "currency", currency: "USD", currencyDisplay: "narrowSymbol" }).format(money.refunds), count: money.movements })}</div>
-            </div>
-            <ChevronRight className="i sm" />
-          </button>
-          <button type="button" className="mrow a-subs" onClick={onSubs}>
-            <span className="ic"><Repeat className="i" /></span>
-            <div>
-              <div className="k">{t("monthSubs", { count: money.subscriptions })}</div>
-              <div className="s">{money.priceIncreases ? t("monthIncrease", { count: money.priceIncreases }) : t("activeSubs", { count: money.subscriptions })}</div>
-            </div>
-            <ChevronRight className="i sm" />
-          </button>
-        </>
-      )}
-    </aside>
-  );
-}
-
 function ListView(props: {
   t: (key: NxKey, vars?: Record<string, string | number>) => string;
   title: string;
+  onClearArea?: () => void;
   items: LifeItem[];
   loading: boolean;
   connected: boolean;
@@ -1187,7 +960,10 @@ function ListView(props: {
 }) {
   return (
     <section>
-      <div className="sec-h"><h2>{props.title}</h2></div>
+      <div className="sec-h">
+        <h2>{props.title}</h2>
+        {props.onClearArea ? <button type="button" className="btn sm" onClick={props.onClearArea}><X className="i" />{props.t("clearFilter")}</button> : null}
+      </div>
       <div className="filters" role="toolbar">
         {(["open", "high", "done", "all"] as StatusFilter[]).map((filter) => (
           <button key={filter} type="button" className={props.statusFilter === filter ? "btn primary sm" : "btn sm"} onClick={() => props.onStatus(filter)}>
@@ -1215,11 +991,11 @@ function ListView(props: {
           {props.items.map((item) => (
             <button key={item.id} type="button" className="ev" style={{ width: "100%", background: "transparent", border: 0, color: "inherit", textAlign: "left" }} onClick={() => props.onOpen(item)}>
               <span className="tm">{formatClock(item.when, props.locale)}</span>
-              <span className={`dot ${LIFE_AREAS.find((area) => area.id === item.area)?.chip ?? ""}`}><i /></span>
+              <span className={`dot ${areaChip(item.area)}`}><i /></span>
               <div className="tile">{(item.sender || "D").slice(0, 1)}</div>
               <div style={{ minWidth: 0 }}>
                 <div className="st">{item.line || item.title}</div>
-                <div className="mt">{areaName(props.t, item.area)} · {item.sender}</div>
+                <div className="mt">{areaLabel(props.t, item.area)}{item.sender ? ` · ${item.sender}` : ""}</div>
               </div>
               <span className="pill">{item.status}</span>
               <ChevronRight className="i" />
@@ -1266,8 +1042,8 @@ function CaseDetail(props: {
   }, [props.caseId, props.preview]);
   const line = props.item?.line || detail?.summary || "";
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <header className="topbar">
+    <div className="case-view">
+      <header className="topbar case-top">
         <div className="crumbs">
           <button type="button" className="back" aria-label={props.t("caseBack")} onClick={props.onBack}><X className="i" /></button>
           <b>{props.item?.title || props.t("openCase")}</b>
@@ -1277,14 +1053,14 @@ function CaseDetail(props: {
           {props.item ? <button type="button" className="btn" onClick={() => props.onDone(props.item as LifeItem)}><Check className="i" />{props.t("done")}</button> : null}
         </div>
       </header>
-      <section className="card hero">
+      <section className="card hero case-hero">
         <div>
           <div className="chips">
-            {props.item ? <span className={`chip ${LIFE_AREAS.find((area) => area.id === props.item?.area)?.chip}`}>{areaName(props.t, props.item.area)}</span> : null}
+            {props.item ? <span className={`chip ${areaChip(props.item.area)}`}>{areaLabel(props.t, props.item.area)}</span> : null}
             {props.item?.reconciled ? <span className="pill ok">{props.t("reconciled")}</span> : null}
           </div>
           <div className="ai-label"><Spark />{props.t("caseOneLine")}</div>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+          <div className="case-line">
             <h1 className="statement">{line}</h1>
             {props.readAloud ? (
               <button type="button" className="listen" onClick={() => { speakText(line, props.language, props.rate); props.onCaption(line); }}>
@@ -1292,10 +1068,10 @@ function CaseDetail(props: {
               </button>
             ) : null}
           </div>
-          <p style={{ marginTop: 10, color: "var(--text-3)" }}>{props.t("caseNotBalance")}</p>
+          <p className="case-note">{props.t("caseNotBalance")}</p>
         </div>
       </section>
-      <div className="case-grid">
+      <div className="case-grid case-body">
         <section className="card">
           <div className="card-h"><h3>{props.t("caseEvents")}</h3></div>
           <div className="tl">
@@ -1310,7 +1086,7 @@ function CaseDetail(props: {
             ))}
           </div>
         </section>
-        <aside style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <aside className="case-side">
           <section className="card next-box">
             <div className="ai-label">{props.t("caseNext")}</div>
             <div className="big">{detail?.requested_action || props.item?.requestedAction || props.t("actionFallback")}</div>
@@ -1318,9 +1094,9 @@ function CaseDetail(props: {
           <section className="card">
             <div className="card-h"><h3><Mail className="i" />{props.t("caseSources")}</h3></div>
             {(detail?.messages ?? []).length === 0 ? <p className="empty">{props.t("timelineEmpty")}</p> : detail?.messages?.map((message) => (
-              <button key={message.id} type="button" className="src" style={{ width: "100%", background: "transparent", color: "inherit", textAlign: "left" }} onClick={() => props.onOpenMail(message.id)}>
+              <button key={message.id} type="button" className="src" onClick={() => props.onOpenMail(message.id)}>
                 <Mail className="i" />
-                <div>
+                <div className="src-text">
                   <div className="sj">{message.subject || message.snippet}</div>
                   <div className="fr">{message.sender}</div>
                 </div>
@@ -1349,18 +1125,6 @@ type Dictation = {
   onresult: ((event: { results?: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
 };
 
-function rank(urgency: Urgency): number {
-  if (urgency === "high") return 0;
-  if (urgency === "med") return 1;
-  return 2;
-}
-
-function countAreas(items: LifeItem[]): Record<LifeAreaId, number> {
-  const counts = Object.fromEntries(LIFE_AREAS.map((area) => [area.id, 0])) as Record<LifeAreaId, number>;
-  for (const item of items) counts[item.area] += 1;
-  return counts;
-}
-
 function filterItems(items: LifeItem[], view: ViewId, area: LifeAreaId | "all", status: StatusFilter, prefs: NucleoPrefs): LifeItem[] {
   return items.filter((item) => {
     if (view === "money" && item.area !== "money" && item.area !== "bills") return false;
@@ -1375,37 +1139,6 @@ function filterItems(items: LifeItem[], view: ViewId, area: LifeAreaId | "all", 
   });
 }
 
-const AREA_LABELS: Record<LifeAreaId, Record<string, string>> = {
-  money: { es: "Dinero", en: "Money", fr: "Argent", it: "Denaro", pt: "Dinheiro" },
-  orders: { es: "Pedidos", en: "Orders", fr: "Commandes", it: "Ordini", pt: "Pedidos" },
-  subscriptions: { es: "Suscripciones", en: "Subscriptions", fr: "Abonnements", it: "Abbonamenti", pt: "Assinaturas" },
-  work: { es: "Trabajo", en: "Work", fr: "Travail", it: "Lavoro", pt: "Trabalho" },
-  home: { es: "Hogar y familia", en: "Home & family", fr: "Foyer", it: "Casa e famiglia", pt: "Casa e família" },
-  health: { es: "Salud", en: "Health", fr: "Santé", it: "Salute", pt: "Saúde" },
-  bills: { es: "Facturas", en: "Bills", fr: "Factures", it: "Fatture", pt: "Faturas" },
-  travel: { es: "Viajes", en: "Travel", fr: "Voyages", it: "Viaggi", pt: "Viagens" },
-  security: { es: "Seguridad", en: "Security", fr: "Sécurité", it: "Sicurezza", pt: "Segurança" },
-  government: { es: "Gobierno", en: "Government", fr: "Administration", it: "Governo", pt: "Governo" },
-  insurance: { es: "Seguros", en: "Insurance", fr: "Assurance", it: "Assicurazione", pt: "Seguros" },
-  education: { es: "Educación", en: "Education", fr: "Éducation", it: "Istruzione", pt: "Educação" },
-  social: { es: "Social", en: "Social", fr: "Social", it: "Social", pt: "Social" },
-  events: { es: "Eventos", en: "Events", fr: "Événements", it: "Eventi", pt: "Eventos" },
-  promos: { es: "Promociones", en: "Promotions", fr: "Promotions", it: "Promozioni", pt: "Promoções" },
-};
-
-function areaName(_t: (key: NxKey) => string, area: LifeAreaId): string {
-  if (typeof document === "undefined") return AREA_LABELS[area].es;
-  const lang = document.documentElement.lang?.slice(0, 2) || "es";
-  return AREA_LABELS[area][lang] || AREA_LABELS[area].en;
-}
-
-function dueLabel(t: (key: NxKey, vars?: Record<string, string | number>) => string, item: LifeItem, locale: string): string {
-  if (!item.dueAt) return urgencyOf(item) === "high" ? t("urgentHigh") : t("noDue");
-  const due = new Date(item.dueAt);
-  if (due.getTime() < Date.now()) return t("overdue");
-  return t("dueIn", { when: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(due) });
-}
-
 function formatWhen(iso: string, locale: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
@@ -1418,15 +1151,17 @@ function formatClock(iso: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(date);
 }
 
-function groupByDay(items: LifeItem[], locale: string): Array<{ label: string; items: LifeItem[] }> {
-  const groups = new Map<string, LifeItem[]>();
-  for (const item of items) {
-    const label = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "short" }).format(new Date(item.when));
-    const bucket = groups.get(label) ?? [];
-    bucket.push(item);
-    groups.set(label, bucket);
-  }
-  return [...groups.entries()].map(([label, rows]) => ({ label, items: rows }));
+function intentLabels(t: (key: NxKey, vars?: Record<string, string | number>) => string, intent: AskIntent): string[] {
+  const labels = intent.areas.map((area) => areaLabel(t, area));
+  if (intent.time === "today") labels.push(t("askTimeToday"));
+  if (intent.time === "tomorrow") labels.push(t("askTimeTomorrow"));
+  if (intent.time === "week") labels.push(t("askTimeWeek"));
+  if (intent.time === "overdue") labels.push(t("askTimeOverdue"));
+  if (intent.time === "month") labels.push(t("askTimeMonth"));
+  if (intent.status === "open") labels.push(t("askStatusOpen"));
+  if (intent.status === "done") labels.push(t("askStatusDone"));
+  if (intent.amount !== null) labels.push(`$${intent.amount}`);
+  return labels;
 }
 
 function initials(value: string): string {

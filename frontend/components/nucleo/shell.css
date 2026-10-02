@@ -440,3 +440,725 @@
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
   font: 14px/1.45 Inter, ui-sans-serif, system-ui, sans-serif;
 }
+
+/* ==========================================================================
+   One-screen layout: the app is exactly one viewport tall. Only the main
+   column may scroll (and on wide screens the dashboard fits without it).
+   ========================================================================== */
+.nx .app {
+  height: 100dvh;
+}
+/* globals.css ships a legacy `.sidebar { position: sticky; height: 100vh }`. */
+.nx .sidebar {
+  position: relative;
+  top: auto;
+  height: 100%;
+  /* …and `color: #fff`, which made sidebar text invisible on light themes. */
+  color: var(--text);
+  min-height: 0;
+  overflow: hidden;
+}
+.nx .main {
+  min-height: 0;
+  padding: 20px 28px;
+  gap: 14px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.nx .main.is-reading {
+  overflow: hidden;
+}
+.nx .askbar {
+  flex: none;
+  min-width: 0;
+}
+.nx .askbar .ask {
+  min-width: 0;
+}
+.nx .results-h,
+.nx .results-f2 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 10px;
+  font-size: calc(12px * var(--fs));
+  color: var(--text-3);
+}
+.nx .results-n {
+  font-weight: 650;
+  color: var(--text-2);
+}
+.nx .results-f {
+  color: var(--accent);
+  font-weight: 560;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nx .results-f2 {
+  border-top: 1px solid var(--divider);
+  padding-top: 8px;
+  margin-top: 2px;
+}
+
+/* ---------- Centro de mando ---------- */
+.nx .cc {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  flex: 1;
+}
+.nx .cc-summary {
+  flex: none;
+}
+.nx .cc-summary-text {
+  min-width: 0;
+  flex: 1;
+}
+.nx .cc-summary .ai-line {
+  margin-top: 4px;
+  min-width: 0;
+}
+.nx .cc-summary .ai-line span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nx .cc-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  flex: none;
+}
+.nx .cc-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: calc(250px * var(--fs));
+  padding: 4px 0 10px;
+}
+.nx .cc-action {
+  z-index: 3;
+}
+.nx[data-theme="nucleo"] .cc-action {
+  border-color: var(--accent-line);
+  background: linear-gradient(180deg, rgba(155, 140, 255, 0.1), rgba(34, 211, 238, 0.02) 70%), rgba(255, 255, 255, 0.02);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 0 0 1px rgba(155, 140, 255, 0.1), 0 20px 50px -24px rgba(124, 92, 255, 0.45);
+}
+.nx[data-theme="nucleo-claro"] .cc-action {
+  border-color: rgba(109, 75, 255, 0.3);
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.08), rgba(34, 211, 238, 0.03) 70%), rgba(255, 255, 255, 0.82);
+  box-shadow: inset 0 1px 0 #fff, 0 0 0 4px rgba(124, 92, 255, 0.05), 0 22px 50px -26px rgba(109, 75, 255, 0.45);
+}
+.nx[data-theme="light"] .cc-action,
+.nx[data-theme="command"] .cc-action {
+  border-color: var(--accent-line);
+}
+.nx .cc-h {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px 6px;
+  min-width: 0;
+}
+.nx .cc-h h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: calc(14px * var(--fs));
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  white-space: nowrap;
+}
+.nx .cc-h h2 > svg.i,
+.nx .cc-h h2 > .badge-n {
+  flex: none;
+}
+.nx .cc-h h2 > svg.i {
+  color: var(--accent);
+}
+.nx .cc-h h2 .spark {
+  width: 15px;
+  height: 15px;
+}
+.nx .cc-note {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(11.5px * var(--fs));
+  font-weight: 500;
+  color: var(--text-3);
+}
+.nx .cc-link {
+  flex: none;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: calc(12px * var(--fs));
+  font-weight: 600;
+}
+.nx .badge-n.hot {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+}
+.nx .cc-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.nx .cc-list > li + li {
+  border-top: 1px solid var(--divider);
+}
+.nx .cc-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding-right: 8px;
+}
+.nx .cc-row-main,
+.nx .cc-ev {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 8px 8px 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+.nx .cc-ev {
+  padding-right: 14px;
+}
+.nx .cc-row-main:hover,
+.nx .cc-ev:hover {
+  background: var(--surface-2);
+}
+.nx .cc-urg {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--u);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--u) 22%, transparent);
+}
+.nx .cc-row-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.nx .cc-row-text b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(13.5px * var(--fs));
+  font-weight: 560;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.nx .cc-row-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(11.5px * var(--fs));
+  color: var(--text-3);
+}
+.nx .cc-row .chip,
+.nx .cc-ev .pill {
+  flex: none;
+}
+.nx .cc-ev .pill {
+  min-height: calc(22px * var(--fs));
+  font-size: calc(11px * var(--fs));
+}
+.nx .cc-row-acts {
+  display: flex;
+  flex: none;
+  gap: 2px;
+}
+.nx .cc-icon {
+  width: calc(28px * var(--fs));
+  height: calc(28px * var(--fs));
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-3);
+}
+.nx .cc-icon:hover,
+.nx .cc-icon[aria-expanded="true"] {
+  border-color: var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.nx .cc-row .snooze-pop {
+  top: calc(100% - 6px);
+  right: 8px;
+  bottom: auto;
+}
+.nx .cc-days {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.nx .cc-day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 2px;
+  font-size: calc(10.5px * var(--fs));
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.nx .cc-day::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--divider);
+}
+.nx .cc-day.is-late {
+  color: var(--danger);
+}
+.nx .cc-days .cc-ev {
+  padding-block: 6px;
+}
+.nx .cc-time {
+  width: calc(70px * var(--fs));
+  flex: none;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(11.5px * var(--fs));
+  font-variant-numeric: tabular-nums;
+  color: var(--text-3);
+}
+.nx .cc-dot {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--c);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--c) 60%, transparent);
+}
+.nx .cc-al-ic {
+  width: 28px;
+  height: 28px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--k) 28%, transparent);
+  background: color-mix(in srgb, var(--k) 13%, transparent);
+  color: var(--k);
+}
+.nx .r-security { --k: var(--danger); }
+.nx .r-priority,
+.nx .r-priceIncrease { --k: var(--warn); }
+.nx .r-rule { --k: var(--accent); }
+.nx .r-push { --k: var(--info); }
+.nx .cc-more {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: auto 14px 0;
+  padding-top: 6px;
+  border: 0;
+  background: none;
+  color: var(--text-2);
+  font-size: calc(12px * var(--fs));
+  font-weight: 560;
+}
+.nx .cc-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 14px 18px;
+  text-align: center;
+  font-size: calc(12.5px * var(--fs));
+  color: var(--text-2);
+}
+.nx .cc-empty p {
+  max-width: 32ch;
+}
+.nx .cc-empty-ic {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--accent-line);
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  box-shadow: 0 0 28px -8px var(--accent-line);
+}
+.nx .cc-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 14px;
+}
+.nx .cc-skel i {
+  display: block;
+  height: 10px;
+}
+.nx .cc-skel i:nth-child(2) { width: 82%; }
+.nx .cc-skel i:nth-child(3) { width: 64%; }
+
+.nx .cc-areas {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: none;
+  min-width: 0;
+}
+.nx .cc-areas .cc-h {
+  padding: 0;
+}
+.nx .cc-areas .cc-h h2 .cc-note {
+  margin-left: 4px;
+}
+.nx .cc-areas .cnt.all {
+  flex: none;
+}
+.nx .cc-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+.nx .cc-tile {
+  position: relative;
+  min-width: 0;
+  min-height: calc(74px * var(--fs));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 9px 10px 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  text-align: left;
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.nx .cc-tile::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(90deg, var(--c), transparent 80%);
+  opacity: 0.85;
+}
+.nx .cc-tile:hover {
+  border-color: color-mix(in srgb, var(--c) 45%, var(--border));
+  transform: translateY(-1px);
+}
+.nx .cc-tile.is-quiet::before {
+  opacity: 0.35;
+}
+.nx .cc-tile-top {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.nx .cc-tile-ic {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--c) 14%, transparent);
+  color: var(--c);
+}
+.nx .cc-tile-n {
+  flex: none;
+  margin-left: auto;
+  font-size: calc(18px * var(--fs));
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.nx .cc-tile.is-quiet .cc-tile-n {
+  color: var(--text-3);
+}
+.nx .cc-tile-name {
+  min-width: 0;
+  flex: 1;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: calc(12px * var(--fs));
+  font-weight: 600;
+  line-height: 1.18;
+}
+.nx .cc-tile-line,
+.nx .cc-tile-note {
+  max-width: 100%;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: calc(11px * var(--fs));
+  line-height: 1.3;
+  color: var(--text-3);
+}
+.nx .cc-tile-note {
+  -webkit-line-clamp: 1;
+  font-size: calc(10.5px * var(--fs));
+  opacity: 0.9;
+}
+.nx .cc-thread {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: calc(11px * var(--fs));
+  color: var(--text-2);
+}
+.nx .cc-thread span {
+  width: 14px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.nx .cc-thread span.on {
+  background: var(--c);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--c) 60%, transparent);
+}
+.nx .cc-thread em {
+  margin-left: 4px;
+  font-style: normal;
+  font-weight: 600;
+}
+.nx .cc-stage-off {
+  color: var(--warn);
+}
+.nx .a-other { --c: #94a3b8; }
+.nx[data-theme="light"] .a-other,
+.nx[data-theme="nucleo-claro"] .a-other { --c: #5b6170; }
+.nx[data-theme="light"] .cc-tile { background: #fff; }
+.nx[data-theme="command"] .cc-tile { backdrop-filter: none; }
+.nx[data-contrast="high"] .cc-tile {
+  border: 1.5px solid var(--c);
+  box-shadow: none;
+}
+.nx[data-contrast="high"] .cc-tile-line,
+.nx[data-contrast="high"] .cc-tile-note,
+.nx[data-contrast="high"] .cc-row-text small {
+  color: var(--text-2);
+}
+
+/* ---------- Case reading view: one screen, one scroll area ---------- */
+.nx .case-view {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+.nx .case-top {
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+}
+.nx .case-top .crumbs {
+  min-width: 0;
+  flex: 1;
+}
+.nx .case-top .crumbs b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nx .case-hero {
+  flex: none;
+  padding: 16px 22px;
+}
+.nx .case-hero > div {
+  min-width: 0;
+}
+.nx .case-line {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.nx .case-hero .statement {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  font-size: calc(24px * var(--fs));
+  overflow-wrap: anywhere;
+}
+.nx .case-note {
+  margin-top: 8px;
+  font-size: calc(12.5px * var(--fs));
+  color: var(--text-3);
+}
+.nx .case-body {
+  flex: 1;
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 380px);
+  align-content: start;
+  align-items: start;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.nx .case-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.nx .src {
+  width: 100%;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  border: 0;
+  border-top: 1px solid var(--divider);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+.nx .src:first-of-type {
+  border-top: 0;
+}
+.nx .src-text {
+  min-width: 0;
+}
+.nx .src .fr {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Desktop: the dashboard is laid out to fit one viewport. The three cards
+   share the height left over by the ask bar, summary and area grid. Lists
+   are capped in code (with a "+N" link), so clipping is only a safety net;
+   `.main` keeps overflow-y:auto as a fallback for very large text. */
+@media (min-width: 961px) and (min-height: 640px) {
+  .nx .main.is-today .cc-top {
+    flex: 1 1 0;
+    min-height: calc(200px * var(--fs));
+  }
+  .nx .main.is-today .cc-card {
+    min-height: 0;
+    overflow: hidden;
+  }
+  .nx .main.is-today .cc-card > .cc-list,
+  .nx .main.is-today .cc-card > .cc-days {
+    flex: 0 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .nx .main.is-today .cc-tile-line {
+    -webkit-line-clamp: 1;
+  }
+}
+
+@media (max-width: 1499px) and (min-width: 961px) {
+  .nx .cc-note-opt {
+    display: none;
+  }
+}
+
+@media (max-width: 1240px) {
+  .nx .cc-top {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .nx .cc-row .chip {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .nx .main {
+    padding: 14px 14px 104px;
+  }
+  .nx .cc-summary .ai-line span {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+  .nx .cc-top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .nx .cc-card {
+    min-height: 0;
+  }
+  .nx .cc-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .nx .case-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .nx .case-hero {
+    padding: 14px 16px;
+  }
+  .nx .case-hero .statement {
+    font-size: calc(20px * var(--fs));
+  }
+  .nx .case-top .bar-actions .ro-pill {
+    display: none;
+  }
+  .nx .ask {
+    padding-left: 12px;
+    gap: 8px;
+  }
+  .nx .ask kbd {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .nx .cc-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .nx .cc-areas .cc-h h2 .cc-note {
+    display: none;
+  }
+  .nx .ask .go {
+    padding: 0 10px;
+  }
+  .nx .ask .go-t,
+  .nx .ask .lbl {
+    display: none;
+  }
+  .nx .askbar {
+    gap: 8px;
+  }
+}

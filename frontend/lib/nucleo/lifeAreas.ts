@@ -19,6 +19,7 @@ export const LIFE_AREA_IDS = [
   "social",
   "events",
   "promos",
+  "other",
 ] as const;
 
 export type LifeAreaId = (typeof LIFE_AREA_IDS)[number];
@@ -44,204 +45,177 @@ export const LIFE_AREAS: LifeAreaMeta[] = [
   { id: "social", chip: "a-social" },
   { id: "events", chip: "a-events" },
   { id: "promos", chip: "a-promo" },
+  { id: "other", chip: "a-other" },
 ];
 
-const AREA_TERMS: Record<LifeAreaId, string[]> = {
+export function areaChip(area: LifeAreaId): string {
+  return LIFE_AREAS.find((meta) => meta.id === area)?.chip ?? "a-other";
+}
+
+/**
+ * Deterministic vocabulary per area (es/en/fr/it/pt). Terms are written
+ * lowercase without accents. A trailing `*` matches a word stem; every other
+ * term must match a whole word or phrase, so "sat" never matches "saturday"
+ * and "order" never matches "border".
+ */
+const AREA_TERMS: Record<Exclude<LifeAreaId, "other">, string[]> = {
   security: [
-    "inicio de sesión",
-    "inicio de sesion",
-    "sign-in",
-    "signin",
-    "new login",
-    "nuevo dispositivo",
-    "password",
-    "contraseña",
-    "contrasena",
-    "verification code",
-    "código de verificación",
-    "codigo de verificacion",
-    "2fa",
-    "suspicious",
-    "inusual",
-    "fraude",
-    "fraud",
+    "inicio de sesion", "sign-in", "sign in", "signin", "new login", "nuevo acceso",
+    "nuevo dispositivo", "new device", "password", "contrasena", "verification code",
+    "codigo de verificacion", "codigo de seguridad", "security code", "security alert",
+    "alerta de seguridad", "2fa", "suspicious", "sospechos*", "inusual", "unusual",
+    "fraude", "fraud*", "mot de passe", "senha", "accesso sospetto", "nouvelle connexion",
   ],
   travel: [
-    "vuelo",
-    "flight",
-    "check-in",
-    "check in",
-    "boarding",
-    "aeroméxico",
-    "aeromexico",
-    "united",
-    "delta",
-    "hotel",
-    "airbnb",
-    "booking",
-    "reservación",
-    "reservacion",
-    "itinerary",
+    "vuelo*", "flight*", "check-in", "boarding", "pase de abordar", "embarque",
+    "aeromexico", "united airlines", "united.com", "delta", "american airlines",
+    "volaris", "viva aerobus", "hotel*", "airbnb", "booking.com", "expedia",
+    "reservacion", "itinerar*", "volo", "voo", "voyage", "viaggio", "viagem",
   ],
   orders: [
-    "pedido",
-    "order",
-    "enviado",
-    "shipped",
-    "entrega",
-    "delivered",
-    "tracking",
-    "rastreo",
-    "amazon",
-    "mercado libre",
-    "walmart",
-    "ups",
-    "dhl",
-    "fedex",
-    "paquete",
+    "pedido*", "order", "orders", "tu orden", "enviado", "shipped", "shipping", "envio",
+    "entrega*", "delivered", "delivery", "out for delivery", "tracking", "rastreo",
+    "amazon", "mercado libre", "mercadolibre", "walmart", "ups", "dhl", "fedex",
+    "estafeta", "paquete*", "package", "commande", "livraison", "ordine", "spedizion*",
+    "encomenda",
   ],
   subscriptions: [
-    "suscrip",
-    "subscription",
-    "netflix",
-    "spotify",
-    "renueva",
-    "renew",
-    "plan mensual",
-    "membership",
-    "membresía",
-    "membresia",
+    "suscripci*", "subscription*", "netflix", "spotify", "disney+", "hbo", "apple music",
+    "youtube premium", "prime video", "renueva*", "renovacion", "renew*", "auto-renew",
+    "plan mensual", "monthly plan", "membership", "membresia", "abonnement",
+    "abbonamento", "assinatura",
   ],
   health: [
-    "cita",
-    "appointment",
-    "hospital",
-    "clínica",
-    "clinica",
-    "kaiser",
-    "imss",
-    "receta",
-    "prescription",
-    "laboratorio",
-    "dental",
-    "médic",
-    "medic",
-    "salud",
+    "cita medica", "appointment", "hospital", "clinica", "clinic", "kaiser", "imss",
+    "issste", "receta", "prescription", "laboratorio", "lab results", "dental", "dentista",
+    "medic*", "salud", "health", "farmacia", "pharmacy", "vacuna*", "vaccin*", "sante",
+    "salute", "saude",
   ],
   bills: [
-    "factura",
-    "invoice",
-    "cfdi",
-    "cfe",
-    "con edison",
-    "recibo",
-    "utility",
-    "vence",
-    "due date",
-    "estado de cuenta",
+    "factura*", "invoice*", "cfdi", "cfe", "con edison", "recibo*", "utility", "utilities",
+    "vence", "vencimiento", "due date", "payment due", "fecha limite", "estado de cuenta",
+    "statement", "telmex", "izzi", "totalplay", "recibo de luz", "recibo de agua",
+    "facture", "fattura", "fatura", "bolleta",
   ],
   government: [
-    "sat",
-    "irs",
-    "impuesto",
-    "tax",
-    "gobierno",
-    "government",
-    "trámite",
-    "tramite",
+    "sat", "irs", "impuesto*", "tax", "taxes", "gobierno", "government", "tramite*",
+    "gob.mx", ".gov", "declaracion anual", "declaracion mensual", "curp", "rfc",
+    "pasaporte", "passport", "multa*", "impots", "tasse", "imposto*",
   ],
   insurance: [
-    "seguro",
-    "insurance",
-    "póliza",
-    "poliza",
-    "policy",
-    "deducible",
+    "seguro de", "seguros", "insurance", "poliza*", "policy number", "deducible",
+    "deductible", "aseguradora", "gnp", "axa", "mapfre", "qualitas", "metlife",
+    "assurance", "assicurazion*", "apolice",
   ],
   education: [
-    "colegiatura",
-    "tuition",
-    "escuela",
-    "school",
-    "universidad",
-    "university",
-    "tarea escolar",
+    "colegiatura*", "tuition", "escuela", "school", "universidad", "university",
+    "college", "inscripcion", "enrollment", "calificaciones", "grades", "curso",
+    "course", "ecole", "scuola", "escola",
   ],
   home: [
-    "familia",
-    "family",
-    "renta",
-    "rent",
-    "hogar",
-    "elementary",
-    "fotos escolares",
+    "familia", "family", "renta", "rent", "hogar", "elementary", "fotos escolares",
+    "guarderia", "daycare", "condominio", "mantenimiento", "mascota*", "veterinari*",
+    "famille", "famiglia",
   ],
   social: [
-    "linkedin",
-    "instagram",
-    "facebook",
-    "tiktok",
-    "seguidor",
-    "follower",
-    "twitter",
+    "linkedin", "instagram", "facebook", "tiktok", "seguidor*", "follower*", "twitter",
+    "whatsapp", "commented", "mentioned you",
   ],
   events: [
-    "concierto",
-    "boleto",
-    "ticket",
-    "evento",
-    "eventbrite",
+    "concierto", "concert", "boleto*", "tickets", "ticketmaster", "evento*", "event",
+    "eventbrite", "invitacion", "invitation", "rsvp", "boda", "wedding", "webinar",
+    "conferencia",
   ],
   promos: [
-    "oferta",
-    "% off",
-    "descuento",
-    "promo",
-    "sale",
-    "hot sale",
-    "black friday",
+    "oferta*", "% off", "descuento*", "promo*", "sale", "hot sale", "black friday",
+    "cyber monday", "cupon", "coupon", "newsletter", "unsubscribe", "boletin",
   ],
   money: [
-    "pago",
-    "payment",
-    "cargo",
-    "charge",
-    "depósito",
-    "deposito",
-    "deposit",
-    "transfer",
-    "spei",
-    "paypal",
-    "chase",
-    "bbva",
-    "banamex",
-    "banco",
-    "bank",
-    "reembolso",
-    "refund",
+    "pago*", "payment*", "cargo", "charge", "charged", "deposito", "deposit",
+    "transferencia", "transfer", "spei", "paypal", "chase", "bbva", "banamex",
+    "santander", "banorte", "hsbc", "banco", "bank", "reembolso", "refund*", "retiro",
+    "withdrawal", "zelle", "venmo", "mercado pago", "virement", "bonifico",
   ],
   work: [
-    "nómina",
-    "nomina",
-    "payroll",
-    "reunión",
-    "reunion",
-    "meeting",
-    "contrato",
-    "cotización",
-    "cotizacion",
-    "cliente",
+    "nomina", "payroll", "reunion", "meeting", "contrato", "contract", "cotizacion",
+    "quotation", "cliente", "client", "proyecto", "project", "propuesta", "proposal",
+    "entrevista", "interview",
   ],
 };
 
-const CASE_TYPE_AREA: Record<string, LifeAreaId> = {
-  invoice: "bills",
-  payment: "money",
-  quotation: "work",
-  meeting: "work",
-  document: "work",
-  support: "work",
+/** Tie-break order: the most consequential area wins an equal score. */
+export const AREA_PRIORITY: Array<Exclude<LifeAreaId, "other">> = [
+  "security",
+  "travel",
+  "government",
+  "health",
+  "insurance",
+  "education",
+  "bills",
+  "subscriptions",
+  "orders",
+  "home",
+  "events",
+  "work",
+  "money",
+  "social",
+  "promos",
+];
+
+const CASE_TYPE_AREA: Record<string, { area: LifeAreaId; weight: number }> = {
+  invoice: { area: "bills", weight: 1 },
+  payment: { area: "money", weight: 0.5 },
+  quotation: { area: "work", weight: 0.5 },
+  meeting: { area: "work", weight: 0.5 },
+  document: { area: "work", weight: 0.5 },
+  support: { area: "work", weight: 0.5 },
 };
+
+/** Lowercase and strip accents so "Contraseña" matches "contrasena". */
+export function foldText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const TERM_CACHE = new Map<string, RegExp>();
+
+function termPattern(term: string): RegExp {
+  const cached = TERM_CACHE.get(term);
+  if (cached) return cached;
+  const stem = term.endsWith("*");
+  const body = stem ? term.slice(0, -1) : term;
+  const lead = /^[a-z0-9]/.test(body) ? "(?:^|[^a-z0-9])" : "";
+  const tail = !stem && /[a-z0-9]$/.test(body) ? "(?=$|[^a-z0-9])" : "";
+  const pattern = new RegExp(`${lead}${escapeRegExp(body)}${tail}`);
+  TERM_CACHE.set(term, pattern);
+  return pattern;
+}
+
+/** True when the folded text contains the term as a word, phrase or stem. */
+export function hasTerm(folded: string, term: string): boolean {
+  return termPattern(term).test(folded);
+}
+
+export function areaScores(
+  text: string,
+  caseType?: string | null,
+): Partial<Record<LifeAreaId, number>> {
+  const folded = foldText(text);
+  const scores: Partial<Record<LifeAreaId, number>> = {};
+  for (const area of AREA_PRIORITY) {
+    const hits = AREA_TERMS[area].filter((term) => hasTerm(folded, term)).length;
+    if (hits > 0) scores[area] = hits;
+  }
+  const hint = caseType ? CASE_TYPE_AREA[caseType] : undefined;
+  if (hint) scores[hint.area] = (scores[hint.area] ?? 0) + hint.weight;
+  return scores;
+}
 
 export type ClassifiedText = {
   area: LifeAreaId;
@@ -253,34 +227,24 @@ export function classifyText(
   text: string,
   caseType?: string | null,
 ): ClassifiedText {
-  const normalized = text.toLowerCase();
-  const refund = /reembolso|refund|devoluci[oó]n/.test(normalized);
+  const folded = foldText(text);
+  const refund = /reembols|refund|devoluci|rembours|rimbors/.test(folded);
   const priceIncrease =
-    /sube a|subi[oó]|increase|price increase|nuevo precio|went up|ahora \$/.test(
-      normalized,
+    /sube a|subi[oó]|aumento de precio|aumenta|price increase|increase|nuevo precio|new price|went up|ahora \$|augmentation|aumentou|aumento del prezzo/.test(
+      folded,
     );
 
-  for (const area of LIFE_AREA_IDS) {
-    if (area === "work") continue;
-    if (AREA_TERMS[area].some((term) => normalized.includes(term))) {
-      return { area, refund, priceIncrease };
+  const scores = areaScores(text, caseType);
+  let best: LifeAreaId | null = null;
+  let bestScore = 0;
+  for (const area of AREA_PRIORITY) {
+    const score = scores[area] ?? 0;
+    if (score > bestScore) {
+      best = area;
+      bestScore = score;
     }
   }
-
-  const fromType = caseType ? CASE_TYPE_AREA[caseType] : undefined;
-  if (fromType) {
-    return { area: fromType, refund, priceIncrease };
-  }
-
-  if (AREA_TERMS.work.some((term) => normalized.includes(term))) {
-    return { area: "work", refund, priceIncrease };
-  }
-
-  if (/unsubscribe|newsletter|boletin|boletín/.test(normalized)) {
-    return { area: "promos", refund, priceIncrease };
-  }
-
-  return { area: "events", refund, priceIncrease };
+  return { area: best ?? "other", refund, priceIncrease };
 }
 
 export function oneLineStatement(
