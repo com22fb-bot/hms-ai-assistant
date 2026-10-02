@@ -6,42 +6,71 @@ import email
 import imaplib
 import re
 import socket
-import ssl
 from datetime import datetime, timezone
-from email.header import decode_header, make_header
-from email.utils import parseaddr, parsedate_to_datetime
 from typing import Any
 
+from app.services.imap_mail import (
+    ImapMailError,
+    decode_header_value,
+    list_inbox_messages,
+    open_imap_client,
+)
+from app.services.imap_provider import YAHOO_IMAP
 from app.services.yahoo_domains import is_yahoo_mail_address
 
-YAHOO_IMAP_HOST = "imap.mail.yahoo.com"
-YAHOO_IMAP_PORT = 993
+YAHOO_IMAP_HOST = YAHOO_IMAP.host
+YAHOO_IMAP_PORT = YAHOO_IMAP.port
 
 
-class YahooImapError(RuntimeError):
+class YahooImapError(ImapMailError):
     """Fallo al conectar o leer Yahoo IMAP."""
+
+    def __init__(self, message: str = "", *, code: str = "imap_failed") -> None:
+        super().__init__(message, code=code)
+
+
+def _yahoo_auth(stored: dict[str, Any] | None) -> str:
+    if not stored:
+        return ""
+    metadata = stored.get("metadata") or {}
+    if not isinstance(metadata, dict):
+        return ""
+    return str(metadata.get("auth") or "").lower()
 
 
 def stored_yahoo_uses_oauth(stored: dict[str, Any] | None) -> bool:
-    if not stored:
-        return False
-    metadata = stored.get("metadata") or {}
-    if not isinstance(metadata, dict):
-        return False
-    return str(metadata.get("auth") or "").lower() in {
-        "oauthbearer",
-        "oauth",
-        "oauth2",
-    }
+    return _yahoo_auth(stored) in {"oauthbearer", "oauth", "oauth2"}
+
+
+def stored_yahoo_uses_app_password(stored: dict[str, Any] | None) -> bool:
+    return _yahoo_auth(stored) == "app_password"
+
+
+def yahoo_imap_access(
+    stored: dict[str, Any] | None,
+    email: str,
+) -> tuple[str, str, bool]:
+    """Devuelve correo, secreto y si el secreto es un token OAuth."""
+    token = str((stored or {}).get("access_token") or "")
+    address = (email or "").strip()
+    if address and token and stored_yahoo_uses_app_password(stored):
+        return address, token, False
+    if address and token and stored_yahoo_uses_oauth(stored):
+        return address, token, True
+    raise YahooImapError(
+        "Vuelve a conectar Yahoo con una contraseña de app. "
+        "La autorización oficial de lectura (mail-r) sigue pendiente.",
+        code="yahoo_credentials_missing",
+    )
+
+
+def looks_like_yahoo_app_password(raw: str) -> bool:
+    compact = re.sub(r"[\s-]+", "", (raw or "").strip())
+    return bool(re.fullmatch(r"[A-Za-z0-9]{16}", compact))
 
 
 def _decode_header_value(value: str | None) -> str:
-    if not value:
-        return ""
-    try:
-        return str(make_header(decode_header(value)))
-    except Exception:
-        return value or ""
+    return decode_header_value(value)
 
 
 def normalize_yahoo_address(address: str) -> str:
@@ -67,6 +96,69 @@ def _is_yahoo_like_address(address: str) -> bool:
     return is_yahoo_mail_address(address)
 
 
+_YAHOO_OAUTH_BLOCKED = (
+    "Donexto aún no puede leer este buzón Yahoo con el permiso oficial. "
+    "Falta el alcance mail-r que Yahoo aprueba en la app. "
+    "Mientras tanto puedes conectar con una contraseña de app."
+)
+_YAHOO_WRONG = (
+    "Yahoo no aceptó esa contraseña de app. "
+    "Revísala o genera otra en la seguridad de la cuenta Yahoo."
+)
+_YAHOO_APP = (
+    "Yahoo no acepta la contraseña de la cuenta. "
+    "Donexto usa una contraseña de app: Seguridad de la cuenta Yahoo "
+    "> Generar contraseña de app."
+)
+_YAHOO_ADDRESS = (
+    "Indica un correo de Yahoo (@yahoo.com, @yahoo.com.mx, "
+    "@ymail.com, @rocketmail.com o similar)."
+)
+_YAHOO_NETWORK = (
+    "No hubo respuesta de Yahoo (imap.mail.yahoo.com:993). "
+    "Revisa la red e inténtalo de nuevo."
+)
+
+
+def classify_yahoo_app_error(error_text: str, submitted: str) -> YahooImapError:
+    """Traduce el rechazo de Yahoo a un error que se puede seguir."""
+    from app.services.imap_mail import scrub_secret
+
+    text = scrub_secret(error_text or "", submitted).lower()
+    if any(
+        token in text
+        for token in (
+            "app password",
+            "application password",
+            "app-specific",
+            "generated password",
+        )
+    ):
+        return YahooImapError(_YAHOO_APP, code="app_password_required")
+    if any(
+        token in text
+        for token in (
+            "invalid",
+            "authenticationfailed",
+            "authentication failed",
+            "auth failed",
+            "login failed",
+            "authenticate",
+            "credentials",
+        )
+    ):
+        if looks_like_yahoo_app_password(submitted):
+            return YahooImapError(_YAHOO_WRONG, code="wrong_password")
+        return YahooImapError(_YAHOO_APP, code="app_password_required")
+    return YahooImapError(
+        scrub_secret(
+            f"Yahoo IMAP no pudo autenticar. {error_text}".strip(),
+            submitted,
+        ),
+        code="imap_failed",
+    )
+
+
 def _open_yahoo_client(
     address: str,
     app_password: str,
@@ -74,61 +166,24 @@ def _open_yahoo_client(
     timeout: int = 45,
     oauth: bool = False,
 ) -> imaplib.IMAP4_SSL:
-    context = ssl.create_default_context()
-    safe_timeout = max(15, int(timeout))
     try:
-        client = imaplib.IMAP4_SSL(
-            YAHOO_IMAP_HOST,
-            YAHOO_IMAP_PORT,
-            ssl_context=context,
-            timeout=safe_timeout,
+        return open_imap_client(
+            YAHOO_IMAP,
+            address,
+            app_password,
+            timeout=timeout,
+            oauth=oauth,
         )
-    except TypeError:
-        # Python sin soporte timeout en este build
-        socket.setdefaulttimeout(safe_timeout)
-        client = imaplib.IMAP4_SSL(
-            YAHOO_IMAP_HOST,
-            YAHOO_IMAP_PORT,
-            ssl_context=context,
-        )
-
-    if oauth:
-        initial = (
-            f"n,a={address},\x01host={YAHOO_IMAP_HOST}\x01port={YAHOO_IMAP_PORT}"
-            f"\x01auth=Bearer {app_password}\x01\x01"
-        ).encode("utf-8")
-
-        def _oauthbearer(_challenge: bytes | None) -> bytes:
-            return initial
-
-        try:
-            status, _data = client.authenticate("OAUTHBEARER", _oauthbearer)
-        except imaplib.IMAP4.error as error:
-            try:
-                client.logout()
-            except Exception:
-                pass
-            raise YahooImapError(
-                "Donexto aún no puede leer este buzón Yahoo. "
-                "Falta el permiso de correo que Yahoo aprueba en la app. "
-                "No hace falta volver a firmar."
-            ) from error
-    else:
-        status, _data = client.login(address, app_password)
-
-    if status != "OK":
-        try:
-            client.logout()
-        except Exception:
-            pass
-        raise YahooImapError(
-            "Donexto aún no puede leer este buzón Yahoo. "
-            "Falta el permiso de correo que Yahoo aprueba en la app. "
-            "No hace falta volver a firmar."
-            if oauth
-            else "Yahoo no aceptó esa clave. Escríbela igual que cuando entras a Yahoo."
-        )
-    return client
+    except ImapMailError as error:
+        if error.code == "network":
+            raise YahooImapError(_YAHOO_NETWORK, code="network") from error
+        if oauth or error.code == "oauth_rejected":
+            raise YahooImapError(_YAHOO_OAUTH_BLOCKED, code="oauth_rejected") from error
+        raise classify_yahoo_app_error(str(error), app_password) from error
+    except imaplib.IMAP4.error as error:
+        raise classify_yahoo_app_error(str(error), app_password) from error
+    except (TimeoutError, socket.timeout, OSError) as error:
+        raise YahooImapError(_YAHOO_NETWORK, code="network") from error
 
 
 def verify_yahoo_login(address: str, app_password: str) -> None:
@@ -140,15 +195,10 @@ def verify_yahoo_login(address: str, app_password: str) -> None:
         raise YahooImapError("El correo de Yahoo no es válido.")
 
     if not _is_yahoo_like_address(address):
-        raise YahooImapError(
-            "Indica un correo de Yahoo (@yahoo.com, @yahoo.com.mx, "
-            "@ymail.com, @rocketmail.com o similar)."
-        )
+        raise YahooImapError(_YAHOO_ADDRESS, code="invalid_address")
 
-    if len(app_password) < 6:
-        raise YahooImapError(
-            "Esa clave es demasiado corta. Usa la misma con la que entras a Yahoo."
-        )
+    if len(app_password) < 8:
+        raise YahooImapError(_YAHOO_APP, code="app_password_required")
 
     try:
         client = _open_yahoo_client(address, app_password)
@@ -167,24 +217,19 @@ def verify_yahoo_login(address: str, app_password: str) -> None:
     except YahooImapError:
         raise
     except imaplib.IMAP4.error as error:
-        err = str(error).lower()
-        if "invalid" in err or "login" in err or "auth" in err:
-            raise YahooImapError(
-                "Yahoo no aceptó el correo o la clave. "
-                "Escríbelos igual que cuando entras a Yahoo."
-            ) from error
-        raise YahooImapError(
-            f"Yahoo IMAP falló al autenticar: {error}"
-        ) from error
+        raise classify_yahoo_app_error(str(error), app_password) from error
     except (TimeoutError, socket.timeout, OSError) as error:
-        raise YahooImapError(
-            "No hubo respuesta de los servidores IMAP de Yahoo "
-            f"(imap.mail.yahoo.com:993). Detalle de red: {error}"
-        ) from error
+        raise YahooImapError(_YAHOO_NETWORK, code="network") from error
     except Exception as error:
         raise YahooImapError(
             f"Error al conectar con Yahoo IMAP: {error}"
         ) from error
+
+
+def verify_yahoo_app_login(address: str, app_password: str) -> str:
+    """LOGIN real y EXAMINE del INBOX. Devuelve el correo normalizado."""
+    verify_yahoo_login(address, app_password)
+    return normalize_yahoo_address(address)
 
 
 def list_yahoo_messages(
@@ -194,100 +239,33 @@ def list_yahoo_messages(
     max_results: int = 20,
     oauth: bool = False,
 ) -> list[dict[str, Any]]:
-    """Lista mensajes recientes del INBOX de Yahoo."""
+    """Lista mensajes recientes del INBOX de Yahoo. Solo lectura."""
     address = normalize_yahoo_address(address)
     if not oauth:
         app_password = normalize_yahoo_app_password(app_password)
-    max_results = max(1, min(int(max_results), 100))
-    messages: list[dict[str, Any]] = []
-
     try:
-        client = _open_yahoo_client(address, app_password, oauth=oauth)
-        try:
-            status, _ = client.select("INBOX", readonly=True)
-            if status != "OK":
-                raise YahooImapError(
-                    "No fue posible abrir el INBOX de Yahoo."
-                )
-
-            status, data = client.search(None, "ALL")
-            if status != "OK" or not data or not data[0]:
-                return []
-
-            ids = data[0].split()
-            selected = list(reversed(ids[-max_results:]))
-
-            for raw_id in selected:
-                msg_id = raw_id.decode("ascii", errors="ignore")
-                status, fetched = client.fetch(
-                    raw_id,
-                    "(FLAGS BODY.PEEK[HEADER])",
-                )
-                if status != "OK" or not fetched:
-                    continue
-
-                header_bytes = b""
-                flags_text = ""
-                for part in fetched:
-                    if isinstance(part, tuple) and len(part) >= 2:
-                        meta = part[0]
-                        payload = part[1]
-                        if isinstance(meta, bytes):
-                            flags_text += meta.decode(
-                                "utf-8", errors="ignore"
-                            )
-                        elif isinstance(meta, str):
-                            flags_text += meta
-                        if isinstance(payload, bytes) and payload:
-                            header_bytes = payload
-
-                parsed = email.message_from_bytes(header_bytes or b"")
-                subject = _decode_header_value(parsed.get("Subject"))
-                from_raw = _decode_header_value(parsed.get("From"))
-                to_raw = _decode_header_value(parsed.get("To"))
-                date_raw = parsed.get("Date")
-                sender_name, sender_email = parseaddr(from_raw)
-                received_at = None
-                if date_raw:
-                    try:
-                        received_at = parsedate_to_datetime(
-                            date_raw
-                        ).isoformat()
-                    except Exception:
-                        received_at = date_raw
-
-                is_unread = "\\Seen" not in flags_text
-                snippet = re.sub(
-                    r"\s+", " ", subject or "(sin vista previa)"
-                ).strip()[:280]
-
-                messages.append(
-                    {
-                        "id": msg_id,
-                        "thread_id": msg_id,
-                        "subject": subject or "(sin asunto)",
-                        "sender": sender_name or from_raw or "Desconocido",
-                        "sender_email": sender_email or None,
-                        "recipient": to_raw or None,
-                        "received_at": received_at,
-                        "snippet": snippet,
-                        "is_unread": is_unread,
-                        "labels": ["YAHOO", "INBOX"],
-                    }
-                )
-        finally:
-            try:
-                client.logout()
-            except Exception:
-                pass
+        return list_inbox_messages(
+            YAHOO_IMAP,
+            address,
+            app_password,
+            max_results=max_results,
+            oauth=oauth,
+            labels=["YAHOO", "INBOX"],
+        )
     except YahooImapError:
         raise
+    except ImapMailError as error:
+        if error.code == "network":
+            raise YahooImapError(_YAHOO_NETWORK, code="network") from error
+        if oauth or error.code == "oauth_rejected":
+            raise YahooImapError(_YAHOO_OAUTH_BLOCKED, code="oauth_rejected") from error
+        raise classify_yahoo_app_error(str(error), app_password) from error
+    except imaplib.IMAP4.error as error:
+        raise classify_yahoo_app_error(str(error), app_password) from error
     except Exception as error:
         raise YahooImapError(
             f"No fue posible leer correos de Yahoo: {error}"
         ) from error
-
-    return messages
 
 
 IMAP_MONTHS = (
@@ -306,10 +284,69 @@ IMAP_MONTHS = (
 )
 
 INBOX_ALIASES = {"inbox"}
-SENT_ALIASES = {"sent", "sent mail", "sent messages", "sent items", "enviados"}
-DRAFT_ALIASES = {"draft", "drafts", "borradores"}
-SPAM_ALIASES = {"bulk mail", "junk", "spam", "correo no deseado"}
-TRASH_ALIASES = {"trash", "deleted", "deleted items", "papelera"}
+SENT_ALIASES = {
+    "sent",
+    "sent mail",
+    "sent messages",
+    "sent items",
+    "enviados",
+    "envoyés",
+    "envoyes",
+    "messages envoyés",
+    "messages envoyes",
+    "inviati",
+    "posta inviata",
+    "gesendet",
+    "enviadas",
+}
+DRAFT_ALIASES = {
+    "draft",
+    "drafts",
+    "borradores",
+    "brouillons",
+    "bozze",
+    "rascunhos",
+    "entwürfe",
+    "entwurfe",
+}
+SPAM_ALIASES = {
+    "bulk mail",
+    "junk",
+    "junk mail",
+    "spam",
+    "correo no deseado",
+    "indésirables",
+    "indesirables",
+    "courrier indésirable",
+    "courrier indesirable",
+    "posta indesiderata",
+    "lixo",
+    "lixo eletrônico",
+    "lixo eletronico",
+}
+TRASH_ALIASES = {
+    "trash",
+    "deleted",
+    "deleted items",
+    "deleted messages",
+    "deleted message",
+    "papelera",
+    "eliminados",
+    "corbeille",
+    "cestino",
+    "lixeira",
+    "papierkorb",
+    "bin",
+}
+
+_SPECIAL_USE = (
+    ("\\trash", "trash"),
+    ("\\junk", "spam"),
+    ("\\spam", "spam"),
+    ("\\drafts", "draft"),
+    ("\\sent", "sent"),
+    ("\\inbox", "inbox"),
+)
 
 
 def imap_search_date(value: datetime) -> str:
@@ -319,7 +356,16 @@ def imap_search_date(value: datetime) -> str:
     return f"{current.day:02d}-{IMAP_MONTHS[current.month - 1]}-{current.year}"
 
 
-def classify_yahoo_folder(name: str) -> str:
+def classify_yahoo_folder(name: str, flags: str = "") -> str:
+    """Carpeta por atributo IMAP (\\Sent, \\Trash) y, si no hay, por el nombre.
+
+    iCloud en inglés llama a la papelera ``Deleted Messages``. Apple y
+    otros servidores traducen Enviados (Envoyés, Inviati, Enviados).
+    """
+    lowered_flags = f" {(flags or '').lower()} "
+    for token, role in _SPECIAL_USE:
+        if token in lowered_flags:
+            return role
     lowered = name.strip().lower().strip('"')
     leaf = lowered.rsplit("/", 1)[-1].rsplit(".", 1)[-1]
     if leaf in INBOX_ALIASES or lowered in INBOX_ALIASES:
@@ -333,6 +379,16 @@ def classify_yahoo_folder(name: str) -> str:
     if leaf in TRASH_ALIASES or lowered in TRASH_ALIASES:
         return "trash"
     return "other"
+
+
+def parse_list_mailbox_flags(raw: bytes | str) -> str:
+    text = (
+        raw.decode("utf-8", errors="ignore")
+        if isinstance(raw, bytes)
+        else str(raw)
+    ).strip()
+    matched = re.match(r"^\(([^)]*)\)", text)
+    return matched.group(1) if matched else ""
 
 
 def parse_list_mailbox_name(raw: bytes | str) -> str | None:

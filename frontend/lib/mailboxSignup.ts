@@ -1,11 +1,12 @@
 /**
  * Ruteo de alta por dominio del buzón que el usuario quiere monitorear.
  * Gmail → Google OAuth. Hotmail/Outlook → Azure. Apple → Apple.
- * Yahoo / Gmail / iCloud: identidad posible; lectura de buzón aún no.
- * Hotmail/Outlook/M365 → Azure. Apple → lista de aviso.
+ * Yahoo / Gmail: identidad posible; lectura de buzón aún no.
+ * iCloud: lectura IMAP solo lectura con contraseña específica de app.
+ * Hotmail/Outlook/M365 → Azure.
  */
 
-export type MailboxConnectMode = "gmail" | "yahoo" | "microsoft" | "choose";
+export type MailboxConnectMode = "gmail" | "yahoo" | "microsoft" | "icloud" | "choose";
 
 export type MailboxSignupProvider =
   | "gmail"
@@ -138,7 +139,13 @@ export function suggestKnownMailbox(email: string): string | null {
 }
 
 export function isKnownActiveMailbox(email: string): boolean {
-  return resolveMailboxProviderFromEmail(email) === "hotmail";
+  const provider = resolveMailboxProviderFromEmail(email);
+  return (
+    provider === "hotmail"
+    || provider === "apple"
+    || provider === "gmail"
+    || provider === "yahoo"
+  );
 }
 
 export function isValidSignupEmail(email: string): boolean {
@@ -171,6 +178,9 @@ export function mailboxConnectModeFromEmail(
   }
   if (provider === "hotmail") {
     return "microsoft";
+  }
+  if (provider === "apple") {
+    return "icloud";
   }
   return "choose";
 }

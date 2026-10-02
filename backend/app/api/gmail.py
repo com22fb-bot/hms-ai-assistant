@@ -14,10 +14,15 @@ from app.services.gmail import list_messages
 from app.services.gmail_full_sync import sync_gmail_page
 from app.services.gmail_sync import sync_gmail_messages
 from app.services.oauth_storage import oauth_storage
+from app.services.icloud_imap import (
+    IcloudImapError,
+    list_icloud_messages,
+    stored_icloud_uses_app_password,
+)
 from app.services.yahoo_imap import (
     YahooImapError,
     list_yahoo_messages,
-    stored_yahoo_uses_oauth,
+    yahoo_imap_access,
 )
 
 
@@ -43,28 +48,70 @@ def create_gmail_router(
         _, account = require_google_account()
         provider = str(account.get("provider") or "google")
 
-        if provider in ("yahoo", "imap"):
+        if provider == "icloud":
             credentials = oauth_storage.get_credentials(str(account["id"]))
             address = str(account.get("email") or "").strip()
-            token = str((credentials or {}).get("access_token") or "")
-            if not address or not token or not stored_yahoo_uses_oauth(credentials):
+            secret = str((credentials or {}).get("access_token") or "")
+            if (
+                not address
+                or not secret
+                or not stored_icloud_uses_app_password(credentials)
+            ):
+                raise HTTPException(
+                    status_code=401,
+                    detail={
+                        "status": "icloud_credentials_missing",
+                        "code": "icloud_credentials_missing",
+                        "message": (
+                            "Vuelve a conectar iCloud. Donexto ya no tiene "
+                            "la contraseña de app."
+                        ),
+                    },
+                )
+            try:
+                raw_messages = list_icloud_messages(
+                    address,
+                    secret,
+                    max_results=limit,
+                )
+            except IcloudImapError as error:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "status": "icloud_read_failed",
+                        "code": error.code,
+                        "message": str(error),
+                    },
+                ) from error
+
+            messages = [GmailMessage.model_validate(item) for item in raw_messages]
+            return GmailMessagesResponse(
+                total=len(messages),
+                messages=messages,
+            )
+
+        if provider in ("yahoo", "imap"):
+            credentials = oauth_storage.get_credentials(str(account["id"]))
+            try:
+                address, token, oauth = yahoo_imap_access(
+                    credentials,
+                    str(account.get("email") or ""),
+                )
+            except YahooImapError as error:
                 raise HTTPException(
                     status_code=401,
                     detail={
                         "status": "yahoo_credentials_missing",
-                        "message": (
-                            "Donexto aún no puede leer este buzón Yahoo. "
-                            "Falta el permiso de correo que Yahoo aprueba "
-                            "en la app. No hace falta volver a firmar."
-                        ),
+                        "code": error.code,
+                        "message": str(error),
                     },
-                )
+                ) from error
             try:
                 raw_messages = list_yahoo_messages(
                     address,
                     token,
                     max_results=limit,
-                    oauth=True,
+                    oauth=oauth,
                 )
             except YahooImapError as error:
                 raise HTTPException(

@@ -17,7 +17,7 @@ No se usa Vercel. El código se trabaja en GitHub Codespace, no en la laptop Win
 
 ## Servicios activos
 
-Yahoo (identidad; lectura de buzón pendiente de `mail-r`) y Outlook/Hotmail/Live/MSN/Microsoft 365. Gmail e iCloud: acceso en revisión.
+Yahoo (identidad; lectura de buzón pendiente de `mail-r`) y Outlook/Hotmail/Live/MSN/Microsoft 365. iCloud: lectura IMAP solo lectura con contraseña específica de app. Gmail: acceso en revisión.
 
 ## Deploy
 

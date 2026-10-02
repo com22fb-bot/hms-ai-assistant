@@ -27,11 +27,11 @@ describe("gateNextAfterResolve", () => {
     );
     assert.equal(
       gateNextAfterResolve("login", true, "yahoo_oauth", "yahoo"),
-      "provider_login",
+      "yahoo_connect",
     );
     assert.equal(
       gateNextAfterResolve("login", true, "google_oauth", "gmail"),
-      "provider_login",
+      "gmail_notice",
     );
   });
 
@@ -46,38 +46,45 @@ describe("gateNextAfterResolve", () => {
     );
   });
 
-  it("does not send first-time Gmail or Yahoo to OAuth — waitlist instead", () => {
+  it("sends first-time Gmail to the unverified notice and Yahoo to the app password", () => {
     assert.equal(
       gateNextAfterResolve("login", false, "coming_soon_gmail", "gmail"),
-      "coming_soon_gmail",
+      "gmail_notice",
     );
     assert.equal(
-      gateNextAfterResolve("login", false, "pending_review", "gmail"),
-      "coming_soon_gmail",
+      gateNextAfterResolve("login", false, "google_oauth", "gmail"),
+      "gmail_notice",
     );
     assert.equal(
       gateNextAfterResolve("signup", false, "coming_soon_yahoo", "yahoo"),
-      "coming_soon_yahoo",
+      "yahoo_connect",
     );
+    assert.equal(isComingSoonGate("gmail_notice"), false);
+    assert.equal(isComingSoonGate("yahoo_connect"), false);
     assert.equal(isComingSoonGate("coming_soon_gmail"), true);
   });
 
-  it("keeps existing Gmail/Yahoo testers on identity login even if coming soon", () => {
+  it("keeps existing Gmail and Yahoo on their connect notices", () => {
     assert.equal(
       gateNextAfterResolve("login", true, "coming_soon_gmail", "gmail"),
-      "provider_login",
+      "gmail_notice",
     );
     assert.equal(
       gateNextAfterResolve("login", true, "coming_soon_yahoo", "yahoo"),
-      "provider_login",
+      "yahoo_connect",
     );
   });
 
-  it("blocks iCloud OAuth and offers waitlist", () => {
+  it("sends iCloud to the app-password connect form", () => {
+    assert.equal(
+      gateNextAfterResolve("login", false, "icloud_imap", "apple"),
+      "icloud_connect",
+    );
     assert.equal(
       gateNextAfterResolve("login", false, "coming_soon_icloud", "apple"),
-      "coming_soon_icloud",
+      "icloud_connect",
     );
+    assert.equal(isComingSoonGate("icloud_connect"), false);
     assert.equal(comingSoonProviderLabel("coming_soon_icloud", "apple"), "iCloud");
   });
 
@@ -128,10 +135,11 @@ describe("honest mailbox availability", () => {
     assert.equal(isKnownActiveMailbox("donexto@hotmail.com"), true);
   });
 
-  it("does not treat Gmail, Yahoo, iCloud or random empresa as live read", () => {
-    assert.equal(isKnownActiveMailbox("hmcelinfo@gmail.com"), false);
-    assert.equal(isKnownActiveMailbox("hsalcidor@yahoo.com"), false);
-    assert.equal(isKnownActiveMailbox("ana@icloud.com"), false);
+  it("treats Gmail, Yahoo, and iCloud as readable mailboxes", () => {
+    assert.equal(isKnownActiveMailbox("ana@icloud.com"), true);
+    assert.equal(isKnownActiveMailbox("ana@me.com"), true);
+    assert.equal(isKnownActiveMailbox("hmcelinfo@gmail.com"), true);
+    assert.equal(isKnownActiveMailbox("hsalcidor@yahoo.com"), true);
     assert.equal(isKnownActiveMailbox("ana@empresa.mx"), false);
   });
 });

@@ -8,6 +8,9 @@ import {
 } from "lucide-react";
 import { FormEvent, useEffect, useRef, useState } from "react";
 
+import { GmailConnectNotice } from "@/components/auth/GmailConnectNotice";
+import { IcloudConnectForm } from "@/components/auth/IcloudConnectForm";
+import { YahooConnectForm } from "@/components/auth/YahooConnectForm";
 import { LanguageStrip } from "@/components/UserSettingsPanel";
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import type { AuthOAuthProvider, YahooAuthIntent } from "@/hooks/useAppAuth";
@@ -28,6 +31,20 @@ import {
   isBrowserNetworkError,
   postPublicHms,
 } from "@/lib/publicHms";
+import {
+  icloudErrorCode,
+  icloudErrorMessage,
+  icloudFailureText,
+  icloudText,
+} from "@/lib/i18n/icloudConnect";
+import {
+  gmailSetupText,
+  mailboxNoticeText,
+  missingGoogleEnvNames,
+  noticeErrorCode,
+  noticeErrorMessage,
+  yahooFailureText,
+} from "@/lib/i18n/mailboxNotices";
 import {
   isValidSignupEmail,
   resolveMailboxProviderFromEmail,
@@ -70,9 +87,11 @@ type LoginScreenProps = {
   onResendSignupEmail?: (email: string) => Promise<void>;
   onMagicLink: (email: string) => Promise<void>;
   onResetPassword: (email: string) => Promise<void>;
+  onIcloudSession?: (accessToken: string, refreshToken: string) => Promise<void>;
+  onYahooSession?: (accessToken: string, refreshToken: string) => Promise<void>;
 };
 
-type GateStep = "email" | "confirm" | "waitlist";
+type GateStep = "email" | "confirm" | "waitlist" | "icloud" | "yahoo" | "gmail";
 
 type ResolvePayload = {
   next?: string;
@@ -84,14 +103,16 @@ type ResolvePayload = {
 
 /**
  * Acceso Donexto: un correo (el buzón) y un Continuar.
- * Hoy leemos Outlook/Hotmail/M365. Gmail/Yahoo/iCloud: lista de aviso.
- * Donexto no pide contraseña de correo ni de cuenta.
+ * Outlook, Gmail, Yahoo e iCloud se leen en solo lectura.
+ * Gmail avisa que Google no verificó la app. Yahoo e iCloud usan contraseña de app.
  */
 export function LoginScreen({
   onSignInWithGoogle,
   onSignInWithYahoo,
   onSignInWithMicrosoft,
   onSignInWithProvider,
+  onIcloudSession,
+  onYahooSession,
 }: LoginScreenProps) {
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
@@ -135,14 +156,21 @@ export function LoginScreen({
   }, [language]);
 
   useEffect(() => {
+    let frame = 0;
     try {
       const verifyCode = consumeVerifyLinkError(sessionStorage);
       if (verifyCode) {
-        setError(verifyLinkErrorText(language, verifyCode));
+        const text = verifyLinkErrorText(language, verifyCode);
+        frame = window.requestAnimationFrame(() => {
+          setError(text);
+        });
       }
     } catch {
       // sessionStorage puede fallar en modo restringido
     }
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+    };
   }, [language]);
 
   useEffect(() => {
@@ -268,7 +296,9 @@ export function LoginScreen({
     yahooIntent: YahooAuthIntent = "login",
   ) {
     if (provider === "apple") {
-      openWaitlist("coming_soon", "iCloud");
+      setStep("icloud");
+      setBusy(false);
+      setOauthBusy(null);
       return;
     }
     // Persist the language on this screen before leaving for Microsoft/Yahoo.
@@ -323,11 +353,21 @@ export function LoginScreen({
       return;
     }
     if (provider === "gmail") {
-      openWaitlist("coming_soon", "Gmail");
+      setStep("gmail");
+      setBusy(false);
+      setOauthBusy(null);
+      return;
+    }
+    if (provider === "yahoo") {
+      setStep("yahoo");
+      setBusy(false);
+      setOauthBusy(null);
       return;
     }
     if (provider === "apple") {
-      openWaitlist("coming_soon", "iCloud");
+      setStep("icloud");
+      setBusy(false);
+      setOauthBusy(null);
       return;
     }
     openWaitlist("company", "Microsoft 365");
@@ -361,6 +401,14 @@ export function LoginScreen({
         payload.next,
         payload.provider,
       );
+      if (gate === "icloud_connect" || gate === "yahoo_connect" || gate === "gmail_notice") {
+        setStep(gate === "icloud_connect" ? "icloud" : gate === "yahoo_connect" ? "yahoo" : "gmail");
+        setBusy(false);
+        setOauthBusy(null);
+        setError(null);
+        setMessage(null);
+        return;
+      }
       if (handleComingSoonGate(gate, payload)) {
         return;
       }
@@ -435,6 +483,14 @@ export function LoginScreen({
         payload.next,
         payload.provider,
       );
+      if (gate === "icloud_connect" || gate === "yahoo_connect" || gate === "gmail_notice") {
+        setStep(gate === "icloud_connect" ? "icloud" : gate === "yahoo_connect" ? "yahoo" : "gmail");
+        setBusy(false);
+        setOauthBusy(null);
+        setError(null);
+        setMessage(null);
+        return;
+      }
       if (handleComingSoonGate(gate, payload)) {
         return;
       }
@@ -452,6 +508,122 @@ export function LoginScreen({
       setError(friendlyError(requestError, L("confirmFailed")));
       setBusy(false);
       setOauthBusy(null);
+    }
+  }
+
+  async function submitIcloud(address: string, appPassword: string) {
+    setBusy(true);
+    resetAlerts();
+    try {
+      const resolved = await postPublicHms("/auth/icloud/connect", {
+        email: address,
+        app_password: appPassword,
+      });
+      const payload = resolved.payload as {
+        access_token?: string;
+        refresh_token?: string;
+        detail?: { message?: string; code?: string };
+      };
+      if (!resolved.ok) {
+        const code = icloudErrorCode(resolved.payload);
+        const fallback = icloudErrorMessage(resolved.payload) || L("appleOpenFailed");
+        const message = icloudFailureText(language, code, fallback);
+        setError(message);
+        setBusy(false);
+        throw new Error(message);
+      }
+      const access = payload.access_token || "";
+      const refresh = payload.refresh_token || "";
+      if (!access || !refresh || !onIcloudSession) {
+        const message = L("appleOpenFailed");
+        setError(message);
+        setBusy(false);
+        throw new Error(message);
+      }
+      await onIcloudSession(access, refresh);
+    } catch (requestError) {
+      setError(friendlyError(requestError, L("networkFailed")));
+      setBusy(false);
+      throw requestError instanceof Error
+        ? requestError
+        : new Error(L("networkFailed"));
+    }
+  }
+
+  async function submitYahoo(address: string, appPassword: string) {
+    setBusy(true);
+    resetAlerts();
+    try {
+      const resolved = await postPublicHms("/auth/yahoo/imap/connect", {
+        email: address,
+        app_password: appPassword,
+      });
+      const payload = resolved.payload as {
+        access_token?: string;
+        refresh_token?: string;
+      };
+      if (!resolved.ok) {
+        const code = noticeErrorCode(resolved.payload);
+        const fallback = noticeErrorMessage(resolved.payload) || L("yahooOpenFailed");
+        const message = yahooFailureText(language, code, fallback);
+        setError(message);
+        setBusy(false);
+        throw new Error(message);
+      }
+      const access = payload.access_token || "";
+      const refresh = payload.refresh_token || "";
+      if (!access || !refresh || !onYahooSession) {
+        const message = L("yahooOpenFailed");
+        setError(message);
+        setBusy(false);
+        throw new Error(message);
+      }
+      await onYahooSession(access, refresh);
+    } catch (requestError) {
+      setError(friendlyError(requestError, L("networkFailed")));
+      setBusy(false);
+      throw requestError instanceof Error
+        ? requestError
+        : new Error(L("networkFailed"));
+    }
+  }
+
+  async function submitGmail() {
+    setBusy(true);
+    resetAlerts();
+    try {
+      const ready = await postPublicHms("/auth/google/ready", {});
+      const readyPayload = ready.payload as { configured?: boolean; missing_variables?: string[] };
+      const configured = ready.ok && readyPayload.configured === true;
+      if (!configured) {
+        const message = gmailSetupText(
+          language,
+          missingGoogleEnvNames(ready.payload),
+        );
+        setError(message);
+        setBusy(false);
+        throw new Error(message);
+      }
+      const started = await postPublicHms("/auth/google/login", {
+        login_hint: email.trim().toLowerCase(),
+        return_to: window.location.origin,
+      });
+      const payload = started.payload as {
+        authorization_url?: string;
+      };
+      if (!started.ok || !payload.authorization_url) {
+        const message = gmailSetupText(
+          language,
+          missingGoogleEnvNames(started.payload),
+        );
+        setError(noticeErrorMessage(started.payload) || message);
+        setBusy(false);
+        throw new Error(message);
+      }
+      window.location.assign(payload.authorization_url);
+    } catch (requestError) {
+      setError(friendlyError(requestError, L("googleOpenFailed")));
+      setBusy(false);
     }
   }
 
@@ -494,6 +666,10 @@ export function LoginScreen({
 
   const confirming = step === "confirm";
   const waiting = step === "waitlist";
+  const connectingIcloud = step === "icloud";
+  const connectingYahoo = step === "yahoo";
+  const connectingGmail = step === "gmail";
+  const connectingMailbox = connectingIcloud || connectingYahoo || connectingGmail;
   const displayEmail = email.trim().toLowerCase();
   const waitlistBody =
     waitlistKind === "company"
@@ -544,13 +720,27 @@ export function LoginScreen({
 
           <header className="dx-login__heading">
             <h2 id="dx-login-title" className="dx-login__title">
-              {waiting
-                ? L("waitlistTitle")
-                : confirming
-                  ? L("confirmTitle")
-                  : L("title")}
+              {connectingIcloud
+                ? icloudText(language, "title")
+                : connectingYahoo
+                  ? mailboxNoticeText(language, "yahooTitle")
+                  : connectingGmail
+                    ? mailboxNoticeText(language, "gmailTitle")
+                : waiting
+                  ? L("waitlistTitle")
+                  : confirming
+                    ? L("confirmTitle")
+                    : L("title")}
             </h2>
-            {waiting ? (
+            {connectingIcloud || connectingYahoo || connectingGmail ? (
+              <p className="dx-login__slogan">
+                {connectingIcloud
+                  ? icloudText(language, "intro")
+                  : connectingYahoo
+                    ? mailboxNoticeText(language, "yahooIntro")
+                    : mailboxNoticeText(language, "gmailIntro")}
+              </p>
+            ) : waiting ? (
               <p className="dx-login__slogan">{waitlistBody}</p>
             ) : confirming ? (
               <p className="dx-login__slogan">{L("confirmHelper")}</p>
@@ -562,7 +752,7 @@ export function LoginScreen({
             )}
           </header>
 
-          {error ? (
+          {error && !connectingMailbox ? (
             <div className="dx-login__alert is-error" role="alert">
               <AlertTriangle size={18} />
               <span>{error}</span>
@@ -590,6 +780,54 @@ export function LoginScreen({
             </div>
           ) : null}
 
+          {connectingIcloud ? (
+            <IcloudConnectForm
+              email={email}
+              emailLocked
+              busy={busy}
+              error={error}
+              variant="login"
+              onSubmit={submitIcloud}
+              onBack={() => {
+                setStep("email");
+                resetAlerts();
+                focusEmail();
+              }}
+            />
+          ) : null}
+
+          {connectingYahoo ? (
+            <YahooConnectForm
+              email={email}
+              emailLocked
+              busy={busy}
+              error={error}
+              variant="login"
+              onSubmit={submitYahoo}
+              onBack={() => {
+                setStep("email");
+                resetAlerts();
+                focusEmail();
+              }}
+            />
+          ) : null}
+
+          {connectingGmail ? (
+            <GmailConnectNotice
+              email={email.trim().toLowerCase()}
+              busy={busy}
+              error={error}
+              variant="login"
+              onContinue={submitGmail}
+              onBack={() => {
+                setStep("email");
+                resetAlerts();
+                focusEmail();
+              }}
+            />
+          ) : null}
+
+          {connectingMailbox ? null : (
           <form
             className="dx-login__form"
             onSubmit={(event) => {
@@ -699,6 +937,7 @@ export function LoginScreen({
               </button>
             )}
           </form>
+          )}
 
           {step === "email" ? (
             <div className="dx-login__availability" aria-label={L("servicesKicker")}>
@@ -706,11 +945,9 @@ export function LoginScreen({
                 {L("availableNow")}
               </p>
               <p className="dx-login__providers">{L("serviceMicrosoftTitle")}</p>
-              <p className="dx-login__upcoming">
-                <span>{L("comingSoonBadge")}</span>{" · "}
-                {L("chipGmail")} / {L("chipWorkspace")}{" · "}
-                {L("chipYahoo")}{" · "}{L("chipIcloud")}
-              </p>
+              <p className="dx-login__providers">{L("chipIcloud")}</p>
+              <p className="dx-login__providers">{L("chipGmail")} / {L("chipWorkspace")}</p>
+              <p className="dx-login__providers">{L("chipYahoo")}</p>
             </div>
           ) : null}
 

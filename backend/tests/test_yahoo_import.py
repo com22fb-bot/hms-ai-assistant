@@ -2,6 +2,7 @@ import unittest
 from datetime import datetime, timezone
 from email.message import EmailMessage
 
+from app.services.icloud_imap import IcloudImapError
 from app.services.yahoo_imap import (
     classify_yahoo_folder,
     decode_yahoo_ref,
@@ -9,8 +10,10 @@ from app.services.yahoo_imap import (
     extract_rfc822_bodies,
     imap_search_date,
     normalize_yahoo_app_password,
+    parse_list_mailbox_flags,
     parse_list_mailbox_name,
 )
+from app.services.yahoo_import import _fetch_uid_message
 
 
 class YahooImportHelpersTest(unittest.TestCase):
@@ -25,6 +28,27 @@ class YahooImportHelpersTest(unittest.TestCase):
         self.assertEqual(classify_yahoo_folder("Trash"), "trash")
         self.assertEqual(classify_yahoo_folder("Draft"), "draft")
         self.assertEqual(classify_yahoo_folder("Archive"), "other")
+        self.assertEqual(classify_yahoo_folder("Deleted Messages"), "trash")
+        self.assertEqual(classify_yahoo_folder("Envoyés"), "sent")
+        self.assertEqual(classify_yahoo_folder("Inviati"), "sent")
+        self.assertEqual(
+            classify_yahoo_folder("Custom", r"\HasNoChildren \Trash"),
+            "trash",
+        )
+
+    def test_icloud_fetch_does_not_say_yahoo(self) -> None:
+        class _Client:
+            def uid(self, *_args):
+                return "NO", []
+
+        with self.assertRaises(IcloudImapError) as caught:
+            _fetch_uid_message(_Client(), "9", "icloud")
+        self.assertNotIn("Yahoo", str(caught.exception))
+        self.assertIn("iCloud", str(caught.exception))
+
+    def test_list_flags(self) -> None:
+        raw = b'(\\HasNoChildren \\Sent) "/" "Sent Messages"'
+        self.assertIn("\\Sent", parse_list_mailbox_flags(raw))
 
     def test_parse_list_mailbox_name_quoted(self) -> None:
         raw = b'(\\HasNoChildren) "/" "Sent Mail"'

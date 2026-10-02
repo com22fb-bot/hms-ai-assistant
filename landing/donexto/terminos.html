@@ -202,31 +202,43 @@
 
         <h2 id="cuenta">3. Cuenta Donexto y proveedores de correo</h2>
         <p>
-          Gmail y Yahoo no se identifican igual. Gmail: Google te identifica y
-          te enviamos un correo de verificación de Donexto; después autorizas
-          la lectura en el sitio de Google. Yahoo: te llevamos al sitio de
-          Yahoo para firmar; eso abre la app y, si autorizas la lectura, conecta
-          el buzón. Donexto no pide la contraseña de Yahoo ni de ningún buzón.
-          Con Yahoo no das de alta un usuario Donexto aparte.
+          Gmail, Yahoo e iCloud se leen en solo lectura. Gmail: Google muestra
+          que aún no ha verificado la app; tocas Avanzado y luego Ir a Donexto.
+          Es acceso anticipado (Google limita las apps no verificadas a 100
+          usuarios). El permiso es gmail.readonly y se revoca en
+          myaccount.google.com/permissions. Igual llega el correo de
+          verificación de Donexto. Yahoo: conexión directa con una contraseña
+          de app, en espera de la autorización oficial de Yahoo. Solo lectura
+          y revocable en Yahoo cuando quieras. iCloud: contraseña específica
+          de app, también solo lectura.
         </p>
         <p>
           <strong>Disponible hoy</strong>
         </p>
         <ul>
           <li>
-            Gmail: autorizas la lectura en el sitio de Google. Donexto no te
-            pide la contraseña de Gmail.
+            Gmail: OAuth de solo lectura (gmail.readonly). Google puede decir
+            que no ha verificado la app; Avanzado y luego Ir a Donexto. Acceso
+            anticipado, hasta 100 usuarios. Revocable en
+            myaccount.google.com/permissions.
           </li>
           <li>
-            Yahoo: firmas en el sitio de Yahoo (OAuth). Donexto no pide tu
-            clave. Donexto lee el buzón por IMAP seguro con el token que Yahoo
-            entrega y guarda ese token cifrado. No hay una contraseña Donexto
-            aparte.
+            Yahoo: conexión directa por IMAP con contraseña de app, mientras
+            Yahoo no entrega la autorización oficial (mail-r). Solo lectura y
+            revocable en la seguridad de la cuenta Yahoo.
+          </li>
+          <li>
+            Apple iCloud Mail (@icloud.com, @me.com, @mac.com): conectas con
+            una contraseña específica de app de Apple, no con la contraseña
+            del Apple ID. Donexto abre el buzón en solo lectura: no marca
+            correos como leídos, no los mueve ni los borra. La contraseña de
+            app se guarda cifrada y puedes revocarla en account.apple.com
+            cuando quieras, o desconectar el buzón en Donexto.
           </li>
         </ul>
         <p>
           <strong>Próximamente</strong> (no disponibles): Outlook, Hotmail,
-          Microsoft 365, AOL y Apple iCloud Mail.
+          Microsoft 365 y AOL.
         </p>
         <p>
           No contemplamos proveedores de correo con cifrado de extremo a extremo
@@ -246,14 +258,14 @@
             (OAuth).
           </li>
           <li>
-            Yahoo: la autorización ocurre en el sitio de Yahoo (OAuth). Donexto
-            usa el token contra el servidor IMAP de Yahoo. Ese mismo paso es el
-            acceso; no hay un alta de usuario Donexto.
+            Yahoo: hoy la conexión es directa por IMAP con una contraseña de
+            app que generas en la seguridad de tu cuenta Yahoo. No es la
+            contraseña de Yahoo. El código OAuth se queda para cuando Yahoo
+            autorice la lectura oficial (mail-r).
           </li>
           <li>
-            Gmail: te enviamos un correo de verificación de Donexto; sin ese
-            paso no hay acceso ni lectura. Yahoo no usa ese correo: firmar en
-            Yahoo prueba que el buzón es tuyo.
+            Gmail, Yahoo e iCloud: te enviamos un correo de verificación de
+            Donexto; sin ese paso no hay acceso ni lectura.
           </li>
           <li>
             Pedimos que los datos de la cuenta sean verdaderos, que puedas abrir
@@ -262,9 +274,9 @@
             menores de edad.
           </li>
           <li>
-            La contraseña de la cuenta Donexto, si la usas (Gmail u otro
-            correo), no es la de Gmail. Con Yahoo no existe esa contraseña
-            aparte: firmas en el sitio de Yahoo.
+            La contraseña de la cuenta Donexto, si la usas, no es la de Gmail,
+            Yahoo ni iCloud. Yahoo e iCloud piden una contraseña de app, no la
+            de la cuenta. Gmail se autoriza en el sitio de Google.
           </li>
           <li>
             Gmail: si revocas Donexto en

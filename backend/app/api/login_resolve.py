@@ -16,8 +16,8 @@ from app.services.yahoo_session import auth_user_exists
 
 router = APIRouter(prefix="/auth/login", tags=["Login"])
 
-ACTIVE_OPTIONS = ["hotmail"]
-PENDING_OPTIONS = ["gmail", "yahoo", "apple"]
+ACTIVE_OPTIONS = ["hotmail", "apple", "gmail", "yahoo"]
+PENDING_OPTIONS: list[str] = []
 ACCOUNT_EXISTS_NEXT = frozenset(
     {
         "yahoo_oauth",
@@ -47,9 +47,9 @@ def next_for_existing(provider: str) -> str:
     """Cuentas ya creadas: identity login. No fingir lectura de buzón."""
     return {
         "gmail": "google_oauth",
-        "yahoo": "yahoo_oauth",
+        "yahoo": "yahoo_imap",
         "hotmail": "azure_oauth",
-        "apple": "coming_soon_icloud",
+        "apple": "icloud_imap",
     }.get(provider, "waitlist")
 
 
@@ -96,6 +96,15 @@ def resolve_login(payload: LoginResolveRequest, request: Request) -> dict[str, o
                 "Donexto solo monitorea Microsoft 365 y (pronto) Google Workspace. "
                 "Otros servidores de empresa aún no se pueden leer."
             )
+    elif verdict.status == "active" and verdict.provider == "apple":
+        nxt = "icloud_imap"
+        message = ""
+    elif verdict.status == "active" and verdict.provider == "yahoo":
+        nxt = "yahoo_imap"
+        message = ""
+    elif verdict.status == "active" and verdict.provider == "gmail":
+        nxt = "google_oauth"
+        message = ""
     elif verdict.status == "active":
         nxt = "signup"
         message = ""
@@ -119,7 +128,8 @@ def resolve_login(payload: LoginResolveRequest, request: Request) -> dict[str, o
         "notified_support": notified,
         "active_options": ACTIVE_OPTIONS,
         "pending_options": PENDING_OPTIONS,
-        "read_available": verdict.provider == "hotmail" and verdict.status == "active",
+        "read_available": verdict.provider in {"hotmail", "apple", "gmail", "yahoo"}
+        and verdict.status == "active",
     }
 
 

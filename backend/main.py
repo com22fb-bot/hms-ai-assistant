@@ -21,6 +21,7 @@ from app.api.preferences import router as preferences_router
 from app.api.system import router as system_router
 from app.api.sync_jobs import router as sync_jobs_router
 from app.api.microsoft_mail import router as microsoft_mail_router
+from app.api.icloud_mail import router as icloud_mail_router
 from app.api.yahoo_mail import router as yahoo_mail_router
 from app.api.login_resolve import router as login_resolve_router
 from app.api.admin_contact import router as admin_contact_router
@@ -184,6 +185,7 @@ app.include_router(identity_router)
 app.include_router(ai_router)
 app.include_router(auth_router)
 app.include_router(yahoo_mail_router)
+app.include_router(icloud_mail_router)
 app.include_router(microsoft_mail_router)
 app.include_router(login_resolve_router)
 app.include_router(billing_router)

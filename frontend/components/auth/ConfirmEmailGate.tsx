@@ -42,14 +42,20 @@ export function ConfirmEmailGate({
     : localError;
 
   useEffect(() => {
+    let frame = 0;
     try {
       const code = consumeVerifyLinkError(sessionStorage);
       if (code) {
-        setErrorCode(code);
+        frame = window.requestAnimationFrame(() => {
+          setErrorCode(code);
+        });
       }
     } catch {
       // sessionStorage puede fallar en modo restringido
     }
+    return () => {
+      if (frame) window.cancelAnimationFrame(frame);
+    };
   }, [language]);
 
   async function resend() {

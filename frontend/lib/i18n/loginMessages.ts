@@ -118,9 +118,9 @@ const es: Record<LoginMessageKey, string> = {
   changeEmailExplain:
     "El correo tiene que ser el buzón que Donexto puede leer ahora: Outlook, Hotmail, Live, MSN o Microsoft 365.",
   icloudUnavailable:
-    "iCloud aún no está disponible. Si quieres, te avisamos a este correo cuando Donexto pueda monitorearlo.",
+    "iCloud se conecta con una contraseña específica de app, en solo lectura. No es la contraseña de tu Apple ID.",
   mustUseKnownMailbox:
-    "Hoy Donexto lee Outlook, Hotmail, Live, MSN y Microsoft 365. Gmail, Yahoo e iCloud van a llegar.",
+    "Hoy Donexto lee Outlook, Hotmail, Live, MSN, Microsoft 365, Gmail, Yahoo e iCloud, en solo lectura.",
   gmailPending:
     "Gmail aún no se puede monitorear. Si ya entras a Donexto con este Gmail, Continuar te identifica. Si es la primera vez, te podemos avisar cuando esté listo.",
   confirmYahoo:
@@ -161,7 +161,8 @@ const es: Record<LoginMessageKey, string> = {
   microsoftOpenFailed: "No fue posible abrir el inicio de sesión de Microsoft.",
   yahooOpenFailed: "No fue posible abrir Yahoo.",
   googleOpenFailed: "No fue posible abrir el inicio de sesión de Google.",
-  appleOpenFailed: "iCloud aún no está disponible.",
+  appleOpenFailed:
+    "No fue posible conectar iCloud. Revisa la contraseña específica de app.",
   noActiveService:
     "Hoy Donexto lee Outlook, Hotmail, Live, MSN y Microsoft 365.",
   passwordMin: "La contraseña de Donexto usa al menos 8 caracteres.",
@@ -223,11 +224,11 @@ const en: Record<LoginMessageKey, string> = {
   changeEmailExplain:
     "The email has to be the mailbox (Yahoo, Outlook, or Gmail) that Donexto will monitor. If you enter another address, we cannot serve the inbox that matters to you.",
   icloudUnavailable:
-    "iCloud is not available yet. For now use Yahoo, Outlook/Hotmail, or Gmail.",
+    "iCloud connects with an app-specific password, read-only. It is not your Apple ID password.",
   mustUseKnownMailbox:
-    "For now the mailbox has to be Yahoo, Outlook/Hotmail, or Gmail. If you enter another address, we cannot serve the inbox that matters to you.",
+    "Donexto reads Outlook, Hotmail, Gmail, Yahoo, and iCloud, read-only.",
   gmailPending:
-    "New Gmail accounts are still under Google review. If you already use this Gmail in Donexto, Continue takes you to Google. If this is the first time, use Yahoo or Outlook/Hotmail.",
+    "Gmail is in early access. Google may say it has not verified Donexto. Tap Advanced, then Go to Donexto. Read-only.",
   confirmYahoo:
     "That address is the mailbox Donexto will monitor. When you continue, you sign in at Yahoo. Donexto does not ask for your mailbox password.",
   confirmMicrosoft:
@@ -265,7 +266,7 @@ const en: Record<LoginMessageKey, string> = {
   microsoftOpenFailed: "We could not open Microsoft sign-in.",
   yahooOpenFailed: "We could not open Yahoo.",
   googleOpenFailed: "We could not open Google sign-in.",
-  appleOpenFailed: "iCloud is not available yet.",
+  appleOpenFailed: "iCloud could not be connected. Check the app-specific password.",
   noActiveService:
     "For now the mailbox has to be Yahoo, Outlook/Hotmail, or Gmail.",
   passwordMin: "The Donexto password uses at least 8 characters.",
@@ -327,11 +328,11 @@ const fr: Record<LoginMessageKey, string> = {
   changeEmailExplain:
     "L’e-mail doit être la boîte (Yahoo, Outlook ou Gmail) que Donexto va surveiller. Si vous en mettez un autre, nous ne pouvons pas servir la messagerie qui vous importe.",
   icloudUnavailable:
-    "iCloud n’est pas encore disponible. Pour l’instant, utilisez Yahoo, Outlook/Hotmail ou Gmail.",
+    "iCloud se connecte avec un mot de passe pour application, en lecture seule. Ce n’est pas le mot de passe de l’identifiant Apple.",
   mustUseKnownMailbox:
-    "Pour l’instant, la boîte doit être Yahoo, Outlook/Hotmail ou Gmail. Si vous en mettez une autre, nous ne pouvons pas servir la messagerie qui vous importe.",
+    "Donexto lit Outlook, Hotmail, Gmail, Yahoo et iCloud, en lecture seule.",
   gmailPending:
-    "Les nouveaux comptes Gmail sont encore en revue chez Google. Si vous utilisez déjà ce Gmail dans Donexto, Continuer ouvre Google. Sinon, utilisez Yahoo ou Outlook/Hotmail.",
+    "Gmail est en accès anticipé. Google peut dire qu’il n’a pas validé Donexto. Touchez Paramètres avancés, puis Accéder à Donexto.",
   confirmYahoo:
     "Cette adresse est la boîte que Donexto va surveiller. En continuant, vous vous connectez sur Yahoo. Donexto ne demande pas le mot de passe.",
   confirmMicrosoft:
@@ -370,7 +371,8 @@ const fr: Record<LoginMessageKey, string> = {
   microsoftOpenFailed: "Impossible d’ouvrir la connexion Microsoft.",
   yahooOpenFailed: "Impossible d’ouvrir Yahoo.",
   googleOpenFailed: "Impossible d’ouvrir la connexion Google.",
-  appleOpenFailed: "iCloud n’est pas encore disponible.",
+  appleOpenFailed:
+    "Impossible de connecter iCloud. Vérifiez le mot de passe pour application.",
   noActiveService:
     "Pour l’instant, la boîte doit être Yahoo, Outlook/Hotmail ou Gmail.",
   passwordMin: "Le mot de passe Donexto comporte au moins 8 caractères.",
@@ -432,11 +434,11 @@ const it: Record<LoginMessageKey, string> = {
   changeEmailExplain:
     "L’email deve essere la casella (Yahoo, Outlook o Gmail) che Donexto monitorerà. Se ne inserisci un’altra, non possiamo servire la casella che ti importa.",
   icloudUnavailable:
-    "iCloud non è ancora disponibile. Per ora usa Yahoo, Outlook/Hotmail o Gmail.",
+    "iCloud si collega con una password specifica per l’app, in sola lettura. Non è la password dell’ID Apple.",
   mustUseKnownMailbox:
-    "Per ora la casella deve essere Yahoo, Outlook/Hotmail o Gmail. Se ne inserisci un’altra, non possiamo servire la casella che ti importa.",
+    "Donexto legge Outlook, Hotmail, Gmail, Yahoo e iCloud, in sola lettura.",
   gmailPending:
-    "I nuovi account Gmail sono ancora in revisione da Google. Se usi già questo Gmail in Donexto, Continua apre Google. Altrimenti usa Yahoo o Outlook/Hotmail.",
+    "Gmail è in accesso anticipato. Google può dire che non ha verificato Donexto. Tocca Avanzate e poi Vai a Donexto.",
   confirmYahoo:
     "Quell’indirizzo è la casella che Donexto monitorerà. Continuando, accedi su Yahoo. Donexto non chiede la password.",
   confirmMicrosoft:
@@ -475,7 +477,8 @@ const it: Record<LoginMessageKey, string> = {
   microsoftOpenFailed: "Impossibile aprire l’accesso Microsoft.",
   yahooOpenFailed: "Impossibile aprire Yahoo.",
   googleOpenFailed: "Impossibile aprire l’accesso Google.",
-  appleOpenFailed: "iCloud non è ancora disponibile.",
+  appleOpenFailed:
+    "Non è stato possibile collegare iCloud. Controlla la password dell’app.",
   noActiveService:
     "Per ora la casella deve essere Yahoo, Outlook/Hotmail o Gmail.",
   passwordMin: "La password Donexto ha almeno 8 caratteri.",
@@ -537,11 +540,11 @@ const pt: Record<LoginMessageKey, string> = {
   changeEmailExplain:
     "O correio tem de ser a caixa (Yahoo, Outlook ou Gmail) que o Donexto vai monitorizar. Se puser outro, não podemos servir a caixa que lhe importa.",
   icloudUnavailable:
-    "O iCloud ainda não está disponível. Por agora use Yahoo, Outlook/Hotmail ou Gmail.",
+    "O iCloud conecta com uma senha específica de app, em somente leitura. Não é a senha do ID Apple.",
   mustUseKnownMailbox:
-    "Por agora a caixa tem de ser Yahoo, Outlook/Hotmail ou Gmail. Se puser outra, não podemos servir a caixa que lhe importa.",
+    "A Donexto lê Outlook, Hotmail, Gmail, Yahoo e iCloud, em somente leitura.",
   gmailPending:
-    "Novas contas Gmail ainda estão em revisão da Google. Se já usa este Gmail no Donexto, Continuar abre a Google. Se é a primeira vez, use Yahoo ou Outlook/Hotmail.",
+    "O Gmail está em acesso antecipado. O Google pode dizer que não verificou a Donexto. Toque em Avançado e depois em Ir para Donexto.",
   confirmYahoo:
     "Esse endereço é a caixa que o Donexto vai monitorizar. Ao continuar, entra na Yahoo. O Donexto não pede a palavra-passe.",
   confirmMicrosoft:
@@ -580,7 +583,8 @@ const pt: Record<LoginMessageKey, string> = {
   microsoftOpenFailed: "Não foi possível abrir o início de sessão da Microsoft.",
   yahooOpenFailed: "Não foi possível abrir a Yahoo.",
   googleOpenFailed: "Não foi possível abrir o início de sessão do Google.",
-  appleOpenFailed: "O iCloud ainda não está disponível.",
+  appleOpenFailed:
+    "Não foi possível conectar o iCloud. Confira a senha específica de app.",
   noActiveService:
     "Por agora a caixa tem de ser Yahoo, Outlook/Hotmail ou Gmail.",
   passwordMin: "A palavra-passe Donexto tem pelo menos 8 caracteres.",

@@ -1,4 +1,9 @@
-"""Conexión de Yahoo Mail por OAuth: el usuario firma en Yahoo, no da su clave."""
+"""Yahoo Mail: OAuth (mail-r pendiente) y IMAP con contraseña de app.
+
+La contraseña de app es la ruta que lee el buzón ahora. El OAuth se
+queda para cuando Yahoo entregue mail-r. No activar
+YAHOO_MAIL_READ_ENABLED. La contraseña de app se cifra y no se registra.
+"""
 
 from __future__ import annotations
 
@@ -12,12 +17,24 @@ from pydantic import BaseModel, Field
 
 from app.core.config import settings
 from app.schemas.gmail import GoogleConnectionStatus
-from app.security.identity import require_request_context
 from app.services.oauth_storage import (
     OAuthCredentialError,
     OAuthStateError,
     OAuthStorageError,
     oauth_storage,
+)
+from app.security.identity import (
+    authenticate_request,
+    require_request_context,
+    resolve_workspace_context,
+)
+from app.security.rate_limit import allow_request
+from app.services.imap_provider import YAHOO_IMAP
+from app.services.yahoo_imap import (
+    YahooImapError,
+    normalize_yahoo_app_password,
+    stored_yahoo_uses_app_password,
+    verify_yahoo_app_login,
 )
 from app.services.yahoo_oauth import (
     YahooOAuthError,
@@ -411,8 +428,24 @@ def yahoo_status() -> GoogleConnectionStatus:
 
     credentials = oauth_storage.get_credentials(str(account["id"]))
     scopes = list((credentials or {}).get("scopes") or [])
-    mail_read = granted_mail_read({"scope": " ".join(scopes)})
     has_token = bool(credentials and credentials.get("access_token"))
+    if stored_yahoo_uses_app_password(credentials):
+        return GoogleConnectionStatus(
+            connected=has_token,
+            email=account.get("email"),
+            provider="yahoo",
+            has_access_token=has_token,
+            has_refresh_token=False,
+            scopes=scopes,
+            message=(
+                "Buzón Yahoo conectado en solo lectura con contraseña de app."
+                if has_token
+                else "Falta volver a conectar Yahoo."
+            ),
+            login_url=None,
+            mail_read_available=has_token,
+        )
+    mail_read = granted_mail_read({"scope": " ".join(scopes)})
     return GoogleConnectionStatus(
         connected=bool(has_token and mail_read),
         email=account.get("email"),
@@ -433,6 +466,177 @@ def yahoo_status() -> GoogleConnectionStatus:
     )
 
 
+_YAHOO_IMAP_SIGNUP = "yahoo_imap"
+
+
+def _yahoo_session_if_present(request: Request):
+    authorization = request.headers.get("authorization", "").strip()
+    if not authorization:
+        return None
+    user = authenticate_request(request)
+    if not user.donexto_verified:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "donexto_unverified",
+                "message": "Confirma tu correo Donexto antes de conectar Yahoo.",
+            },
+        )
+    return resolve_workspace_context(request, user)
+
+
+def persist_yahoo_app_mailbox(
+    *,
+    user_id: str,
+    workspace_id: str,
+    address: str,
+    app_password: str,
+) -> None:
+    """Guarda la contraseña de app cifrada. El argumento no se registra."""
+    try:
+        oauth_storage.client.table("communication_accounts").update(
+            {"status": "inactive"}
+        ).eq("workspace_id", workspace_id).eq("status", "active").neq(
+            "provider", "yahoo"
+        ).execute()
+    except Exception:
+        pass
+
+    try:
+        account = oauth_storage.upsert_communication_account(
+            provider="yahoo",
+            provider_account_id=address,
+            email=address,
+            display_name=address,
+            workspace_id=workspace_id,
+            connected_by_profile_id=user_id,
+            status="active",
+        )
+        oauth_storage.save_credentials(
+            account_id=account["id"],
+            access_token=app_password,
+            refresh_token=None,
+            token_uri=f"imap://{YAHOO_IMAP.host}:{YAHOO_IMAP.port}",
+            scopes=["imap", "readonly"],
+            metadata={
+                "protocol": "imap",
+                "auth": "app_password",
+                "host": YAHOO_IMAP.host,
+                "port": YAHOO_IMAP.port,
+                "readonly": True,
+                "connected_by_profile_id": user_id,
+                "workspace_id": workspace_id,
+            },
+        )
+    except (OAuthStorageError, OAuthCredentialError) as error:
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "error",
+                "message": "Yahoo autenticó, pero no se pudo guardar la conexión.",
+            },
+        ) from error
+
+
+class YahooImapConnectResponse(BaseModel):
+    connected: bool = True
+    email: str
+    provider: str = "yahoo"
+    message: str
+    access_token: str | None = None
+    refresh_token: str | None = None
+    token_type: str | None = None
+    expires_in: int | None = None
+
+
+@router.post("/imap/connect", response_model=YahooImapConnectResponse)
+def yahoo_imap_connect(
+    payload: YahooConnectRequest,
+    request: Request,
+) -> YahooImapConnectResponse:
+    """LOGIN IMAP real con contraseña de app. No usa YAHOO_MAIL_READ_ENABLED."""
+    client_host = getattr(getattr(request, "client", None), "host", None) or "unknown"
+    if not allow_request(f"yahoo-imap:{client_host}", max_requests=8, window_seconds=60):
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "status": "rate_limited",
+                "code": "rate_limited",
+                "message": "Demasiados intentos seguidos. Espera un momento.",
+            },
+        )
+
+    context = _yahoo_session_if_present(request)
+    try:
+        verified = verify_yahoo_app_login(payload.email, payload.app_password)
+    except YahooImapError as error:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "yahoo_auth_failed",
+                "code": error.code,
+                "message": str(error),
+            },
+        ) from error
+
+    if context is not None and verified != context.user.email.strip().lower():
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "status": "email_mismatch",
+                "code": "email_mismatch",
+                "message": (
+                    "Donexto solo lee el correo de esta cuenta. "
+                    "Usa el mismo Yahoo con el que entraste."
+                ),
+            },
+        )
+
+    access_token = None
+    refresh_token = None
+    expires_in = None
+    if context is None:
+        session = mint_yahoo_session_or_http(
+            verified,
+            allow_create=True,
+            signup_via=_YAHOO_IMAP_SIGNUP,
+            provider_label="Yahoo",
+        )
+        user_id = str(session["user_id"])
+        workspace_id = str(session["workspace_id"])
+        access_token = str(session.get("access_token") or "") or None
+        refresh_token = str(session.get("refresh_token") or "") or None
+        raw_expires = session.get("expires_in")
+        if raw_expires is not None:
+            try:
+                expires_in = int(raw_expires)
+            except (TypeError, ValueError):
+                expires_in = None
+    else:
+        user_id = context.user.id
+        workspace_id = context.workspace_id
+
+    persist_yahoo_app_mailbox(
+        user_id=user_id,
+        workspace_id=workspace_id,
+        address=verified,
+        app_password=normalize_yahoo_app_password(payload.app_password),
+    )
+    return YahooImapConnectResponse(
+        connected=True,
+        email=verified,
+        message=(
+            "Yahoo conectado en solo lectura con contraseña de app. "
+            "Donexto no marca tus correos como leídos. Puedes revocar "
+            "esa contraseña en Yahoo cuando quieras."
+        ),
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer" if access_token else None,
+        expires_in=expires_in,
+    )
+
+
 @router.post("/disconnect", response_model=GoogleConnectionStatus)
 def yahoo_disconnect() -> GoogleConnectionStatus:
     context = require_request_context()
@@ -447,7 +651,7 @@ def yahoo_disconnect() -> GoogleConnectionStatus:
             message="No había buzón Yahoo que desconectar.",
         )
 
-    oauth_storage.disconnect_account(str(account["id"]))
+    oauth_storage.disconnect_account(str(account["id"]), delete_credentials=True)
     return GoogleConnectionStatus(
         connected=False,
         provider="yahoo",

@@ -18,6 +18,7 @@ from app.services.gmail_sync import (
     _utc_now,
 )
 from app.services.oauth_storage import OAuthStorage
+from app.services.imap_provider import PEEK_FULL_SPEC
 from app.services.yahoo_imap import (
     YahooImapError,
     _decode_header_value,
@@ -29,6 +30,7 @@ from app.services.yahoo_imap import (
     imap_search_date,
     normalize_yahoo_address,
     normalize_yahoo_app_password,
+    parse_list_mailbox_flags,
     parse_list_mailbox_name,
 )
 
@@ -36,6 +38,38 @@ from app.services.yahoo_imap import (
 def is_yahoo_provider(account: dict[str, Any] | None) -> bool:
     provider = str((account or {}).get("provider") or "").strip().lower()
     return provider in {"yahoo", "imap"}
+
+
+def _prepare_imap_secret(
+    address: str,
+    secret: str,
+    *,
+    oauth: bool,
+    mailbox_provider: str,
+) -> tuple[str, str]:
+    clean = normalize_yahoo_address(address)
+    if mailbox_provider == "icloud":
+        from app.services.icloud_imap import normalize_icloud_app_password
+
+        return clean, normalize_icloud_app_password(secret)
+    if not oauth:
+        return clean, normalize_yahoo_app_password(secret)
+    return clean, secret
+
+
+def _open_mailbox_client(
+    address: str,
+    secret: str,
+    *,
+    timeout: int,
+    oauth: bool,
+    mailbox_provider: str,
+) -> Any:
+    if mailbox_provider == "icloud":
+        from app.services.icloud_imap import open_icloud_client
+
+        return open_icloud_client(address, secret, timeout=timeout)
+    return _open_yahoo_client(address, secret, timeout=timeout, oauth=oauth)
 
 
 YAHOO_IMPORT_TIMEOUT = 120
@@ -58,17 +92,29 @@ def _history_window(
     return start, current
 
 
-def _list_folder_names(client: Any) -> list[str]:
+def _provider_read_error(mailbox_provider: str, message: str) -> Exception:
+    if mailbox_provider == "icloud":
+        from app.services.icloud_imap import IcloudImapError
+
+        return IcloudImapError(message, code="imap_failed")
+    return YahooImapError(message, code="imap_failed")
+
+
+def _provider_label(mailbox_provider: str) -> str:
+    return "iCloud" if mailbox_provider == "icloud" else "Yahoo"
+
+
+def _list_folders(client: Any) -> list[tuple[str, str]]:
     status, data = client.list()
     if status != "OK" or not data:
-        return ["INBOX"]
+        return [("INBOX", "\\Inbox")]
 
-    names: list[str] = []
+    folders: list[tuple[str, str]] = []
     for row in data:
         name = parse_list_mailbox_name(row)
         if name:
-            names.append(name)
-    return names or ["INBOX"]
+            folders.append((name, parse_list_mailbox_flags(row)))
+    return folders or [("INBOX", "\\Inbox")]
 
 
 def _uid_search(client: Any, *criteria: str) -> list[str]:
@@ -80,16 +126,29 @@ def _uid_search(client: Any, *criteria: str) -> list[str]:
     return [item for item in text.split() if item]
 
 
-def _select_folder(client: Any, folder: str) -> None:
+def _select_folder(
+    client: Any,
+    folder: str,
+    mailbox_provider: str = "yahoo",
+) -> None:
     status, _ = client.select(_quoted_mailbox(folder), readonly=True)
     if status != "OK":
         status, _ = client.select(folder, readonly=True)
     if status != "OK":
-        raise YahooImapError(f"No fue posible abrir la carpeta {folder}.")
+        label = _provider_label(mailbox_provider)
+        raise _provider_read_error(
+            mailbox_provider,
+            f"No fue posible abrir la carpeta {folder} de {label}.",
+        )
 
 
-def _folder_uids_since(client: Any, folder: str, since: datetime) -> list[str]:
-    _select_folder(client, folder)
+def _folder_uids_since(
+    client: Any,
+    folder: str,
+    since: datetime,
+    mailbox_provider: str = "yahoo",
+) -> list[str]:
+    _select_folder(client, folder, mailbox_provider)
     return _uid_search(client, "SINCE", imap_search_date(since))
 
 
@@ -98,19 +157,18 @@ def _collect_refs(
     *,
     since: datetime,
     roles: set[str],
+    mailbox_provider: str = "yahoo",
 ) -> dict[str, list[str]]:
     grouped: dict[str, list[str]] = {role: [] for role in roles}
     grouped.setdefault("other", [])
 
-    for folder in _list_folder_names(client):
-        role = classify_yahoo_folder(folder)
+    for folder, flags in _list_folders(client):
+        role = classify_yahoo_folder(folder, flags)
         if role not in roles:
             continue
         try:
-            uids = _folder_uids_since(client, folder, since)
-        except YahooImapError:
-            continue
-        except Exception:
+            uids = _folder_uids_since(client, folder, since, mailbox_provider)
+        except (YahooImapError, Exception):
             continue
         for uid in uids:
             grouped.setdefault(role, []).append(encode_yahoo_ref(folder, uid))
@@ -123,23 +181,29 @@ def yahoo_initial_snapshot(
     *,
     cutoff_at: datetime | None = None,
     oauth: bool = False,
+    mailbox_provider: str = "yahoo",
 ) -> dict[str, Any]:
-    address = normalize_yahoo_address(address)
-    if not oauth:
-        app_password = normalize_yahoo_app_password(app_password)
+    address, app_password = _prepare_imap_secret(
+        address,
+        app_password,
+        oauth=oauth,
+        mailbox_provider=mailbox_provider,
+    )
     start, current = _history_window(cutoff_at)
 
-    client = _open_yahoo_client(
+    client = _open_mailbox_client(
         address,
         app_password,
         timeout=YAHOO_IMPORT_TIMEOUT,
         oauth=oauth,
+        mailbox_provider=mailbox_provider,
     )
     try:
         grouped = _collect_refs(
             client,
             since=start,
             roles={"inbox", "sent", "draft", "spam", "trash"},
+            mailbox_provider=mailbox_provider,
         )
         eligible = grouped.get("inbox", []) + grouped.get("sent", [])
         unread = 0
@@ -148,7 +212,7 @@ def yahoo_initial_snapshot(
         } or {"INBOX"}
         for folder in inbox_folders:
             try:
-                _select_folder(client, folder)
+                _select_folder(client, folder, mailbox_provider)
                 unread += len(
                     _uid_search(
                         client,
@@ -168,7 +232,7 @@ def yahoo_initial_snapshot(
     unique_eligible = list(dict.fromkeys(eligible))
     return {
         "query": (
-            f"yahoo:since:{imap_search_date(start)} "
+            f"{mailbox_provider}:since:{imap_search_date(start)} "
             f"until:{imap_search_date(current)}"
         ),
         "eligible_messages": len(unique_eligible),
@@ -198,8 +262,14 @@ def yahoo_inventory(
     app_password: str,
     *,
     oauth: bool = False,
+    mailbox_provider: str = "yahoo",
 ) -> dict[str, Any]:
-    snapshot = yahoo_initial_snapshot(address, app_password, oauth=oauth)
+    snapshot = yahoo_initial_snapshot(
+        address,
+        app_password,
+        oauth=oauth,
+        mailbox_provider=mailbox_provider,
+    )
     snapshot.pop("yahoo_refs", None)
     breakdown = snapshot.pop("breakdown")
     excluded = snapshot.pop("excluded")
@@ -207,8 +277,8 @@ def yahoo_inventory(
         "status": "ok",
         "mode": "initial_six_month_inventory",
         "email": normalize_yahoo_address(address),
-        "provider": "yahoo",
-        "provider_label": "Yahoo",
+        "provider": mailbox_provider,
+        "provider_label": "iCloud" if mailbox_provider == "icloud" else "Yahoo",
         "profile_messages_total": (
             snapshot["eligible_messages"]
             + excluded["drafts"]
@@ -237,21 +307,27 @@ def yahoo_incremental_refs(
     *,
     since: datetime,
     oauth: bool = False,
+    mailbox_provider: str = "yahoo",
 ) -> list[str]:
-    address = normalize_yahoo_address(address)
-    if not oauth:
-        app_password = normalize_yahoo_app_password(app_password)
-    client = _open_yahoo_client(
+    address, app_password = _prepare_imap_secret(
+        address,
+        app_password,
+        oauth=oauth,
+        mailbox_provider=mailbox_provider,
+    )
+    client = _open_mailbox_client(
         address,
         app_password,
         timeout=YAHOO_IMPORT_TIMEOUT,
         oauth=oauth,
+        mailbox_provider=mailbox_provider,
     )
     try:
         grouped = _collect_refs(
             client,
             since=since,
             roles={"inbox", "sent"},
+            mailbox_provider=mailbox_provider,
         )
         return list(dict.fromkeys(grouped.get("inbox", []) + grouped.get("sent", [])))
     finally:
@@ -267,10 +343,18 @@ def _flags_from_fetch(meta: bytes | str) -> str:
     return str(meta)
 
 
-def _fetch_uid_message(client: Any, uid: str) -> tuple[email.message.Message, str]:
-    status, fetched = client.uid("FETCH", uid, "(FLAGS BODY.PEEK[])")
+def _fetch_uid_message(
+    client: Any,
+    uid: str,
+    mailbox_provider: str = "yahoo",
+) -> tuple[email.message.Message, str]:
+    status, fetched = client.uid("FETCH", uid, PEEK_FULL_SPEC)
+    label = _provider_label(mailbox_provider)
     if status != "OK" or not fetched:
-        raise YahooImapError(f"Yahoo no devolvió el mensaje {uid}.")
+        raise _provider_read_error(
+            mailbox_provider,
+            f"{label} no devolvió el mensaje {uid}.",
+        )
 
     raw_bytes = b""
     flags_text = ""
@@ -284,7 +368,10 @@ def _fetch_uid_message(client: Any, uid: str) -> tuple[email.message.Message, st
             flags_text += _flags_from_fetch(part)
 
     if not raw_bytes:
-        raise YahooImapError(f"Yahoo devolvió un mensaje vacío ({uid}).")
+        raise _provider_read_error(
+            mailbox_provider,
+            f"{label} devolvió un mensaje vacío ({uid}).",
+        )
     return email.message_from_bytes(raw_bytes), flags_text
 
 
@@ -307,11 +394,15 @@ def sync_yahoo_page(
     offset: int,
     batch_size: int = YAHOO_PAGE_SIZE,
     oauth: bool = False,
+    mailbox_provider: str = "yahoo",
 ) -> dict[str, Any]:
     account_id = str(account["id"])
-    address = normalize_yahoo_address(str(account.get("email") or ""))
-    if not oauth:
-        app_password = normalize_yahoo_app_password(app_password)
+    address, app_password = _prepare_imap_secret(
+        str(account.get("email") or ""),
+        app_password,
+        oauth=oauth,
+        mailbox_provider=mailbox_provider,
+    )
     safe_batch = min(max(int(batch_size), 1), 50)
     started_at = _utc_now()
 
@@ -348,7 +439,7 @@ def sync_yahoo_page(
         }
 
     external_ids = [
-        f"yahoo:{folder}:{uid}"
+        f"{mailbox_provider}:{folder}:{uid}"
         for folder, uid in (decode_yahoo_ref(ref) for ref in page_refs)
     ]
     existing_ids = _existing_message_ids(
@@ -358,24 +449,29 @@ def sync_yahoo_page(
     )
     duplicates = len(existing_ids)
 
-    imap_client = _open_yahoo_client(
+    imap_client = _open_mailbox_client(
         address,
         app_password,
         timeout=YAHOO_IMPORT_TIMEOUT,
         oauth=oauth,
+        mailbox_provider=mailbox_provider,
     )
     selected_folder: str | None = None
     try:
         for ref in page_refs:
             folder, uid = decode_yahoo_ref(ref)
-            external_message_id = f"yahoo:{folder}:{uid}"
+            external_message_id = f"{mailbox_provider}:{folder}:{uid}"
             if external_message_id in existing_ids:
                 continue
             try:
                 if selected_folder != folder:
-                    _select_folder(imap_client, folder)
+                    _select_folder(imap_client, folder, mailbox_provider)
                     selected_folder = folder
-                parsed, flags_text = _fetch_uid_message(imap_client, uid)
+                parsed, flags_text = _fetch_uid_message(
+                    imap_client,
+                    uid,
+                    mailbox_provider,
+                )
                 body_text, body_html, has_attachments = extract_rfc822_bodies(
                     parsed
                 )
@@ -408,7 +504,7 @@ def sync_yahoo_page(
                         participant_values.append(formatted)
                 participants = ", ".join(dict.fromkeys(participant_values))
                 folder_role = classify_yahoo_folder(folder)
-                labels = ["YAHOO", folder_role.upper()]
+                labels = [mailbox_provider.upper(), folder_role.upper()]
                 is_unread = "\\Seen" not in flags_text
                 direction = "outbound" if folder_role == "sent" else "inbound"
                 snippet = re.sub(
@@ -428,7 +524,7 @@ def sync_yahoo_page(
                     subject=subject,
                     participants=participants,
                     last_message_at=received_at_iso or _to_iso(_utc_now()) or "",
-                    provider="yahoo",
+                    provider=mailbox_provider,
                 )
                 insert_response = (
                     client_db.table("communication_messages")
@@ -436,7 +532,7 @@ def sync_yahoo_page(
                         {
                             "thread_id": str(thread["id"]),
                             "account_id": account_id,
-                            "provider": "yahoo",
+                            "provider": mailbox_provider,
                             "external_message_id": external_message_id,
                             "sender": sender,
                             "recipients": recipients,

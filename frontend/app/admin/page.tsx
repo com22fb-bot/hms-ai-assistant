@@ -257,6 +257,7 @@ function AdminPage() {
     signInWithYahoo,
     signInWithMicrosoft,
     signInWithProvider,
+    adoptIcloudSession,
     signUp,
     resendSignupEmail,
     sendDonextoVerifyEmail,
@@ -376,17 +377,23 @@ function AdminPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("tab") === "mensajes") {
-      setTab("messages");
-    }
+    const openMessages = params.get("tab") === "mensajes";
     const focus = params.get("id");
-    if (focus) setContactFocus(focus);
+    if (!openMessages && !focus) return;
+    const frame = window.requestAnimationFrame(() => {
+      if (openMessages) setTab("messages");
+      if (focus) setContactFocus(focus);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   useEffect(() => {
     if (authLoading) return;
     if (!session) return;
-    void loadTab(tab);
+    const frame = window.requestAnimationFrame(() => {
+      void loadTab(tab);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [authLoading, session, tab, loadTab]);
 
   useEffect(() => {
@@ -516,6 +523,8 @@ function AdminPage() {
           onSignInWithYahoo={signInWithYahoo}
           onSignInWithMicrosoft={signInWithMicrosoft}
           onSignInWithProvider={signInWithProvider}
+          onIcloudSession={adoptIcloudSession}
+          onYahooSession={adoptIcloudSession}
           onResendSignupEmail={resendSignupEmail}
           onMagicLink={signInWithMagicLink}
           onResetPassword={resetPassword}
