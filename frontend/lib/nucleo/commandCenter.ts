@@ -8,6 +8,7 @@
  */
 
 import {
+  amountsMatch,
   foldText,
   hasTerm,
   isOpenStatus,
@@ -338,12 +339,17 @@ function tokenConsumed(token: string, groups: string[][]): boolean {
 }
 
 export function parseAsk(query: string): AskIntent {
-  const folded = foldText(query).replace(/[¿?¡!,;:()"]/g, " ").replace(/\s+/g, " ").trim();
+  const folded = foldText(query)
+    .replace(/[¿?¡!;:()"]/g, " ")
+    // Keep decimal separators ("58,47", "58.47"); drop other commas/periods.
+    .replace(/,(?!\d)|(?<!\d),/g, " ")
+    .replace(/\.(?!\d)|(?<!\d)\./g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
   const areas = AREA_WORDS.filter((entry) => matchAny(folded, entry.terms)).map((entry) => entry.area);
   const time = TIME_WORDS.find((entry) => matchAny(folded, entry.terms))?.intent ?? null;
   const status = STATUS_WORDS.find((entry) => matchAny(folded, entry.terms))?.status ?? null;
-  const amountMatch = folded.match(/\$\s*(\d+(?:[.,]\d{1,2})?)/);
-  const amount = amountMatch ? Number(amountMatch[1].replace(",", ".")) : null;
+  const amount = parseAskAmount(folded);
   const consumed = [
     ...AREA_WORDS.map((entry) => entry.terms),
     ...TIME_WORDS.map((entry) => entry.terms),
@@ -351,10 +357,38 @@ export function parseAsk(query: string): AskIntent {
   ];
   const terms = folded
     .split(" ")
-    .filter((token) => token.length > 1 && !QUERY_STOP_WORDS.has(token))
-    .filter((token) => !/^\$?\d+(?:[.,]\d+)?$/.test(token))
+    .filter((token) => token.length > 1 && !QUERY_STOP_WORDS.has(token) && !CURRENCY_WORDS.has(token))
+    // Amount-like tokens become the amount filter; plain integers (order or
+    // flight numbers such as "1547") stay as free text.
+    .filter((token) => !(amount !== null && AMOUNT_TOKEN.test(token) && Number(token.replace(/[^\d.,]/g, "").replace(",", ".")) === amount))
     .filter((token) => !tokenConsumed(token, consumed));
   return { areas, time, status, amount, terms };
+}
+
+const CURRENCY_WORDS = new Set([
+  "usd", "mxn", "eur", "brl", "dolar", "dolares", "dollar", "dollars", "peso", "pesos",
+  "euro", "euros", "reais", "real",
+]);
+const AMOUNT_TOKEN = /^(?:[$€]|us\$|mx\$)?\d+(?:[.,]\d{1,2})?(?:[$€])?$/;
+
+/**
+ * Amount in a question: "$58.47", "58.47", "58,47", "58.47 usd" or
+ * "200 pesos". A bare integer without a currency hint is not an amount.
+ */
+export function parseAskAmount(folded: string): number | null {
+  const toNumber = (raw: string) => {
+    const value = Number(raw.replace(",", "."));
+    return Number.isFinite(value) ? value : null;
+  };
+  const withSymbol = folded.match(/(?:^|\s)(?:us\$|mx\$|\$|€)\s*(\d+(?:[.,]\d{1,2})?)(?=$|\s)/);
+  if (withSymbol) return toNumber(withSymbol[1]);
+  const trailingSymbol = folded.match(/(?:^|\s)(\d+(?:[.,]\d{1,2})?)\s*(?:\$|€)(?=$|\s)/);
+  if (trailingSymbol) return toNumber(trailingSymbol[1]);
+  const withWord = folded.match(/(?:^|\s)(\d+(?:[.,]\d{1,2})?)\s+(usd|mxn|eur|brl|dolar(?:es)?|dollars?|pesos?|euros?|reais)(?=$|\s)/);
+  if (withWord) return toNumber(withWord[1]);
+  const decimal = folded.match(/(?:^|\s)(\d+[.,]\d{2})(?=$|\s)/);
+  if (decimal) return toNumber(decimal[1]);
+  return null;
 }
 
 function haystack(item: LifeItem): string {
@@ -368,14 +402,31 @@ function matchesTime(item: LifeItem, time: TimeIntent, now: Date): boolean {
   if (time === "today") return bucket === "today" || bucket === "overdue" || dayOffset(item.when, now) === 0;
   if (time === "tomorrow") return bucket === "tomorrow";
   if (time === "week") return bucket === "today" || bucket === "tomorrow" || bucket === "week" || bucket === "overdue";
-  const when = new Date(item.when);
-  return when.getMonth() === now.getMonth() && when.getFullYear() === now.getFullYear();
+  // "month": the due date decides when there is one, like the other windows;
+  // the received date is only a fallback for items without a due date.
+  const reference = bucket === "none" ? item.when : (item.dueAt as string);
+  const date = new Date(reference);
+  if (Number.isNaN(date.getTime())) return false;
+  return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
 }
 
 export type AskResult = {
   intent: AskIntent;
   hits: LifeItem[];
+  /** True when the question had nothing to search for (only stop words). */
+  vague: boolean;
 };
+
+/** True when the parsed question has at least one usable criterion. */
+export function hasAskCriteria(intent: AskIntent): boolean {
+  return (
+    intent.areas.length > 0 ||
+    intent.time !== null ||
+    intent.status !== null ||
+    intent.amount !== null ||
+    intent.terms.length > 0
+  );
+}
 
 /**
  * Local "Pregunta a Donexto": parses the question with fixed vocabularies
@@ -383,13 +434,15 @@ export type AskResult = {
  */
 export function askLocal(items: LifeItem[], query: string, now = new Date()): AskResult {
   const intent = parseAsk(query);
+  // "qué hay", "show me", "?" …: never dump the whole mailbox.
+  if (!hasAskCriteria(intent)) return { intent, hits: [], vague: true };
   const scored: Array<{ item: LifeItem; score: number }> = [];
   for (const item of items) {
     if (intent.areas.length && !intent.areas.includes(item.area)) continue;
     if (!matchesTime(item, intent.time, now)) continue;
     if (intent.status === "open" && !isOpenStatus(item.status)) continue;
     if (intent.status === "done" && isOpenStatus(item.status)) continue;
-    if (intent.amount !== null && (item.amount === null || Math.abs(item.amount - intent.amount) >= 1)) continue;
+    if (intent.amount !== null && (item.amount === null || !amountsMatch(item.amount, intent.amount))) continue;
     const text = haystack(item);
     const title = foldText(item.title);
     let score = 0;
@@ -405,5 +458,19 @@ export function askLocal(items: LifeItem[], query: string, now = new Date()): As
     scored.push({ item, score });
   }
   scored.sort((left, right) => right.score - left.score || right.item.when.localeCompare(left.item.when));
-  return { intent, hits: scored.map((row) => row.item) };
+  return { intent, hits: scored.map((row) => row.item), vague: false };
+}
+
+/**
+ * The spoken/on-screen summary names at most `max` items and reports the
+ * rest as a count, so "4 things need attention" never names only three.
+ */
+export function summaryParts(lines: Array<string | null | undefined>, total: number, max = 3): { named: string[]; more: number } {
+  const named = lines
+    .map((line) => (line ?? "").trim())
+    .filter(Boolean)
+    .slice(0, max)
+    // Each item is its own sentence so the joined/spoken line stays readable.
+    .map((line) => (/[.!?…]$/.test(line) ? line : `${line}.`));
+  return { named, more: Math.max(0, total - named.length) };
 }

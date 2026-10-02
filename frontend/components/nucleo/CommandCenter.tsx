@@ -24,7 +24,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import type { ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import type { AppLanguage } from "@/lib/i18n/languages";
 import type { NxKey } from "@/lib/nucleo/copy";
@@ -148,6 +149,7 @@ export function CommandCenter(props: CommandCenterProps) {
   const { t, locale, items } = props;
   const now = new Date(props.now);
   const action = needsActionToday(items, now, props.snoozed);
+  const [snoozeAnchor, setSnoozeAnchor] = useState<HTMLElement | null>(null);
   const upcoming = upcomingDue(items, now, 7, props.snoozed);
   const upcomingCount = upcoming.reduce((sum, day) => sum + day.items.length, 0);
   const alerts = mergeAlerts(recentAlerts(items, now, props.matchesRule), props.notes, now);
@@ -202,15 +204,26 @@ export function CommandCenter(props: CommandCenterProps) {
                       {props.readAloud ? (
                         <button type="button" className="cc-icon" aria-label={t("listen")} onClick={() => speak(line)}><Volume2 className="i sm" /></button>
                       ) : null}
-                      <button type="button" className="cc-icon" aria-label={t("remind")} aria-expanded={props.snoozeFor === item.id} onClick={() => props.onSnoozeOpen(props.snoozeFor === item.id ? null : item.id)}><AlarmClock className="i sm" /></button>
+                      <button
+                        type="button"
+                        className="cc-icon"
+                        aria-label={t("remind")}
+                        aria-haspopup="menu"
+                        aria-expanded={props.snoozeFor === item.id}
+                        onClick={(event) => {
+                          const opening = props.snoozeFor !== item.id;
+                          setSnoozeAnchor(opening ? event.currentTarget : null);
+                          props.onSnoozeOpen(opening ? item.id : null);
+                        }}
+                      ><AlarmClock className="i sm" /></button>
                       <button type="button" className="cc-icon" aria-label={t("done")} onClick={() => props.onDone(item)}><Check className="i sm" /></button>
                     </span>
-                    {props.snoozeFor === item.id ? (
-                      <div className="card snooze-pop" role="menu">
+                    {props.snoozeFor === item.id && snoozeAnchor ? (
+                      <SnoozePopover anchor={snoozeAnchor} label={t("remind")} onClose={() => props.onSnoozeOpen(null)}>
                         <button type="button" className="btn sm" role="menuitem" onClick={() => props.onSnooze(item, 1)}>{t("snoozeHour")}</button>
                         <button type="button" className="btn sm" role="menuitem" onClick={() => props.onSnooze(item, 15)}>{t("snoozeTomorrow")}</button>
                         <button type="button" className="btn sm" role="menuitem" onClick={() => props.onSnooze(item, 72)}>{t("snooze3d")}</button>
-                      </div>
+                      </SnoozePopover>
                     ) : null}
                   </li>
                 );
@@ -319,6 +332,76 @@ export function CommandCenter(props: CommandCenterProps) {
         </div>
       </section>
     </div>
+  );
+}
+
+/**
+ * Snooze menu rendered in a portal on the `.nx` root with fixed positioning,
+ * so the dashboard cards (overflow: hidden, to keep one screen) never clip it.
+ * Opens below the anchor, or above it when there is not enough room.
+ */
+function SnoozePopover(props: { anchor: HTMLElement; label: string; onClose: () => void; children: ReactNode }) {
+  const { anchor, onClose } = props;
+  const ref = useRef<HTMLDivElement>(null);
+  const host = anchor.closest<HTMLElement>(".nx") ?? document.body;
+
+  useLayoutEffect(() => {
+    const menu = ref.current;
+    if (!menu) return;
+    const place = () => {
+      const rect = anchor.getBoundingClientRect();
+      const height = menu.offsetHeight;
+      const width = menu.offsetWidth;
+      const gap = 6;
+      const below = window.innerHeight - rect.bottom;
+      const up = below < height + gap + 8 && rect.top > below;
+      const top = up ? rect.top - height - gap : rect.bottom + gap;
+      const clampedTop = Math.max(8, Math.min(top, window.innerHeight - height - 8));
+      const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8));
+      menu.style.top = `${Math.round(clampedTop)}px`;
+      menu.style.left = `${Math.round(left)}px`;
+      menu.dataset.placement = up ? "top" : "bottom";
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [anchor]);
+
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    ref.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus({ preventScroll: true });
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        closeRef.current();
+        anchor.focus({ preventScroll: true });
+      }
+    };
+    const onPointer = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (target && (ref.current?.contains(target) || anchor.contains(target))) return;
+      closeRef.current();
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointer);
+    };
+  }, [anchor]);
+
+  return createPortal(
+    <div ref={ref} className="card snooze-pop is-floating" role="menu" aria-label={props.label}>
+      {props.children}
+    </div>,
+    host,
   );
 }
 

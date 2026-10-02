@@ -33,7 +33,7 @@ import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { localeForLanguage } from "@/lib/i18n/languages";
 import { hmsJson, HmsApiError } from "@/lib/hmsApi";
 import { ALERT_PHRASE, nx, type NxKey } from "@/lib/nucleo/copy";
-import { askLocal, needsActionToday, type AskIntent } from "@/lib/nucleo/commandCenter";
+import { askLocal, needsActionToday, summaryParts, type AskResult } from "@/lib/nucleo/commandCenter";
 import {
   areaChip,
   buildLifeItems,
@@ -134,7 +134,7 @@ export function NucleoApp(props: NucleoAppProps) {
   const [loading, setLoading] = useState(!props.preview);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [askHits, setAskHits] = useState<{ hits: LifeItem[]; intent: AskIntent } | null>(null);
+  const [askHits, setAskHits] = useState<AskResult | null>(null);
   const [caseId, setCaseId] = useState<string | null>(null);
   const [areaFilter, setAreaFilter] = useState<LifeAreaId | "all">("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("open");
@@ -550,14 +550,17 @@ export function NucleoApp(props: NucleoAppProps) {
   };
   const openItems = items.filter((item) => isOpenStatus(item.status) && !snoozed(item));
   const actionToday = needsActionToday(items, new Date(clock), snoozed);
-  const doNow = actionToday.slice(0, 3);
   const ordersOpen = openItems.filter((item) => item.area === "orders").length;
   const alertCount = openItems.filter((item) => item.area === "security" || item.priority === "high" || item.priority === "critical" || itemMatchesRules(item, prefs.alertRules)).length + notes.filter((note) => !note.read_at).length;
   const visible = filterItems(items, view, areaFilter, statusFilter, prefs);
-  const summaryParts = doNow.map((item) => item.line).filter(Boolean);
+  const spoken = summaryParts(actionToday.map((item) => item.line), actionToday.length, 3);
   const summary = actionToday.length === 0
     ? t("summaryEmpty")
-    : `${actionToday.length === 1 ? t("summaryOne") : t("summaryMany", { count: actionToday.length })} ${summaryParts.join(" ")}`;
+    : [
+        actionToday.length === 1 ? t("summaryOne") : t("summaryMany", { count: actionToday.length }),
+        ...spoken.named,
+        spoken.more > 0 ? t("summaryMore", { count: spoken.more }) : "",
+      ].filter(Boolean).join(" ");
   const hour = new Date().getHours();
   const greet = hour < 12 ? t("greetingMorning") : hour < 19 ? t("greetingAfternoon") : t("greetingEvening");
   const provider = providerName(props.provider, props.mailboxEmail);
@@ -693,10 +696,10 @@ export function NucleoApp(props: NucleoAppProps) {
             {askHits ? (
               <div className="card results" role="region" aria-live="polite" aria-label={t("askResults")}>
                 <div className="results-h">
-                  <span className="results-n">{t("askCount", { count: askHits.hits.length })}</span>
+                  {askHits.vague ? null : <span className="results-n">{askHits.hits.length === 1 ? t("askCountOne") : t("askCount", { count: askHits.hits.length })}</span>}
                   {intentLabels(t, askHits.intent).length ? <span className="results-f">{t("askFilters", { filters: intentLabels(t, askHits.intent).join(" · ") })}</span> : null}
                 </div>
-                {askHits.hits.length === 0 ? <p className="empty">{t("askEmpty")}</p> : askHits.hits.slice(0, 8).map((item) => (
+                {askHits.vague ? <p className="empty">{t("askVague")}</p> : askHits.hits.length === 0 ? <p className="empty">{t("askEmpty")}</p> : askHits.hits.slice(0, 8).map((item) => (
                   <button key={item.id} type="button" className="result" onClick={() => openItem(item)}>
                     <span>{item.line || item.title}</span>
                     <small>{areaLabel(t, item.area)}{item.sender ? ` · ${item.sender}` : ""}{item.amountRaw ? ` · ${item.amountRaw}` : ""}</small>
@@ -1151,7 +1154,7 @@ function formatClock(iso: string, locale: string): string {
   return new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }).format(date);
 }
 
-function intentLabels(t: (key: NxKey, vars?: Record<string, string | number>) => string, intent: AskIntent): string[] {
+function intentLabels(t: (key: NxKey, vars?: Record<string, string | number>) => string, intent: AskResult["intent"]): string[] {
   const labels = intent.areas.map((area) => areaLabel(t, area));
   if (intent.time === "today") labels.push(t("askTimeToday"));
   if (intent.time === "tomorrow") labels.push(t("askTimeTomorrow"));
@@ -1160,7 +1163,7 @@ function intentLabels(t: (key: NxKey, vars?: Record<string, string | number>) =>
   if (intent.time === "month") labels.push(t("askTimeMonth"));
   if (intent.status === "open") labels.push(t("askStatusOpen"));
   if (intent.status === "done") labels.push(t("askStatusDone"));
-  if (intent.amount !== null) labels.push(`$${intent.amount}`);
+  if (intent.amount !== null) labels.push(`$${intent.amount.toFixed(2)}`);
   return labels;
 }
 

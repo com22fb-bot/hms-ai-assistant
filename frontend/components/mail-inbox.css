@@ -514,6 +514,7 @@
 .hms-mail-content iframe {
   display: block;
   width: 100%;
+  /* Initial height until MailBody measures the content (JS sets it). */
   height: 320px;
   border: 0;
   background: #fff;

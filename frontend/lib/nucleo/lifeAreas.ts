@@ -103,7 +103,7 @@ const AREA_TERMS: Record<Exclude<LifeAreaId, "other">, string[]> = {
     "pasaporte", "passport", "multa*", "impots", "tasse", "imposto*",
   ],
   insurance: [
-    "seguro de", "seguros", "insurance", "poliza*", "policy number", "deducible",
+    "seguro", "seguro de", "seguros", "insurance", "poliza*", "policy number", "deducible",
     "deductible", "aseguradora", "gnp", "axa", "mapfre", "qualitas", "metlife",
     "assurance", "assicurazion*", "apolice",
   ],
@@ -202,11 +202,24 @@ export function hasTerm(folded: string, term: string): boolean {
   return termPattern(term).test(folded);
 }
 
+/**
+ * "Seguro" is also the Spanish adjective "safe/sure" ("pago seguro",
+ * "¿estás seguro?"). Drop that adjective before scoring so only the noun
+ * (an insurance policy) counts. Other words in the phrase are kept.
+ */
+const SEGURO_ADJECTIVE =
+  /(^|[^a-z0-9])(pago|pagos|compra|compras|sitio|conexion|enlace|acceso|entorno|lugar|metodo|estas|estoy|esta|es|sea|muy|mas|totalmente|100%)\s+segur[oa]s?(?=$|[^a-z0-9])/g;
+const SEGURO_THAT = /(^|[^a-z0-9])segur[oa]s?\s+que(?=$|[^a-z0-9])/g;
+
+export function neutralizeFalseFriends(folded: string): string {
+  return folded.replace(SEGURO_ADJECTIVE, "$1$2").replace(SEGURO_THAT, "$1");
+}
+
 export function areaScores(
   text: string,
   caseType?: string | null,
 ): Partial<Record<LifeAreaId, number>> {
-  const folded = foldText(text);
+  const folded = neutralizeFalseFriends(foldText(text));
   const scores: Partial<Record<LifeAreaId, number>> = {};
   for (const area of AREA_PRIORITY) {
     const hits = AREA_TERMS[area].filter((term) => hasTerm(folded, term)).length;

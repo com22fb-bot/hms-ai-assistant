@@ -30,6 +30,7 @@ import {
 } from "react";
 
 import { hmsJson } from "@/lib/hmsApi";
+import { INITIAL_MAIL_FRAME, nextMailFrameHeight, withoutViewportUnits, type MailFrameState } from "@/lib/mailFrame";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { nx } from "@/lib/nucleo/copy";
 import { speakText } from "@/lib/nucleo/speech";
@@ -202,19 +203,32 @@ function sanitizeEmailHtml(value: string, fontScale = 1): string {
     .replace(/<base[^>]*>/gi, "")
     .replace(/<meta[^>]+http-equiv[^>]*>/gi, "")
     .replace(/\son\w+\s*=\s*(["']).*?\1/gi, "")
-    .replace(/\son\w+\s*=\s*[^\s>]+/gi, "");
+    .replace(/\son\w+\s*=\s*[^\s>]+/gi, "")
+    // Viewport units inside an iframe follow the iframe height, which would
+    // grow with every resize. Neutralise them in CSS (style tags/attributes).
+    .replace(/<style([^>]*)>([\s\S]*?)<\/style>/gi, (_, attrs: string, css: string) => `<style${attrs}>${withoutViewportUnits(css)}</style>`)
+    .replace(/(\sstyle\s*=\s*)(["'])([\s\S]*?)\2/gi, (_, lead: string, quote: string, css: string) => `${lead}${quote}${withoutViewportUnits(css)}${quote}`);
 
+  // html/body are forced to height:auto so "height:100%" email tables size to
+  // their content instead of to the iframe (which would feed back into the
+  // measurement). The content is wrapped in a flow-root box that MailBody
+  // measures.
   return `<!doctype html><html lang="es"><head><meta charset="utf-8" />
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: cid:; style-src 'unsafe-inline'; font-src data:;" />
-<style>html{font-size:${Math.round(16 * fontScale)}px;overflow-x:hidden}body{font-family:Arial,sans-serif;margin:22px;color:#172126;line-height:1.55;overflow-wrap:anywhere;overflow-x:hidden}img,video{max-width:100%!important;height:auto!important}table{max-width:100%!important}td,th{word-break:break-word}pre{white-space:pre-wrap}a{color:#4f46e5}@media (max-width:480px){body{margin:14px}}</style>
-</head><body>${clean}</body></html>`;
+<style>html,body{height:auto!important;min-height:0!important;max-height:none!important}html{font-size:${Math.round(16 * fontScale)}px;overflow:hidden}body{font-family:Arial,sans-serif;margin:0!important;padding:22px;color:#172126;line-height:1.55;overflow-wrap:anywhere;overflow-x:hidden}#dx-mail{display:flow-root}img,video{max-width:100%!important;height:auto!important}table{max-width:100%!important}td,th{word-break:break-word}pre{white-space:pre-wrap}a{color:#4f46e5}@media (max-width:480px){body{padding:14px}}</style>
+</head><body><div id="dx-mail">${clean}</div></body></html>`;
 }
 
 /**
  * Renders the sanitised HTML at its full height so the reading view keeps a
- * single scroll area (no scrollbar inside the iframe). The sandbox allows
- * same-origin only to measure the document; scripts stay disabled and the CSP
- * above blocks every remote resource.
+ * single scroll area (no scrollbar inside the iframe). Height comes from the
+ * content wrapper, never from the iframe viewport, so it cannot feed back on
+ * itself; `nextMailFrameHeight` adds a loop guard and a never-clip fallback.
+ *
+ * Sandbox: `allow-same-origin` (without `allow-scripts`) is needed only so the
+ * parent can read the document height. No script inside the email can run
+ * (scripts, handlers and forms are also stripped, and the CSP blocks every
+ * remote load), so same-origin access cannot be used by the email itself.
  */
 function MailBody({ html, title, fontScale }: { html: string; title: string; fontScale: number }) {
   const frameRef = useRef<HTMLIFrameElement>(null);
@@ -225,26 +239,50 @@ function MailBody({ html, title, fontScale }: { html: string; title: string; fon
     if (!frame) return;
     let observer: ResizeObserver | null = null;
     let raf = 0;
+    let lastWidth = 0;
+    let state: MailFrameState = INITIAL_MAIL_FRAME;
     const fit = () => {
       window.cancelAnimationFrame(raf);
       raf = window.requestAnimationFrame(() => {
         const doc = frame.contentDocument;
         const root = doc?.documentElement;
-        if (!doc || !root || frame.clientWidth === 0) return;
-        root.style.overflowY = "hidden";
-        const height = Math.ceil(Math.max(root.getBoundingClientRect().height, doc.body?.scrollHeight ?? 0));
-        if (height > 0 && Math.abs(frame.clientHeight - height) > 1) {
-          frame.style.height = `${height}px`;
+        const body = doc?.body;
+        const box = doc?.getElementById("dx-mail");
+        if (!doc || !root || !body || !box || frame.clientWidth === 0) return;
+        const style = doc.defaultView?.getComputedStyle(body);
+        const padding = style ? parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) : 0;
+        const pane = frame.closest<HTMLElement>(".hms-mail-reading");
+        const next = nextMailFrameHeight(state, {
+          content: box.getBoundingClientRect().height + padding,
+          overflow: root.scrollHeight,
+          width: frame.clientWidth,
+          viewport: (pane?.clientHeight ?? window.innerHeight) - 32,
+        });
+        if (next.fallback !== state.fallback || !frame.dataset.fit) {
+          root.style.overflowY = next.fallback ? "auto" : "hidden";
+          frame.dataset.fit = next.fallback ? "fallback" : "content";
         }
+        if (next.height !== state.height) frame.style.height = `${next.height}px`;
+        state = next;
       });
     };
     const attach = () => {
+      state = INITIAL_MAIL_FRAME;
+      delete frame.dataset.fit;
+      lastWidth = frame.clientWidth;
       fit();
       observer?.disconnect();
-      observer = new ResizeObserver(fit);
+      observer = new ResizeObserver((entries) => {
+        // Our own height changes resize the frame too; only a width change
+        // or a content change (the wrapper) needs a new measurement.
+        const onlyFrame = entries.every((entry) => entry.target === frame);
+        if (onlyFrame && frame.clientWidth === lastWidth) return;
+        lastWidth = frame.clientWidth;
+        fit();
+      });
       observer.observe(frame);
-      const body = frame.contentDocument?.body;
-      if (body) observer.observe(body);
+      const box = frame.contentDocument?.getElementById("dx-mail");
+      if (box) observer.observe(box);
     };
     frame.addEventListener("load", attach);
     if (frame.contentDocument?.readyState === "complete") attach();
@@ -261,7 +299,6 @@ function MailBody({ html, title, fontScale }: { html: string; title: string; fon
       title={title}
       sandbox="allow-same-origin"
       referrerPolicy="no-referrer"
-      scrolling="no"
       srcDoc={srcDoc}
     />
   );

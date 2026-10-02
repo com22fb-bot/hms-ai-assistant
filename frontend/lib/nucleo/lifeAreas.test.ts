@@ -15,6 +15,7 @@ import {
 
 // CI runs this file explicitly; pull in the command-center rules too.
 import "./commandCenter.test.ts";
+import "../mailFrame.test.ts";
 
 test("classifies inbox text into life areas without inventing a bank feed", () => {
   assert.equal(
@@ -114,4 +115,14 @@ test("scores every area and breaks ties by consequence", () => {
   assert.equal(classifyText("Contraseña cambiada en tu cuenta").area, "security");
   assert.equal(classifyText("Hola, ¿cómo estás?").area, "other");
   assert.equal(areaChip("other"), "a-other");
+});
+
+test("plain 'seguro' is insurance, but not the adjective or other seguro- words", async () => {
+  const { classifyText } = await import("./lifeAreas.ts");
+  assert.equal(classifyText("Tu seguro vence el 15 de octubre").area, "insurance");
+  assert.equal(classifyText("Renueva tu seguro de auto").area, "insurance");
+  assert.equal(classifyText("Alerta de seguridad en tu cuenta").area, "security");
+  assert.notEqual(classifyText("Pago seguro confirmado con PayPal").area, "insurance");
+  assert.notEqual(classifyText("¿Estás seguro de que quieres cancelar tu pedido?").area, "insurance");
+  assert.notEqual(classifyText("Asegurar tu lugar en el concierto").area, "insurance");
 });

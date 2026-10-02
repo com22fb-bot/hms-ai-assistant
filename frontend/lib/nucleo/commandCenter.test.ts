@@ -8,10 +8,12 @@ import {
   needsActionToday,
   orderStage,
   parseAsk,
+  parseAskAmount,
   recentAlerts,
   summarizeAreas,
   summarizeOrders,
   summarizeSubscriptions,
+  summaryParts,
   upcomingDue,
 } from "./commandCenter.ts";
 import type { LifeItem } from "./lifeAreas.ts";
@@ -160,4 +162,63 @@ test("local search filters by area, time, amount and free text", () => {
   assert.deepEqual(askLocal(items, "facturas vencidas", NOW).hits.map((row) => row.id), ["coned"]);
   assert.deepEqual(askLocal(items, "Mercado Libre", NOW).hits.map((row) => row.id), ["ml"]);
   assert.deepEqual(askLocal(items, "nada que ver aqui zzz", NOW).hits, []);
+});
+
+test("stop-word-only questions return nothing instead of every case", () => {
+  const items = [item("a", { title: "Pedido Amazon" }), item("b", { title: "Factura CFE" })];
+  for (const query of ["qué hay", "¿Qué hay en mi correo?", "show me", "  ?  ", "dime"]) {
+    const result = askLocal(items, query, NOW);
+    assert.equal(result.hits.length, 0, query);
+    assert.equal(result.vague, true, query);
+  }
+  assert.equal(askLocal(items, "amazon", NOW).vague, false);
+});
+
+test("bare decimals and currency words are amounts; plain integers stay text", () => {
+  assert.equal(parseAskAmount("58.47"), 58.47);
+  assert.equal(parseAskAmount("cuanto fue 58,47"), 58.47);
+  assert.equal(parseAskAmount("$ 12"), 12);
+  assert.equal(parseAskAmount("200 pesos"), 200);
+  assert.equal(parseAskAmount("19.99 usd"), 19.99);
+  assert.equal(parseAskAmount("vuelo 1547"), null);
+  assert.equal(parseAsk("58.47").amount, 58.47);
+  assert.deepEqual(parseAsk("58.47").terms, []);
+  assert.deepEqual(parseAsk("vuelo 1547").terms, ["1547"]);
+  assert.equal(parseAsk("¿Cuánto pagué en pedidos, 58,47?").amount, 58.47);
+  const items = [
+    item("amz", { title: "Amazon", amount: 58.47 }),
+    item("other", { title: "Otro cargo", amount: 12 }),
+    item("ua", { title: "UA 1547 EWR DEN" }),
+  ];
+  assert.deepEqual(askLocal(items, "58.47", NOW).hits.map((hit) => hit.id), ["amz"]);
+  assert.deepEqual(askLocal(items, "1547", NOW).hits.map((hit) => hit.id), ["ua"]);
+});
+
+test("amount search uses the same two-cent tolerance as amountsMatch", () => {
+  const items = [
+    item("exact", { amount: 58.47 }),
+    item("cent", { amount: 58.46 }),
+    item("near", { amount: 58.2 }),
+    item("dollar", { amount: 57.6 }),
+  ];
+  assert.deepEqual(askLocal(items, "$58.47", NOW).hits.map((hit) => hit.id).sort(), ["cent", "exact"]);
+});
+
+test("'this month' uses the due date, falling back to the received date", () => {
+  const items = [
+    item("due-this-month", { area: "bills", when: new Date(2026, 8, 20).toISOString(), dueAt: new Date(2026, 9, 25, 12).toISOString() }),
+    item("due-next-month", { area: "bills", when: new Date(2026, 9, 2).toISOString(), dueAt: new Date(2026, 10, 10, 12).toISOString() }),
+    item("no-due-this-month", { area: "bills", when: new Date(2026, 9, 1).toISOString() }),
+    item("no-due-last-month", { area: "bills", when: new Date(2026, 8, 1).toISOString() }),
+  ];
+  const hits = askLocal(items, "facturas este mes", NOW).hits.map((hit) => hit.id).sort();
+  assert.deepEqual(hits, ["due-this-month", "no-due-this-month"]);
+});
+
+test("summary names at most three items and counts the rest", () => {
+  assert.deepEqual(summaryParts(["A.", "B.", "C.", "D."], 4), { named: ["A.", "B.", "C."], more: 1 });
+  assert.deepEqual(summaryParts(["A.", "", null, "D."], 4), { named: ["A.", "D."], more: 2 });
+  assert.deepEqual(summaryParts(["A."], 1), { named: ["A."], more: 0 });
+  assert.deepEqual(summaryParts([], 0), { named: [], more: 0 });
+  assert.deepEqual(summaryParts(["Renta vence hoy", "¿Fuiste tú?"], 2).named, ["Renta vence hoy.", "¿Fuiste tú?"]);
 });

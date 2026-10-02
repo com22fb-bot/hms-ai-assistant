@@ -706,10 +706,15 @@
   background: var(--surface-2);
   color: var(--text);
 }
-.nx .cc-row .snooze-pop {
-  top: calc(100% - 6px);
-  right: 8px;
+/* Floating snooze menu (portal on .nx, positioned from the anchor in JS). */
+.nx .snooze-pop.is-floating {
+  position: fixed;
+  z-index: 60;
+  top: 0;
+  left: 0;
+  right: auto;
   bottom: auto;
+  background: var(--card-solid, var(--surface));
 }
 .nx .cc-days {
   list-style: none;
