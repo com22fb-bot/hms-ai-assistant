@@ -8,6 +8,7 @@ import {
   Check,
   ChevronRight,
   GraduationCap,
+  ListChecks,
   HeartPulse,
   House,
   Landmark,
@@ -139,6 +140,8 @@ export type CommandCenterProps = {
   onViewOpen: () => void;
   onConnect: () => void;
   onCaption: (text: string) => void;
+  /** Opens "Tus 10 pendientes principales". */
+  onTopTen?: () => void;
 };
 
 const ACTION_ROWS = 4;
@@ -170,11 +173,18 @@ export function CommandCenter(props: CommandCenterProps) {
           <div className="eyebrow">{props.eyebrow}</div>
           <div className="ai-line"><Spark /><span>{props.summary}</span></div>
         </div>
-        {props.readAloud ? (
-          <button type="button" className="listen" data-help-key="listenItem" onClick={() => speak(props.summary)}>
-            <Volume2 className="i" />{t("listenSummary")}
-          </button>
-        ) : null}
+        <div className="cc-summary-actions">
+          {props.onTopTen ? (
+            <button type="button" className="btn sm cc-top10-btn" data-help-key="top10" onClick={props.onTopTen}>
+              <ListChecks className="i sm" aria-hidden />{t("topCta")}
+            </button>
+          ) : null}
+          {props.readAloud ? (
+            <button type="button" className="listen" data-help-key="listenItem" onClick={() => speak(props.summary)}>
+              <Volume2 className="i" />{t("listenSummary")}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="cc-top">

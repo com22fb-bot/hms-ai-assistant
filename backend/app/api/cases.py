@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Query
+from pydantic import BaseModel
 
 from app.security.mutation_guard import require_data_mutations_enabled
 from app.schemas.cases import (
@@ -14,6 +17,7 @@ from app.schemas.cases import (
     NotificationListResponse,
 )
 from app.services.case_engine import process_pending_messages
+from app.services.case_user_actions import UserCaseAction, apply_user_action
 from app.services.case_repository import (
     dashboard,
     get_case,
@@ -105,3 +109,30 @@ def patch_case(
     )
 
     return get_case(case_id)
+
+
+class CaseUserActionRequest(BaseModel):
+    action: UserCaseAction
+    until: datetime | None = None
+
+
+@router.post(
+    "/{case_id}/user-action",
+    response_model=CaseDetail,
+)
+def case_user_action(
+    case_id: UUID,
+    request: CaseUserActionRequest,
+) -> dict[str, Any]:
+    """Hecho / posponer / reabrir for the signed-in user's own case.
+
+    Not behind ``require_data_mutations_enabled``: see
+    ``app/services/case_user_actions.py`` for why this narrow, per-user,
+    allow-listed write is safe during containment (the generic PATCH is not).
+    """
+    apply_user_action(
+        case_id=str(case_id),
+        action=request.action,
+        until=request.until,
+    )
+    return get_case(str(case_id))

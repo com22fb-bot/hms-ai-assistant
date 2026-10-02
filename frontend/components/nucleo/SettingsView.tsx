@@ -13,6 +13,7 @@ import {
   Mail,
   Palette,
   Pause,
+  RefreshCw,
   RotateCcw,
   Shield,
   Type,
@@ -69,6 +70,10 @@ export function SettingsView(props: {
   onSignOut: () => void;
   onConnect: () => void;
   onRefresh: () => void;
+  /** An incremental mail sync is running ("Traer correo nuevo"). */
+  refreshBusy?: boolean;
+  /** Progress/result line under the mail buttons. */
+  refreshNote?: { text: string; error: boolean } | null;
   onInbox: () => void;
   onImport: () => void;
   showPlan: boolean;
@@ -179,10 +184,16 @@ export function SettingsView(props: {
           </div>
           <div className="onboard-actions" style={{ padding: "0 20px 16px" }}>
             <button type="button" className="btn primary sm" data-help-key="connect-mail" onClick={props.onConnect}>{t("connect")}</button>
-            <button type="button" className="btn sm" data-help-key="refresh-mail" onClick={props.onRefresh}>{t("refreshMail")}</button>
+            <button type="button" className="btn sm" data-help-key="refresh-mail" aria-busy={props.refreshBusy || undefined} disabled={props.refreshBusy} onClick={props.onRefresh}>
+              {props.refreshBusy ? <RefreshCw className="i sm sync-spin" aria-hidden /> : <RefreshCw className="i sm" aria-hidden />}
+              {props.refreshBusy ? t("mailSyncRunning") : t("refreshMail")}
+            </button>
             <button type="button" className="btn sm" data-help-key="open-inbox" onClick={props.onInbox}>{t("openInbox")}</button>
             <button type="button" className="btn sm" data-help-key="importMail" onClick={props.onImport}>{t("importMail")}</button>
           </div>
+          {props.refreshNote ? (
+            <p className={props.refreshNote.error ? "set-sync-note is-error" : "set-sync-note"} role={props.refreshNote.error ? "alert" : "status"} style={{ padding: "0 20px 16px", marginTop: 0 }}>{props.refreshNote.text}</p>
+          ) : null}
         </section>
       ) : null}
 

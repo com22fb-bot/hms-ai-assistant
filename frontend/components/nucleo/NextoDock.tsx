@@ -11,8 +11,10 @@ import {
 } from "react";
 
 import {
+  APPROACH_PX,
   NEXTO_POS_KEY,
   bubbleSide,
+  distanceToRect,
   clampPos,
   isDrag,
   nudge,
@@ -30,6 +32,10 @@ type Props = {
   onActivate: () => void;
   /** Element under the robot after a drag or keyboard move (null = nothing to explain). */
   onExplain: (target: HTMLElement | null) => void;
+  /** The pointer hovered or came close to the robot, or a drag started. */
+  onApproach?: () => void;
+  /** Watch pointer proximity (only while the guide is muted, to save work). */
+  watchApproach?: boolean;
 };
 
 const HELP_SELECTOR = "[data-help-key],[data-help]";
@@ -55,7 +61,7 @@ export function helpTargetAt(x: number, y: number, dock: HTMLElement | null): HT
  * arrow keys while focused. The position is remembered in localStorage and
  * kept inside the viewport. Only the robot and its bubble take pointer events.
  */
-export function NextoDock({ label, hint, bubble, robot, onActivate, onExplain }: Props) {
+export function NextoDock({ label, hint, bubble, robot, onActivate, onExplain, onApproach, watchApproach }: Props) {
   const dockRef = useRef<HTMLDivElement>(null);
   const botRef = useRef<HTMLButtonElement>(null);
   const [placement, setPlacement] = useState<{ pos: DockPos; side: { h: "left" | "right"; v: "up" | "down" } } | null>(null);
@@ -111,6 +117,27 @@ export function NextoDock({ label, hint, bubble, robot, onActivate, onExplain }:
     if (keyTimer.current !== null) window.clearTimeout(keyTimer.current);
   }, []);
 
+  // "Approaching" the robot (within APPROACH_PX) counts like hovering it.
+  const approachRef = useRef(onApproach);
+  useEffect(() => {
+    approachRef.current = onApproach;
+  }, [onApproach]);
+  useEffect(() => {
+    if (!watchApproach) return;
+    let last = 0;
+    function onMove(event: PointerEvent) {
+      if (event.pointerType && event.pointerType !== "mouse" && event.pointerType !== "pen") return;
+      const now = Date.now();
+      if (now - last < 120) return;
+      last = now;
+      const rect = botRef.current?.getBoundingClientRect();
+      if (!rect || rect.width === 0) return;
+      if (distanceToRect(event.clientX, event.clientY, rect) <= APPROACH_PX) approachRef.current?.();
+    }
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => window.removeEventListener("pointermove", onMove);
+  }, [watchApproach]);
+
   const save = (next: DockPos | null) => {
     try {
       if (next) window.localStorage.setItem(NEXTO_POS_KEY, JSON.stringify(next));
@@ -152,6 +179,7 @@ export function NextoDock({ label, hint, bubble, robot, onActivate, onExplain }:
       if (!isDrag(dx, dy)) return;
       state.moved = true;
       setDragging(true);
+      onApproach?.();
     }
     event.preventDefault();
     const next = clampPos({ x: state.ox + dx, y: state.oy + dy }, size(), viewport());
@@ -220,6 +248,7 @@ export function NextoDock({ label, hint, bubble, robot, onActivate, onExplain }:
         aria-label={label}
         aria-describedby="nexto-drag-hint"
         title={hint}
+        onPointerEnter={() => onApproach?.()}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={(event) => endDrag(event, false)}

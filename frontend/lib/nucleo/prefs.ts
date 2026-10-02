@@ -38,6 +38,8 @@ export type NucleoPrefs = {
   volume: number;
   snooze: Record<string, string>;
   pushOnboardingCompletedAt: string | null;
+  /** When the first-run "top 10" summary was dismissed (null = never shown). */
+  top10SeenAt: string | null;
   alertRules: AlertRule[];
 };
 
@@ -60,6 +62,7 @@ export const DEFAULT_PREFS: NucleoPrefs = {
   volume: 0.8,
   snooze: {},
   pushOnboardingCompletedAt: null,
+  top10SeenAt: null,
   alertRules: [],
 };
 
@@ -117,6 +120,8 @@ export function mergePrefs(raw: unknown): NucleoPrefs {
       typeof source.pushOnboardingCompletedAt === "string"
         ? source.pushOnboardingCompletedAt
         : null,
+    top10SeenAt:
+      typeof source.top10SeenAt === "string" ? source.top10SeenAt : null,
     alertRules: rules,
   };
 }

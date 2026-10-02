@@ -57,7 +57,7 @@ export const HELP_ENTRIES: HelpEntry[] = [
       pt: { title: "Sair", body: "No canto inferior esquerdo, ao lado do seu nome (no celular: Menu), toque em «Sair». Também está em Configuração › Conta. Para voltar, entre novamente.", cta: "Ir para Sair" },
     }),
   e("connectMail", { view: "settings", tab: "mail", focus: "connect-mail" },
-    ["conectar correo", "conectar mi correo", "conectar buzon", "agregar correo", "anadir correo", "cambiar correo", "otro correo", "connect mail", "connect email", "connect mailbox", "add mailbox", "connecter", "connetti", "conectar caixa", "conectar e-mail", "conectar email", "microsoft 365", "office 365"],
+    ["conectar correo", "conectar mi correo", "conectar buzon", "agregar correo", "anadir correo", "cambiar correo", "otro correo", "connect mail", "connect email", "connect mailbox", "add mailbox", "connecter", "connetti", "conectar caixa", "conectar e-mail", "conectar email", "microsoft 365", "office 365", "conectar un correo", "conectar otro correo", "conectar otro buzon", "agregar un correo", "agregar otro correo", "agrego un correo", "anadir un correo", "add a mailbox", "add another mailbox", "connect another", "connect a new email", "connect a new mailbox", "add a new email", "add new email", "conectar un correo nuevo", "agregar un correo nuevo"],
     // Provider names alone are normal searches ("gmail", "outlook factura").
     ["conectar", "conecto", "connect", "buzon", "mailbox", "cuenta de correo", "casella", "caixa", "gmail", "outlook", "hotmail", "yahoo", "icloud"],
     {
@@ -68,8 +68,8 @@ export const HELP_ENTRIES: HelpEntry[] = [
       pt: { title: "Conectar seu e-mail", body: "Em Configuração › E-mail toque em «Conectar caixa» e escolha Gmail, Outlook/Microsoft, Yahoo ou iCloud. A Donexto só lê: não envia, não apaga nem move e-mails.", cta: "Abrir Configuração › E-mail" },
     }),
   e("disconnectMail", { view: "settings", tab: "mail", focus: "mail-card" },
-    ["desconectar correo", "desconectar mi correo", "desconectar buzon", "quitar correo", "quitar acceso", "revocar acceso", "revocar permiso", "disconnect mail", "disconnect email", "disconnect mailbox", "remove mailbox", "revoke access", "deconnecter la boite", "revoquer", "disconnetti", "revocare", "desconectar e-mail", "revogar acesso"],
-    ["desconectar", "disconnect", "revocar", "revoke", "quitar"],
+    ["desconectar correo", "desconectar mi correo", "quitar el acceso", "quito el acceso", "desconectar buzon", "quitar correo", "quitar acceso", "revocar acceso", "revocar permiso", "disconnect mail", "disconnect email", "disconnect mailbox", "remove mailbox", "revoke access", "deconnecter la boite", "revoquer", "disconnetti", "revocare", "desconectar e-mail", "revogar acesso"],
+    ["desconectar", "desconecto", "disconnect", "revocar", "revoco", "revoke", "quitar", "quito"],
     {
       es: { title: "Desconectar tu correo", body: "Tu buzón aparece en Configuración › Correo. Para quitarle el acceso a Donexto, revoca el permiso desde tu cuenta (Google, Microsoft) o borra la contraseña de app (Yahoo, iCloud). Después puedes conectar otro buzón.", cta: "Abrir Configuración › Correo" },
       en: { title: "Disconnect your mail", body: "Your mailbox is listed in Settings › Mail. To remove Donexto’s access, revoke it from your account (Google, Microsoft) or delete the app password (Yahoo, iCloud). You can then connect another mailbox.", cta: "Open Settings › Mail" },
@@ -78,14 +78,29 @@ export const HELP_ENTRIES: HelpEntry[] = [
       pt: { title: "Desconectar seu e-mail", body: "Sua caixa aparece em Configuração › E-mail. Para tirar o acesso da Donexto, revogue-o na sua conta (Google, Microsoft) ou apague a senha de app (Yahoo, iCloud).", cta: "Abrir Configuração › E-mail" },
     }),
   e("refreshMail", { view: "settings", tab: "mail", focus: "refresh-mail" },
-    ["traer correo", "correo nuevo", "actualizar correo", "sincronizar", "sync", "refresh mail", "fetch mail", "new mail", "synchroniser", "sincronizza", "sincronizar", "atualizar e-mail"],
-    ["actualizar", "refresh", "update", "recargar"],
+    [
+      // es
+      "traer correo", "traer el correo", "traer mi correo", "traer correos", "traigo el correo", "traigo correo", "traigo mi correo", "traigo los correos",
+      "correo nuevo", "correos nuevos", "nuevo correo", "nuevos correos", "mensajes nuevos", "correo reciente", "correos recientes",
+      "actualizar correo", "actualizar el correo", "actualizar mi correo", "actualizar correos", "actualizo el correo", "actualizo mi correo", "actualizar bandeja", "actualizar la bandeja",
+      "sincronizar", "sincronizo", "sincronizacion", "sincronizar correo",
+      "descargar correo", "descargar correos", "descargar el correo", "descargo el correo", "descargo correo", "bajar correo", "bajar correos", "bajar el correo",
+      "refrescar", "refresco", "refrescar correo", "recargar correo", "recargar la bandeja", "revisar correo nuevo", "buscar correo nuevo", "checar correo",
+      "no me llegan", "no aparecen mis correos", "no veo mis correos nuevos", "no llegan los correos",
+      // en
+      "sync", "sync mail", "refresh mail", "refresh inbox", "fetch mail", "fetch new mail", "fetch email", "new mail", "new email", "new emails", "get new mail", "get my mail", "check mail", "check for new mail", "pull mail", "download mail", "download new mail", "update mail", "update inbox", "reload mail",
+      // fr / it / pt
+      "synchroniser", "nouveau courrier", "nouveaux courriels", "actualiser le courrier", "relever le courrier",
+      "sincronizza", "posta nuova", "nuova posta", "nuove email", "scaricare la posta", "aggiornare la posta", "aggiorna la posta",
+      "sincronizar e-mail", "atualizar e-mail", "atualizar email", "e-mail novo", "emails novos", "e-mails novos", "buscar e-mail", "baixar e-mail", "baixar emails",
+    ],
+    ["actualizar", "actualizo", "refresh", "update", "recargar", "traer", "traigo", "descargar", "descargo", "bajar", "refrescar", "actualiser", "aggiornare", "aggiorna", "atualizar", "baixar", "scaricare"],
     {
-      es: { title: "Traer correo nuevo", body: "Donexto revisa tu correo solo. Si quieres forzarlo, ve a Configuración › Correo y toca «Traer correo nuevo».", cta: "Ir a Traer correo nuevo" },
-      en: { title: "Fetch new mail", body: "Donexto checks your mail on its own. To force it, go to Settings › Mail and tap “Fetch new mail”.", cta: "Go to Fetch new mail" },
-      fr: { title: "Chercher le nouveau courrier", body: "Donexto vérifie votre courrier tout seul. Pour forcer, allez dans Réglages › Courrier et touchez « Chercher le nouveau courrier ».", cta: "Y aller" },
-      it: { title: "Scaricare la posta nuova", body: "Donexto controlla la posta da solo. Per forzarlo, vai in Impostazioni › Posta e tocca «Scarica la posta nuova».", cta: "Vai lì" },
-      pt: { title: "Buscar e-mail novo", body: "A Donexto verifica seu e-mail sozinha. Para forçar, vá em Configuração › E-mail e toque em «Buscar e-mail novo».", cta: "Ir para lá" },
+      es: { title: "Traer correo nuevo", body: "Donexto revisa tu correo solo. Para traerlo ahora, ve a Configuración › Correo y toca «Traer correo nuevo»: verás cuántos correos nuevos llegaron y tu lista se actualiza.", cta: "Ir a Traer correo nuevo" },
+      en: { title: "Fetch new mail", body: "Donexto checks your mail on its own. To fetch it now, go to Settings › Mail and tap “Fetch new mail”: you’ll see how many new emails arrived and your list updates.", cta: "Go to Fetch new mail" },
+      fr: { title: "Chercher le nouveau courrier", body: "Donexto vérifie votre courrier tout seul. Pour le récupérer maintenant, allez dans Réglages › Courrier et touchez « Chercher le nouveau courrier » : vous verrez combien de courriels sont arrivés.", cta: "Aller à Chercher le courrier" },
+      it: { title: "Scaricare la posta nuova", body: "Donexto controlla la posta da solo. Per scaricarla subito, vai in Impostazioni › Posta e tocca «Scarica la posta nuova»: vedrai quante email nuove sono arrivate.", cta: "Vai a Scarica la posta" },
+      pt: { title: "Buscar e-mail novo", body: "A Donexto verifica seu e-mail sozinha. Para buscar agora, vá em Configuração › E-mail e toque em «Buscar e-mail novo»: você verá quantos e-mails novos chegaram.", cta: "Ir para Buscar e-mail" },
     }),
   e("inbox", { view: "settings", tab: "mail", focus: "open-inbox" },
     ["ver correos", "ver mis correos", "abrir correos", "bandeja de entrada", "inbox", "open mail", "read mail", "boite de reception", "posta in arrivo", "caixa de entrada", "leer correo", "leer un correo"],
@@ -415,6 +430,20 @@ export const HELP_ENTRIES: HelpEntry[] = [
     fr: { title: "Règles d’alerte", body: "Créez des règles par expéditeur, objet ou concept pour être alerté.", cta: "" },
     it: { title: "Regole di avviso", body: "Crea regole per mittente, oggetto o concetto per ricevere avvisi.", cta: "" },
     pt: { title: "Regras de alerta", body: "Crie regras por remetente, assunto ou conceito para receber alertas.", cta: "" },
+  }, true),
+  e("mail-card", {}, [], [], {
+    es: { title: "Tu correo", body: "El buzón conectado a Donexto (solo lectura). Aquí lo conectas o cambias, traes correo nuevo, abres tus correos o importas historial.", cta: "" },
+    en: { title: "Your mail", body: "The mailbox connected to Donexto (read-only). Connect or change it, fetch new mail, open your email or import history here.", cta: "" },
+    fr: { title: "Votre courrier", body: "La boîte connectée à Donexto (lecture seule). Connectez-la, récupérez le nouveau courrier, ouvrez vos courriels ou importez l’historique.", cta: "" },
+    it: { title: "La tua posta", body: "La casella collegata a Donexto (sola lettura). Qui la colleghi, scarichi la posta nuova, apri le email o importi lo storico.", cta: "" },
+    pt: { title: "Seu e-mail", body: "A caixa conectada à Donexto (somente leitura). Aqui você conecta, busca e-mail novo, abre seus e-mails ou importa o histórico.", cta: "" },
+  }, true),
+  e("top10", {}, [], [], {
+    es: { title: "Tus 10 pendientes", body: "Lo más importante de tu correo, ordenado con reglas por urgencia, fecha límite e importancia.", cta: "" },
+    en: { title: "Your top 10", body: "The most important things in your mail, ranked with rules by urgency, due date and importance.", cta: "" },
+    fr: { title: "Vos 10 tâches", body: "L’essentiel de votre courrier, classé par règles : urgence, échéance et importance.", cta: "" },
+    it: { title: "Le tue 10 cose", body: "Le cose più importanti della posta, ordinate con regole per urgenza, scadenza e importanza.", cta: "" },
+    pt: { title: "Suas 10 pendências", body: "O mais importante do seu e-mail, ordenado por regras: urgência, prazo e importância.", cta: "" },
   }, true),
   e("importMail", {}, [], [], {
     es: { title: "Importar correo", body: "Trae correos anteriores de tu buzón para que Donexto arme los casos con más historia.", cta: "" },

@@ -2,12 +2,14 @@
 
 import { Inter } from "next/font/google";
 import {
+  AlertTriangle,
   ArrowUp,
   Bell,
   Check,
   ChevronRight,
   CircleHelp,
   LayoutGrid,
+  LoaderCircle,
   Lock,
   LogOut,
   Mail,
@@ -15,6 +17,7 @@ import {
   Mic,
   Package,
   Repeat,
+  RotateCcw,
   Settings,
   Sun,
   Volume2,
@@ -74,6 +77,19 @@ import { supabase } from "@/lib/supabase";
 import { CommandCenter, areaLabel } from "@/components/nucleo/CommandCenter";
 import { Nexto } from "@/components/nucleo/Nexto";
 import { NextoDock } from "@/components/nucleo/NextoDock";
+import { TopTen } from "@/components/nucleo/TopTen";
+import { localizeItems } from "@/lib/nucleo/explain";
+import { isClosedStatus, runCaseAction, snoozeUntil, type CaseAction } from "@/lib/nucleo/caseActions";
+import {
+  OPEN_GATE,
+  canAutoHelp,
+  gateAfterClose,
+  gateAfterRobot,
+  gateAfterTyping,
+  isTypingTarget,
+  type BubbleGate,
+} from "@/lib/nucleo/nextoDock";
+import { rankTopTen, shouldShowTopTen, type TopItem } from "@/lib/nucleo/topTen";
 import { helpForKey, matchHelp, type HelpMatch, type HelpTarget } from "@/lib/nucleo/helpKb";
 import { cleanDisplayText, stripCssNoise } from "@/lib/nucleo/cleanText";
 import { Onboarding } from "@/components/nucleo/Onboarding";
@@ -83,6 +99,16 @@ import "./nucleo.css";
 import "./shell.css";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
+
+/** "Traer correo nuevo" progress/result, owned by the page. */
+/** Result of hecho / posponer / reabrir, shown as a fixed toast. */
+type CaseNote = { tone: "ok" | "error"; text: string; action?: { label: string; run: () => void } };
+
+export type MailSyncState =
+  | { phase: "idle" }
+  | { phase: "running"; downloaded?: number }
+  | { phase: "done"; inserted: number; createdCases?: number }
+  | { phase: "error"; reason: "auth" | "failed" | "timeout"; message?: string };
 
 type ViewId = "today" | "areas" | "money" | "orders" | "subs" | "alerts" | "settings";
 type StatusFilter = "open" | "done" | "all" | "high";
@@ -107,6 +133,10 @@ export type NucleoAppProps = {
   onOpenInbox: (messageId?: string | null) => void;
   onOpenImport: () => void;
   onPlan: () => void;
+  mailSync?: MailSyncState;
+  onMailSyncDismiss?: () => void;
+  /** Another modal (import wizard, mailbox picker, inbox) is open. */
+  overlayOpen?: boolean;
   preview?: boolean;
   previewScreen?: "today" | "settings" | "onboarding";
   previewTheme?: NucleoTheme;
@@ -135,7 +165,9 @@ export function NucleoApp(props: NucleoAppProps) {
   });
   const [view, setView] = useState<ViewId>(props.previewScreen === "settings" ? "settings" : "today");
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("appearance");
-  const [items, setItems] = useState<LifeItem[]>(props.fixtureItems ?? []);
+  const [rawItems, setItems] = useState<LifeItem[]>(props.fixtureItems ?? []);
+  // Plain-language headlines in the UI language (rule-based, see explain.ts).
+  const items = useMemo(() => localizeItems(rawItems, language), [rawItems, language]);
   const [loading, setLoading] = useState(!props.preview);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -161,7 +193,13 @@ export function NucleoApp(props: NucleoAppProps) {
   const [ruleKind, setRuleKind] = useState<AlertRuleKind>("sender");
   const [ruleValue, setRuleValue] = useState("");
   const [toast, setToast] = useState<string | null>(null);
+  const [caseNote, setCaseNote] = useState<CaseNote | null>(null);
   const [clock, setClock] = useState(() => Date.now());
+  const [prefsReady, setPrefsReady] = useState(Boolean(props.preview));
+  const [topOpen, setTopOpen] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const gateRef = useRef<BubbleGate>(OPEN_GATE);
 
   useEffect(() => {
     const timer = window.setInterval(() => setClock(Date.now()), 30_000);
@@ -170,6 +208,8 @@ export function NucleoApp(props: NucleoAppProps) {
   const askRef = useRef<HTMLInputElement>(null);
   const hoverTimer = useRef<number | null>(null);
   const lastHelpNode = useRef<HTMLElement | null>(null);
+  // Taps emulate mouseover/focus; hover-help is for mouse users only.
+  const lastTouchAt = useRef(0);
   const explainedNode = useRef<HTMLElement | null>(null);
   const highlightTimer = useRef<number | null>(null);
   const seenRef = useRef<Set<string> | null>(null);
@@ -218,8 +258,11 @@ export function NucleoApp(props: NucleoAppProps) {
           hasServer: Boolean(payload?.preferences),
         });
         hydratedRef.current = true;
+        setPrefsReady(true);
         if (action === "apply-server" && payload?.preferences) {
-          const merged = mergePrefs({ ...readLocalPrefs(props.userId), ...(payload.preferences as object) });
+          const local = readLocalPrefs(props.userId);
+          const server = payload.preferences as Partial<NucleoPrefs>;
+          const merged = mergePrefs({ ...local, ...server, top10SeenAt: server.top10SeenAt || local?.top10SeenAt || null });
           setPrefs(merged);
           writeLocalPrefs(props.userId, merged);
           return;
@@ -233,6 +276,7 @@ export function NucleoApp(props: NucleoAppProps) {
       .catch(() => {
         if (cancelled) return;
         hydratedRef.current = true;
+        setPrefsReady(true);
         if (!dirtyRef.current) return;
         dirtyRef.current = false;
         const local = readLocalPrefs(props.userId);
@@ -352,8 +396,7 @@ export function NucleoApp(props: NucleoAppProps) {
       const typing = target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT");
       if (event.key === "Escape") {
         stopSpeaking();
-        setBubble(null);
-        lastHelpNode.current = null;
+        closeBubble();
         setShortcuts(false);
         setSnoozeFor(null);
         setAskHits(null);
@@ -399,12 +442,17 @@ export function NucleoApp(props: NucleoAppProps) {
     const target = event.target as HTMLElement;
     // The robot and its bubble never replace what it is saying (it explains on drop/click).
     if (target.closest(".bot-dock")) return;
+    if (Date.now() - lastTouchAt.current < 1200) return;
+    // Never while typing, right after the user closed the bubble, or while muted (X).
+    if (isTypingTarget(target) || isTypingTarget(document.activeElement as HTMLElement | null)) return;
+    if (!canAutoHelp(gateRef.current, Date.now())) return;
     const node = target.closest<HTMLElement>("[data-help-key],[data-help]");
     if (!node || node === lastHelpNode.current) return;
     if (hoverTimer.current !== null) window.clearTimeout(hoverTimer.current);
     const immediate = event.type === "focus";
     const run = () => {
       hoverTimer.current = null;
+      if (!canAutoHelp(gateRef.current, Date.now()) || isTypingTarget(document.activeElement as HTMLElement | null)) return;
       const help = describe(node);
       if (!help) return;
       lastHelpNode.current = node;
@@ -414,8 +462,60 @@ export function NucleoApp(props: NucleoAppProps) {
     else hoverTimer.current = window.setTimeout(run, 260);
   }
 
+  /** X / Esc: close now and stay closed until the robot itself is hovered or dragged. */
+  function closeBubble() {
+    if (hoverTimer.current !== null) {
+      window.clearTimeout(hoverTimer.current);
+      hoverTimer.current = null;
+    }
+    setBubble(null);
+    lastHelpNode.current = null;
+    gateRef.current = gateAfterClose(gateRef.current, Date.now());
+    setMuted(true);
+  }
+
+  /** The pointer reached the robot (hover / approach / drag): the guide may talk again. */
+  function approachRobot() {
+    const { gate, reopen } = gateAfterRobot(gateRef.current, Date.now());
+    gateRef.current = gate;
+    if (gate.muted) return;
+    setMuted(false);
+    if (reopen) setBubble(describe(document.querySelector<HTMLElement>(".bot-dock .bot")) ?? { title: t("guideTitle"), body: t("guideDragHint") });
+  }
+
+  // Typing anywhere (ask bar, rule value, any input) hides the bubble and keeps it hidden.
+  useEffect(() => {
+    function onFocusIn(event: FocusEvent) {
+      if (!isTypingTarget(event.target as HTMLElement | null)) return;
+      if (hoverTimer.current !== null) {
+        window.clearTimeout(hoverTimer.current);
+        hoverTimer.current = null;
+      }
+      gateRef.current = gateAfterTyping(gateRef.current, true, Date.now());
+      setTyping(true);
+      setBubble(null);
+      lastHelpNode.current = null;
+    }
+    function onFocusOut() {
+      window.setTimeout(() => {
+        if (isTypingTarget(document.activeElement as HTMLElement | null)) return;
+        gateRef.current = gateAfterTyping(gateRef.current, false, Date.now());
+        setTyping(false);
+      }, 0);
+    }
+    document.addEventListener("focusin", onFocusIn);
+    document.addEventListener("focusout", onFocusOut);
+    return () => {
+      document.removeEventListener("focusin", onFocusIn);
+      document.removeEventListener("focusout", onFocusOut);
+    };
+  }, []);
+
   /** Nexto was dropped (or moved with the keyboard) over an element. */
   function explainDropped(node: HTMLElement | null) {
+    // Dragging the robot is an explicit request: un-mute the guide.
+    gateRef.current = { ...gateRef.current, muted: false, quietUntil: 0 };
+    setMuted(false);
     const help = describe(node);
     lastHelpNode.current = node;
     setBubble(help ?? { title: t("guideTitle"), body: t("guideNothing") });
@@ -515,45 +615,60 @@ export function NucleoApp(props: NucleoAppProps) {
     recognition.start();
   }
 
+  function setItemStatus(id: string, status: string) {
+    setItems((current) => current.map((row) => row.id === id ? { ...row, status } : row));
+  }
+
+  function setSnoozePref(id: string, until: string | null) {
+    const next = { ...prefs.snooze };
+    if (until) next[id] = until;
+    else delete next[id];
+    updatePrefs({ ...prefs, snooze: next });
+  }
+
+  /** Server write for hecho / posponer / reabrir (per-user endpoint, not the locked PATCH). */
+  async function sendCaseAction(item: LifeItem, action: CaseAction, until?: Date) {
+    if (!item.caseId || props.preview) return { ok: true as const, status: null };
+    return runCaseAction((url, init) => hmsJson(url, init), item.caseId, action, until);
+  }
+
   async function markDone(item: LifeItem) {
-    if (!item.caseId || props.preview) {
-      setItems((current) => current.map((row) => row.id === item.id ? { ...row, status: "resolved" } : row));
-      setToast(t("doneSaved"));
+    const previous = item.status;
+    setItemStatus(item.id, "resolved");
+    const result = await sendCaseAction(item, "done");
+    if (result.ok) {
+      setCaseNote({ tone: "ok", text: t("doneSaved"), action: { label: t("caseUndo"), run: () => void reopenCase({ ...item, status: "resolved" }) } });
       return;
     }
-    try {
-      await hmsJson(`/api/hms/cases/${item.caseId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "resolved" }),
-      });
-      setItems((current) => current.map((row) => row.id === item.id ? { ...row, status: "resolved" } : row));
-      setToast(t("doneSaved"));
-    } catch (reason) {
-      setToast(reason instanceof HmsApiError ? reason.message : t("errorGeneric"));
+    setItemStatus(item.id, previous);
+    setCaseNote({ tone: "error", text: `${t("caseErrDone")} ${t(result.key)}`, action: { label: t("caseRetry"), run: () => void markDone(item) } });
+  }
+
+  async function reopenCase(item: LifeItem) {
+    const previous = item.status;
+    setItemStatus(item.id, "in_progress");
+    const result = await sendCaseAction(item, "reopen");
+    if (result.ok) {
+      if (result.status) setItemStatus(item.id, result.status);
+      setCaseNote({ tone: "ok", text: t("caseReopened") });
+      return;
     }
+    setItemStatus(item.id, previous);
+    setCaseNote({ tone: "error", text: `${t("caseErrReopen")} ${t(result.key)}`, action: { label: t("caseRetry"), run: () => void reopenCase(item) } });
   }
 
   async function snooze(item: LifeItem, hours: number) {
-    const until = new Date();
-    if (hours === 15) {
-      until.setDate(until.getDate() + 1);
-      until.setHours(9, 0, 0, 0);
-    } else {
-      until.setTime(until.getTime() + hours * 36e5);
-    }
-    updatePrefs({ ...prefs, snooze: { ...prefs.snooze, [item.id]: until.toISOString() } });
+    const until = snoozeUntil(hours);
+    const previous = prefs.snooze[item.id] ?? null;
+    setSnoozePref(item.id, until.toISOString());
     setSnoozeFor(null);
-    if (item.caseId && !props.preview) {
-      await hmsJson(`/api/hms/cases/${item.caseId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ due_at: until.toISOString() }),
-      }).catch((reason: unknown) => {
-        setToast(reason instanceof Error ? reason.message : t("errorGeneric"));
-      });
+    const result = await sendCaseAction(item, "snooze", until);
+    if (result.ok) {
+      setCaseNote({ tone: "ok", text: t("snoozedUntil", { when: formatWhen(until.toISOString(), locale) }) });
+      return;
     }
-    setToast(t("snoozedUntil", { when: formatWhen(until.toISOString(), locale) }));
+    setSnoozePref(item.id, previous);
+    setCaseNote({ tone: "error", text: `${t("caseErrSnooze")} ${t(result.key)}`, action: { label: t("caseRetry"), run: () => void snooze(item, hours) } });
   }
 
   async function finishOnboarding(enabled: boolean) {
@@ -671,6 +786,43 @@ export function NucleoApp(props: NucleoAppProps) {
   const provider = providerName(props.provider, props.mailboxEmail);
   const pose = loading ? "thinking" : bubble ? "explaining" : "idle";
   const platformLabel = t(platformKey(device.platform));
+  const topRows: TopItem[] = useMemo(
+    () => rankTopTen(items, new Date(clock), (item) => {
+      const until = prefs.snooze[item.id];
+      return Boolean(until && new Date(until).getTime() > clock);
+    }),
+    [items, clock, prefs.snooze],
+  );
+  const topBlocked = Boolean(props.overlayOpen) || onboard || shortcuts || Boolean(caseId);
+  const topReady = prefsReady && props.connected && !props.importPending;
+
+  useEffect(() => {
+    if (topOpen) return;
+    if (!shouldShowTopTen({ seenAt: prefs.top10SeenAt, ready: topReady, loading, blocked: topBlocked, count: topRows.length })) return;
+    const timer = window.setTimeout(() => setTopOpen(true), 600);
+    return () => window.clearTimeout(timer);
+  }, [loading, prefs.top10SeenAt, topBlocked, topOpen, topReady, topRows.length]);
+
+  const dismissTop = useCallback(() => {
+    setTopOpen(false);
+    if (!prefs.top10SeenAt) updatePrefs({ ...prefs, top10SeenAt: new Date().toISOString() });
+  }, [prefs, updatePrefs]);
+
+  // Case action confirmations clear themselves; errors stay until dismissed.
+  useEffect(() => {
+    if (!caseNote || caseNote.tone !== "ok") return;
+    const timer = window.setTimeout(() => setCaseNote(null), 7000);
+    return () => window.clearTimeout(timer);
+  }, [caseNote]);
+
+  // "Traer correo nuevo" result toast: success clears itself after a while.
+  const syncPhase = props.mailSync?.phase ?? "idle";
+  const onSyncDismiss = props.onMailSyncDismiss;
+  useEffect(() => {
+    if (syncPhase !== "done" || !onSyncDismiss) return;
+    const timer = window.setTimeout(onSyncDismiss, 9000);
+    return () => window.clearTimeout(timer);
+  }, [syncPhase, onSyncDismiss]);
 
   return (
     <div
@@ -679,9 +831,15 @@ export function NucleoApp(props: NucleoAppProps) {
       data-contrast={prefs.highContrast ? "high" : undefined}
       data-motion={prefs.reducedMotion ? "reduce" : undefined}
       data-bot={prefs.guide ? "on" : "off"}
+      data-typing={typing ? "on" : undefined}
+      data-sync-toast={syncPhase !== "idle" ? "on" : undefined}
+      data-case-toast={caseNote ? "on" : undefined}
       style={{ ["--fs" as string]: String(prefs.fontScale) }}
       onMouseOver={onHelp}
       onFocus={onHelp}
+      onPointerDownCapture={(event) => {
+        if (event.pointerType === "touch") lastTouchAt.current = Date.now();
+      }}
     >
       <svg width="0" height="0" aria-hidden style={{ position: "absolute" }}>
         <defs>
@@ -874,6 +1032,7 @@ export function NucleoApp(props: NucleoAppProps) {
               rate={prefs.speechRate}
               onBack={() => setCaseId(null)}
               onDone={(item) => void markDone(item)}
+              onReopen={(item) => void reopenCase(item)}
               onOpenMail={props.onOpenInbox}
               onCaption={setCaption}
             />
@@ -904,6 +1063,8 @@ export function NucleoApp(props: NucleoAppProps) {
               onSignOut={props.onSignOut}
               onConnect={props.onConnect}
               onRefresh={props.onRefreshMail}
+              refreshBusy={props.mailSync?.phase === "running"}
+              refreshNote={syncNote(t, props.mailSync)}
               onInbox={() => props.onOpenInbox(null)}
               onImport={props.onOpenImport}
               showPlan={props.showPlan}
@@ -965,6 +1126,7 @@ export function NucleoApp(props: NucleoAppProps) {
                   }}
                   onConnect={props.onConnect}
                   onCaption={setCaption}
+                  onTopTen={props.connected ? () => setTopOpen(true) : undefined}
                 />
               ) : (
                 <ListView
@@ -1001,12 +1163,18 @@ export function NucleoApp(props: NucleoAppProps) {
         <NextoDock
           label={t("guideTitle")}
           hint={t("guideDragHint")}
-          onActivate={() => setBubble({ title: t("guideTitle"), body: `${t("helpGuide")} ${t("guideDragHint")}` })}
+          onActivate={() => {
+            gateRef.current = { ...gateRef.current, muted: false, quietUntil: 0 };
+            setMuted(false);
+            setBubble({ title: t("guideTitle"), body: `${t("helpGuide")} ${t("guideDragHint")}` });
+          }}
           onExplain={explainDropped}
+          onApproach={approachRobot}
+          watchApproach={muted}
           robot={<Nexto pose={pose} label="Nexto" />}
           bubble={bubble ? (
             <div className="bubble card" role="status">
-              <div className="bh"><Spark /><span className="t">{bubble.title}</span><button type="button" className="x" aria-label={t("close")} onClick={() => { setBubble(null); lastHelpNode.current = null; }}><X className="i sm" /></button></div>
+              <div className="bh"><Spark /><span className="t">{bubble.title}</span><button type="button" className="x" aria-label={t("close")} onPointerDown={(event) => event.stopPropagation()} onClick={closeBubble}><X className="i sm" /></button></div>
               <p>{bubble.body}</p>
               <div className="bf">
                 <span>{t("guideName")}</span>
@@ -1014,6 +1182,31 @@ export function NucleoApp(props: NucleoAppProps) {
               </div>
             </div>
           ) : null}
+        />
+      ) : null}
+      {props.mailSync && props.mailSync.phase !== "idle" ? (
+        <MailSyncToast t={t} state={props.mailSync} onClose={props.onMailSyncDismiss} onReconnect={props.onConnect} />
+      ) : null}
+      {caseNote ? (
+        <div className={`sync-toast case-toast ${caseNote.tone === "error" ? "is-error" : "is-ok"}`} role={caseNote.tone === "error" ? "alert" : "status"} aria-live="polite" data-testid="case-action-toast">
+          {caseNote.tone === "error" ? <AlertTriangle className="i" aria-hidden /> : <Check className="i" aria-hidden />}
+          <span>{caseNote.text}</span>
+          {caseNote.action ? (
+            <button type="button" className={caseNote.tone === "error" ? "btn primary sm" : "btn sm"} onClick={() => { const run = caseNote.action?.run; setCaseNote(null); run?.(); }}>{caseNote.action.label}</button>
+          ) : null}
+          <button type="button" className="x" aria-label={t("close")} onClick={() => setCaseNote(null)}><X className="i sm" /></button>
+        </div>
+      ) : null}
+      {topOpen ? (
+        <TopTen
+          t={t}
+          locale={locale}
+          rows={topRows}
+          onClose={dismissTop}
+          onOpen={(row) => {
+            dismissTop();
+            openItem(row.item);
+          }}
         />
       ) : null}
       {onboard ? (
@@ -1150,8 +1343,9 @@ function ListView(props: {
               <div style={{ minWidth: 0 }}>
                 <div className="st">{item.line || item.title}</div>
                 <div className="mt">{areaLabel(props.t, item.area)}{item.sender ? ` · ${item.sender}` : ""}</div>
+                {item.subject && item.subject !== item.line ? <div className="sj2" title={item.subject}>{props.t("subjectLabel")}: {item.subject}</div> : null}
               </div>
-              <span className="pill">{item.status}</span>
+              <span className="pill">{statusLabel(props.t, item.status)}</span>
               <ChevronRight className="i" />
             </button>
           ))}
@@ -1173,6 +1367,7 @@ function CaseDetail(props: {
   rate: number;
   onBack: () => void;
   onDone: (item: LifeItem) => void;
+  onReopen: (item: LifeItem) => void;
   onOpenMail: (messageId?: string | null) => void;
   onCaption: (text: string) => void;
 }) {
@@ -1200,11 +1395,15 @@ function CaseDetail(props: {
       <header className="topbar case-top">
         <div className="crumbs">
           <button type="button" className="back" aria-label={props.t("caseBack")} onClick={props.onBack}><X className="i" /></button>
-          <b>{props.item?.title || props.t("openCase")}</b>
+          <b>{props.item?.line || props.item?.title || props.t("openCase")}</b>
         </div>
         <div className="bar-actions">
           <span className="ro-pill"><Lock className="i sm" />{props.t("caseReadOnly")}</span>
-          {props.item ? <button type="button" className="btn" onClick={() => props.onDone(props.item as LifeItem)}><Check className="i" />{props.t("done")}</button> : null}
+          {props.item && isClosedStatus(props.item.status) ? (
+            <button type="button" className="btn" data-testid="case-reopen" onClick={() => props.onReopen(props.item as LifeItem)}><RotateCcw className="i" />{props.t("caseReopen")}</button>
+          ) : props.item ? (
+            <button type="button" className="btn" data-testid="case-done" onClick={() => props.onDone(props.item as LifeItem)}><Check className="i" />{props.t("done")}</button>
+          ) : null}
         </div>
       </header>
       <section className="card hero case-hero">
@@ -1222,6 +1421,9 @@ function CaseDetail(props: {
               </button>
             ) : null}
           </div>
+          {props.item?.subject && props.item.subject !== line ? (
+            <p className="case-subject"><b>{props.t("subjectLabel")}:</b> {props.item.subject}</p>
+          ) : null}
           <p className="case-note">{props.t("caseNotBalance")}</p>
         </div>
       </section>
@@ -1349,4 +1551,49 @@ function emptyCopy(t: (key: NxKey) => string, view: ViewId): string {
   if (view === "money") return t("moneyEmpty");
   if (view === "alerts") return t("alertsEmpty");
   return t("emptyTitle");
+}
+
+function statusLabel(t: (key: NxKey) => string, status: string): string {
+  if (status === "new") return t("statusNew");
+  if (status === "analyzing") return t("statusAnalyzing");
+  if (status === "in_progress") return t("statusInProgress");
+  if (status === "waiting_internal" || status === "waiting_external") return t("statusWaiting");
+  if (status === "delegated") return t("statusDelegated");
+  if (status === "resolved" || status === "done") return t("statusResolved");
+  if (status === "closed" || status === "archived") return t("statusClosed");
+  return status;
+}
+
+function syncNote(t: (key: NxKey, vars?: Record<string, string | number>) => string, state: MailSyncState | undefined): { text: string; error: boolean } | null {
+  if (!state || state.phase === "idle") return null;
+  if (state.phase === "running") {
+    return { text: state.downloaded ? `${t("mailSyncRunning")} ${t("mailSyncProgress", { count: state.downloaded })}` : t("mailSyncRunning"), error: false };
+  }
+  if (state.phase === "done") {
+    const head = state.inserted === 0 ? t("mailSyncNone") : state.inserted === 1 ? t("mailSyncOne") : t("mailSyncMany", { count: state.inserted });
+    return { text: state.createdCases ? `${head} ${t("mailSyncCases", { count: state.createdCases })}` : head, error: false };
+  }
+  if (state.reason === "auth") return { text: t("mailSyncAuth"), error: true };
+  if (state.reason === "timeout") return { text: t("mailSyncBackground"), error: false };
+  return { text: t("mailSyncFailed"), error: true };
+}
+
+function MailSyncToast(props: {
+  t: (key: NxKey, vars?: Record<string, string | number>) => string;
+  state: MailSyncState;
+  onClose?: () => void;
+  onReconnect: () => void;
+}) {
+  const note = syncNote(props.t, props.state);
+  if (!note) return null;
+  const running = props.state.phase === "running";
+  const auth = props.state.phase === "error" && props.state.reason === "auth";
+  return (
+    <div className={`sync-toast${note.error ? " is-error" : props.state.phase === "done" ? " is-ok" : ""}`} role={note.error ? "alert" : "status"} aria-live="polite" data-testid="mail-sync-toast">
+      {running ? <LoaderCircle className="i sync-spin" aria-hidden /> : props.state.phase === "done" ? <Check className="i" aria-hidden /> : <Mail className="i" aria-hidden />}
+      <span>{note.text}</span>
+      {auth ? <button type="button" className="btn primary sm" onClick={props.onReconnect}>{props.t("mailSyncReconnect")}</button> : null}
+      {!running && props.onClose ? <button type="button" className="x" aria-label={props.t("close")} onClick={props.onClose}><X className="i sm" /></button> : null}
+    </div>
+  );
 }

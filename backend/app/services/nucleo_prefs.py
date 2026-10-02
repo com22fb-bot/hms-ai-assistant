@@ -84,6 +84,7 @@ def sanitize_preferences(raw: Any) -> dict[str, Any]:
         )
 
     completed = raw.get("pushOnboardingCompletedAt")
+    top10 = raw.get("top10SeenAt")
     clean = {
         "theme": theme,
         "fontScale": font_scale,
@@ -103,6 +104,7 @@ def sanitize_preferences(raw: Any) -> dict[str, Any]:
         "volume": volume,
         "snooze": snooze,
         "pushOnboardingCompletedAt": completed if isinstance(completed, str) else None,
+        "top10SeenAt": top10[:40] if isinstance(top10, str) else None,
         "alertRules": rules,
     }
     if len(json.dumps(clean)) > _MAX_BYTES:

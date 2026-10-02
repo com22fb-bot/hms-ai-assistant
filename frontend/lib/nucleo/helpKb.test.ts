@@ -101,3 +101,61 @@ test("help: logout in Italian/Portuguese/English without a how-to word", () => {
   }
   assert.equal(top("sair do trabalho cedo"), null);
 });
+
+test("help: every way of asking to fetch new mail answers «Traer correo nuevo»", () => {
+  const phrasings = [
+    "cómo traigo el correo nuevo?",
+    "como traigo el correo nuevo",
+    "cómo traigo mi correo",
+    "traer correo",
+    "quiero traer los correos nuevos",
+    "cómo actualizo mi correo?",
+    "actualizar el correo",
+    "actualizar bandeja",
+    "cómo sincronizo?",
+    "sincronizar correo",
+    "descargar correos nuevos",
+    "cómo descargo el correo",
+    "bajar correos",
+    "refrescar",
+    "refrescar bandeja",
+    "no me llegan los correos nuevos",
+    "correo nuevo",
+    "how do I fetch new mail",
+    "refresh inbox",
+    "sync mail",
+    "check for new mail",
+    "comment synchroniser le courrier",
+    "nouveau courrier",
+    "come scaricare la posta nuova",
+    "aggiornare la posta",
+    "como atualizar e-mail",
+    "buscar e-mail novo",
+  ];
+  for (const q of phrasings) {
+    assert.equal(top(q), "refreshMail", q);
+  }
+  const entry = matchHelp("cómo traigo el correo nuevo?")[0].entry;
+  assert.deepEqual(entry.target, { view: "settings", tab: "mail", focus: "refresh-mail" });
+});
+
+test("help: fetching mail never answers «Desconectar» and disconnect still works", () => {
+  for (const q of ["cómo traigo el correo nuevo?", "actualizar correo", "correo nuevo", "sincronizar"]) {
+    assert.ok(!matchHelp(q).some((match) => match.entry.id === "disconnectMail"), q);
+  }
+  assert.equal(top("desconectar correo"), "disconnectMail");
+  assert.equal(top("cómo quito el acceso a mi correo"), "disconnectMail");
+});
+
+test("help: connecting a new mailbox is not mistaken for fetching mail", () => {
+  assert.equal(top("conectar un correo nuevo"), "connectMail");
+  assert.equal(top("how do I connect a new email"), "connectMail");
+  assert.equal(top("conectar buzón"), "connectMail");
+});
+
+test("help: hovering the mail card describes the card, not disconnecting", async () => {
+  const { helpForKey } = await import("./helpKb.ts");
+  assert.equal(helpForKey("mail-card", "es")?.title, "Tu correo");
+  assert.equal(helpForKey("refresh-mail", "es")?.title, "Traer correo nuevo");
+  assert.equal(helpForKey("refresh-mail", "en")?.title, "Fetch new mail");
+});
