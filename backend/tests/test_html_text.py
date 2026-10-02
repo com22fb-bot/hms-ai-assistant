@@ -62,6 +62,18 @@ class HtmlToTextTest(unittest.TestCase):
         body = "<div>table {width:640px} .x {color:red}</div><div>Pago recibido</div>"
         self.assertEqual(html_to_text(body), "Pago recibido")
 
+    def test_hostile_markup_stays_fast(self) -> None:
+        import time
+
+        for chunk in ("<script>xxxx", "<!--xx", "<style a", "<" * 4, "a:a a:a {b:c d:e f} ", "@media x "):
+            body = chunk * (200_000 // len(chunk))
+            started = time.perf_counter()
+            html_to_text(body)
+            self.assertLess(time.perf_counter() - started, 1.0, chunk)
+
+    def test_unclosed_style_drops_the_rest(self) -> None:
+        self.assertEqual(html_to_text("<p>Hola</p><style>table {width:640px}"), "Hola")
+
     def test_empty(self) -> None:
         self.assertEqual(html_to_text(None), "")
         self.assertEqual(html_to_text(""), "")

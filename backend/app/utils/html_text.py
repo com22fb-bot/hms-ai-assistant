@@ -13,15 +13,11 @@ from __future__ import annotations
 import html
 import re
 
-_BLOCKS = re.compile(
-    r"<(head|style|script|noscript|title|xml)\b[^>]*>.*?</\1\s*>",
-    re.IGNORECASE | re.DOTALL,
-)
-_COMMENTS = re.compile(r"<!--.*?-->", re.DOTALL)
-_CONDITIONAL = re.compile(r"<!\[if[^\]]*\]>.*?<!\[endif\]>", re.IGNORECASE | re.DOTALL)
-_BREAKS = re.compile(r"<\s*(br|/p|/div|/tr|/li|/h[1-6])\b[^>]*>", re.IGNORECASE)
-_TAGS = re.compile(r"<[^>]+>")
-_CSS_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
+# All patterns are bounded / non-overlapping so hostile mail (thousands of
+# unclosed "<script" or "<!--") stays linear; block removal is a manual scan.
+_BLOCK_OPEN = re.compile(r"<(head|style|script|noscript|title|xml)\b[^<>]{0,2000}>", re.IGNORECASE)
+_BREAKS = re.compile(r"<\s*(?:br|/p|/div|/tr|/li|/h[1-6])\b[^<>]{0,2000}>", re.IGNORECASE)
+_TAGS = re.compile(r"<[^<>]{1,4000}>")
 
 _TAG_NAMES = {
     "html", "body", "table", "tbody", "thead", "tfoot", "tr", "td", "th", "div", "span", "p",
@@ -31,12 +27,13 @@ _TAG_NAMES = {
     "v", "*",
 }
 _MEDIA_WORDS = {"only", "screen", "and", "not", "print", "all", "speech", "or", ">", "+", "~", ","}
-_DECLARATIONS = re.compile(r"^(?:\s*[-\w]+\s*:\s*[^;{}]*;?)+\s*$")
+# Unambiguous (declarations separated by ";") to avoid catastrophic backtracking.
+_DECLARATIONS = re.compile(r"^\s*[-\w]+\s*:[^;{}]*(?:;\s*[-\w]+\s*:[^;{}]*)*;?\s*$")
 _SELECTOR_CHARS = re.compile(r"[.#\[\]>:*+~@(),]")
 _SENTENCE_END = re.compile(r"[a-zA-Z]{3,}[.?!]$")
 _PSEUDO = re.compile(r"^[\w-]+:[\w-]+$")
 _AT_RULE = re.compile(
-    r"(?:^|\s)@(?:media|font-face|import|supports|keyframes|page)\b[^{}]*?(?=$|[A-ZÁÉÍÓÚÑ¿¡])"
+    r"(?:^|\s)@(?:media|font-face|import|supports|keyframes|page)\b[^{}]{0,300}?(?=$|[A-ZÁÉÍÓÚÑ¿¡])"
 )
 _CSS_VALUE = re.compile(r"^[\d.]+(?:px|em|rem|%)?;?$")
 
@@ -69,11 +66,53 @@ def _looks_like_declarations(inner: str) -> bool:
     return not body or bool(_DECLARATIONS.match(body))
 
 
+def _drop_between(text: str, opener: str, closer: str) -> str:
+    """Remove every opener…closer span (case-insensitive) in one linear pass.
+
+    An unclosed opener drops the rest of the text (it was never visible)."""
+    lower = text.lower()
+    out: list[str] = []
+    pos = 0
+    while True:
+        start = lower.find(opener, pos)
+        if start < 0:
+            out.append(text[pos:])
+            break
+        out.append(text[pos:start])
+        out.append(" ")
+        end = lower.find(closer, start + len(opener))
+        if end < 0:
+            break
+        pos = end + len(closer)
+    return "".join(out)
+
+
+def _drop_blocks(text: str) -> str:
+    """Drop <head>/<style>/<script>/… elements with their content, linearly."""
+    lower = text.lower()
+    out: list[str] = []
+    pos = 0
+    while True:
+        match = _BLOCK_OPEN.search(text, pos)
+        if not match:
+            out.append(text[pos:])
+            break
+        out.append(text[pos:match.start()])
+        out.append(" ")
+        closer = f"</{match.group(1).lower()}"
+        end = lower.find(closer, match.end())
+        if end < 0:
+            break
+        close_end = lower.find(">", end)
+        pos = len(text) if close_end < 0 else close_end + 1
+    return "".join(out)
+
+
 def strip_css_noise(value: str | None) -> str:
     """Remove CSS rules, @media blocks and stray braces from a text."""
     if not value:
         return ""
-    text = _CSS_COMMENT.sub(" ", str(value))
+    text = _drop_between(str(value), "/*", "*/")
     text = text.replace("<!--", " ").replace("-->", " ")
     if "{" not in text and "}" not in text:
         return re.sub(r"\s+", " ", text).strip()
@@ -115,9 +154,9 @@ def html_to_text(value: str | None) -> str:
     """Readable plain text from an HTML email body."""
     if not value:
         return ""
-    text = _CONDITIONAL.sub(" ", str(value))
-    text = _COMMENTS.sub(" ", text)
-    text = _BLOCKS.sub(" ", text)
+    text = _drop_between(str(value), "<![if", "<![endif]>")
+    text = _drop_between(text, "<!--", "-->")
+    text = _drop_blocks(text)
     text = _BREAKS.sub(" ", text)
     text = _TAGS.sub(" ", text)
     text = html.unescape(text).replace("\xa0", " ")

@@ -40,7 +40,8 @@ function trimSelector(prefix: string): string {
 function looksLikeDeclarations(inner: string): boolean {
   const body = inner.trim();
   if (!body) return true;
-  return /^(?:\s*[-\w]+\s*:\s*[^;{}]*;?)+\s*$/.test(body);
+  // Unambiguous (";"-separated) so long hostile strings can't backtrack catastrophically.
+  return /^\s*[-\w]+\s*:[^;{}]*(?:;\s*[-\w]+\s*:[^;{}]*)*;?\s*$/.test(body);
 }
 
 export function stripCssNoise(input: string | null | undefined): string {
@@ -77,7 +78,7 @@ export function stripCssNoise(input: string | null | undefined): string {
     text = cssRest ? trimSelector(text.slice(0, open)) : `${text.slice(0, open)} ${rest}`;
   }
   // Leftover "@media … " preludes and stray braces.
-  text = text.replace(/(?:^|\s)@(?:media|font-face|import|supports|keyframes|page)\b[^{}]*?(?=$|[A-ZÁÉÍÓÚÑ¿¡])/g, " ").replace(/[{}]/g, " ");
+  text = text.replace(/(?:^|\s)@(?:media|font-face|import|supports|keyframes|page)\b[^{}]{0,300}?(?=$|[A-ZÁÉÍÓÚÑ¿¡])/g, " ").replace(/[{}]/g, " ");
   text = text.replace(/\s+/g, " ").trim();
   // What is left after removing rules is only selectors ("body[data-x] .container-wide").
   const rest = text.split(" ").filter(Boolean);

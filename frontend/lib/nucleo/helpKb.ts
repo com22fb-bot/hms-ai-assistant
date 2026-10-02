@@ -46,7 +46,7 @@ const e = (
 
 export const HELP_ENTRIES: HelpEntry[] = [
   e("logout", { view: "settings", tab: "account", focus: "logout" },
-    ["cerrar sesion", "cerrar la sesion", "cierro sesion", "cierre de sesion", "salir de la app", "salir de la aplicacion", "salir de donexto", "logout", "log out", "sign out", "signout", "log off", "se deconnecter", "deconnexion", "me deconnecter", "disconnettersi", "terminar sessao", "encerrar sessao", "desloguear", "deslogear"],
+    ["cerrar sesion", "cerrar la sesion", "cierro sesion", "cierre de sesion", "salir de la app", "salir de la aplicacion", "salir de donexto", "uscire dall app", "uscire dall applicazione", "esci dall app", "uscire da donexto", "sair do app", "sair do aplicativo", "sair da aplicacao", "sair da conta", "sair da donexto", "exit the app", "quit the app", "leave the app", "quitter l application", "quitter l app", "sortir de l application", "logout", "log out", "sign out", "signout", "log off", "se deconnecter", "deconnexion", "me deconnecter", "disconnettersi", "terminar sessao", "encerrar sessao", "desloguear", "deslogear"],
     // Generic verbs ("salir de netflix") only count with a how-to word.
     ["sesion", "session", "sessao", "sessione", "exit", "quit", "irme", "salir", "salirme", "esci", "uscire", "sair"],
     {
@@ -534,6 +534,11 @@ function hits(words: string[], phrases: string[]): number {
 
 export type HelpMatch = { entry: HelpEntry; score: number };
 
+/** A one-word query that is exactly a visible button label ("Salir", "Esci", "Sair"). */
+const SOLO: Record<string, string[]> = {
+  logout: ["salir", "salirme", "sair", "esci", "uscire", "exit", "quit", "logout", "signout"],
+};
+
 /**
  * Rule-based matcher. Strong keywords answer on their own; weak ones need a
  * how-to word ("cómo", "dónde", "how"…) or a second hit. Returns up to `max`
@@ -548,9 +553,10 @@ export function matchHelp(query: string, max = 3): HelpMatch[] {
     if (entry.hoverOnly) continue;
     const strong = hits(words, entry.strong);
     const weak = hits(words, entry.weak);
-    const ok = strong > 0 || (weak > 0 && intent) || weak > 1;
+    const solo = words.length === 1 && Boolean(SOLO[entry.id]?.includes(words[0]));
+    const ok = solo || strong > 0 || (weak > 0 && intent) || weak > 1;
     if (!ok) continue;
-    out.push({ entry, score: strong * 3 + weak + (intent ? 1 : 0) });
+    out.push({ entry, score: (solo ? 3 : 0) + strong * 3 + weak + (intent ? 1 : 0) });
   }
   out.sort((left, right) => right.score - left.score);
   if (!out.length) return [];

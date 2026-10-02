@@ -37,3 +37,12 @@ test("cleanText: Outlook class rules and entities", () => {
     "Your Microsoft Azure invoice",
   );
 });
+
+test("cleanText: hostile long input stays fast", () => {
+  for (const chunk of ["a:a a:a {b:c d:e f} ", "@media x ", "{{{{", "x{a:b;c:d"]) {
+    const input = chunk.repeat(Math.ceil(50_000 / chunk.length));
+    const started = performance.now();
+    stripCssNoise(input);
+    assert.ok(performance.now() - started < 1500, chunk);
+  }
+});

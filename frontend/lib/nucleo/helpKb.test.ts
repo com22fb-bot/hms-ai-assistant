@@ -94,3 +94,10 @@ test("help: provider names and generic verbs alone stay case searches", () => {
   assert.equal(top("conectar yahoo"), "connectMail");
   assert.equal(top("salir de la app"), "logout");
 });
+
+test("help: logout in Italian/Portuguese/English without a how-to word", () => {
+  for (const q of ["Esci", "Sair", "salir", "uscire dall'app", "sair do app", "sair da conta", "quit the app"]) {
+    assert.equal(top(q), "logout", q);
+  }
+  assert.equal(top("sair do trabalho cedo"), null);
+});
