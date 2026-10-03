@@ -34,6 +34,7 @@ test("errors map to clear plain-language keys", () => {
   assert.equal(caseActionErrorKey(new FakeApiError(400)), "caseErrInvalid");
   assert.equal(caseActionErrorKey(new FakeApiError(500)), "caseErrGeneric");
   assert.equal(caseActionErrorKey(new TypeError("Failed to fetch")), "caseErrNetwork");
+  assert.equal(caseActionErrorKey(new FakeApiError(0)), "caseErrNetwork");
   assert.equal(caseActionErrorKey("weird"), "caseErrGeneric");
 });
 
