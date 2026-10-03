@@ -34,6 +34,7 @@ import { INITIAL_MAIL_FRAME, nextMailFrameHeight, withoutViewportUnits, type Mai
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { cleanDisplayText, stripCssNoise } from "@/lib/nucleo/cleanText";
 import { nx } from "@/lib/nucleo/copy";
+import { insightExcerpts, insightLine, type MailInsight } from "@/lib/nucleo/insights";
 import { speakText } from "@/lib/nucleo/speech";
 
 /** Visual + accessibility settings copied from the user's Núcleo IA prefs. */
@@ -114,6 +115,7 @@ type ConversationDetail = {
   summary: string;
   participants: string[];
   messages: MessageDetail[];
+  insight?: MailInsight | null;
 };
 
 type FilterOption = {
@@ -633,12 +635,22 @@ export function MailInbox({
           <div className="hms-mail-reading" tabIndex={0} aria-label={cleanDisplayText(detail.subject, "Sin asunto")}>
             <section className="hms-mail-ai-summary">
               <ShieldCheck size={21} />
-              <div><strong>Resumen de la conversación</strong><p>{stripCssNoise(detail.summary)}</p><small>{detail.participants.join(" · ")}</small></div>
+              <div>
+                <strong>Resumen de la conversación</strong>
+                <p>{insightLine(detail.insight, language) || stripCssNoise(detail.summary)}</p>
+                {insightExcerpts(detail.insight).length ? (
+                  <div className="hms-mail-quotes" data-testid="mail-quotes">
+                    <small>{nx(language, "caseQuotesTitle")} · {nx(language, "caseQuotesNote")}</small>
+                    {insightExcerpts(detail.insight).map((quote) => <blockquote key={quote}>{quote}</blockquote>)}
+                  </div>
+                ) : null}
+                <small>{detail.participants.join(" · ")}</small>
+              </div>
               {appearance?.readAloud ? (
                 <button
                   type="button"
                   className="hms-mail-listen"
-                  onClick={() => speakText(`${cleanDisplayText(detail.subject, "")}. ${stripCssNoise(detail.summary)}`, language, appearance.speechRate)}
+                  onClick={() => speakText(insightLine(detail.insight, language) || `${cleanDisplayText(detail.subject, "")}. ${stripCssNoise(detail.summary)}`, language, appearance.speechRate)}
                 >
                   <Volume2 size={16} />{nx(language, "listen")}
                 </button>

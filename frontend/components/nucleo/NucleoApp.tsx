@@ -79,6 +79,7 @@ import { Nexto } from "@/components/nucleo/Nexto";
 import { NextoDock } from "@/components/nucleo/NextoDock";
 import { TopTen } from "@/components/nucleo/TopTen";
 import { localizeItems } from "@/lib/nucleo/explain";
+import { insightExcerpts, insightLine, type MailInsight } from "@/lib/nucleo/insights";
 import { isClosedStatus, runCaseAction, snoozeUntil, type CaseAction } from "@/lib/nucleo/caseActions";
 import {
   OPEN_GATE,
@@ -1375,7 +1376,8 @@ function CaseDetail(props: {
     summary?: string | null;
     requested_action?: string | null;
     events?: Array<{ id: string; title: string; description: string | null; created_at: string }>;
-    messages?: Array<{ id: string; subject?: string; sender?: string; snippet?: string; received_at?: string }>;
+    messages?: Array<{ id: string; subject?: string; sender?: string; snippet?: string; received_at?: string; is_primary?: boolean | null }>;
+    insight?: MailInsight | null;
   } | null>(null);
   useEffect(() => {
     if (props.preview) return;
@@ -1389,7 +1391,10 @@ function CaseDetail(props: {
       cancelled = true;
     };
   }, [props.caseId, props.preview]);
-  const line = props.item?.line || stripCssNoise(detail?.summary) || "";
+  const insight = detail?.insight ?? props.item?.insight ?? null;
+  const quotes = insightExcerpts(insight);
+  const quoteMessageId = detail?.messages?.find((message) => message.is_primary)?.id ?? detail?.messages?.[0]?.id ?? props.item?.messageId ?? null;
+  const line = props.item?.line || insightLine(insight, props.language) || stripCssNoise(detail?.summary) || "";
   return (
     <div className="case-view">
       <header className="topbar case-top">
@@ -1428,6 +1433,23 @@ function CaseDetail(props: {
         </div>
       </section>
       <div className="case-grid case-body">
+        <div className="case-main">
+        {quotes.length > 0 ? (
+          <section className="card quotes-box" data-testid="case-quotes">
+            <div className="card-h">
+              <h3><Mail className="i" />{props.t("caseQuotesTitle")}</h3>
+              {quoteMessageId ? (
+                <button type="button" className="btn sm" onClick={() => props.onOpenMail(quoteMessageId)}>{props.t("caseQuotesOpen")}</button>
+              ) : null}
+            </div>
+            <div className="quotes-body">
+              <p className="quotes-note">{props.t("caseQuotesNote")}</p>
+              {quotes.map((quote) => (
+                <blockquote key={quote} className="quote">{quote}</blockquote>
+              ))}
+            </div>
+          </section>
+        ) : null}
         <section className="card">
           <div className="card-h"><h3>{props.t("caseEvents")}</h3></div>
           <div className="tl">
@@ -1442,6 +1464,7 @@ function CaseDetail(props: {
             ))}
           </div>
         </section>
+        </div>
         <aside className="case-side">
           <section className="card next-box">
             <div className="ai-label">{props.t("caseNext")}</div>

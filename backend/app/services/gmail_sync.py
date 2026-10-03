@@ -29,6 +29,7 @@ from googleapiclient.errors import HttpError
 
 from app.security.identity import require_google_account
 from app.services.oauth_storage import OAuthStorage
+from app.utils.mail_clean import import_body
 
 
 def _utc_now() -> datetime:
@@ -599,8 +600,10 @@ def sync_gmail_messages(
 
                 is_unread = "UNREAD" in labels
 
-                if not body_text:
-                    body_text = snippet
+                # HTML-only mail: readable text from the HTML, clean snippet.
+                body_text, snippet = import_body(
+                    body_text, body_html, subject, snippet
+                )
 
                 recipients = _parse_addresses(to_raw)
                 cc = _parse_addresses(cc_raw)

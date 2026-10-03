@@ -67,6 +67,8 @@ class CaseListItem(BaseModel):
     resolved_at: datetime | None = None
     source_count: int
     reminder_count: int
+    # Rule-based reading of the primary email (mail_insights, computed on read).
+    insight: dict[str, Any] | None = None
 
 
 class CaseDetail(CaseListItem):

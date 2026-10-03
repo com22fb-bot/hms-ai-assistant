@@ -20,6 +20,7 @@ from app.services.gmail_sync import (
 )
 from app.security.identity import require_google_account
 from app.services.oauth_storage import OAuthStorage
+from app.utils.mail_clean import import_body
 
 
 def _rows(response: Any) -> list[dict[str, Any]]:
@@ -225,8 +226,10 @@ def sync_gmail_page(
                     raw_message.get("snippet") or ""
                 ).strip()
 
-                if not body_text:
-                    body_text = snippet
+                # HTML-only mail: readable text from the HTML, clean snippet.
+                body_text, snippet = import_body(
+                    body_text, body_html, subject, snippet
+                )
 
                 labels = [
                     str(label)
