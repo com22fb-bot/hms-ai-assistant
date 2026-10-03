@@ -8,6 +8,7 @@
  */
 
 import { cleanDisplayText } from "./cleanText.ts";
+import { insightArea, insightLine } from "./insights.ts";
 import type { LifeItem } from "./lifeAreas.ts";
 
 export type ExplainLang = "es" | "en" | "fr" | "it" | "pt";
@@ -486,6 +487,12 @@ export function areaForKind(kind: EventKind, area: LifeItem["area"]): LifeItem["
 export function localizeItems(items: LifeItem[], lang: ExplainLang): LifeItem[] {
   return items.map((item) => {
     const subject = item.subject ?? item.title;
+    // Backend insight: its sentence is built from facts in the email, and its
+    // event type already decided the area. Never re-classify it here.
+    const fromBackend = insightLine(item.insight, lang);
+    if (item.insight && fromBackend) {
+      return { ...item, subject, line: fromBackend, kind: item.insight.kind, area: insightArea(item.insight, item.area) };
+    }
     const result = explain(
       {
         title: subject,

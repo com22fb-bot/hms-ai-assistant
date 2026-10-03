@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import email
-import re
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any
@@ -18,6 +17,7 @@ from app.services.gmail_sync import (
     _utc_now,
 )
 from app.services.oauth_storage import OAuthStorage
+from app.utils.mail_clean import import_body
 from app.services.imap_provider import PEEK_FULL_SPEC
 from app.services.yahoo_imap import (
     YahooImapError,
@@ -507,13 +507,8 @@ def sync_yahoo_page(
                 labels = [mailbox_provider.upper(), folder_role.upper()]
                 is_unread = "\\Seen" not in flags_text
                 direction = "outbound" if folder_role == "sent" else "inbound"
-                snippet = re.sub(
-                    r"\s+",
-                    " ",
-                    (body_text or subject or "")[:280],
-                ).strip()
-                if not body_text:
-                    body_text = snippet
+                # HTML-only mail: store readable text, not the subject.
+                body_text, snippet = import_body(body_text, body_html, subject)
                 thread = _get_or_create_thread(
                     client=client_db,
                     account_id=account_id,

@@ -6,6 +6,8 @@ from fastapi import HTTPException
 
 from app.security.identity import require_google_account
 from app.services.oauth_storage import OAuthStorage
+from app.services.insight_attach import attach_thread_insights
+from app.services.mail_insights import safe_insight
 
 
 TRIAGE_CATEGORIES = {
@@ -120,7 +122,7 @@ def list_stored_threads(
         "offset": safe_offset,
         "total": total,
         "has_more": safe_offset + len(rows) < total,
-        "conversations": rows,
+        "conversations": attach_thread_insights(storage.client, account_id, rows),
     }
 
 
@@ -211,10 +213,12 @@ def get_stored_conversation(message_id: str) -> dict[str, Any]:
             for link in links_by_message.get(row_id, [])
             if str(link.get("case_id")) in case_map
         ]
+        insight = safe_insight(row)
         enriched.append(
             {
                 **row,
-                "summary": _summary(row),
+                "insight": insight,
+                "summary": (insight or {}).get("preview") or _summary(row),
                 "favorite": favorites.get(row_id),
                 "related_cases": related_cases,
             }
@@ -235,7 +239,8 @@ def get_stored_conversation(message_id: str) -> dict[str, Any]:
         "latest_message_id": str(latest.get("id") or message_id),
         "subject": latest.get("subject"),
         "normalized_subject": latest.get("normalized_subject"),
-        "summary": _summary(latest),
+        "summary": (latest.get("insight") or {}).get("preview") or _summary(latest),
+        "insight": latest.get("insight"),
         "participants": participants,
         "messages": enriched,
     }

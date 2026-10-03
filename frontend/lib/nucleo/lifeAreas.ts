@@ -4,6 +4,7 @@
  */
 
 import { cleanDisplayText, stripCssNoise } from "./cleanText.ts";
+import { insightArea, insightLine, type MailInsight } from "./insights.ts";
 
 export const LIFE_AREA_IDS = [
   "money",
@@ -345,6 +346,8 @@ export type InboxCase = {
   last_activity_at: string;
   due_at: string | null;
   source_count: number;
+  /** Backend mail insight of the case's primary email (read-only, computed on the fly). */
+  insight?: MailInsight | null;
 };
 
 export type InboxThread = {
@@ -354,6 +357,7 @@ export type InboxThread = {
   sender: string | null;
   latest_received_at: string | null;
   triage_category: string | null;
+  insight?: MailInsight | null;
 };
 
 export type LifeItem = {
@@ -384,6 +388,8 @@ export type LifeItem = {
   subject?: string;
   /** Event type detected by `explain.ts` (security alert, order shipped…). */
   kind?: string;
+  /** Backend insight (main idea + exact quotes). Its area/kind win over keywords. */
+  insight?: MailInsight | null;
 };
 
 function senderLabel(
@@ -422,7 +428,8 @@ export function buildLifeItems(
       .filter(Boolean)
       .join(" ");
     const classified = classifyText(blob, item.case_type);
-    const amounts = parseAmounts(blob);
+    const insight = raw.insight ?? null;
+    const amounts = parseAmounts([insight?.facts?.amount, blob].filter(Boolean).join(" "));
     const primary = amounts[0] ?? null;
     return {
       id: `case:${item.id}`,
@@ -430,8 +437,10 @@ export function buildLifeItems(
       caseId: item.id,
       messageId: null,
       title: item.title,
-      line: oneLineStatement(item.title, item.summary),
-      area: classified.area,
+      line: insightLine(insight) || oneLineStatement(item.title, item.summary),
+      // The backend event type decides the area (an ISSSTE notice is not
+      // Health, a bank card notice is not Orders); keywords are a fallback.
+      area: insightArea(insight, classified.area),
       sender: senderLabel(item.requester_name, item.requester_email),
       when: item.last_activity_at,
       dueAt: item.due_at,
@@ -445,7 +454,8 @@ export function buildLifeItems(
       requestedAction: item.requested_action,
       sourceCount: item.source_count,
       senderEmail: item.requester_email,
-      preview: item.summary,
+      preview: insight?.preview || item.summary,
+      insight,
     };
   });
 
@@ -466,16 +476,19 @@ export function buildLifeItems(
       blob,
       thread.triage_category === "promotional" ? "promotional" : null,
     );
-    const area =
-      thread.triage_category === "promotional" ? "promos" : classified.area;
-    const amounts = parseAmounts(blob);
+    const insight = rawThread.insight ?? null;
+    const area = insightArea(
+      insight,
+      thread.triage_category === "promotional" ? "promos" : classified.area,
+    );
+    const amounts = parseAmounts([insight?.facts?.amount, blob].filter(Boolean).join(" "));
     items.push({
       id: `thread:${thread.latest_message_id}`,
       source: "thread",
       caseId: null,
       messageId: thread.latest_message_id,
       title: subject,
-      line: oneLineStatement(subject, thread.summary),
+      line: insightLine(insight) || oneLineStatement(subject, thread.summary),
       area,
       sender: senderLabel(thread.sender, null),
       when: thread.latest_received_at || new Date(0).toISOString(),
@@ -489,7 +502,8 @@ export function buildLifeItems(
       reconciled: false,
       requestedAction: null,
       sourceCount: 1,
-      preview: thread.summary,
+      preview: insight?.preview || thread.summary,
+      insight,
       senderEmail: thread.sender?.match(/<([^>]+)>/)?.[1] ?? (thread.sender?.includes("@") ? thread.sender : null),
     });
   }
