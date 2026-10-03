@@ -42,6 +42,9 @@ export type MailRefreshDeps = {
   timeoutMs?: number;
 };
 
+/** Consecutive progress-check failures tolerated before giving up. */
+export const MAX_STATUS_FAILURES = 3;
+
 const AUTH_HINTS = ["invalid_grant", "expired or revoked", "revoked", "unauthorized", "reconnect", "vuelve a conectar", "authenticationfailed"];
 
 /** True when an error text means the mailbox permission must be renewed. */
@@ -82,9 +85,20 @@ export async function refreshMailbox(deps: MailRefreshDeps): Promise<MailRefresh
   }
   await deps.start();
   const deadline = deps.now() + timeoutMs;
+  let failures = 0;
   for (;;) {
     await deps.sleep(pollMs);
-    const payload = await deps.status();
+    let payload: ImportStatusPayload;
+    try {
+      payload = await deps.status();
+      failures = 0;
+    } catch (error) {
+      // The job keeps running on the server; a dropped progress check
+      // (phone asleep, network switch) is not a failed import.
+      failures += 1;
+      if (failures >= MAX_STATUS_FAILURES || deps.now() >= deadline) throw error;
+      continue;
+    }
     const downloaded = Number(payload.progress?.downloaded ?? payload.active?.messages_inserted ?? 0);
     deps.onProgress?.(Number.isFinite(downloaded) ? downloaded : 0);
     const outcome = jobOutcome(payload);

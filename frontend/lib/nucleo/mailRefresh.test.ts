@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { isAuthError, jobOutcome, refreshMailbox, type ImportStatusPayload } from "./mailRefresh.ts";
+import { MAX_STATUS_FAILURES, isAuthError, jobOutcome, refreshMailbox, type ImportStatusPayload } from "./mailRefresh.ts";
 
 function fakeDeps(statuses: ImportStatusPayload[], startCalls: { n: number }) {
   let index = 0;
@@ -71,4 +71,38 @@ test("mail refresh: outcome helpers", () => {
   assert.deepEqual(jobOutcome({ active: null, latest: { status: "completed", messages_inserted: 0 } }), { ok: true, inserted: 0, createdCases: 0 });
   assert.equal(isAuthError("invalid_grant: Bad Request"), true);
   assert.equal(isAuthError("HttpError 503"), false);
+});
+
+test("mail refresh: a dropped progress check does not fail the download", async () => {
+  const calls = { n: 0 };
+  const base = fakeDeps([
+    READY,
+    { initial_import_complete: true, phase: "ready", active: null, latest: { id: "job-1", status: "completed", messages_inserted: 5, created_cases: 1 } },
+  ], calls);
+  let n = 0;
+  const result = await refreshMailbox({
+    ...base,
+    status: async () => {
+      n += 1;
+      if (n === 2 || n === 3) throw new Error("No pudimos comunicarnos con Donexto.");
+      return base.status();
+    },
+  });
+  assert.deepEqual(result, { ok: true, inserted: 5, createdCases: 1 });
+});
+
+test("mail refresh: three dropped checks in a row surface the error", async () => {
+  const calls = { n: 0 };
+  const base = fakeDeps([READY], calls);
+  let n = 0;
+  await assert.rejects(refreshMailbox({
+    ...base,
+    timeoutMs: 60_000,
+    status: async () => {
+      n += 1;
+      if (n === 1) return READY;
+      throw new Error("offline");
+    },
+  }), /offline/);
+  assert.equal(n, 1 + MAX_STATUS_FAILURES);
 });

@@ -33,6 +33,7 @@ export function caseActionRequest(caseId: string, action: CaseAction, until?: Da
 /** Plain-language error for a failed action (never the raw server text). */
 export function caseActionErrorKey(error: unknown): CaseActionErrorKey {
   const status = typeof (error as { status?: unknown })?.status === "number" ? (error as { status: number }).status : null;
+  if (status === 0) return "caseErrNetwork";
   if (status === 423) return "caseErrLocked";
   if (status === 401 || status === 403) return "caseErrSession";
   if (status === 404 || status === 409) return "caseErrMissing";
