@@ -1,0 +1,219 @@
+.dx-assist {
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(16px, 5vh, 56px) 16px 32px;
+  background:
+    radial-gradient(120% 80% at 10% 0%, rgba(36, 200, 202, 0.16), transparent 60%),
+    radial-gradient(90% 70% at 100% 10%, rgba(214, 61, 142, 0.14), transparent 60%),
+    #070a12;
+  color: #e9f1f4;
+}
+
+.dx-assist__card {
+  width: min(640px, 100%);
+  background: rgba(15, 21, 34, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: clamp(20px, 4vw, 32px);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dx-assist__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #24c8ca;
+  font-weight: 700;
+}
+
+.dx-assist h1 {
+  margin: 0;
+  font-size: clamp(24px, 4vw, 30px);
+  line-height: 1.2;
+}
+
+.dx-assist__lead,
+.dx-assist__notice,
+.dx-assist__foot {
+  margin: 0;
+  color: #b8c6cc;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.dx-assist__notice {
+  background: rgba(36, 200, 202, 0.14);
+  color: #bdf0ee;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.dx-assist__foot {
+  font-size: 13px;
+}
+
+.dx-assist__foot a {
+  color: #7fe3e1;
+}
+
+.dx-assist__form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dx-assist__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  color: #cfdbe0;
+}
+
+.dx-assist input {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f2f7f9;
+  padding: 12px 14px;
+  font-size: 16px;
+  outline: none;
+}
+
+.dx-assist input:focus {
+  border-color: #24c8ca;
+  box-shadow: 0 0 0 3px rgba(36, 200, 202, 0.2);
+}
+
+.dx-assist__code {
+  letter-spacing: 0.4em;
+  font-size: 22px !important;
+  text-align: center;
+}
+
+.dx-assist__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 12px;
+  padding: 12px 18px;
+  font-weight: 700;
+  font-size: 15px;
+  color: #04201f;
+  background: linear-gradient(135deg, #24c8ca, #6fe0c8);
+  cursor: pointer;
+}
+
+.dx-assist__btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.dx-assist__link {
+  align-self: flex-start;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: #8fb3bd;
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.dx-assist__chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 220px;
+  max-height: min(52vh, 460px);
+  overflow-y: auto;
+  padding: 4px 2px;
+}
+
+.dx-assist__bubble {
+  max-width: 88%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 15px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.dx-assist__bubble svg {
+  flex: none;
+  margin-top: 3px;
+  color: #24c8ca;
+}
+
+.dx-assist__bubble.is-assistant {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.dx-assist__bubble.is-user {
+  align-self: flex-end;
+  background: rgba(36, 200, 202, 0.2);
+  color: #e6fbfa;
+}
+
+.dx-assist__bubble.is-typing {
+  color: #8fa6ad;
+  font-style: italic;
+}
+
+.dx-assist__composer {
+  display: flex;
+  gap: 8px;
+}
+
+.dx-assist__composer .dx-assist__btn {
+  padding: 12px 16px;
+}
+
+.dx-assist__cta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  text-decoration: none;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(214, 61, 142, 0.85), rgba(36, 200, 202, 0.75));
+}
+
+.dx-assist__cta span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dx-assist__cta small {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.dx-assist__error {
+  margin: 0;
+  background: rgba(140, 40, 28, 0.28);
+  color: #ffb4a8;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px;
+}

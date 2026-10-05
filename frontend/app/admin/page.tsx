@@ -142,7 +142,7 @@ const TABS: Array<{ id: AdminTab; label: string; icon: typeof Activity }> = [
   { id: "users", label: "Usuarios", icon: Users },
   { id: "billing", label: "Cobros", icon: CreditCard },
   { id: "messages", label: "Mensajes", icon: Inbox },
-  { id: "feedback", label: "Quejas y ideas", icon: MessageSquareWarning },
+  { id: "feedback", label: "Quejas e ideas", icon: MessageSquareWarning },
   { id: "promotions", label: "Promociones", icon: Tag },
   { id: "system", label: "Sistema", icon: Server },
 ];

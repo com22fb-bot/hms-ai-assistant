@@ -28,6 +28,7 @@ from app.api.admin_contact import router as admin_contact_router
 from app.api.admin_login import router as admin_login_router
 from app.api.admin_ops import router as admin_ops_router
 from app.api.public_contact import router as public_contact_router
+from app.api.public_assist import router as public_assist_router
 from app.api.billing import router as billing_router
 from app.core.config import settings
 from app.middleware.authentication_context import AuthenticationContextMiddleware
@@ -182,6 +183,7 @@ gmail_router = create_gmail_router(
 
 app.include_router(system_router)
 app.include_router(public_contact_router)
+app.include_router(public_assist_router)
 app.include_router(identity_router)
 app.include_router(ai_router)
 app.include_router(auth_router)
