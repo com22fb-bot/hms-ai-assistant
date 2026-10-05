@@ -13,6 +13,7 @@ import {
   errorMessage,
   historyForRequest,
   langFromSearch,
+  linkSegments,
   linkTokenFromSearch,
   loadSession,
   onlyDigits,
@@ -27,7 +28,7 @@ type Step = "loading" | "email" | "code" | "chat";
 
 const DEFAULT_CTA: AssistCta = {
   label: "Crear mi cuenta y suscribirme",
-  detail: "Plan Normal · $19.99 al mes",
+  detail: "Plan Normal · US$19.99 al mes",
   url: ASSIST_SIGNUP_URL,
 };
 
@@ -270,7 +271,24 @@ export function AssistChat() {
               {turns.map((turn, index) => (
                 <div key={index} className={`dx-assist__bubble is-${turn.role}`}>
                   {turn.role === "assistant" ? <MessageCircle size={14} aria-hidden /> : null}
-                  <span>{turn.content}</span>
+                  <span>
+                    {turn.role === "assistant"
+                      ? linkSegments(turn.content).map((segment, part) =>
+                          segment.href ? (
+                            <a
+                              key={part}
+                              href={segment.href}
+                              target={segment.href.startsWith("mailto:") ? undefined : "_blank"}
+                              rel="noopener noreferrer"
+                            >
+                              {segment.text}
+                            </a>
+                          ) : (
+                            <span key={part}>{segment.text}</span>
+                          ),
+                        )
+                      : turn.content}
+                  </span>
                 </div>
               ))}
               {busy ? <div className="dx-assist__bubble is-assistant is-typing">Escribiendo…</div> : null}

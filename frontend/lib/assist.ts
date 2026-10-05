@@ -124,3 +124,33 @@ export function errorMessage(payload: unknown, fallback: string): string {
   }
   return fallback;
 }
+
+export type TextSegment = { text: string; href?: string };
+
+const LINK_RE =
+  /(https?:\/\/(?:www\.|app\.)?donexto\.com(?:\/[^\s),;]*)?|(?:www\.|app\.)donexto\.com(?:\/[^\s),;]*)?|support@donexto\.com)/gi;
+
+/**
+ * Split chat text into plain parts and clickable links. Only donexto.com
+ * addresses and support@donexto.com become links; anything else stays text.
+ */
+export function linkSegments(text: string): TextSegment[] {
+  const segments: TextSegment[] = [];
+  let last = 0;
+  for (const match of text.matchAll(LINK_RE)) {
+    let raw = match[0];
+    // Sentence punctuation right after a link is not part of it.
+    while (/[.?!:]$/.test(raw)) raw = raw.slice(0, -1);
+    const start = match.index ?? 0;
+    if (start > last) segments.push({ text: text.slice(last, start) });
+    const href = raw.includes("@")
+      ? `mailto:${raw}`
+      : /^https?:\/\//i.test(raw)
+        ? raw
+        : `https://${raw}`;
+    segments.push({ text: raw, href });
+    last = start + raw.length;
+  }
+  if (last < text.length) segments.push({ text: text.slice(last) });
+  return segments;
+}
