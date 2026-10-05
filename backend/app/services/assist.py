@@ -614,7 +614,7 @@ _RULE_REPLIES_ES = {
         "conectar o cuánto cuesta?"
     ),
     "mobile": (
-        "Te cuento: hoy Donexto es una app web: la abres en app.donexto.com desde el navegador "
+        "Te cuento: hoy Donexto es una app web. La abres en app.donexto.com desde el navegador "
         "de tu celular o de tu computadora (Chrome, Edge, Safari o Firefox) y funciona igual. "
         "Todavía no está en Play Store ni en App Store. Lo que viene es poder instalarla en la "
         "pantalla de inicio con notificaciones en Android, iOS, Windows, macOS y Linux; aún no hay "
