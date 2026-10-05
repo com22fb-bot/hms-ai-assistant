@@ -339,6 +339,50 @@ class ChatTests(unittest.TestCase):
         self.assertIn("not yet a native app", captured["instructions"])
         self.assertIn("Visitor: ¿hay app?", captured["prompt"])
 
+    def _dialog(self, assistant: str, user: str, lang: str = "es") -> dict:
+        history = [
+            {"role": "user", "content": "primera pregunta"},
+            {"role": "assistant", "content": assistant},
+            {"role": "user", "content": user},
+        ]
+        with patch.dict(os.environ, NO_AI):
+            return assist.chat_reply("ctx@example.com", history, lang)
+
+    def test_yes_follows_the_previous_offer(self) -> None:
+        price = assist.rule_reply("precio", "es")
+        self.assertIn("¿Quieres saber qué correos puedes conectar?", price)
+        providers = assist.rule_reply("¿sirve con gmail?", "es")
+        for answer in ("si", "Sí", "sí, por favor", "ok", "claro", "dale", "cuáles", "lo de los correos"):
+            result = self._dialog(price, answer)
+            self.assertEqual(result["intent"], "providers", answer)
+            self.assertEqual(result["reply"], providers, answer)
+        english = self._dialog(assist.rule_reply("price", "en"), "yes", "en")
+        self.assertEqual(english["intent"], "providers")
+
+    def test_no_closes_politely(self) -> None:
+        price = assist.rule_reply("precio", "es")
+        for answer in ("no", "No gracias", "nel", "ahorita no"):
+            result = self._dialog(price, answer)
+            self.assertEqual(result["intent"], "decline", answer)
+            self.assertIn("sin problema", result["reply"])
+            self.assertNotIn("No estoy seguro", result["reply"])
+
+    def test_yes_to_a_multi_topic_offer_asks_which(self) -> None:
+        result = self._dialog(assist.rule_reply("cuéntame", "es"), "si")
+        self.assertEqual(result["intent"], "choose")
+        self.assertIn("¿Por cuál empiezo:", result["reply"])
+        self.assertIn("qué correos puedes conectar", result["reply"])
+        self.assertNotIn("qué es Donexto", result["reply"])  # already explained
+
+    def test_yes_without_context_stays_default(self) -> None:
+        with patch.dict(os.environ, NO_AI):
+            result = assist.chat_reply("solo@example.com", [{"role": "user", "content": "si"}], "es")
+        self.assertEqual(result["intent"], "default")
+
+    def test_real_questions_still_win_over_context(self) -> None:
+        result = self._dialog(assist.rule_reply("precio", "es"), "si, ¿y es seguro?")
+        self.assertEqual(result["intent"], "privacy")
+
     def test_rules_answer_when_ai_off(self) -> None:
         with patch.dict(os.environ, NO_AI):
             result = assist.chat_reply(
