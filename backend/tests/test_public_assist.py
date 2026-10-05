@@ -252,6 +252,61 @@ class ChatTests(unittest.TestCase):
         self.assertEqual(assist.detect_intent("Hola"), "greeting")
         self.assertEqual(assist.detect_intent("xyz"), "default")
 
+    def test_tell_me_is_not_signup(self) -> None:
+        # "cuenta" used to match inside "cuentame" and answer the signup pitch.
+        for text in ("cuéntame", "cuentame", "Cuéntame más", "¿qué es Donexto?", "¿cómo funciona?", "tell me more"):
+            self.assertEqual(assist.detect_intent(text), "what", text)
+        self.assertEqual(assist.detect_intent("quiero crear una cuenta"), "start")
+        self.assertEqual(assist.detect_intent("me di cuenta de algo"), "default")
+
+    def test_mobile_questions(self) -> None:
+        for text in (
+            "que mal yo pensaba que eran una app para mi celular",
+            "pensaba que eran app para celular",
+            "¿Está en la Play Store?",
+            "¿La puedo instalar en mi teléfono?",
+            "is there a mobile app?",
+        ):
+            self.assertEqual(assist.detect_intent(text), "mobile", text)
+        with patch.dict(os.environ, NO_AI):
+            reply = assist.chat_reply(
+                "m@example.com",
+                [{"role": "user", "content": "pensaba que eran app para celular"}],
+                "es",
+            )["reply"]
+        self.assertIn("app web", reply)
+        self.assertIn("Play Store", reply)
+        self.assertIn("aún no hay fecha", reply)
+
+    def test_banks_and_short_words_need_whole_tokens(self) -> None:
+        self.assertEqual(assist.detect_intent("¿Se conecta a mi banco o a Amazon?"), "banks")
+        self.assertEqual(assist.detect_intent("hi there"), "greeting")
+        self.assertEqual(assist.detect_intent("this is nice"), "default")  # "hi" inside "this"
+
+    def test_default_reply_differs_from_what(self) -> None:
+        self.assertNotEqual(assist.rule_reply("asdf", "es"), assist.rule_reply("cuéntame", "es"))
+        self.assertIn("¿De cuál te cuento?", assist.rule_reply("asdf", "es"))
+
+    def test_price_mentions_europe(self) -> None:
+        reply = assist.rule_reply("precio", "es")
+        self.assertIn("US$19.99", reply)
+        self.assertIn("€19.99", reply)
+
+    def test_ai_instructions_put_latest_question_first(self) -> None:
+        captured: dict[str, str] = {}
+
+        def fake(instructions: str, prompt: str, *, max_output_tokens: int) -> str:
+            captured["instructions"], captured["prompt"] = instructions, prompt
+            return "Hoy es una app web."
+
+        with patch.object(assist, "ai_reply_configured", return_value=True), patch.object(
+            assist, "_call_contact_ai", side_effect=fake
+        ):
+            assist.chat_reply("ai@example.com", [{"role": "user", "content": "¿hay app?"}], "es")
+        self.assertIn("LATEST message first", captured["instructions"])
+        self.assertIn("not yet a native app", captured["instructions"])
+        self.assertIn("Visitor: ¿hay app?", captured["prompt"])
+
     def test_rules_answer_when_ai_off(self) -> None:
         with patch.dict(os.environ, NO_AI):
             result = assist.chat_reply(

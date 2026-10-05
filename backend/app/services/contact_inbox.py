@@ -72,11 +72,16 @@ _LANG_NAMES = {
 
 DONEXTO_REPLY_FACTS = """
 Donexto product facts (do not invent beyond these):
-- Donexto reads only the user's authorized email, and only in read-only mode.
-- It turns that mail into actionable life events.
+- Donexto is not another inbox. It reads only the email the user authorizes, in read-only mode, removes the noise, and gives each important message one clear main idea with exact quotes from the email.
+- It turns that mail into actionable to-dos: payments, appointments, paperwork, and alerts.
+- It never sends, deletes, or moves messages. It does not connect to banks, cards, Amazon, or other accounts; it only sees what those companies already email the user.
 - Microsoft Outlook and Hotmail are live today.
 - Gmail, Yahoo, and iCloud are coming soon.
-- Support address: support@donexto.com
+- Donexto is a web app at https://app.donexto.com. It works today in phone and computer browsers (Chrome, Edge, Safari, Firefox).
+- It is not yet a native app in the Google Play Store or the Apple App Store.
+- Planned, with no release date: an installable app (PWA) on the home screen with push notifications on Windows, Linux, macOS, Android, and iOS; Huawei later. Never promise a date.
+- Pricing: Plan Normal, US$19.99 per month (EUR 19.99 in Europe), roughly what 4 lattes cost in a month. The subscription happens inside the app.
+- Support address: support@donexto.com. A person from the team answers when the visitor asks for a human.
 - The app is at https://app.donexto.com
 - The marketing site is https://www.donexto.com
 """.strip()
