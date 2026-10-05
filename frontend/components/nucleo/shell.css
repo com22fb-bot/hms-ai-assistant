@@ -1042,6 +1042,40 @@
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+.nx .case-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+/* "Lo que dice el correo": exact quotes, never paraphrased. */
+.nx .quotes-box .card-h {
+  gap: 8px;
+  padding: 10px 20px;
+}
+.nx .quotes-body {
+  padding: 10px 20px 14px;
+}
+.nx .quotes-note {
+  margin: 0 0 8px;
+  font-size: calc(12px * var(--fs));
+  color: var(--text-3);
+}
+.nx .quote {
+  margin: 0;
+  padding: 6px 12px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--accent-soft);
+  font-size: calc(14px * var(--fs));
+  line-height: 1.45;
+  color: var(--text);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.nx .quote + .quote {
+  margin-top: 6px;
+}
 .nx .case-side {
   display: flex;
   flex-direction: column;

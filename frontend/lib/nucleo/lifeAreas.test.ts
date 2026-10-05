@@ -24,6 +24,7 @@ import "./mailRefresh.test.ts";
 import "./nextoDock.test.ts";
 import "./caseActions.test.ts";
 import "../networkRetry.test.ts";
+import "./insights.test.ts";
 
 test("classifies inbox text into life areas without inventing a bank feed", () => {
   assert.equal(

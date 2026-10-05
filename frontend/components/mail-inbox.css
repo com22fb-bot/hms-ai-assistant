@@ -448,6 +448,16 @@
 .hms-message-summary p { margin: 4px 0; color: var(--mx-text-2); overflow-wrap: anywhere; }
 .hms-mail-ai-summary small,
 .hms-message-summary small { color: var(--mx-text-3); overflow-wrap: anywhere; }
+/* Exact quotes from the email (backend insight), never paraphrased. */
+.hms-mail-quotes { display: grid; gap: 4px; margin: 6px 0 8px; }
+.hms-mail-quotes blockquote {
+  margin: 0;
+  padding: 4px 10px;
+  border-left: 3px solid var(--mx-accent);
+  color: var(--mx-text);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
 .hms-mail-listen {
   flex: none;
   align-self: flex-start;
