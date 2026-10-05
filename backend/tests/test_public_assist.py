@@ -278,6 +278,38 @@ class ChatTests(unittest.TestCase):
         self.assertIn("Play Store", reply)
         self.assertIn("aún no hay fecha", reply)
 
+    def test_legal_questions_get_the_live_pages(self) -> None:
+        for text in ("cuales son tus políticas?", "políticas", "tus terminos?", "¿Usan cookies?", "aviso de privacidad", "terms of service"):
+            self.assertEqual(assist.detect_intent(text), "legal", text)
+        with patch.dict(os.environ, NO_AI):
+            reply = assist.chat_reply(
+                "l@example.com", [{"role": "user", "content": "tus terminos?"}], "es"
+            )["reply"]
+        for url in (
+            "https://www.donexto.com/privacidad.html",
+            "https://www.donexto.com/terminos.html",
+            "https://www.donexto.com/cookies.html",
+        ):
+            self.assertIn(url, reply)
+        self.assertNotEqual(reply, assist.rule_reply("asdf", "es"))
+        # Plain data-safety questions still get the privacy answer.
+        self.assertEqual(assist.detect_intent("¿Es seguro? ¿leen mi contraseña?"), "privacy")
+
+    def test_cancel_questions(self) -> None:
+        for text in ("¿cómo me doy de baja?", "quiero borrar mi cuenta", "how do I cancel?"):
+            self.assertEqual(assist.detect_intent(text), "cancel", text)
+        self.assertIn("Eliminar cuenta", assist.rule_reply("¿cómo cancelo?", "es"))
+
+    def test_facts_carry_the_product_manual(self) -> None:
+        from app.services.contact_inbox import DONEXTO_REPLY_FACTS as facts
+
+        for needle in (
+            "privacidad.html", "terminos.html", "cookies.html", "support@donexto.com",
+            "not yet a native app", "US$19.99", "banks, cards, Amazon", "read-only",
+            "Outlook and Hotmail are live", "Delete account",
+        ):
+            self.assertIn(needle, facts)
+
     def test_banks_and_short_words_need_whole_tokens(self) -> None:
         self.assertEqual(assist.detect_intent("¿Se conecta a mi banco o a Amazon?"), "banks")
         self.assertEqual(assist.detect_intent("hi there"), "greeting")

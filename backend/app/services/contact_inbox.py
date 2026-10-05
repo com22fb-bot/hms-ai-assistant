@@ -81,6 +81,14 @@ Donexto product facts (do not invent beyond these):
 - It is not yet a native app in the Google Play Store or the Apple App Store.
 - Planned, with no release date: an installable app (PWA) on the home screen with push notifications on Windows, Linux, macOS, Android, and iOS; Huawei later. Never promise a date.
 - Pricing: Plan Normal, US$19.99 per month (EUR 19.99 in Europe), roughly what 4 lattes cost in a month. The subscription happens inside the app.
+- Donexto is an attention layer over email: it surfaces what needs action (money, security, packages, family) and stays quiet about promotions. The user chooses what gets alerted.
+- The Donexto account is separate from the mailbox: the Donexto login never asks for the email password; the mailbox is connected afterwards with the provider's own read-only permission.
+- Mail stays with the email provider. Donexto is not an email provider, an archive, or a bulk-mail tool. Donexto shows information; the user decides what to do with it.
+- Privacy: Donexto does not sell the inbox, does not use mail for ads, and does not use it to train public AI models. Read authorizations are stored encrypted. Staff do not read user mail as ordinary practice.
+- Cancel anytime: in the app, Settings > Delete account, or by writing to support@donexto.com. Disconnecting the mailbox stops reading it; deleting the account closes the Donexto user and its data.
+- Cookies: only essential session cookies; no third-party analytics and no Facebook or TikTok pixels.
+- Legal pages (Mexico, United States and Canada; an EU annex would be published if Donexto is offered there): Privacy https://www.donexto.com/privacidad.html ; Terms https://www.donexto.com/terminos.html ; Cookies https://www.donexto.com/cookies.html
+- Operated by Héctor Marcial Salcido Roacho, Chihuahua, Mexico.
 - Support address: support@donexto.com. A person from the team answers when the visitor asks for a human.
 - The app is at https://app.donexto.com
 - The marketing site is https://www.donexto.com
