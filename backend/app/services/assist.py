@@ -545,7 +545,8 @@ _INTENTS: tuple[tuple[str, tuple[str, ...]], ...] = (
     )),
     ("providers", (
         "gmail", "outlook", "hotmail", "yahoo", "icloud", "proveedor*", "provider*", "google",
-        "microsoft", "correo de", "correos de",
+        "microsoft", "correo de", "correos de", "que correos", "cuales correos", "los correos",
+        "mailbox*", "which email*",
     )),
     ("privacy", (
         "privacidad", "privacy", "seguridad", "security", "seguro", "segura", "safe", "datos",
@@ -703,7 +704,7 @@ _RULE_REPLIES_EN = {
     "price": (
         f"The {PLAN_NAME} is {PLAN_PRICE_LABEL} per month ({PLAN_PRICE_EUROPE} in Europe), about what "
         "4 lattes cost in a month. Create your account at app.donexto.com, connect your mailbox "
-        "read-only, and subscribe inside the app."
+        "read-only, and subscribe inside the app. Want to know which mailboxes you can connect?"
     ),
     "banks": (
         "Donexto does not connect to banks, cards or Amazon. It only reads, read-only, the mailbox "
@@ -737,6 +738,137 @@ _RULE_REPLIES_EN = {
 def rule_reply(text: str, lang: str) -> str:
     table = _RULE_REPLIES_ES if _is_spanish(lang) else _RULE_REPLIES_EN
     return table[detect_intent(text)]
+
+
+# Short replies that only make sense against the assistant's previous question.
+_AFFIRM_WORDS = frozenset(
+    "si yes ok okay oki va sale dale claro bueno perfecto porfa porfavor please sure yep yeah "
+    "yup vale adelante obvio simon andale me interesa interesa de acuerdo go ahead".split()
+)
+_NEGATIVE_WORDS = frozenset(
+    "no nop nope nah nel gracias thanks thank you ahorita luego despues later not now asi bien "
+    "estoy por ahora fine".split()
+)
+_FOLLOWUP_WORDS = frozenset(
+    "cual cuales eso ese esa esos esas lo de los las el la which that those one ones".split()
+)
+_FILLER_WORDS = frozenset("y pues entonces mas muy porfavor por favor and then".split())
+
+# What a previous assistant question offered, in priority-free order.
+_OFFER_TOPICS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("providers", ("correos puedes conectar", "que correos", "mailboxes you can connect", "mailboxes")),
+    ("mobile", ("dispositivos", "devices", "celular", "phone")),
+    ("price", ("cuanto cuesta", "precio", "the price", "pricing", "how much")),
+    ("privacy", ("privacidad", "privacy")),
+    ("legal", ("politicas", "policies", "terminos", "terms")),
+    ("what", ("que es", "what it is", "what donexto is", "como funciona", "how it works")),
+)
+
+
+def _reply_kind(text: str) -> str:
+    """'yes', 'no', 'followup' or '' for a short message that leans on context."""
+    tokens = _fold(text).split()
+    if not tokens or len(tokens) > 5:
+        return ""
+    words = [token for token in tokens if token not in _FILLER_WORDS] or tokens
+    if words[0] in {"no", "nop", "nope", "nah", "nel"} or all(w in _NEGATIVE_WORDS for w in words):
+        return "no"
+    if all(w in _AFFIRM_WORDS for w in words):
+        return "yes"
+    if all(w in _FOLLOWUP_WORDS | _AFFIRM_WORDS for w in words):
+        return "followup"
+    return ""
+
+
+def _last_question(text: str) -> str:
+    """The last question in an assistant turn, or the whole turn if it asks none."""
+    clean = text or ""
+    end = clean.rfind("?")
+    if end == -1:
+        return clean
+    start = max(clean.rfind("¿", 0, end), clean.rfind(".", 0, end), clean.rfind("\n", 0, end))
+    return clean[start + 1 : end]
+
+
+def offered_topics(assistant_text: str) -> list[str]:
+    padded = f" {_fold(_last_question(assistant_text))} "
+    topics: list[str] = []
+    for topic, phrases in _OFFER_TOPICS:
+        if any(f" {_fold(phrase)} " in padded for phrase in phrases):
+            topics.append(topic)
+    return topics
+
+
+_TOPIC_LABELS = {
+    "es": {
+        "what": "qué es Donexto",
+        "mobile": "en qué dispositivos funciona",
+        "providers": "qué correos puedes conectar",
+        "privacy": "cómo cuidamos tu privacidad",
+        "legal": "nuestras políticas",
+        "price": "cuánto cuesta",
+    },
+    "en": {
+        "what": "what Donexto is",
+        "mobile": "which devices it runs on",
+        "providers": "which mailboxes you can connect",
+        "privacy": "how we protect your privacy",
+        "legal": "our policies",
+        "price": "the price",
+    },
+}
+_ALL_TOPICS = ("what", "mobile", "providers", "legal", "price")
+
+
+def _join_options(items: list[str], spanish: bool) -> str:
+    if len(items) <= 1:
+        return "".join(items)
+    return f"{', '.join(items[:-1])} {'o' if spanish else 'or'} {items[-1]}"
+
+
+def _decline_reply(spanish: bool) -> str:
+    labels = _TOPIC_LABELS["es" if spanish else "en"]
+    options = _join_options([labels[topic] for topic in _ALL_TOPICS], spanish)
+    if spanish:
+        return (
+            f"Va, sin problema. Si quieres, pregúntame otra cosa: {options}. "
+            "Y cuando gustes, puedes crear tu cuenta en app.donexto.com."
+        )
+    return (
+        f"No problem. Ask me anything else: {options}. "
+        "Whenever you like, you can create your account at app.donexto.com."
+    )
+
+
+def _choose_reply(topics: list[str], spanish: bool) -> str:
+    labels = _TOPIC_LABELS["es" if spanish else "en"]
+    options = _join_options([labels[topic] for topic in (topics or list(_ALL_TOPICS))], spanish)
+    if spanish:
+        return f"¡Claro! ¿Por cuál empiezo: {options}?"
+    return f"Sure! Where should I start: {options}?"
+
+
+def resolve_rule_reply(history: list[dict[str, str]], lang: str) -> tuple[str, str]:
+    """(intent, reply). Short yes/no/"cuál" answers follow the previous assistant question."""
+    spanish = _is_spanish(lang)
+    table = _RULE_REPLIES_ES if spanish else _RULE_REPLIES_EN
+    question = history[-1]["content"]
+    intent = detect_intent(question)
+    if intent != "default":
+        return intent, table[intent]
+    kind = _reply_kind(question)
+    previous = next(
+        (turn["content"] for turn in reversed(history[:-1]) if turn["role"] == "assistant"),
+        "",
+    )
+    if not kind or not previous:
+        return "default", table["default"]
+    if kind == "no":
+        return "decline", _decline_reply(spanish)
+    topics = offered_topics(previous)
+    if len(topics) == 1:
+        return topics[0], table[topics[0]]
+    return "choose", _choose_reply(topics, spanish)
 
 
 def clean_history(messages: list[dict[str, Any]]) -> list[dict[str, str]]:
@@ -804,7 +936,6 @@ def chat_reply(email: str, messages: list[dict[str, Any]], lang: str) -> dict[st
     history = clean_history(messages)
     if not history or history[-1]["role"] != "user":
         raise ValueError("last message must be from the visitor")
-    question = history[-1]["content"]
     reply = ""
     source = "rules"
     if ai_reply_configured() and allow_request(
@@ -818,13 +949,14 @@ def chat_reply(email: str, messages: list[dict[str, Any]], lang: str) -> dict[st
         except Exception as error:  # noqa: BLE001 — rules always answer
             logger.warning("assist_chat_ai_failed type=%s", type(error).__name__)
             reply = ""
+    intent, rules_text = resolve_rule_reply(history, lang)
     if not reply:
-        reply = rule_reply(question, lang)
+        reply = rules_text
         source = "rules"
     return {
         "status": "ok",
         "reply": reply,
         "source": source,
-        "intent": detect_intent(question),
+        "intent": intent,
         "cta": subscription_cta(lang),
     }
