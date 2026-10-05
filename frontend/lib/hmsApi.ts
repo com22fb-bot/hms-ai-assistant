@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { fetchWithNetworkRetry, NetworkUnavailableError } from "@/lib/networkRetry";
 
 export class HmsApiError extends Error {
   status: number;
@@ -49,10 +50,20 @@ export async function hmsFetch(
     `Bearer ${data.session.access_token}`,
   );
 
-  return fetch(input, {
-    ...init,
-    headers,
-  });
+  try {
+    // Reads are retried quietly when the phone drops a request (tab frozen,
+    // screen locked, Wi-Fi <-> data switch). Writes are never sent twice.
+    return await fetchWithNetworkRetry(
+      () => fetch(input, { ...init, headers }),
+      { method: init.method },
+    );
+  } catch (error) {
+    if (error instanceof NetworkUnavailableError) {
+      // status 0 = the request never reached Donexto.
+      throw new HmsApiError(error.message, 0);
+    }
+    throw error;
+  }
 }
 
 export async function hmsJson<T>(

@@ -16,6 +16,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 
 import { hmsJson } from "@/lib/hmsApi";
+import { shouldSurfacePollError } from "@/lib/networkRetry";
 
 
 type Breakdown = {
@@ -186,18 +187,47 @@ export function GuidedImportWizard({
     }
 
     processingSeen.current = true;
-    const timer = window.setInterval(() => {
-      void loadStatus().catch((reason) => {
-        setError(
-          readableError(
-            reason,
-            "No fue posible actualizar el progreso.",
-          ),
-        );
-      });
-    }, 1500);
+    let failures = 0;
+    let inFlight = false;
 
-    return () => window.clearInterval(timer);
+    // One dropped progress check (phone locked, app switched, Wi-Fi <-> data)
+    // must not paint a scary error: the download keeps running on the server.
+    const poll = () => {
+      if (inFlight) return;
+      inFlight = true;
+      void loadStatus()
+        .then(() => {
+          failures = 0;
+          setError(null);
+        })
+        .catch((reason) => {
+          failures += 1;
+          if (shouldSurfacePollError(failures)) {
+            setError(
+              readableError(
+                reason,
+                "No fue posible actualizar el progreso.",
+              ),
+            );
+          }
+        })
+        .finally(() => {
+          inFlight = false;
+        });
+    };
+
+    const timer = window.setInterval(poll, 1500);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") poll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", poll);
+
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", poll);
+    };
   }, [status?.active]);
 
   useEffect(() => {
