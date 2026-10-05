@@ -29,10 +29,11 @@ describe("LanguageProvider mount", () => {
     assert.match(home, /<\/LanguageProvider>/);
   });
 
-  it("documents that /admin renders LoginScreen, which requires useLanguage", () => {
+  it("keeps /admin inside LanguageProvider (owner gate, ConfirmEmailGate) and LoginScreen needs it", () => {
     const admin = source("app/admin/page.tsx");
     const login = source("components/auth/LoginScreen.tsx");
-    assert.match(admin, /<LoginScreen/);
+    assert.match(admin, /<AdminLogin onSignIn=\{signIn\} \/>/);
+    assert.match(admin, /<LanguageProvider lockedLanguage="es">/);
     assert.match(login, /useLanguage\(/);
     assert.match(
       source("lib/i18n/LanguageProvider.tsx"),

@@ -434,3 +434,50 @@ def send_verification_email(
         )
     logger.info("donexto_verify_send type=magiclink result=ok")
     return message
+
+
+# ---------------------------------------------------------------- admin login
+
+_ADMIN_LOGIN_TEMPLATE = _Template(
+    subject="Tu enlace para entrar al panel de Donexto",
+    lead=(
+        "Abre este enlace para entrar al panel de administración de Donexto. "
+        "Sirve una sola vez y caduca en poco tiempo."
+    ),
+    button="Entrar al panel",
+    note=(
+        "Si no lo pediste tú, ignora este correo: sin este enlace nadie "
+        "puede entrar. No conecta tu Gmail ni lee tu correo."
+    ),
+)
+
+
+def send_admin_login_email(*, client: Any, email: str, redirect_to: str) -> VerificationEmail:
+    """One-time admin sign-in link (same proven path as the Verificar link).
+
+    Only for an existing Supabase user; the caller checks ``ADMIN_EMAILS``.
+    The link lands on ``/admin?donexto_verify=1&token_hash=…`` and the app
+    redeems it through ``/identity/confirm-donexto``. No Gmail scope.
+    """
+    existing = _find_user_by_email(client, email)
+    if existing is None:
+        raise VerificationEmailUserNotFound(email)
+    response = _generate_link(
+        client,
+        email=email,
+        link_type=DONEXTO_VERIFY_LINK_TYPE,
+        redirect_to=redirect_to,
+    )
+    token_hash, actual_type = verification_token_from_generate_response(response)
+    link = app_verification_link(redirect_to, token_hash, actual_type or DONEXTO_VERIFY_LINK_TYPE)
+    message = VerificationEmail(
+        subject=_ADMIN_LOGIN_TEMPLATE.subject,
+        body=_plain_body(_ADMIN_LOGIN_TEMPLATE, link),
+        html=_html_body(_ADMIN_LOGIN_TEMPLATE, link, "es"),
+    )
+    from app.services.support_notify import send_transactional_email
+
+    if not send_transactional_email(email, message.subject, message.body, html=message.html):
+        raise VerificationEmailDeliveryError("No hay relay SMTP ni RESEND_API_KEY para el correo de Donexto")
+    logger.info("admin_login_link_send result=ok")
+    return message

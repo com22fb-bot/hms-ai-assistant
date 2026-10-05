@@ -467,6 +467,12 @@
   color: #f5c4c4;
 }
 
+.dx-admin__alert.is-ok {
+  border-color: rgba(61, 187, 138, 0.4);
+  background: rgba(61, 187, 138, 0.1);
+  color: #c6efdc;
+}
+
 .dx-admin__alert.is-warn {
   border-color: rgba(212, 160, 23, 0.4);
   background: rgba(212, 160, 23, 0.1);
@@ -522,4 +528,66 @@
     width: 100%;
     justify-content: center;
   }
+}
+
+/* Owner login gate (/admin without session) */
+.dx-admin-gate {
+  display: grid;
+  place-items: center;
+}
+
+.dx-admin-gate__card {
+  width: min(100%, 420px);
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.6rem;
+  border: 1px solid var(--a-line);
+  border-radius: var(--a-radius);
+  background: var(--a-surface);
+}
+
+.dx-admin-gate__card h1 {
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.dx-admin-gate__card .dx-admin__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.dx-admin-gate__lead {
+  margin: 0;
+  color: var(--a-muted);
+  line-height: 1.5;
+}
+
+.dx-admin-gate__form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.dx-admin-gate__form label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--a-muted);
+}
+
+.dx-admin-gate__form input {
+  width: 100%;
+  border: 1px solid var(--a-line);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  background: var(--a-elevated);
+  color: var(--a-text);
+  font: inherit;
+}
+
+.dx-admin-gate__form .dx-admin__btn,
+.dx-admin-gate__switch .dx-admin__btn {
+  width: 100%;
+  justify-content: center;
 }

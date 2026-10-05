@@ -108,3 +108,22 @@ describe("Gmail login from /admin", () => {
     assert.doesNotMatch(call, /return_to: window\.location\.origin/);
   });
 });
+
+describe("Owner login on /admin", () => {
+  const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+  const page = readFileSync(join(root, "app/admin/page.tsx"), "utf8");
+  const gate = readFileSync(join(root, "app/admin/AdminLogin.tsx"), "utf8");
+
+  it("shows the owner gate, not the consumer Gmail-connect screen", () => {
+    assert.match(page, /<AdminLogin onSignIn=\{signIn\} \/>/);
+    assert.doesNotMatch(page, /<LoginScreen/);
+    assert.doesNotMatch(page, /signInWithGoogle|signInWithYahoo|signInWithMicrosoft/);
+  });
+
+  it("asks the backend for a one-time link back to /admin, with no Google OAuth", () => {
+    assert.match(gate, /postPublicHms\("\/admin\/login-link"/);
+    assert.match(gate, /return_to: authReturnUrl\(window\.location\)/);
+    assert.match(gate, /Admin Donexto/);
+    assert.doesNotMatch(gate, /auth\/google|gmail\.readonly|signInWithOAuth/);
+  });
+});

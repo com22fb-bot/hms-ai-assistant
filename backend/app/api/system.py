@@ -46,11 +46,16 @@ def env_status() -> dict[str, Any]:
     redirect_is_railway = (
         "railway.app" in redirect and "/auth/google/callback" in redirect
     )
+    # Branded callback through the app proxy: Google shows donexto.com on the
+    # consent screen instead of the Railway hostname.
+    redirect_is_donexto = redirect.startswith(
+        ("https://app.donexto.com/", "https://www.donexto.com/", "https://donexto.com/")
+    ) and redirect.endswith("/api/hms/auth/google/callback")
     frontend_is_donexto = "donexto.com" in origins
     oauth_ready_for_donexto = (
         _env_is_set("GOOGLE_CLIENT_ID")
         and _env_is_set("GOOGLE_CLIENT_SECRET")
-        and redirect_is_railway
+        and (redirect_is_railway or redirect_is_donexto)
         and not redirect_is_codespace
         and frontend_is_donexto
     )
@@ -91,6 +96,7 @@ def env_status() -> dict[str, Any]:
         "oauth_shape": {
             "frontend_mentions_donexto": frontend_is_donexto,
             "redirect_is_railway_callback": redirect_is_railway,
+            "redirect_is_donexto_callback": redirect_is_donexto,
             "redirect_is_codespace": redirect_is_codespace,
             "encryption_key_present": _env_is_set("OAUTH_ENCRYPTION_KEY"),
             "ready_for_donexto_gmail": oauth_ready_for_donexto

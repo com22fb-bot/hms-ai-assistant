@@ -101,13 +101,11 @@ def validate_google_environment() -> None:
                 "status": "oauth_redirect_misconfigured",
                 "message": (
                     "GOOGLE_REDIRECT_URI apunta a Codespace (github.dev). "
-                    "Para Donexto en producción debe ser el callback de Railway "
-                    "y la app OAuth debe llamarse Donexto en Google Cloud."
+                    "Para Donexto en producción debe ser el callback de "
+                    "donexto.com (proxy /api/hms) o el de Railway, y la app "
+                    "OAuth debe llamarse Donexto en Google Cloud."
                 ),
-                "expected_example": (
-                    "https://hms-ai-assistant-production.up.railway.app"
-                    "/auth/google/callback"
-                ),
+                "expected_example": "https://app.donexto.com/api/hms/auth/google/callback",
                 "google_console": (
                     "Pantalla OAuth: estado En producción (no Testing) "
                     "para conectar cualquier Gmail sin lista de Test users. "
@@ -494,6 +492,9 @@ def google_token_redirect_target(return_to: str | None) -> str:
     return sanitize_return_to(return_to)
 
 
+BRANDED_GOOGLE_REDIRECT_URI = "https://app.donexto.com/api/hms/auth/google/callback"
+
+
 def google_session_redirect_url(frontend_url: str, fragment: str) -> str:
     """``https://app.donexto.com/#…`` or ``https://www.donexto.com/admin#…``.
 
@@ -517,12 +518,17 @@ def google_oauth_readiness() -> dict[str, object]:
         "missing_variables": missing,
         "scopes": list(settings.google_scopes),
         "consent_screen": "In production",
-        "authorized_javascript_origins": ["https://app.donexto.com"],
+        "authorized_javascript_origins": [
+            "https://app.donexto.com",
+            "https://www.donexto.com",
+        ],
         "authorized_redirect_note": (
             "El URI de redirección autorizado en Google Cloud tiene que ser "
-            "exactamente el valor de GOOGLE_REDIRECT_URI. En producción es "
-            "el callback del API en Railway: "
-            "https://hms-ai-assistant-production.up.railway.app/auth/google/callback"
+            "exactamente el valor de GOOGLE_REDIRECT_URI. Recomendado (Google "
+            "muestra donexto.com y no el host de Railway): "
+            f"{BRANDED_GOOGLE_REDIRECT_URI}. Ese callback pasa por el proxy "
+            "/api/hms de la app. El antiguo de Railway sigue funcionando "
+            "mientras GOOGLE_REDIRECT_URI no cambie."
         ),
         "user_cap": (
             "Google limita las apps no verificadas a 100 usuarios. "
