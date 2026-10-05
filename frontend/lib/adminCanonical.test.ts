@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import {
   appHostAdminRedirects,
@@ -91,5 +94,17 @@ describe("auth return urls", () => {
       verifyEmailRedirectUrl({ ...www, pathname: "/admin" }),
       "https://www.donexto.com/admin?donexto_verify=1",
     );
+  });
+});
+
+describe("Gmail login from /admin", () => {
+  it("returns to /admin, never the www landing at /", () => {
+    const root = join(dirname(fileURLToPath(import.meta.url)), "..");
+    const login = readFileSync(join(root, "components/auth/LoginScreen.tsx"), "utf8");
+    const start = login.indexOf('postPublicHms("/auth/google/login"');
+    assert.ok(start > 0, "LoginScreen starts Gmail login");
+    const call = login.slice(start, start + 400);
+    assert.match(call, /return_to: authReturnUrl\(window\.location\)/);
+    assert.doesNotMatch(call, /return_to: window\.location\.origin/);
   });
 });

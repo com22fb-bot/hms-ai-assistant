@@ -101,5 +101,33 @@ class SanitizeReturnToTests(unittest.TestCase):
             )
 
 
+class GoogleSessionRedirectTests(unittest.TestCase):
+    """Gmail login from /admin must land on /admin, not the landing at /."""
+
+    def test_admin_return_keeps_admin_path(self) -> None:
+        from app.api.auth import google_session_redirect_url, google_token_redirect_target
+
+        with patch("app.security.redirect.settings") as settings:
+            settings.frontend_origins = [
+                "https://app.donexto.com",
+                "https://www.donexto.com",
+                "https://donexto.com",
+            ]
+            target = google_token_redirect_target("https://www.donexto.com/admin")
+        self.assertEqual(target, "https://www.donexto.com/admin")
+        self.assertEqual(
+            google_session_redirect_url(target, "access_token=a&type=magiclink"),
+            "https://www.donexto.com/admin#access_token=a&type=magiclink",
+        )
+
+    def test_app_root_keeps_slash_hash(self) -> None:
+        from app.api.auth import google_session_redirect_url
+
+        self.assertEqual(
+            google_session_redirect_url("https://app.donexto.com/", "access_token=a"),
+            "https://app.donexto.com/#access_token=a",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

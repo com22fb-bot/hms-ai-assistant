@@ -13,6 +13,7 @@ import { IcloudConnectForm } from "@/components/auth/IcloudConnectForm";
 import { YahooConnectForm } from "@/components/auth/YahooConnectForm";
 import { LanguageStrip } from "@/components/UserSettingsPanel";
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
+import { authReturnUrl } from "@/lib/adminCanonical";
 import type { AuthOAuthProvider, YahooAuthIntent } from "@/hooks/useAppAuth";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { rememberLoginLanguage } from "@/lib/i18n/languages";
@@ -606,7 +607,8 @@ export function LoginScreen({
       }
       const started = await postPublicHms("/auth/google/login", {
         login_hint: email.trim().toLowerCase(),
-        return_to: window.location.origin,
+        // Keep /admin: on www.donexto.com the bare origin is the marketing landing.
+        return_to: authReturnUrl(window.location),
       });
       const payload = started.payload as {
         authorization_url?: string;
