@@ -59,6 +59,8 @@ _PUBLIC_PATHS = {
     "/identity/confirm-donexto",
     # Marketing landing form. No session; validated and rate-limited itself.
     "/public/contact",
+    # Owner login for /admin: always answers "sent", mails ADMIN_EMAILS only.
+    "/admin/login-link",
 }
 
 

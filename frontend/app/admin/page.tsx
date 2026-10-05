@@ -16,12 +16,12 @@ import {
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { ConfirmEmailGate } from "@/components/auth/ConfirmEmailGate";
-import { LoginScreen } from "@/components/auth/LoginScreen";
 import { useAppAuth } from "@/hooks/useAppAuth";
 import { PRODUCT_APP_ORIGIN } from "@/lib/adminCanonical";
 import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
 import { HmsApiError, hmsJson } from "@/lib/hmsApi";
 import "@/app/admin/admin.css";
+import { AdminLogin } from "@/app/admin/AdminLogin";
 import { ContactInbox } from "@/app/admin/ContactInbox";
 
 type AdminTab =
@@ -245,25 +245,13 @@ function AdminPasswordReset({
 }
 
 function AdminPage() {
-  const [theme, setTheme] = useState<"midnight" | "aurora" | "accessible" | "graphite">(
-    "accessible",
-  );
   const {
     session,
     loading: authLoading,
     needsEmailConfirm,
     signIn,
-    signInWithGoogle,
-    signInWithYahoo,
-    signInWithMicrosoft,
-    signInWithProvider,
-    adoptIcloudSession,
-    signUp,
-    resendSignupEmail,
     sendDonextoVerifyEmail,
-    signInWithMagicLink,
     signOut,
-    resetPassword,
     refreshSession,
     passwordRecovery,
     updatePassword,
@@ -512,25 +500,8 @@ function AdminPage() {
   }
 
   if (!session) {
-    return (
-      <div className="dx-admin-login">
-        <LoginScreen
-          theme={theme}
-          setTheme={setTheme}
-          onSignIn={signIn}
-          onSignUp={signUp}
-          onSignInWithGoogle={signInWithGoogle}
-          onSignInWithYahoo={signInWithYahoo}
-          onSignInWithMicrosoft={signInWithMicrosoft}
-          onSignInWithProvider={signInWithProvider}
-          onIcloudSession={adoptIcloudSession}
-          onYahooSession={adoptIcloudSession}
-          onResendSignupEmail={resendSignupEmail}
-          onMagicLink={signInWithMagicLink}
-          onResetPassword={resetPassword}
-        />
-      </div>
-    );
+    // Owner login, not the consumer "Conecta Gmail" screen.
+    return <AdminLogin onSignIn={signIn} />;
   }
 
   if (needsEmailConfirm) {

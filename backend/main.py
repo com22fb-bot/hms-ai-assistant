@@ -25,6 +25,7 @@ from app.api.icloud_mail import router as icloud_mail_router
 from app.api.yahoo_mail import router as yahoo_mail_router
 from app.api.login_resolve import router as login_resolve_router
 from app.api.admin_contact import router as admin_contact_router
+from app.api.admin_login import router as admin_login_router
 from app.api.admin_ops import router as admin_ops_router
 from app.api.public_contact import router as public_contact_router
 from app.api.billing import router as billing_router
@@ -189,6 +190,7 @@ app.include_router(icloud_mail_router)
 app.include_router(microsoft_mail_router)
 app.include_router(login_resolve_router)
 app.include_router(billing_router)
+app.include_router(admin_login_router)
 app.include_router(admin_ops_router)
 app.include_router(admin_contact_router)
 app.include_router(gmail_router)
