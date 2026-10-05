@@ -317,7 +317,7 @@ class ChatTests(unittest.TestCase):
 
     def test_default_reply_differs_from_what(self) -> None:
         self.assertNotEqual(assist.rule_reply("asdf", "es"), assist.rule_reply("cuéntame", "es"))
-        self.assertIn("¿De cuál te cuento?", assist.rule_reply("asdf", "es"))
+        self.assertIn("Elige un tema (escribe el número o el nombre):", assist.rule_reply("asdf", "es"))
 
     def test_price_mentions_europe(self) -> None:
         reply = assist.rule_reply("precio", "es")
@@ -365,6 +365,7 @@ class ChatTests(unittest.TestCase):
             result = self._dialog(price, answer)
             self.assertEqual(result["intent"], "decline", answer)
             self.assertIn("sin problema", result["reply"])
+            self.assertIn("\n1. Qué es Donexto", result["reply"])
             self.assertNotIn("No estoy seguro", result["reply"])
 
     def test_yes_to_a_multi_topic_offer_asks_which(self) -> None:
@@ -373,6 +374,57 @@ class ChatTests(unittest.TestCase):
         self.assertIn("¿Por cuál empiezo:", result["reply"])
         self.assertIn("qué correos puedes conectar", result["reply"])
         self.assertNotIn("qué es Donexto", result["reply"])  # already explained
+
+    def test_unclear_shows_numbered_menu(self) -> None:
+        for lang, first, last in (("es", "1. Qué es Donexto", "8. Hablar con una persona"), ("en", "1. What Donexto is", "8. Talk to a person")):
+            menu = assist.rule_reply("asdf qwerty", lang)
+            lines = menu.split("\n")
+            self.assertEqual(len(lines), 9)
+            self.assertEqual(lines[1], first)
+            self.assertEqual(lines[8], last)
+            for index, line in enumerate(lines[1:], start=1):
+                self.assertTrue(line.startswith(f"{index}. "), line)
+        self.assertIn("2. Precio · Plan Normal (US$19.99 al mes)", assist.rule_reply("asdf", "es"))
+        self.assertIn("6. Políticas, términos y cookies", assist.rule_reply("asdf", "es"))
+        self.assertTrue(assist.rule_reply("hola", "es").startswith("¡Hola! Soy el asistente de Donexto. Elige un tema"))
+
+    def test_menu_numbers_and_names_pick_the_topic(self) -> None:
+        menu = assist.rule_reply("asdf", "es")
+        expected = {
+            "1": "what", "2": "price", "3": "providers", "4": "mobile", "5": "privacy",
+            "6": "legal", "7": "start", "opción 3": "providers", "la 2": "price", "#6": "legal",
+            "3.": "providers", "precio": "price", "correos": "providers", "web": "mobile",
+            "privacidad": "privacy", "políticas": "legal", "empezar": "start",
+        }
+        with patch.object(assist, "notify_human_handoff", return_value=True):
+            for answer, intent in expected.items():
+                self.assertEqual(self._dialog(menu, answer)["intent"], intent, answer)
+        self.assertEqual(self._dialog(menu, "9")["intent"], "default")
+        self.assertIn("https://www.donexto.com/terminos.html", self._dialog(menu, "6")["reply"])
+
+    def test_human_handoff_mails_support_once(self) -> None:
+        menu = assist.rule_reply("asdf", "es")
+        with patch.dict(os.environ, {**NO_AI, "RESEND_API_KEY": "re_test"}), patch(
+            "app.services.support_notify.httpx.post"
+        ) as post:
+            post.return_value = SimpleNamespace(status_code=200)
+            first = self._dialog(menu, "8")
+            second = self._dialog(menu, "quiero hablar con una persona")
+        self.assertEqual(first["intent"], "human")
+        self.assertTrue(first["handoff"])
+        self.assertIn("ya avisé al equipo", first["reply"])
+        self.assertTrue(second["handoff"])
+        self.assertEqual(post.call_count, 1)
+        sent = post.call_args.kwargs["json"]
+        self.assertEqual(sent["to"], ["support@donexto.com"])
+        self.assertEqual(sent["reply_to"], "ctx@example.com")
+        self.assertIn("Visitante: 8", sent["text"])
+
+    def test_human_handoff_failure_points_to_support(self) -> None:
+        with patch.object(assist, "_send_via_resend", side_effect=RuntimeError("down")):
+            result = self._dialog("x", "quiero hablar con una persona")
+        self.assertFalse(result["handoff"])
+        self.assertIn("No pude avisar al equipo", result["reply"])
 
     def test_yes_without_context_stays_default(self) -> None:
         with patch.dict(os.environ, NO_AI):
@@ -398,10 +450,47 @@ class ChatTests(unittest.TestCase):
             "_call_contact_ai",
             return_value="Entra a https://app.donexto.com/ o a https://phish.example/x.",
         ):
-            result = assist.chat_reply("b@example.com", [{"role": "user", "content": "Hola"}], "es")
+            result = assist.chat_reply(
+                "b@example.com", [{"role": "user", "content": "¿Cuánto cuesta el plan?"}], "es"
+            )
         self.assertEqual(result["source"], "ai")
         self.assertIn("https://app.donexto.com/", result["reply"])
         self.assertNotIn("phish.example", result["reply"])
+
+    def test_menu_picks_and_no_stay_on_rules_even_with_ai(self) -> None:
+        with patch.object(assist, "ai_reply_configured", return_value=True), patch.object(
+            assist, "_call_contact_ai", return_value="párrafo vago"
+        ) as ai:
+            picked = assist.chat_reply("m@example.com", [{"role": "user", "content": "3"}], "es")
+            declined = assist.chat_reply(
+                "m@example.com",
+                [
+                    {"role": "user", "content": "precio"},
+                    {"role": "assistant", "content": "¿Quieres saber qué correos puedes conectar?"},
+                    {"role": "user", "content": "no"},
+                ],
+                "es",
+            )
+            greeted = assist.chat_reply("m@example.com", [{"role": "user", "content": "hola"}], "es")
+        ai.assert_not_called()
+        self.assertEqual(picked["intent"], "providers")
+        self.assertEqual(declined["intent"], "decline")
+        self.assertIn("8. Hablar con una persona", declined["reply"])
+        self.assertIn("1. Qué es Donexto", greeted["reply"])
+
+    def test_ai_unsure_token_becomes_menu(self) -> None:
+        with patch.object(assist, "ai_reply_configured", return_value=True), patch.object(
+            assist, "_call_contact_ai", return_value="[[MENU]]"
+        ):
+            result = assist.chat_reply(
+                "u@example.com",
+                [{"role": "user", "content": "¿puedo usarlo para mi tienda de bicicletas?"}],
+                "es",
+            )
+        self.assertEqual(result["source"], "rules")
+        self.assertEqual(result["intent"], "default")
+        self.assertIn("Elige un tema", result["reply"])
+        self.assertIn("6. Políticas", result["reply"])
 
     def test_ai_failure_uses_rules(self) -> None:
         with patch.object(assist, "ai_reply_configured", return_value=True), patch.object(

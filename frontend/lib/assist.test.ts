@@ -11,6 +11,7 @@ import {
   errorMessage,
   historyForRequest,
   langFromSearch,
+  linkSegments,
   linkTokenFromSearch,
   loadSession,
   onlyDigits,
@@ -82,6 +83,27 @@ describe("asistencia helpers", () => {
     assert.equal(langFromSearch("?lang=<script>"), "sc");
     assert.equal(langFromSearch("?lang=x"), "es");
     assert.equal(langFromSearch(""), "es");
+  });
+
+  it("turns donexto.com links and support email into clickable segments", () => {
+    const segments = linkSegments(
+      "Privacidad: https://www.donexto.com/privacidad.html · entra a app.donexto.com. Dudas: support@donexto.com.",
+    );
+    const links = segments.filter((segment) => segment.href);
+    assert.deepEqual(
+      links.map((segment) => [segment.text, segment.href]),
+      [
+        ["https://www.donexto.com/privacidad.html", "https://www.donexto.com/privacidad.html"],
+        ["app.donexto.com", "https://app.donexto.com"],
+        ["support@donexto.com", "mailto:support@donexto.com"],
+      ],
+    );
+    assert.equal(segments.map((segment) => segment.text).join(""), "Privacidad: https://www.donexto.com/privacidad.html · entra a app.donexto.com. Dudas: support@donexto.com.");
+  });
+
+  it("never links other domains", () => {
+    const segments = linkSegments("Visita https://evil.example/x o evil.com");
+    assert.equal(segments.filter((segment) => segment.href).length, 0);
   });
 
   it("keeps only 6 digits of a pasted code", () => {
