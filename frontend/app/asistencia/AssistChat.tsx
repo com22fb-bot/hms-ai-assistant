@@ -12,6 +12,7 @@ import {
   ctaFromPayload,
   errorMessage,
   historyForRequest,
+  langFromSearch,
   linkTokenFromSearch,
   loadSession,
   onlyDigits,
@@ -49,6 +50,7 @@ export function AssistChat() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lang, setLang] = useState("es");
   const endRef = useRef<HTMLDivElement | null>(null);
 
   function enterChat(next: AssistSession) {
@@ -66,6 +68,7 @@ export function AssistChat() {
     if (booted.current) return;
     booted.current = true;
     async function boot() {
+      setLang(langFromSearch(window.location.search));
       const token = linkTokenFromSearch(window.location.search);
       if (token) {
         window.history.replaceState(null, "", stripLinkToken(window.location.href));
@@ -104,7 +107,7 @@ export function AssistChat() {
     try {
       const result = await postPublicHms("/public/assist/start", {
         email: email.trim().toLowerCase(),
-        lang: "es",
+        lang,
       });
       const payload = result.payload as Record<string, unknown>;
       if (result.ok && typeof payload.challenge === "string") {
@@ -154,7 +157,7 @@ export function AssistChat() {
     try {
       const result = await postPublicHms("/public/assist/chat", {
         session: session.token,
-        lang: "es",
+        lang,
         // The welcome bubble is local; the backend wants the visitor first.
         messages: historyForRequest(next.slice(1)),
       });

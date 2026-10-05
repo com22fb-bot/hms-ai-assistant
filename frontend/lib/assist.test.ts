@@ -10,6 +10,7 @@ import {
   ctaFromPayload,
   errorMessage,
   historyForRequest,
+  langFromSearch,
   linkTokenFromSearch,
   loadSession,
   onlyDigits,
@@ -73,6 +74,14 @@ describe("asistencia helpers", () => {
     assert.equal(out.length, ASSIST_MAX_TURNS);
     assert.equal(out.at(-1)?.content, "hola mundo");
     assert.equal(historyForRequest([{ role: "user", content: "x".repeat(5000) }])[0].content.length, 1000);
+  });
+
+  it("reads the visitor language from the link, default Spanish", () => {
+    assert.equal(langFromSearch("?t=a.b&lang=en"), "en");
+    assert.equal(langFromSearch("?lang=pt-BR"), "pt");
+    assert.equal(langFromSearch("?lang=<script>"), "sc");
+    assert.equal(langFromSearch("?lang=x"), "es");
+    assert.equal(langFromSearch(""), "es");
   });
 
   it("keeps only 6 digits of a pasted code", () => {

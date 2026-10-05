@@ -25,6 +25,13 @@ export function linkTokenFromSearch(search: string): string | null {
   return token.length >= 10 && token.length <= 2000 && token.includes(".") ? token : null;
 }
 
+/** `?lang=` from the auto-reply link (2 letters), default Spanish. */
+export function langFromSearch(search: string): string {
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  const code = (params.get("lang") || "").toLowerCase().replace(/[^a-z]/g, "").slice(0, 2);
+  return code.length === 2 ? code : "es";
+}
+
 /** Same URL without `t`, so a reload or a shared screenshot does not leak it. */
 export function stripLinkToken(href: string): string {
   const url = new URL(href);

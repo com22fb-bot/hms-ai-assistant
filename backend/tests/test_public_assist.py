@@ -51,6 +51,12 @@ class TokenTests(unittest.TestCase):
         self.assertEqual(assist.session_email(result["session"]), "ana@example.com")
         self.assertNotIn("ana@example.com", result["email"])
 
+    def test_link_carries_language_for_non_spanish(self) -> None:
+        self.assertNotIn("&lang=", assist.assist_link("a@example.com", "es-MX"))
+        self.assertNotIn("&lang=", assist.assist_link("a@example.com"))
+        self.assertTrue(assist.assist_link("a@example.com", "en").endswith("&lang=en"))
+        self.assertTrue(assist.assist_link("a@example.com", "pt-BR").endswith("&lang=pt"))
+
     def test_forged_or_wrong_kind_tokens_fail(self) -> None:
         token = assist.sign_token("link", "ana@example.com", 60)
         body, sig = token.split(".")
