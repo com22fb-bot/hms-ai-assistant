@@ -59,6 +59,11 @@ _PUBLIC_PATHS = {
     "/identity/confirm-donexto",
     # Marketing landing form. No session; validated and rate-limited itself.
     "/public/contact",
+    # Asistencia: the signed link or 6-digit code is the proof, not a session.
+    "/public/assist/start",
+    "/public/assist/verify",
+    "/public/assist/redeem",
+    "/public/assist/chat",
     # Owner login for /admin: always answers "sent", mails ADMIN_EMAILS only.
     "/admin/login-link",
 }

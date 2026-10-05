@@ -59,6 +59,10 @@ class PublicContactTests(unittest.TestCase):
             "app.api.public_contact.persist_public_contact",
             return_value="11111111-1111-1111-1111-111111111111",
         ).start()
+        self._autoreply = patch(
+            "app.api.public_contact.send_contact_autoreply",
+            return_value=True,
+        ).start()
         self.addCleanup(patch.stopall)
 
     def _client(self) -> TestClient:

@@ -6,10 +6,11 @@ import logging
 import re
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.security.rate_limit import allow_request
+from app.services.assist import send_contact_autoreply
 from app.services.contact_inbox import persist_public_contact
 from app.services.support_notify import (
     SMTPDeliveryError,
@@ -74,6 +75,7 @@ def client_ip(request: Request) -> str:
 def submit_public_contact(
     payload: PublicContactRequest,
     request: Request,
+    background_tasks: BackgroundTasks,
 ) -> dict[str, str]:
     ip = client_ip(request)
     if not allow_request(
@@ -134,6 +136,17 @@ def submit_public_contact(
         message=payload.message,
         lang=payload.lang,
         ip=ip,
+    )
+
+    # Acknowledge the visitor after the response: template + optional contact
+    # AI paragraph + signed link to /asistencia. We do not try to prove the
+    # address exists; opening the link is the proof. Once per inbox / 12 h.
+    background_tasks.add_task(
+        send_contact_autoreply,
+        name=payload.name,
+        email=payload.email,
+        message=payload.message,
+        lang=payload.lang,
     )
 
     return {"status": "ok"}
