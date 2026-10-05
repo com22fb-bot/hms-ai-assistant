@@ -494,6 +494,17 @@ def google_token_redirect_target(return_to: str | None) -> str:
     return sanitize_return_to(return_to)
 
 
+def google_session_redirect_url(frontend_url: str, fragment: str) -> str:
+    """``https://app.donexto.com/#…`` or ``https://www.donexto.com/admin#…``.
+
+    The admin panel lives at /admin on the marketing host: the session must
+    land there, never on the landing page at ``/``.
+    """
+    base = frontend_url.rstrip("/")
+    path = urlparse(base).path
+    return f"{base}#{fragment}" if path and path != "/" else f"{base}/#{fragment}"
+
+
 def google_oauth_readiness() -> dict[str, object]:
     """Nombres de variables y ajustes de consola. Nunca los valores."""
     import os
@@ -944,7 +955,7 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
             }
         )
         return RedirectResponse(
-            url=f"{frontend_url.rstrip('/')}/#{fragment}",
+            url=google_session_redirect_url(frontend_url, fragment),
             status_code=302,
         )
 
