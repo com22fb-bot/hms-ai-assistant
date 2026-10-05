@@ -146,9 +146,17 @@ def assist_base_url() -> str:
     return (os.getenv("ASSIST_PUBLIC_URL", "").strip() or DEFAULT_ASSIST_URL).rstrip("/")
 
 
-def assist_link(email: str) -> str:
-    """Deep link from the auto-reply. Opening it proves the inbox is theirs."""
-    return f"{assist_base_url()}?t={sign_token('link', email, LINK_TTL_SECONDS)}"
+def assist_link(email: str, lang: str = "") -> str:
+    """Deep link from the auto-reply. Opening it proves the inbox is theirs.
+
+    Non-Spanish visitors get ``&lang=xx`` so codes and chat answers follow
+    the language they wrote the form in.
+    """
+    link = f"{assist_base_url()}?t={sign_token('link', email, LINK_TTL_SECONDS)}"
+    code = re.sub(r"[^a-z]", "", (lang or "").strip().lower())[:2]
+    if code and code != "es":
+        link += f"&lang={code}"
+    return link
 
 
 def issue_session(email: str) -> dict[str, Any]:
@@ -273,7 +281,7 @@ def _autoreply_paragraph(name: str, message: str, lang: str) -> str:
 
 
 def build_autoreply(*, name: str, email: str, message: str, lang: str) -> AssistEmail:
-    link = assist_link(email)
+    link = assist_link(email, lang)
     paragraph = ""
     try:
         paragraph = _autoreply_paragraph(name, message, lang)
