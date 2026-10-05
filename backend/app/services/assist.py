@@ -280,7 +280,43 @@ def _autoreply_paragraph(name: str, message: str, lang: str) -> str:
     return text[:AI_PARAGRAPH_MAX_CHARS].strip()
 
 
-def build_autoreply(*, name: str, email: str, message: str, lang: str) -> AssistEmail:
+_page_check: dict[str, float] = {"ok_until": 0.0, "down_until": 0.0}
+
+
+def assist_page_live() -> bool:
+    """False when /asistencia is missing (404) or erroring. Cached: 10 min up, 2 min down.
+
+    The backend (Railway) and the page (Cloudflare Worker) deploy separately.
+    If the page is missing, the auto-reply goes out without the link instead
+    of sending a visitor to a 404.
+    """
+    now = time.monotonic()
+    if now < _page_check["ok_until"]:
+        return True
+    if now < _page_check["down_until"]:
+        return False
+    try:
+        import httpx
+
+        response = httpx.get(assist_base_url(), timeout=5.0, follow_redirects=False)
+        # Only a missing page (404) or a server error counts as down. A bot
+        # challenge (403/429) from Cloudflare to Railway still means the page
+        # exists for people.
+        live = response.status_code != 404 and response.status_code < 500
+    except Exception as error:  # noqa: BLE001
+        logger.warning("assist_page_check_failed type=%s", type(error).__name__)
+        live = False
+    if live:
+        _page_check["ok_until"] = now + 600
+    else:
+        _page_check["down_until"] = now + 120
+        logger.warning("assist_page_not_live; auto-reply without link")
+    return live
+
+
+def build_autoreply(
+    *, name: str, email: str, message: str, lang: str, include_link: bool = True
+) -> AssistEmail:
     link = assist_link(email, lang)
     paragraph = ""
     try:
@@ -304,6 +340,7 @@ def build_autoreply(*, name: str, email: str, message: str, lang: str) -> Assist
         )
         service = _SERVICE_ES
         sign = "Equipo Donexto · support@donexto.com"
+        no_link = "Si quieres agregar algo, responde a este correo."
     else:
         subject = "We got your message · Donexto"
         hello = f"Hi {first}," if first else "Hi,"
@@ -319,11 +356,15 @@ def build_autoreply(*, name: str, email: str, message: str, lang: str) -> Assist
         )
         service = _SERVICE_EN
         sign = "The Donexto team · support@donexto.com"
+        no_link = "If you want to add anything, just reply to this email."
 
     parts = [hello, "", lead]
     if paragraph:
         parts += ["", paragraph]
-    parts += ["", service, "", cta_intro, f"{button}: {link}", "", note, "", sign]
+    if include_link:
+        parts += ["", service, "", cta_intro, f"{button}: {link}", "", note, "", sign]
+    else:
+        parts += ["", service, "", no_link, "", sign]
     body = "\n".join(parts)
 
     esc = html.escape
@@ -338,6 +379,16 @@ def build_autoreply(*, name: str, email: str, message: str, lang: str) -> Assist
         + "</ul>"
     )
     safe_link = esc(link, quote=True)
+    if include_link:
+        cta_html = (
+            f'<p style="margin:0 0 12px;">{esc(cta_intro)}</p>'
+            f'<p style="margin:0 0 18px;"><a href="{safe_link}" style="display:inline-block;'
+            'background:#0b6e66;color:#fff;text-decoration:none;font-weight:bold;'
+            f'padding:12px 22px;border-radius:10px;">{esc(button)}</a></p>'
+            f'<p style="margin:0 0 14px;font-size:13px;color:#5c6b70;">{esc(note)}</p>'
+        )
+    else:
+        cta_html = f'<p style="margin:0 0 14px;">{esc(no_link)}</p>'
     html_body = (
         '<!DOCTYPE html><html><head><meta charset="utf-8"></head>'
         '<body style="margin:0;padding:24px;background:#f4f1ea;'
@@ -348,12 +399,7 @@ def build_autoreply(*, name: str, email: str, message: str, lang: str) -> Assist
         'color:#0b6e66;font-weight:bold;">Donexto</p>'
         f'<p style="margin:0 0 14px;">{esc(hello)}</p>'
         f'<p style="margin:0 0 14px;">{esc(lead)}</p>'
-        f"{paragraph_html}{service_html}"
-        f'<p style="margin:0 0 12px;">{esc(cta_intro)}</p>'
-        f'<p style="margin:0 0 18px;"><a href="{safe_link}" style="display:inline-block;'
-        'background:#0b6e66;color:#fff;text-decoration:none;font-weight:bold;'
-        f'padding:12px 22px;border-radius:10px;">{esc(button)}</a></p>'
-        f'<p style="margin:0 0 14px;font-size:13px;color:#5c6b70;">{esc(note)}</p>'
+        f"{paragraph_html}{service_html}{cta_html}"
         f'<p style="margin:0;font-size:13px;color:#5c6b70;">{esc(sign)}</p>'
         "</div></body></html>"
     )
@@ -373,7 +419,13 @@ def send_contact_autoreply(*, name: str, email: str, message: str, lang: str) ->
         ):
             logger.info("assist_autoreply_skipped reason=recent")
             return False
-        mail = build_autoreply(name=name, email=email, message=message, lang=lang)
+        mail = build_autoreply(
+            name=name,
+            email=email,
+            message=message,
+            lang=lang,
+            include_link=assist_page_live(),
+        )
         delivered = _send_via_resend(
             email,
             mail.subject,

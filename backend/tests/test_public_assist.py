@@ -102,6 +102,58 @@ class TokenTests(unittest.TestCase):
 class AutoReplyTests(unittest.TestCase):
     def setUp(self) -> None:
         _clear_hits()
+        assist._page_check.update(ok_until=0.0, down_until=0.0)
+        self._live = patch.object(assist, "assist_page_live", return_value=True)
+        self._live.start()
+        self.addCleanup(self._live.stop)
+
+    def test_without_live_page_the_reply_has_no_link(self) -> None:
+        with patch.dict(os.environ, NO_AI):
+            mail = assist.build_autoreply(
+                name="Ana", email="ana@example.com", message="x", lang="es", include_link=False
+            )
+        self.assertNotIn("asistencia?t=", mail.body)
+        self.assertNotIn("asistencia?t=", mail.html)
+        self.assertIn("responde a este correo", mail.body)
+
+    def test_page_check_caches_and_handles_errors(self) -> None:
+        self._live.stop()
+        try:
+            with patch("httpx.get", return_value=SimpleNamespace(status_code=404)) as get:
+                self.assertFalse(assist.assist_page_live())
+                self.assertFalse(assist.assist_page_live())
+            self.assertEqual(get.call_count, 1)
+            assist._page_check.update(ok_until=0.0, down_until=0.0)
+            with patch("httpx.get", return_value=SimpleNamespace(status_code=200)) as get:
+                self.assertTrue(assist.assist_page_live())
+                self.assertTrue(assist.assist_page_live())
+            self.assertEqual(get.call_count, 1)
+            assist._page_check.update(ok_until=0.0, down_until=0.0)
+            with patch("httpx.get", return_value=SimpleNamespace(status_code=403)):
+                self.assertTrue(assist.assist_page_live())
+            assist._page_check.update(ok_until=0.0, down_until=0.0)
+            with patch("httpx.get", return_value=SimpleNamespace(status_code=502)):
+                self.assertFalse(assist.assist_page_live())
+            assist._page_check.update(ok_until=0.0, down_until=0.0)
+            with patch("httpx.get", side_effect=RuntimeError("dns")):
+                self.assertFalse(assist.assist_page_live())
+        finally:
+            assist._page_check.update(ok_until=0.0, down_until=0.0)
+            self._live.start()
+
+    def test_send_skips_link_when_page_is_down(self) -> None:
+        self._live.stop()
+        try:
+            with patch.object(assist, "assist_page_live", return_value=False), patch.dict(
+                os.environ, {**NO_AI, "RESEND_API_KEY": "re_test"}
+            ), patch("app.services.support_notify.httpx.post") as post:
+                post.return_value = SimpleNamespace(status_code=200)
+                self.assertTrue(
+                    assist.send_contact_autoreply(name="A", email="down@example.com", message="m", lang="es")
+                )
+            self.assertNotIn("asistencia?t=", post.call_args.kwargs["json"]["text"])
+        finally:
+            self._live.start()
 
     def test_template_without_ai_has_link_and_service_info(self) -> None:
         with patch.dict(os.environ, NO_AI):
