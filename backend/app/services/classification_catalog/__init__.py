@@ -9,6 +9,15 @@ from app.services.classification_catalog.matching import (
     match_listed_domain,
     sender_domain,
     sender_email,
+    sender_local_part,
+)
+from app.services.classification_catalog.services_mx import (
+    DEBT_COLLECTION,
+    GOVERNMENT,
+    PAYMENT_PROCESSORS,
+    PENSIONS,
+    UTILITIES,
+    is_collection_local_part,
 )
 from app.services.classification_catalog.social import SOCIAL
 from app.services.classification_catalog.taxonomy import (
@@ -25,6 +34,11 @@ from app.services.classification_catalog.travel import TRAVEL
 __all__ = [
     "BANKS",
     "COMMERCE",
+    "DEBT_COLLECTION",
+    "GOVERNMENT",
+    "PAYMENT_PROCESSORS",
+    "PENSIONS",
+    "UTILITIES",
     "N1_KEYS",
     "N2_KEYS",
     "N3_KEYS",
@@ -41,12 +55,25 @@ __all__ = [
 ]
 
 
+_DIRECTORIES = (
+    BANKS,
+    DEBT_COLLECTION,
+    UTILITIES,
+    GOVERNMENT,
+    PENSIONS,
+    PAYMENT_PROCESSORS,
+    COMMERCE,
+    TRAVEL,
+    SOCIAL,
+)
+
+
 def identify_sender(sender: str | None) -> dict[str, Any] | None:
     """Devuelve el vertical conocido del remitente, o None."""
     domain = sender_domain(sender)
     if not domain:
         return None
-    for directory in (BANKS, COMMERCE, TRAVEL, SOCIAL):
+    for directory in _DIRECTORIES:
         matched = match_listed_domain(domain, directory)
         if matched is None:
             continue
@@ -57,4 +84,9 @@ def identify_sender(sender: str | None) -> dict[str, Any] | None:
             "email": sender_email(sender),
             **meta,
         }
+    base = {"domain": domain, "host": domain, "email": sender_email(sender), "region": "MX", "country": "MX"}
+    if is_collection_local_part(sender_local_part(sender)):
+        return {**base, "name": domain, "vertical": "debt_collection"}
+    if domain.endswith(".gob.mx"):
+        return {**base, "name": domain, "vertical": "government"}
     return None

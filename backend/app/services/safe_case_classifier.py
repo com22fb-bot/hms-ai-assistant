@@ -12,7 +12,7 @@ from app.services.classification_catalog import (
 from app.services.classification_catalog.matching import sender_email as _sender_email
 
 
-CLASSIFIER_VERSION = "logistica1-triage-v4"
+CLASSIFIER_VERSION = "logistica1-triage-v5"
 
 PROMOTIONAL_MARKERS = (
     "newsletter",
@@ -267,7 +267,53 @@ def _classify_known_vertical(
     )
 
 
+def apply_decision(
+    legacy: tuple[str, int, str, bool],
+    decision: Any,
+) -> tuple[str, int, str, bool]:
+    """Merge the v4 keyword triage with the v5 case policy.
+
+    * policy says "case"      → action_required (the only actionable outcome)
+    * policy says "promo"     → promotional, before anything lands in review
+    * policy says "never"     → keep the v4 label but never action_required
+    * policy has no opinion   → v4 result unchanged (human requests, etc.)
+    """
+    category, score, reason, actionable = legacy
+    if decision is None:
+        return legacy
+    if decision.create_case:
+        return ("action_required", int(decision.score), str(decision.reason), True)
+    if decision.category:
+        return (str(decision.category), int(decision.score), str(decision.reason), False)
+    if decision.forbid_case and category in {"action_required", "review"}:
+        return ("notice", max(int(score), 60), "Aviso informativo: este tipo de correo no abre casos.", False)
+    return legacy
+
+
 def classify_message(
+    message: dict[str, Any],
+    *,
+    existing_case: dict[str, Any] | None,
+    decision: Any | None = None,
+) -> tuple[str, int, str, bool]:
+    """v5 triage: legacy keyword rules + ``case_policy.decide``.
+
+    ``decision`` may be passed when the caller already computed it (the
+    import path does, to reuse its ``group_key``)."""
+    if decision is None:
+        from app.services.case_policy import decide
+
+        try:
+            decision = decide(message)
+        except Exception:  # pragma: no cover - the policy must never break triage
+            decision = None
+    if decision is not None and decision.group_key:
+        # Grouped kinds never join a case just because the subject matches.
+        existing_case = None
+    return apply_decision(_classify_legacy(message, existing_case=existing_case), decision)
+
+
+def _classify_legacy(
     message: dict[str, Any],
     *,
     existing_case: dict[str, Any] | None,
@@ -375,6 +421,50 @@ def _mark_without_case(
     )
 
 
+def _owner_names(account: dict[str, Any]) -> tuple[str, ...]:
+    names: list[str] = []
+    for key in ("display_name", "name"):
+        value = str(account.get(key) or "").strip()
+        if value:
+            names.append(value)
+    email = str(account.get("email") or "")
+    if "@" in email:
+        names.append(email.split("@", 1)[0].replace(".", " ").replace("_", " "))
+    return tuple(names)
+
+
+def _user_sent_subject(
+    client: Any,
+    account_id: str,
+    message: dict[str, Any],
+    normalized_subject: str,
+    sent_subjects: set[str],
+) -> bool:
+    """Read-only: did the user send a message with this subject? (replies)."""
+    subject = str(message.get("subject") or "").strip().lower()
+    if not normalized_subject or not subject.startswith(("re:", "rv:", "aw:")):
+        return False
+    if normalized_subject in sent_subjects:
+        return True
+    try:
+        from app.services.case_engine import _rows
+
+        rows = _rows(
+            client.table("communication_messages")
+            .select("id")
+            .eq("account_id", account_id)
+            .eq("normalized_subject", normalized_subject)
+            .eq("direction", "outbound")
+            .limit(1)
+            .execute()
+        )
+    except Exception:
+        return False
+    if rows:
+        sent_subjects.add(normalized_subject)
+    return bool(rows)
+
+
 def classify_pending_messages(
     *,
     account_id: str,
@@ -412,7 +502,7 @@ def classify_pending_messages(
             client.table("communication_messages")
             .select(
                 "id,thread_id,account_id,external_message_id,sender,"
-                "recipients,cc,bcc,subject,body_text,snippet,"
+                "recipients,cc,bcc,subject,body_text,body_html,snippet,"
                 "received_at,labels,is_unread,direction,case_processed"
             )
             .eq("account_id", account_id)
@@ -423,7 +513,13 @@ def classify_pending_messages(
         if received_after:
             query = query.gte("received_at", received_after)
         response = query.order("received_at", desc=True).limit(safe_limit).execute()
-        messages = _rows(response)
+        # Newest batch, processed oldest → newest so grouped cases count
+        # occurrences and "last seen" in order.
+        messages = sorted(_rows(response), key=lambda row: str(row.get("received_at") or ""))
+    from app.services.case_policy import decide
+
+    owner_names = _owner_names(account)
+    sent_subjects: set[str] = set()
     processed = 0
     created_cases = 0
     linked_cases = 0
@@ -437,6 +533,19 @@ def classify_pending_messages(
             normalized_subject = normalize_subject(
                 str(message.get("subject") or "")
             )
+            if _message_direction(message) == "outbound" and normalized_subject:
+                sent_subjects.add(normalized_subject)
+            try:
+                decision = decide(
+                    message,
+                    owner_names=owner_names,
+                    user_sent_subject=_user_sent_subject(
+                        client, account_id, message, normalized_subject, sent_subjects
+                    ),
+                )
+            except Exception:
+                decision = None
+            group_key = decision.group_key if decision is not None else None
             existing_case = _find_case_for_message(
                 client=client,
                 account_id=account_id,
@@ -446,29 +555,42 @@ def classify_pending_messages(
                     else None
                 ),
                 normalized_subject=normalized_subject,
+                group_key=group_key,
             )
-            category, score, reason, actionable = classify_message(
-                message,
-                existing_case=existing_case,
+            category, score, reason, actionable = apply_decision(
+                _classify_legacy(
+                    message,
+                    existing_case=None if group_key else existing_case,
+                ),
+                decision,
+            )
+            # Delivery / card-in-transit notices only join an open case.
+            link_into_group = bool(
+                decision is not None
+                and decision.link_only
+                and existing_case is not None
             )
 
-            if actionable:
+            if actionable or link_into_group:
                 _, result = process_message(
                     client=client,
                     workspace_id=workspace_id,
                     account_id=account_id,
                     message=message,
+                    decision=decision,
                 )
+                message_updates: dict[str, Any] = {
+                    "triage_category": category,
+                    "actionability_score": score,
+                    "triage_reason": reason,
+                    "triaged_at": _now_iso(),
+                }
+                if result == "linked" and group_key:
+                    # One push per grouped case, not one per repeated notice.
+                    message_updates["push_notified_at"] = _now_iso()
                 (
                     client.table("communication_messages")
-                    .update(
-                        {
-                            "triage_category": category,
-                            "actionability_score": score,
-                            "triage_reason": reason,
-                            "triaged_at": _now_iso(),
-                        }
-                    )
+                    .update(message_updates)
                     .eq("id", str(message["id"]))
                     .execute()
                 )

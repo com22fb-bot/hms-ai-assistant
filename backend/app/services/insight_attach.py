@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.case_policy import grouped_main_idea
 from app.services.mail_insights import safe_insight
 
 _MESSAGE_COLUMNS = "id,subject,sender,body_text,body_html,snippet,triage_category,direction"
@@ -58,10 +59,20 @@ def attach_thread_insights(client: Any, account_id: str, threads: list[dict[str,
     return out
 
 
+def _grouped(case: dict[str, Any]) -> dict[str, Any] | None:
+    metadata = case.get("metadata")
+    if isinstance(metadata, dict) and metadata.get("group_key"):
+        return metadata
+    return None
+
+
 def attach_case_insights(client: Any, account_id: str, cases: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Insight of the case's message: the primary one, or for grouped cases
+    (case_policy ``group_key``) the LATEST one plus "N times, last on …"."""
     case_ids = [str(case.get("id")) for case in cases if case.get("id")]
     if not case_ids:
         return cases
+    grouped_ids = {str(case.get("id")) for case in cases if _grouped(case)}
     try:
         links: list[dict[str, Any]] = []
         for start in range(0, len(case_ids), _CHUNK):
@@ -78,13 +89,30 @@ def attach_case_insights(client: Any, account_id: str, cases: list[dict[str, Any
             links,
             key=lambda item: (not bool(item.get("is_primary")), str(item.get("linked_at") or "")),
         ):
-            primary.setdefault(str(link.get("case_id")), str(link.get("message_id")))
+            if str(link.get("case_id")) not in grouped_ids:
+                primary.setdefault(str(link.get("case_id")), str(link.get("message_id")))
+        for link in sorted(links, key=lambda item: str(item.get("linked_at") or ""), reverse=True):
+            if str(link.get("case_id")) in grouped_ids:
+                primary.setdefault(str(link.get("case_id")), str(link.get("message_id")))
         insights = insights_for_message_ids(client, account_id, list(primary.values()))
     except Exception:
         return cases
-    return [
-        {**case, "insight": insights.get(primary.get(str(case.get("id")), ""))}
-        if insights.get(primary.get(str(case.get("id")), ""))
-        else case
-        for case in cases
-    ]
+    out: list[dict[str, Any]] = []
+    for case in cases:
+        insight = insights.get(primary.get(str(case.get("id")), ""))
+        if not insight:
+            out.append(case)
+            continue
+        metadata = _grouped(case)
+        if metadata:
+            try:
+                insight = {
+                    **insight,
+                    "main_idea": grouped_main_idea(insight.get("main_idea") or {}, metadata, insight.get("facts") or {}),
+                    "occurrences": int(metadata.get("occurrences") or 1),
+                    "last_seen_at": metadata.get("last_seen_at"),
+                }
+            except Exception:  # pragma: no cover - never break the endpoint
+                pass
+        out.append({**case, "insight": insight})
+    return out

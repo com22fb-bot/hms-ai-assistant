@@ -21,13 +21,14 @@ BANKS: dict[str, dict[str, str]] = {}
 
 # —— México (prioridad de producto) ——
 _add(BANKS, "Citibanamex / Banamex", "MX", "MX", "citibanamex.com", "banamex.com", "banamex.com.mx")
-_add(BANKS, "BBVA México", "MX", "MX", "bbva.mx", "bbva.com.mx")
+# bbva.com sends BBVA México collection/servicing mail (cobranza, cartera); Spain uses bbva.es.
+_add(BANKS, "BBVA México", "MX", "MX", "bbva.mx", "bbva.com.mx", "bbva.com")
 _add(BANKS, "Banorte", "MX", "MX", "banorte.com", "banorte.com.mx")
 _add(BANKS, "Santander México", "MX", "MX", "santander.com.mx")
 _add(BANKS, "HSBC México", "MX", "MX", "hsbc.com.mx")
 _add(BANKS, "Scotiabank México", "MX", "MX", "scotiabank.com.mx")
 _add(BANKS, "Inbursa", "MX", "MX", "inbursa.com", "inbursa.com.mx")
-_add(BANKS, "Banco Azteca", "MX", "MX", "bancoazteca.com.mx", "bancoazteca.com")
+_add(BANKS, "Banco Azteca", "MX", "MX", "bancoazteca.com.mx", "bancoazteca.com", "bazdigital.com")
 _add(BANKS, "BanCoppel", "MX", "MX", "bancoppel.com")
 _add(BANKS, "Afirme", "MX", "MX", "afirme.com")
 _add(BANKS, "Banregio", "MX", "MX", "banregio.com")
@@ -130,7 +131,7 @@ _add(BANKS, "Wealthsimple", "CA", "CA", "wealthsimple.com")
 
 # —— Unión Europea / Reino Unido ——
 _add(BANKS, "Santander España", "EU", "ES", "santander.es", "bancosantander.es")
-_add(BANKS, "BBVA España", "EU", "ES", "bbva.es", "bbva.com")
+_add(BANKS, "BBVA España", "EU", "ES", "bbva.es")
 _add(BANKS, "CaixaBank", "EU", "ES", "caixabank.es", "caixabank.com")
 _add(BANKS, "Banco Sabadell", "EU", "ES", "bancsabadell.com", "sabadell.com")
 _add(BANKS, "Bankinter", "EU", "ES", "bankinter.com")

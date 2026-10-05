@@ -278,6 +278,66 @@ def _risk_and_priority(
     return risk, priority, event_level
 
 
+_POLICY_CASE_TYPE = {
+    "payment_declined": "payment",
+    "bill_due": "invoice",
+    "debt_overdue": "payment",
+    "debt_offer": "payment",
+    "card_failed": "support",
+    "order_in_transit": "general",
+    "security_change": "support",
+    "job_interview": "meeting",
+    "gov_human": "document",
+    "reply_to_you": "general",
+}
+
+_PRIORITY_RANK = {"low": 0, "normal": 1, "high": 2, "critical": 3}
+
+
+def _parse_iso(value: Any) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _latest_iso(current: Any, candidate: str) -> str:
+    left, right = _parse_iso(current), _parse_iso(candidate)
+    if left and right and left > right:
+        return str(current)
+    return candidate
+
+
+def _grouped_link_updates(case: dict[str, Any], decision: Any, received_at: str) -> dict[str, Any]:
+    """Counter, last-seen, last amount, due date and (orders) auto-resolve."""
+    metadata = dict(case.get("metadata") or {})
+    previous_last = metadata.get("last_seen_at")
+    newer = _latest_iso(previous_last, received_at) == received_at
+    metadata["occurrences"] = int(metadata.get("occurrences") or 1) + 1
+    metadata["last_seen_at"] = received_at if newer else previous_last
+    decision_meta = dict(getattr(decision, "metadata", {}) or {})
+    if newer and decision_meta.get("last_amount"):
+        metadata["last_amount"] = decision_meta["last_amount"]
+    for key in ("caution", "account_holder"):
+        if decision_meta.get(key) and not metadata.get(key):
+            metadata[key] = decision_meta[key]
+    updates: dict[str, Any] = {"metadata": metadata}
+    current_rank = _PRIORITY_RANK.get(str(case.get("priority") or "normal"), 1)
+    wanted = str(getattr(decision, "priority", "") or "")
+    if getattr(decision, "create_case", False) and _PRIORITY_RANK.get(wanted, -1) > current_rank:
+        updates["priority"] = wanted
+    if newer and getattr(decision, "due_at", None):
+        updates["due_at"] = decision.due_at
+    if getattr(decision, "resolves_case", False):
+        updates["status"] = "resolved"
+        updates["resolved_at"] = received_at
+        metadata["resolved_by"] = "delivery_notice"
+    return updates
+
+
 def _active_context() -> tuple[OAuthStorage, dict[str, Any]]:
     _, account = require_google_account()
     return OAuthStorage(), account
@@ -289,7 +349,24 @@ def _find_case_for_message(
     account_id: str,
     thread_id: str | None,
     normalized_subject: str,
+    group_key: str | None = None,
 ) -> dict[str, Any] | None:
+    if group_key:
+        # Grouped kinds (case_policy) match ONLY by their fixed key: every
+        # "Rechazo por saldo insuficiente" shares one subject but belongs to
+        # a different merchant.
+        response = (
+            client.table("intelligent_cases")
+            .select("*")
+            .eq("account_id", account_id)
+            .eq("metadata->>group_key", group_key)
+            .in_("status", _OPEN_STATUSES)
+            .order("last_activity_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        return _first_row(response)
+
     if thread_id:
         response = (
             client.table("intelligent_cases")
@@ -435,7 +512,14 @@ def process_message(
     workspace_id: str,
     account_id: str,
     message: dict[str, Any],
+    decision: Any | None = None,
 ) -> tuple[str, str]:
+    """Create or link the case for one message.
+
+    ``decision`` (a ``case_policy.CaseDecision``) is optional: without it the
+    legacy behaviour is unchanged. With it, the case gets the policy title,
+    priority, due date, next step (5 languages), caution and ``group_key``.
+    """
     message_id = str(message["id"])
     received_at = _to_iso(message.get("received_at"))
     subject = strip_css_noise(str(message.get("subject") or "")) or "(Sin asunto)"
@@ -453,6 +537,11 @@ def process_message(
         for term in _REMINDER_TERMS
     )
 
+    group_key = getattr(decision, "group_key", None) if decision is not None else None
+    case_subject = normalized_subject
+    if decision is not None and group_key and getattr(decision, "title", None):
+        case_subject = normalize_subject(str(decision.title))
+
     existing_case = _find_case_for_message(
         client=client,
         account_id=account_id,
@@ -462,9 +551,12 @@ def process_message(
             else None
         ),
         normalized_subject=normalized_subject,
+        group_key=group_key,
     )
 
     created = existing_case is None
+    if created and decision is not None and getattr(decision, "link_only", False):
+        raise RuntimeError("link_only decision without an open case")
 
     if created:
         risk, priority, level = _risk_and_priority(
@@ -472,6 +564,34 @@ def process_message(
             is_unread=bool(message.get("is_unread")),
             reminder_count=1 if is_reminder else 0,
         )
+        title = subject
+        summary = (strip_css_noise(str(message.get("snippet") or "")) or body)[:500] or None
+        requested_action = _requested_action(text)
+        due_at = None
+        metadata: dict[str, Any] = {
+            "created_by": "case_engine_v1",
+            "initial_message_direction": direction,
+        }
+        if decision is not None:
+            meta = dict(getattr(decision, "metadata", {}) or {})
+            priority = str(decision.priority)
+            risk = int(decision.risk_score)
+            level = {"critical": 4, "high": 3}.get(priority, 2)
+            if group_key and decision.title:
+                title = str(decision.title)
+            case_type = _POLICY_CASE_TYPE.get(str(decision.kind or ""), case_type)
+            summary = (getattr(decision, "summary", None) or summary or None)
+            next_step = meta.get("next_step") or {}
+            requested_action = next_step.get("es") or requested_action
+            due_at = decision.due_at
+            metadata = {
+                **meta,
+                "created_by": "case_policy_v1",
+                "initial_message_direction": direction,
+                "occurrences": 1,
+                "first_seen_at": received_at,
+                "last_seen_at": received_at,
+            }
 
         requester_email = (
             sender_email
@@ -486,18 +606,15 @@ def process_message(
                     "workspace_id": workspace_id,
                     "account_id": account_id,
                     "primary_thread_id": message.get("thread_id"),
-                    "title": subject,
-                    "normalized_subject": normalized_subject,
+                    "title": title,
+                    "normalized_subject": case_subject,
                     "case_type": case_type,
                     "status": "new",
                     "priority": priority,
                     "risk_score": risk,
                     "confidence": 0.7000,
-                    "summary": (
-                        (strip_css_noise(str(message.get("snippet") or "")) or body)[:500]
-                        or None
-                    ),
-                    "requested_action": _requested_action(text),
+                    "summary": summary,
+                    "requested_action": requested_action,
                     "requester_name": (
                         sender_name
                         if direction == "inbound"
@@ -511,12 +628,10 @@ def process_message(
                     ),
                     "opened_at": received_at,
                     "last_activity_at": received_at,
+                    "due_at": due_at,
                     "source_count": 1,
                     "reminder_count": 1 if is_reminder else 0,
-                    "metadata": {
-                        "created_by": "case_engine_v1",
-                        "initial_message_direction": direction,
-                    },
+                    "metadata": metadata,
                 }
             )
             .execute()
@@ -537,7 +652,7 @@ def process_message(
             event_type="case_created",
             level=max(level, 2),
             title="Nuevo caso detectado",
-            description=subject,
+            description=title,
             dedupe_key=f"case_created:{message_id}",
             metadata={
                 "direction": direction,
@@ -558,7 +673,8 @@ def process_message(
         )
 
         updates: dict[str, Any] = {
-            "last_activity_at": received_at,
+            # Imports can arrive out of order: keep the newest activity.
+            "last_activity_at": _latest_iso(case.get("last_activity_at"), received_at),
             "source_count": int(
                 case.get("source_count") or 0
             ) + 1,
@@ -579,6 +695,11 @@ def process_message(
         elif direction == "inbound":
             updates["waiting_on"] = "internal"
 
+        resolved_now = False
+        if decision is not None:
+            updates.update(_grouped_link_updates(case, decision, received_at))
+            resolved_now = updates.get("status") == "resolved"
+
         (
             client.table("intelligent_cases")
             .update(updates)
@@ -586,7 +707,20 @@ def process_message(
             .execute()
         )
 
-        if is_reminder:
+        if resolved_now:
+            event_type = "external_reply"
+            event_title = "Entregado: el caso se cerró solo"
+            event_description = "Llegó el aviso de entrega del pedido."
+            event_level = 1
+        elif decision is not None and group_key:
+            event_type = "external_reply"
+            event_title = "Se repitió el aviso"
+            event_description = (
+                "Llegó otro correo del mismo tema; se sumó a este caso "
+                "en lugar de abrir uno nuevo."
+            )
+            event_level = min(level, 2)
+        elif is_reminder:
             event_type = "reminder_received"
             event_title = "Recordatorio recibido"
             event_description = (
@@ -681,7 +815,9 @@ def process_message(
                 "normalized_subject": normalized_subject,
                 "direction": direction,
                 "correlation_key": (
-                    f"thread:{message.get('thread_id')}"
+                    f"group:{group_key}"
+                    if group_key
+                    else f"thread:{message.get('thread_id')}"
                     if message.get("thread_id")
                     else f"subject:{normalized_subject}"
                 ),

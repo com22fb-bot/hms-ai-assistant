@@ -199,6 +199,55 @@ VERTICALS: dict[str, dict[str, Any]] = {
         "includes": ["Redes de difusión. Un 2FA o login raro se eleva a notice."],
         "regions": ["GLOBAL"],
     },
+    "utility": {
+        "label_es": "Luz, teléfono, internet y gas",
+        "triage_default": "notice",
+        "triage_if_marketing": "promotional",
+        "triage_if_action": "action_required",
+        "includes": [
+            "CFE, Telcel, Totalplay, Telmex, izzi, Megacable, gas.",
+            "Aviso de cobro con monto y fecha límite → caso. Recibo pagado → aviso.",
+        ],
+        "regions": ["MX"],
+    },
+    "government": {
+        "label_es": "Gobierno y trámites",
+        "triage_default": "notice",
+        "triage_if_marketing": "informational",
+        "triage_if_action": "action_required",
+        "includes": [
+            "ISSSTE, IMSS, SAT, Infonavit, FOVISSSTE, DIF y cualquier .gob.mx.",
+            "Formato de pago (FOPI) o persona que pide algo → caso.",
+        ],
+        "regions": ["MX", "US"],
+    },
+    "pension": {
+        "label_es": "AFORE y pensiones",
+        "triage_default": "notice",
+        "triage_if_marketing": "promotional",
+        "triage_if_action": "action_required",
+        "includes": ["Profuturo y otras AFORE: estados de cuenta y recordatorios (aviso)."],
+        "regions": ["MX"],
+    },
+    "debt_collection": {
+        "label_es": "Cobranza",
+        "triage_default": "action_required",
+        "triage_if_marketing": "action_required",
+        "triage_if_action": "action_required",
+        "includes": [
+            "Despachos de cobranza (Conjurnet, Milla Asistencia) y buzones cobranza@.",
+            "Siempre con la precaución: verifica con tu banco antes de pagar.",
+        ],
+        "regions": ["MX"],
+    },
+    "payment_processor": {
+        "label_es": "Cobro de software y suscripciones",
+        "triage_default": "notice",
+        "triage_if_marketing": "promotional",
+        "triage_if_action": "action_required",
+        "includes": ["Cleverbridge, Paddle, FastSpring, 2Checkout: cobros de licencias."],
+        "regions": ["GLOBAL"],
+    },
 }
 
 SECURITY_NOTICE_TERMS = (
