@@ -8,6 +8,8 @@ from fastapi import HTTPException
 from app.services.event_engine import create_case_event
 from app.security.identity import require_google_account
 from app.services.oauth_storage import OAuthStorage
+from app.services.insight_attach import attach_case_insights
+from app.services.mail_insights import safe_insight
 
 
 _OPEN_STATUSES = [
@@ -128,7 +130,7 @@ def list_cases(
         "total": total,
         "limit": safe_limit,
         "offset": safe_offset,
-        "cases": cases,
+        "cases": attach_case_insights(storage.client, account_id, cases),
     }
 
 
@@ -183,8 +185,8 @@ def get_case(case_id: str) -> dict[str, Any]:
             (
                 client.table("communication_messages")
                 .select(
-                    "id,sender,recipients,subject,snippet,body_text,"
-                    "received_at,labels,is_unread,direction"
+                    "id,sender,recipients,subject,snippet,body_text,body_html,"
+                    "received_at,labels,is_unread,direction,triage_category"
                 )
                 .eq("id", str(link["message_id"]))
                 .limit(1)
@@ -193,9 +195,13 @@ def get_case(case_id: str) -> dict[str, Any]:
         )
 
         if message:
+            # Insight from the full body; the heavy HTML is not returned.
+            insight = safe_insight(message)
+            message = {key: value for key, value in message.items() if key != "body_html"}
             messages.append(
                 {
                     **message,
+                    "insight": insight,
                     "relation_type": link.get("relation_type"),
                     "is_primary": link.get("is_primary"),
                     "linked_at": link.get("linked_at"),
@@ -212,8 +218,10 @@ def get_case(case_id: str) -> dict[str, Any]:
         )
     )
 
+    primary = next((m for m in messages if m.get("is_primary")), messages[0] if messages else None)
     return {
         **case,
+        "insight": (primary or {}).get("insight"),
         "participants": participants,
         "messages": messages,
         "events": events,
