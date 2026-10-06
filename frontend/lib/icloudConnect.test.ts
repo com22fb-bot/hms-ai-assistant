@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import { APP_LANGUAGES } from "./i18n/languages.ts";
 import {
+  APPLE_ACCOUNT_URL,
   icloudFailureText,
   icloudSteps,
   icloudText,
@@ -17,7 +18,10 @@ describe("icloud connect copy", () => {
       assert.match(icloudText(language, "privacy"), /Apple|apple/i);
       assert.match(icloudText(language, "step2"), /account\.apple\.com/);
       assert.notEqual(icloudText(language, "title"), "");
+      assert.match(icloudText(language, "openApple"), /Apple/i);
+      assert.ok(icloudText(language, "openHint").length > 20);
     }
+    assert.equal(APPLE_ACCOUNT_URL, "https://account.apple.com");
   });
 
   it("maps IMAP failure codes without leaking a password", () => {

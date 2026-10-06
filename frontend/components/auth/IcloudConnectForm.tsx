@@ -4,7 +4,11 @@ import { LoaderCircle } from "lucide-react";
 import { FormEvent, useState } from "react";
 
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
-import { icloudSteps, icloudText } from "@/lib/i18n/icloudConnect";
+import {
+  APPLE_ACCOUNT_URL,
+  icloudSteps,
+  icloudText,
+} from "@/lib/i18n/icloudConnect";
 
 type IcloudConnectFormProps = {
   email: string;
@@ -55,6 +59,21 @@ export function IcloudConnectForm({
     >
       <p className={login ? "dx-login__note" : "dx-connect-hint"}>
         {icloudText(language, "intro")}
+      </p>
+      <a
+        className={
+          login
+            ? "dx-login__secondary dx-mail-open"
+            : "dx-connect-btn dx-connect-btn--secondary dx-mail-open"
+        }
+        href={APPLE_ACCOUNT_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {icloudText(language, "openApple")}
+      </a>
+      <p className={login ? "dx-login__note" : "dx-connect-hint"}>
+        {icloudText(language, "openHint")}
       </p>
       <ol className="dx-icloud-steps">
         {steps.map((step) => (

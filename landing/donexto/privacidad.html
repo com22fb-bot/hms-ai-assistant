@@ -130,7 +130,7 @@
 
     <main>
       <article class="legal-doc">
-        <p class="updated">Última actualización: 20 de agosto de 2026</p>
+        <p class="updated">Última actualización: 6 de octubre de 2026</p>
         <h1>Política de Privacidad de Donexto</h1>
         <p class="legal-lead">
           En Donexto, a cargo de Héctor Marcial Salcido Roacho (el Titular), con
@@ -176,6 +176,11 @@
         </p>
         <ul>
           <li>
+            <strong>Outlook / Hotmail / Microsoft 365</strong>: firmas en
+            Microsoft (OAuth, permiso Mail.Read). Solo lectura y revocable en
+            la cuenta Microsoft. Donexto no pide la contraseña del buzón.
+          </li>
+          <li>
             <strong>Gmail</strong> (y Google Workspace, si tu organización lo
             permite): lectura con el permiso gmail.readonly. Google puede avisar
             que no ha verificado la app; el acceso es anticipado (hasta 100
@@ -184,9 +189,15 @@
           <li>
             <strong>Yahoo</strong>: conexión directa por IMAP
             (<code>imap.mail.yahoo.com</code>, puerto 993, SSL) con una
-            contraseña de app, en espera de la autorización oficial de Yahoo.
-            Solo lectura (EXAMINE y BODY.PEEK) y revocable en Yahoo. La
-            contraseña de app se guarda cifrada.
+            contraseña de app que generas en
+            <a href="https://login.yahoo.com/account/security" rel="noopener noreferrer"
+              >login.yahoo.com/account/security</a
+            >
+            (Conexiones externas), en espera de la autorización oficial de Yahoo
+            (mail-r). Solo lectura (EXAMINE y BODY.PEEK) y revocable en Yahoo.
+            La contraseña de app se guarda cifrada. La contraseña de app se pide
+            solo en la app (<a href="https://app.donexto.com">app.donexto.com</a>),
+            no en este sitio.
           </li>
           <li>
             <strong>Apple iCloud Mail</strong> (@icloud.com, @me.com, @mac.com):
@@ -195,18 +206,19 @@
             con SSL, EXAMINE y BODY.PEEK). No marca leído, no mueve y no borra.
             La contraseña de app se guarda cifrada. Puedes desconectar el buzón
             en Donexto (se borra) y revocar la contraseña en account.apple.com
-            cuando quieras.
+            cuando quieras. También se pide solo en la app.
           </li>
         </ul>
         <p>
-          <strong>Próximamente</strong> (aún no disponibles): Outlook, Hotmail,
-          Microsoft 365 y AOL. No afirmamos que ya se conecten.
+          <strong>Próximamente</strong> (aún no disponible): AOL. No afirmamos
+          que ya se conecte.
         </p>
         <p>
           Con Gmail, Yahoo e iCloud te enviamos un correo de verificación de
-          Donexto; sin ese paso no hay acceso. Gmail usa el aviso de app no
-          verificada. Yahoo usa contraseña de app mientras falta la
-          autorización oficial. Ninguno marca tus correos como leídos.
+          Donexto; sin ese paso no hay acceso. Outlook y Hotmail se identifican
+          en Microsoft. Gmail usa el aviso de app no verificada. Yahoo usa
+          contraseña de app mientras falta la autorización oficial (mail-r).
+          Ninguno marca tus correos como leídos.
         </p>
         <p>
           Según el buzón que conectes, el sistema accede, en la medida necesaria
@@ -218,10 +230,12 @@
             identificarte como usuario.
           </li>
           <li>
-            Autorización de lectura: en Gmail, tokens de Google almacenados
-            cifrados. En Yahoo, la contraseña de app (o, más adelante, el token
-            OAuth si Yahoo autoriza mail-r) almacenada cifrada. En iCloud, la
-            contraseña específica de app almacenada cifrada.
+            Autorización de lectura: en Outlook/Hotmail, tokens de Microsoft
+            (Mail.Read) almacenados cifrados. En Gmail, tokens de Google
+            almacenados cifrados. En Yahoo, la contraseña de app (o, más
+            adelante, el token OAuth si Yahoo autoriza mail-r) almacenada
+            cifrada. En iCloud, la contraseña específica de app almacenada
+            cifrada.
           </li>
           <li>
             Metadatos y fragmentos de correo: remitente, asunto, fecha y, cuando
@@ -248,7 +262,7 @@
           autorización de tu empleador.
         </p>
         <p>
-          Tu buzón completo se queda en el proveedor (Google, Yahoo o Apple). Donexto
+          Tu buzón completo se queda en el proveedor (Microsoft, Google, Yahoo o Apple). Donexto
           no es el archivo de tu bandeja. Lo que sí guardamos —y necesitamos
           guardar para que el panel exista al día siguiente— es lo mínimo para
           la capa de atención: la cuenta, la autorización de lectura cifrada,
@@ -265,8 +279,8 @@
 
         <h2 id="buzon">2. Cómo usamos los datos del buzón</h2>
         <p>
-          Donexto se compromete, para los buzones disponibles hoy (Gmail,
-          Yahoo e iCloud), a esto:
+          Donexto se compromete, para los buzones disponibles hoy (Outlook,
+          Hotmail, Microsoft 365, Gmail, Yahoo e iCloud), a esto:
         </p>
         <ul>
           <li>
@@ -334,9 +348,17 @@
         </p>
         <h3>Microsoft (Outlook, Hotmail, Microsoft 365)</h3>
         <p>
-          No están disponibles todavía. No usamos APIs de Microsoft para leer
-          correo. Cuando existan, esta política dirá cómo se conectan y cómo se
-          revoca el acceso.
+          Outlook, Hotmail y Microsoft 365 se conectan hoy firmando en
+          Microsoft (OAuth). Donexto pide el permiso Mail.Read (solo lectura) y
+          no pide la contraseña del buzón. Los tokens se guardan cifrados. Para
+          dejar de dar acceso: desconecta el buzón en Donexto y revoca Donexto
+          en
+          <a
+            href="https://account.microsoft.com/privacy/app-access"
+            rel="noopener noreferrer"
+            >account.microsoft.com/privacy/app-access</a
+          >
+          (o la página de permisos de apps de tu cuenta Microsoft).
         </p>
         <p>
           No contemplamos Proton, Tuta ni ningún proveedor de cifrado de extremo
@@ -345,20 +367,24 @@
 
         <h2 id="compartida">3. Responsabilidad compartida</h2>
         <p>
-          Donexto cifra la autorización de lectura (tokens de Google, la
-          contraseña de app de Yahoo o de iCloud, y más adelante un token OAuth
-          de Yahoo si llega mail-r). Eso no cierra, por sí solo, el permiso del
-          lado del buzón.
+          Donexto cifra la autorización de lectura (tokens de Microsoft, tokens
+          de Google, la contraseña de app de Yahoo o de iCloud, y más adelante
+          un token OAuth de Yahoo si llega mail-r). Eso no cierra, por sí solo,
+          el permiso del lado del buzón.
         </p>
         <p>
           Si dejas de usar Donexto: desconecta el buzón o elimina la cuenta en
-          la app. En Gmail, revoca además Donexto en
+          la app. En Outlook/Hotmail, revoca además Donexto en la cuenta
+          Microsoft. En Gmail, revoca además Donexto en
           <a
             href="https://myaccount.google.com/permissions"
             rel="noopener noreferrer"
             >https://myaccount.google.com/permissions</a
-          >. En Yahoo, desconecta el buzón en Donexto y revoca Donexto en las
-          aplicaciones conectadas de tu cuenta Yahoo.
+          >. En Yahoo, desconecta el buzón en Donexto y revoca la contraseña de
+          app en
+          <a href="https://login.yahoo.com/account/security" rel="noopener noreferrer"
+            >login.yahoo.com/account/security</a
+          >.
         </p>
 
         <h2 id="encargados">4. Encargados</h2>
@@ -366,6 +392,10 @@
           Para ejecutar la capa de atención, Donexto usa estos encargados:
         </p>
         <ul>
+          <li>
+            Microsoft, si conectas Outlook, Hotmail o Microsoft 365: identidad
+            y lectura del buzón por Microsoft Graph (Mail.Read).
+          </li>
           <li>
             Google, si conectas Gmail: identidad (cuando entras con Google) y
             lectura del buzón por la API de Gmail.
@@ -449,8 +479,9 @@
         </ul>
         <p>
           Al tramitar la baja: dejamos de leer tu buzón; borramos o dejamos de
-          usar la autorización de lectura en Donexto (tokens de Google o tokens
-          OAuth de Yahoo); y bloqueamos o borramos los datos de Donexto conforme
+          usar la autorización de lectura en Donexto (tokens de Microsoft,
+          tokens de Google, la contraseña de app de Yahoo o de iCloud, o tokens
+          OAuth de Yahoo si llegan); y bloqueamos o borramos los datos de Donexto conforme
           a la ley aplicable. En México, el bloqueo previo que marca la LFPDPPP
           cuando aplica. Los respaldos de infraestructura pueden conservar
           copias un tiempo, hasta que roten; esas copias no se usan para
@@ -467,8 +498,10 @@
             href="https://myaccount.google.com/permissions"
             rel="noopener noreferrer"
             >https://myaccount.google.com/permissions</a
-          >. En Yahoo, desconecta el buzón en Donexto y revoca Donexto en las
-          aplicaciones conectadas de tu cuenta Yahoo.
+          >. En Outlook/Hotmail, revoca Donexto en la cuenta Microsoft. En
+          Yahoo, desconecta el buzón en Donexto y revoca la contraseña de app en
+          la seguridad de tu cuenta Yahoo. En iCloud, revoca la contraseña
+          específica de app en account.apple.com.
         </p>
 
         <h2 id="cookies">8. Cookies</h2>
