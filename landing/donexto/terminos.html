@@ -130,7 +130,7 @@
 
     <main>
       <article class="legal-doc">
-        <p class="updated">Última actualización: 20 de agosto de 2026</p>
+        <p class="updated">Última actualización: 6 de octubre de 2026</p>
         <h1>Términos de Servicio de Donexto</h1>
         <p class="legal-lead">
           Estos términos describen cómo trabajamos juntos cuando usas
@@ -202,20 +202,27 @@
 
         <h2 id="cuenta">3. Cuenta Donexto y proveedores de correo</h2>
         <p>
-          Gmail, Yahoo e iCloud se leen en solo lectura. Gmail: Google muestra
-          que aún no ha verificado la app; tocas Avanzado y luego Ir a Donexto.
-          Es acceso anticipado (Google limita las apps no verificadas a 100
-          usuarios). El permiso es gmail.readonly y se revoca en
-          myaccount.google.com/permissions. Igual llega el correo de
-          verificación de Donexto. Yahoo: conexión directa con una contraseña
-          de app, en espera de la autorización oficial de Yahoo. Solo lectura
-          y revocable en Yahoo cuando quieras. iCloud: contraseña específica
-          de app, también solo lectura.
+          Outlook, Hotmail, Microsoft 365, Gmail, Yahoo e iCloud se leen en
+          solo lectura. Outlook/Hotmail: firmas en Microsoft (Mail.Read);
+          Donexto no pide la clave del buzón. Gmail: Google muestra que aún no
+          ha verificado la app; tocas Avanzado y luego Ir a Donexto. Es acceso
+          anticipado (Google limita las apps no verificadas a 100 usuarios). El
+          permiso es gmail.readonly y se revoca en
+          myaccount.google.com/permissions. Yahoo e iCloud: contraseña de app
+          (no la de la cuenta), solo lectura; Yahoo aún espera la autorización
+          oficial (mail-r). La contraseña de app de Yahoo o iCloud se pide solo
+          en la app (<a href="https://app.donexto.com">app.donexto.com</a>), no
+          en este sitio. Con Gmail, Yahoo e iCloud llega además el correo de
+          verificación de Donexto.
         </p>
         <p>
           <strong>Disponible hoy</strong>
         </p>
         <ul>
+          <li>
+            Outlook, Hotmail y Microsoft 365: OAuth en Microsoft (Mail.Read),
+            solo lectura. Revocable en la cuenta Microsoft.
+          </li>
           <li>
             Gmail: OAuth de solo lectura (gmail.readonly). Google puede decir
             que no ha verificado la app; Avanzado y luego Ir a Donexto. Acceso
@@ -225,7 +232,8 @@
           <li>
             Yahoo: conexión directa por IMAP con contraseña de app, mientras
             Yahoo no entrega la autorización oficial (mail-r). Solo lectura y
-            revocable en la seguridad de la cuenta Yahoo.
+            revocable en la seguridad de la cuenta Yahoo
+            (login.yahoo.com/account/security).
           </li>
           <li>
             Apple iCloud Mail (@icloud.com, @me.com, @mac.com): conectas con
@@ -237,8 +245,7 @@
           </li>
         </ul>
         <p>
-          <strong>Próximamente</strong> (no disponibles): Outlook, Hotmail,
-          Microsoft 365 y AOL.
+          <strong>Próximamente</strong> (no disponible): AOL.
         </p>
         <p>
           No contemplamos proveedores de correo con cifrado de extremo a extremo
@@ -254,18 +261,25 @@
         <h3>Cómo se conecta</h3>
         <ul>
           <li>
+            Outlook / Hotmail / Microsoft 365: la autorización de lectura
+            ocurre en el sitio de Microsoft (OAuth, Mail.Read).
+          </li>
+          <li>
             Gmail: la autorización de lectura ocurre en el sitio de Google
             (OAuth).
           </li>
           <li>
             Yahoo: hoy la conexión es directa por IMAP con una contraseña de
-            app que generas en la seguridad de tu cuenta Yahoo. No es la
-            contraseña de Yahoo. El código OAuth se queda para cuando Yahoo
-            autorice la lectura oficial (mail-r).
+            app que generas en la seguridad de tu cuenta Yahoo
+            (login.yahoo.com/account/security → Conexiones externas). No es la
+            contraseña de Yahoo. Se pega solo en app.donexto.com. El código
+            OAuth se queda para cuando Yahoo autorice la lectura oficial
+            (mail-r).
           </li>
           <li>
             Gmail, Yahoo e iCloud: te enviamos un correo de verificación de
-            Donexto; sin ese paso no hay acceso ni lectura.
+            Donexto; sin ese paso no hay acceso ni lectura. Outlook y Hotmail
+            se identifican en Microsoft.
           </li>
           <li>
             Pedimos que los datos de la cuenta sean verdaderos, que puedas abrir
@@ -274,9 +288,10 @@
             menores de edad.
           </li>
           <li>
-            La contraseña de la cuenta Donexto, si la usas, no es la de Gmail,
-            Yahoo ni iCloud. Yahoo e iCloud piden una contraseña de app, no la
-            de la cuenta. Gmail se autoriza en el sitio de Google.
+            La contraseña de la cuenta Donexto, si la usas, no es la de
+            Outlook, Gmail, Yahoo ni iCloud. Outlook y Hotmail se autorizan en
+            Microsoft. Yahoo e iCloud piden una contraseña de app, no la de la
+            cuenta, solo en la app. Gmail se autoriza en el sitio de Google.
           </li>
           <li>
             Gmail: si revocas Donexto en

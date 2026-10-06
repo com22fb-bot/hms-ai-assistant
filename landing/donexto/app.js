@@ -10,15 +10,15 @@ const strings = {
     hero_title: "Donexto",
     hero_tagline: "Do Next To… lo siguiente que sí importa.",
     hero_lede:
-      "Lee Gmail o Yahoo y sube lo que pide acción. El ruido promocional no ocupa la portada. No es otra bandeja.",
+      "Lee Outlook, Hotmail, Gmail, Yahoo o iCloud y sube lo que pide acción. El ruido promocional no ocupa la portada. No es otra bandeja.",
     cta_app: "Entrar a Donexto",
     cta_video: "Ver la consola",
     cta_app2: "Probar la app",
     cta_app3: "Abrir la app",
     cta_mail: "support@donexto.com",
-    trust_1: "Google autentica en su propio sitio",
+    trust_1: "Outlook y Hotmail: en vivo con Microsoft",
     trust_2: "Yahoo e iCloud: contraseña de app, solo lectura",
-    trust_3: "Correo personal, no de oficina",
+    trust_3: "Gmail: OAuth en Google (app aún no verificada)",
     video_title: "El criterio, en 40 segundos",
     video_lede: "Se dice Do-NEX-to. Marca, criterio y tablero.",
     video_caption: "Imágenes de marca. El clip con voz se publica cuando esté listo.",
@@ -28,7 +28,7 @@ const strings = {
     story_next: "Siguiente",
     story_vo_toggle: "Guion (voz en off)",
     story_vo_full:
-      "Donexto. Do Next To… Atención sobre tu correo personal. Lo que pide acción sube; la oferta espera. Google autentica en su sitio; Yahoo, en el suyo. Confirmas, autorizas la lectura y ves qué sigue. app.donexto.com",
+      "Donexto. Do Next To… Atención sobre tu correo personal. Lo que pide acción sube; la oferta espera. Outlook en Microsoft; Gmail en Google; Yahoo e iCloud con contraseña de app. Confirmas, autorizas la lectura y ves qué sigue. app.donexto.com",
     scope_title: "Qué mira",
     scope_lede:
       "Correo personal. Cuatro frentes, el mismo peso. Pedidos no gana a familia; familia no gana a un cargo.",
@@ -61,10 +61,10 @@ const strings = {
     how_title: "Cómo se conecta",
     how_1_t: "Identidad",
     how_1_p:
-      "Gmail se identifica en Google (la app aún no está verificada). Yahoo e iCloud usan una contraseña de app, no la de la cuenta. Igual llega el correo de verificación de Donexto.",
+      "Outlook y Hotmail se identifican en Microsoft. Gmail, en Google (la app aún no está verificada). Yahoo e iCloud usan una contraseña de app en app.donexto.com, no en este sitio. Con Gmail, Yahoo e iCloud llega el correo de verificación de Donexto.",
     how_2_t: "Lectura",
     how_2_p:
-      "Gmail se autoriza en Google, solo lectura y revocable. Yahoo e iCloud se leen por IMAP en solo lectura. Donexto no pide la contraseña de la cuenta.",
+      "Outlook/Hotmail se autorizan en Microsoft (Mail.Read). Gmail, en Google (gmail.readonly). Yahoo e iCloud, por IMAP con contraseña de app (Yahoo mail-r aún pendiente). Solo lectura; Donexto no pide la contraseña de la cuenta.",
     how_3_t: "Consola",
     how_3_p:
       "Ves prioridad clasificada. El buzón original no se borra ni se reescribe.",
@@ -122,15 +122,15 @@ const strings = {
     hero_title: "Donexto",
     hero_tagline: "Do Next To… the next thing that actually matters.",
     hero_lede:
-      "It reads Gmail or Yahoo and raises what needs action. Promotional noise stays off the cover. Not another inbox.",
+      "It reads Outlook, Hotmail, Gmail, Yahoo or iCloud and raises what needs action. Promotional noise stays off the cover. Not another inbox.",
     cta_app: "Enter Donexto",
     cta_video: "See the console",
     cta_app2: "Try the app",
     cta_app3: "Open the app",
     cta_mail: "support@donexto.com",
-    trust_1: "Google authenticates on Google’s site",
+    trust_1: "Outlook and Hotmail: live with Microsoft",
     trust_2: "Yahoo and iCloud: app password, read-only",
-    trust_3: "Personal email, not the office",
+    trust_3: "Gmail: OAuth on Google (app not verified yet)",
     video_title: "The signal, in 40 seconds",
     video_lede: "Say Do-NEX-to. Brand, standard, board.",
     video_caption: "Brand stills. Voiceover clip publishes when ready.",
@@ -140,7 +140,7 @@ const strings = {
     story_next: "Next",
     story_vo_toggle: "Voiceover script",
     story_vo_full:
-      "Donexto. Do Next To… Attention on personal email. What needs action rises; the offer waits. Google signs in on Google’s site; Yahoo on Yahoo’s. You confirm, authorize reading, and you see what to do next. app.donexto.com",
+      "Donexto. Do Next To… Attention on personal email. What needs action rises; the offer waits. Outlook on Microsoft; Gmail on Google; Yahoo and iCloud with an app password. You confirm, authorize reading, and you see what to do next. app.donexto.com",
     scope_title: "What it watches",
     scope_lede:
       "Personal email. Four fronts, equal weight. Orders do not outrank family; family does not outrank a charge.",
@@ -170,10 +170,10 @@ const strings = {
     how_title: "How it connects",
     how_1_t: "Identity",
     how_1_p:
-      "Gmail identifies you on Google (the app is not verified yet). Yahoo and iCloud use an app password, not the account password. Donexto still sends its own verification email.",
+      "Outlook and Hotmail identify you on Microsoft. Gmail on Google (the app is not verified yet). Yahoo and iCloud use an app password in app.donexto.com, not on this site. Gmail, Yahoo and iCloud still get Donexto’s verification email.",
     how_2_t: "Reading",
     how_2_p:
-      "Gmail is authorized on Google, read-only and revocable. Yahoo and iCloud are read over IMAP, read-only. Donexto does not ask for the account password.",
+      "Outlook/Hotmail authorize on Microsoft (Mail.Read). Gmail on Google (gmail.readonly). Yahoo and iCloud over IMAP with an app password (Yahoo mail-r still pending). Read-only; Donexto does not ask for the account password.",
     how_3_t: "Console",
     how_3_p: "You see classified priority. The original mailbox is not deleted or rewritten.",
     console_title: "Console",
@@ -229,15 +229,15 @@ const strings = {
     hero_title: "Donexto",
     hero_tagline: "Do Next To… la prochaine chose qui compte vraiment.",
     hero_lede:
-      "Il lit Gmail, Yahoo ou Outlook et fait remonter ce qui demande une action. Le bruit promotionnel reste hors couverture. Ce n’est pas une autre boîte.",
+      "Il lit Outlook, Hotmail, Gmail, Yahoo ou iCloud et fait remonter ce qui demande une action. Le bruit promotionnel reste hors couverture. Ce n’est pas une autre boîte.",
     cta_app: "Entrer dans Donexto",
     cta_video: "Voir la console",
     cta_app2: "Essayer l’app",
     cta_app3: "Ouvrir l’app",
     cta_mail: "support@donexto.com",
-    trust_1: "Google authentifie sur son site",
+    trust_1: "Outlook et Hotmail : en ligne avec Microsoft",
     trust_2: "Yahoo et iCloud : mot de passe d’app, lecture seule",
-    trust_3: "Courrier personnel, pas de bureau",
+    trust_3: "Gmail : OAuth chez Google (app pas encore vérifiée)",
     video_title: "Le critère, en 40 secondes",
     video_lede: "On dit Do-NEX-to. Marque, critère, tableau.",
     video_caption: "Images de marque. Le clip avec voix sera publié quand il sera prêt.",
@@ -247,7 +247,7 @@ const strings = {
     story_next: "Suivant",
     story_vo_toggle: "Script (voix off)",
     story_vo_full:
-      "Donexto. Do Next To… Attention sur votre courrier personnel. Ce qui demande une action monte ; l’offre attend. Google sur son site ; Yahoo sur le sien ; Outlook chez Microsoft. Vous confirmez, autorisez la lecture et voyez la suite. app.donexto.com",
+      "Donexto. Do Next To… Attention sur votre courrier personnel. Ce qui demande une action monte ; l’offre attend. Outlook chez Microsoft ; Gmail chez Google ; Yahoo et iCloud avec mot de passe d’app. Vous confirmez, autorisez la lecture et voyez la suite. app.donexto.com",
     scope_title: "Ce qu’il regarde",
     scope_lede:
       "Courrier personnel. Quatre fronts, même poids. Les commandes ne battent pas la famille ; la famille ne bat pas un prélèvement.",
@@ -277,10 +277,10 @@ const strings = {
     how_title: "Comment ça se connecte",
     how_1_t: "Identité",
     how_1_p:
-      "Gmail vous identifie chez Google (l’app n’est pas encore vérifiée). Yahoo et iCloud utilisent un mot de passe d’application, pas celui du compte. L’e-mail de vérification Donexto part quand même.",
+      "Outlook et Hotmail vous identifient chez Microsoft. Gmail chez Google (l’app n’est pas encore vérifiée). Yahoo et iCloud utilisent un mot de passe d’application sur app.donexto.com, pas sur ce site. Gmail, Yahoo et iCloud reçoivent quand même l’e-mail de vérification Donexto.",
     how_2_t: "Lecture",
     how_2_p:
-      "Gmail s’autorise chez Google, en lecture seule et révocable. Yahoo et iCloud se lisent en IMAP, en lecture seule. Donexto ne demande pas le mot de passe du compte.",
+      "Outlook/Hotmail s’autorisent chez Microsoft (Mail.Read). Gmail chez Google (gmail.readonly). Yahoo et iCloud en IMAP avec mot de passe d’app (mail-r Yahoo encore en attente). Lecture seule ; Donexto ne demande pas le mot de passe du compte.",
     how_3_t: "Console",
     how_3_p: "Vous voyez la priorité classée. La boîte d’origine n’est ni effacée ni réécrite.",
     console_title: "Console",
@@ -336,15 +336,15 @@ const strings = {
     hero_title: "Donexto",
     hero_tagline: "Do Next To… la prossima cosa che conta davvero.",
     hero_lede:
-      "Legge Gmail, Yahoo o Outlook e porta in alto ciò che chiede azione. Il rumore promozionale resta fuori copertina. Non è un’altra casella.",
+      "Legge Outlook, Hotmail, Gmail, Yahoo o iCloud e porta in alto ciò che chiede azione. Il rumore promozionale resta fuori copertina. Non è un’altra casella.",
     cta_app: "Entra in Donexto",
     cta_video: "Vedi la console",
     cta_app2: "Prova l’app",
     cta_app3: "Apri l’app",
     cta_mail: "support@donexto.com",
-    trust_1: "Google autentica sul proprio sito",
+    trust_1: "Outlook e Hotmail: attivi con Microsoft",
     trust_2: "Yahoo e iCloud: password per l’app, sola lettura",
-    trust_3: "Posta personale, non d’ufficio",
+    trust_3: "Gmail: OAuth su Google (app non ancora verificata)",
     video_title: "Il criterio, in 40 secondi",
     video_lede: "Si dice Do-NEX-to. Marca, criterio, cruscotto.",
     video_caption: "Immagini di marca. Il clip con voce si pubblica quando è pronto.",
@@ -354,7 +354,7 @@ const strings = {
     story_next: "Avanti",
     story_vo_toggle: "Copione (voce)",
     story_vo_full:
-      "Donexto. Do Next To… Attenzione sulla posta personale. Ciò che chiede azione sale; l’offerta aspetta. Google sul suo sito; Yahoo sul suo; Outlook su Microsoft. Confermi, autorizzi la lettura e vedi cosa fare. app.donexto.com",
+      "Donexto. Do Next To… Attenzione sulla posta personale. Ciò che chiede azione sale; l’offerta aspetta. Outlook su Microsoft; Gmail su Google; Yahoo e iCloud con password per l’app. Confermi, autorizzi la lettura e vedi cosa fare. app.donexto.com",
     scope_title: "Cosa guarda",
     scope_lede:
       "Posta personale. Quattro fronti, stesso peso. Gli ordini non battono la famiglia; la famiglia non batte un addebito.",
@@ -384,10 +384,10 @@ const strings = {
     how_title: "Come si collega",
     how_1_t: "Identità",
     how_1_p:
-      "Gmail ti identifica su Google (l’app non è ancora verificata). Yahoo e iCloud usano una password per l’app, non quella dell’account. Parte comunque l’e-mail di verifica Donexto.",
+      "Outlook e Hotmail ti identificano su Microsoft. Gmail su Google (l’app non è ancora verificata). Yahoo e iCloud usano una password per l’app su app.donexto.com, non su questo sito. Gmail, Yahoo e iCloud ricevono comunque l’e-mail di verifica Donexto.",
     how_2_t: "Lettura",
     how_2_p:
-      "Gmail si autorizza su Google, in sola lettura e revocabile. Yahoo e iCloud si leggono via IMAP, in sola lettura. Donexto non chiede la password dell’account.",
+      "Outlook/Hotmail si autorizzano su Microsoft (Mail.Read). Gmail su Google (gmail.readonly). Yahoo e iCloud via IMAP con password per l’app (mail-r Yahoo ancora in attesa). Sola lettura; Donexto non chiede la password dell’account.",
     how_3_t: "Console",
     how_3_p: "Vedi la priorità classificata. La casella originale non si cancella né si riscrive.",
     console_title: "Console",
@@ -443,15 +443,15 @@ const strings = {
     hero_title: "Donexto",
     hero_tagline: "Do Next To… o que segue e importa.",
     hero_lede:
-      "Lê Gmail, Yahoo ou Outlook e sobe o que pede ação. O ruído promocional fica fora da capa. Não é outra caixa.",
+      "Lê Outlook, Hotmail, Gmail, Yahoo ou iCloud e sobe o que pede ação. O ruído promocional fica fora da capa. Não é outra caixa.",
     cta_app: "Entrar no Donexto",
     cta_video: "Ver a consola",
     cta_app2: "Provar a app",
     cta_app3: "Abrir a app",
     cta_mail: "support@donexto.com",
-    trust_1: "O Google autentica no próprio site",
+    trust_1: "Outlook e Hotmail: ao vivo com a Microsoft",
     trust_2: "Yahoo e iCloud: palavra-passe de app, só leitura",
-    trust_3: "Correio pessoal, não de escritório",
+    trust_3: "Gmail: OAuth no Google (app ainda não verificada)",
     video_title: "O critério, em 40 segundos",
     video_lede: "Diz-se Do-NEX-to. Marca, critério e quadro.",
     video_caption: "Imagens de marca. O clipe com voz publica-se quando estiver pronto.",
@@ -461,7 +461,7 @@ const strings = {
     story_next: "Seguinte",
     story_vo_toggle: "Guião (voz off)",
     story_vo_full:
-      "Donexto. Do Next To… Atenção sobre o correio pessoal. O que pede ação sobe; a oferta espera. Google no seu site; Yahoo no seu; Outlook na Microsoft. Confirma, autoriza a leitura e vê o que segue. app.donexto.com",
+      "Donexto. Do Next To… Atenção sobre o correio pessoal. O que pede ação sobe; a oferta espera. Outlook na Microsoft; Gmail no Google; Yahoo e iCloud com palavra-passe de app. Confirma, autoriza a leitura e vê o que segue. app.donexto.com",
     scope_title: "O que olha",
     scope_lede:
       "Correio pessoal. Quatro frentes, o mesmo peso. Encomendas não ganham à família; família não ganha a um cargo.",
@@ -491,10 +491,10 @@ const strings = {
     how_title: "Como se liga",
     how_1_t: "Identidade",
     how_1_p:
-      "O Gmail identifica-o no Google (a app ainda não está verificada). Yahoo e iCloud usam uma palavra-passe de app, não a da conta. O e-mail de verificação do Donexto segue na mesma.",
+      "Outlook e Hotmail identificam-no na Microsoft. Gmail no Google (a app ainda não está verificada). Yahoo e iCloud usam uma palavra-passe de app em app.donexto.com, não neste site. Gmail, Yahoo e iCloud recebem na mesma o e-mail de verificação do Donexto.",
     how_2_t: "Leitura",
     how_2_p:
-      "O Gmail autoriza-se no Google, só leitura e revogável. Yahoo e iCloud leem-se por IMAP, só leitura. O Donexto não pede a palavra-passe da conta.",
+      "Outlook/Hotmail autorizam-se na Microsoft (Mail.Read). Gmail no Google (gmail.readonly). Yahoo e iCloud por IMAP com palavra-passe de app (mail-r do Yahoo ainda pendente). Só leitura; o Donexto não pede a palavra-passe da conta.",
     how_3_t: "Consola",
     how_3_p: "Vê a prioridade classificada. A caixa original não se apaga nem se reescreve.",
     console_title: "Consola",
@@ -564,11 +564,12 @@ const storyShots = {
       duration: 8,
       label: "03 · 0:14–0:22",
       chapter: "Acceso",
-      line: "Google autentica en su sitio. Yahoo, en el suyo.",
+      line: "Outlook en Microsoft. Gmail en Google. Yahoo e iCloud con clave de app.",
       html: `
         <div class="vis-steps">
-          <div class="vis-step"><span>1</span><strong>Google</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">en su sitio</p></div>
-          <div class="vis-step"><span>2</span><strong>Yahoo</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">en su sitio</p></div>
+          <div class="vis-step"><span>1</span><strong>Outlook</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">Microsoft</p></div>
+          <div class="vis-step"><span>2</span><strong>Gmail</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">Google</p></div>
+          <div class="vis-step"><span>3</span><strong>Yahoo / iCloud</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">clave de app</p></div>
         </div>`,
     },
     {
@@ -632,11 +633,12 @@ const storyShots = {
       duration: 8,
       label: "03 · 0:14–0:22",
       chapter: "Access",
-      line: "Google authenticates on its site. Yahoo, on Yahoo’s.",
+      line: "Outlook on Microsoft. Gmail on Google. Yahoo and iCloud with an app password.",
       html: `
         <div class="vis-steps">
-          <div class="vis-step"><span>1</span><strong>Google</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">on its site</p></div>
-          <div class="vis-step"><span>2</span><strong>Yahoo</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">on its site</p></div>
+          <div class="vis-step"><span>1</span><strong>Outlook</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">Microsoft</p></div>
+          <div class="vis-step"><span>2</span><strong>Gmail</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">Google</p></div>
+          <div class="vis-step"><span>3</span><strong>Yahoo / iCloud</strong><p style="margin:.35rem 0 0;color:var(--muted);font-size:.85rem">app password</p></div>
         </div>`,
     },
     {

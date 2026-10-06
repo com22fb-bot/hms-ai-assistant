@@ -22,6 +22,20 @@ describe("mailbox notices", () => {
     }
     assert.match(mailboxNoticeText("es", "yahooIntro"), /contraseña de app/);
     assert.match(mailboxNoticeText("es", "yahooIntro"), /autorización oficial/);
+    assert.match(mailboxNoticeText("es", "yahooOpenSecurity"), /Abrir Yahoo/);
+    assert.match(mailboxNoticeText("en", "yahooOpenSecurity"), /Open Yahoo/);
+    assert.match(mailboxNoticeText("es", "yahooOpenHint"), /Conexiones externas/);
+    assert.match(mailboxNoticeText("en", "yahooOpenHint"), /External connections/);
+    assert.match(mailboxNoticeText("es", "yahooStep2"), /Conexiones externas/);
+    for (const language of APP_LANGUAGES) {
+      assert.match(mailboxNoticeText(language, "yahooOpenSecurity"), /Yahoo/i);
+      assert.ok(mailboxNoticeText(language, "yahooOpenHint").length > 20);
+    }
+  });
+
+  it("exports the Yahoo Account Security URL", async () => {
+    const { YAHOO_SECURITY_URL } = await import("./i18n/mailboxNotices.ts");
+    assert.equal(YAHOO_SECURITY_URL, "https://login.yahoo.com/account/security");
   });
 
   it("shows the Gmail unverified-app steps before any redirect", () => {

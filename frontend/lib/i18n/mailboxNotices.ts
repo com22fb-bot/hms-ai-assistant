@@ -3,6 +3,8 @@ import type { AppLanguage } from "@/lib/i18n/languages";
 export type MailboxNoticeKey =
   | "yahooTitle"
   | "yahooIntro"
+  | "yahooOpenSecurity"
+  | "yahooOpenHint"
   | "yahooStep1"
   | "yahooStep2"
   | "yahooStep3"
@@ -41,9 +43,12 @@ const es: Record<MailboxNoticeKey, string> = {
   yahooTitle: "Conecta Yahoo",
   yahooIntro:
     "Conexión directa con Yahoo mediante contraseña de app, en espera de la autorización oficial de Yahoo. Solo lectura y revocable cuando quieras.",
-  yahooStep1: "Entra a la seguridad de tu cuenta Yahoo.",
-  yahooStep2: "Elige Generar contraseña de app. Hace falta la verificación en dos pasos.",
-  yahooStep3: "Copia la contraseña de app (16 letras o números).",
+  yahooOpenSecurity: "Abrir Yahoo para generar la clave",
+  yahooOpenHint:
+    "Tras iniciar sesión, elige Crear contraseña de app en Conexiones externas, nómbrala Donexto, copia las 16 letras o números y pégalas aquí.",
+  yahooStep1: "Abre la seguridad de tu cuenta Yahoo (botón de abajo o login.yahoo.com/account/security).",
+  yahooStep2: "En Conexiones externas, elige Crear contraseña de app. Hace falta la verificación en dos pasos.",
+  yahooStep3: "Nómbrala Donexto y copia la contraseña (16 letras o números).",
   yahooStep4: "Pégala aquí con tu correo Yahoo completo.",
   yahooEmail: "Correo Yahoo",
   yahooPassword: "Contraseña de app",
@@ -88,9 +93,12 @@ const en: Record<MailboxNoticeKey, string> = {
   yahooTitle: "Connect Yahoo",
   yahooIntro:
     "Direct Yahoo connection with an app password, while Yahoo’s official mail permission is still pending. Read-only, and you can revoke it anytime.",
-  yahooStep1: "Open Yahoo Account Security.",
-  yahooStep2: "Choose Generate app password. Two-step verification has to be on.",
-  yahooStep3: "Copy the app password (16 letters or numbers).",
+  yahooOpenSecurity: "Open Yahoo to create the app password",
+  yahooOpenHint:
+    "After you sign in, choose Create app password under External connections, name it Donexto, copy the 16 characters, and paste them here.",
+  yahooStep1: "Open Yahoo Account Security (button below or login.yahoo.com/account/security).",
+  yahooStep2: "Under External connections, choose Create app password. Two-step verification has to be on.",
+  yahooStep3: "Name it Donexto and copy the password (16 letters or numbers).",
   yahooStep4: "Paste it here with your full Yahoo email.",
   yahooEmail: "Yahoo email",
   yahooPassword: "App password",
@@ -135,9 +143,12 @@ const fr: Record<MailboxNoticeKey, string> = {
   yahooTitle: "Connecter Yahoo",
   yahooIntro:
     "Connexion directe à Yahoo avec un mot de passe d’application, en attendant l’autorisation officielle de Yahoo. Lecture seule, révocable quand vous voulez.",
-  yahooStep1: "Ouvrez la sécurité du compte Yahoo.",
-  yahooStep2: "Choisissez Générer un mot de passe d’application. La validation en deux étapes doit être active.",
-  yahooStep3: "Copiez le mot de passe d’application (16 lettres ou chiffres).",
+  yahooOpenSecurity: "Ouvrir Yahoo pour créer le mot de passe",
+  yahooOpenHint:
+    "Après connexion, choisissez Créer un mot de passe d’application sous Connexions externes, nommez-le Donexto, copiez les 16 caractères et collez-les ici.",
+  yahooStep1: "Ouvrez la sécurité du compte Yahoo (bouton ci-dessous ou login.yahoo.com/account/security).",
+  yahooStep2: "Sous Connexions externes, choisissez Créer un mot de passe d’application. La validation en deux étapes doit être active.",
+  yahooStep3: "Nommez-le Donexto et copiez le mot de passe (16 lettres ou chiffres).",
   yahooStep4: "Collez-le ici avec l’adresse Yahoo complète.",
   yahooEmail: "Adresse Yahoo",
   yahooPassword: "Mot de passe d’application",
@@ -182,9 +193,12 @@ const it: Record<MailboxNoticeKey, string> = {
   yahooTitle: "Collega Yahoo",
   yahooIntro:
     "Connessione diretta a Yahoo con una password per l’app, in attesa dell’autorizzazione ufficiale di Yahoo. Sola lettura, revocabile quando vuoi.",
-  yahooStep1: "Apri la sicurezza dell’account Yahoo.",
-  yahooStep2: "Scegli Genera password per l’app. Serve la verifica in due passaggi.",
-  yahooStep3: "Copia la password per l’app (16 lettere o numeri).",
+  yahooOpenSecurity: "Apri Yahoo per creare la password",
+  yahooOpenHint:
+    "Dopo l’accesso, scegli Crea password per l’app in Connessioni esterne, chiamala Donexto, copia i 16 caratteri e incollali qui.",
+  yahooStep1: "Apri la sicurezza dell’account Yahoo (pulsante sotto o login.yahoo.com/account/security).",
+  yahooStep2: "In Connessioni esterne, scegli Crea password per l’app. Serve la verifica in due passaggi.",
+  yahooStep3: "Chiamala Donexto e copia la password (16 lettere o numeri).",
   yahooStep4: "Incollala qui con l’indirizzo Yahoo completo.",
   yahooEmail: "Email Yahoo",
   yahooPassword: "Password per l’app",
@@ -229,9 +243,12 @@ const pt: Record<MailboxNoticeKey, string> = {
   yahooTitle: "Conectar o Yahoo",
   yahooIntro:
     "Conexão direta com o Yahoo por senha de app, enquanto a autorização oficial do Yahoo não chega. Somente leitura e revogável quando quiser.",
-  yahooStep1: "Abra a segurança da conta Yahoo.",
-  yahooStep2: "Escolha Gerar senha de app. A verificação em duas etapas precisa estar ativa.",
-  yahooStep3: "Copie a senha de app (16 letras ou números).",
+  yahooOpenSecurity: "Abrir o Yahoo para gerar a senha",
+  yahooOpenHint:
+    "Depois de entrar, escolha Criar senha de app em Conexões externas, nomeie Donexto, copie os 16 caracteres e cole aqui.",
+  yahooStep1: "Abra a segurança da conta Yahoo (botão abaixo ou login.yahoo.com/account/security).",
+  yahooStep2: "Em Conexões externas, escolha Criar senha de app. A verificação em duas etapas precisa estar ativa.",
+  yahooStep3: "Nomeie Donexto e copie a senha (16 letras ou números).",
   yahooStep4: "Cole aqui com o e-mail Yahoo completo.",
   yahooEmail: "E-mail Yahoo",
   yahooPassword: "Senha de app",
@@ -296,6 +313,8 @@ const FAILURE_KEYS = new Set<MailboxNoticeKey>([
   "rate_limited",
   "yahoo_credentials_missing",
 ]);
+
+export const YAHOO_SECURITY_URL = "https://login.yahoo.com/account/security";
 
 export function mailboxNoticeText(
   language: AppLanguage,

@@ -262,3 +262,15 @@
 .dx-login .dx-icloud-reveal {
   color: #8ce5d7;
 }
+
+a.dx-mail-open {
+  text-decoration: none;
+  box-sizing: border-box;
+  margin: 0.35rem 0 0.15rem;
+}
+
+a.dx-connect-btn.dx-mail-open:hover {
+  background: #f3f8f9;
+  border-color: #0c8a80;
+  color: #0a6f67;
+}

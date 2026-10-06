@@ -4,7 +4,11 @@ import { LoaderCircle } from "lucide-react";
 import { FormEvent, useState } from "react";
 
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
-import { mailboxNoticeText, yahooSteps } from "@/lib/i18n/mailboxNotices";
+import {
+  mailboxNoticeText,
+  YAHOO_SECURITY_URL,
+  yahooSteps,
+} from "@/lib/i18n/mailboxNotices";
 
 type YahooConnectFormProps = {
   email: string;
@@ -56,6 +60,19 @@ export function YahooConnectForm({
       }}
     >
       <p className={login ? "dx-login__note" : "dx-connect-hint"}>{text("yahooIntro")}</p>
+      <a
+        className={
+          login
+            ? "dx-login__secondary dx-mail-open"
+            : "dx-connect-btn dx-connect-btn--secondary dx-mail-open"
+        }
+        href={YAHOO_SECURITY_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {text("yahooOpenSecurity")}
+      </a>
+      <p className={login ? "dx-login__note" : "dx-connect-hint"}>{text("yahooOpenHint")}</p>
       <ol className="dx-mail-steps">
         {steps.map((step) => (
           <li key={step}>{step}</li>

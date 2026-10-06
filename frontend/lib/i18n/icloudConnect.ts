@@ -3,6 +3,8 @@ import type { AppLanguage } from "@/lib/i18n/languages";
 export type IcloudCopyKey =
   | "title"
   | "intro"
+  | "openApple"
+  | "openHint"
   | "step1"
   | "step2"
   | "step3"
@@ -29,6 +31,9 @@ export type IcloudCopyKey =
 const es: Record<IcloudCopyKey, string> = {
   title: "Conecta iCloud",
   intro: "Donexto lee solo este correo, en solo lectura.",
+  openApple: "Abrir Apple para generar la clave",
+  openHint:
+    "Tras iniciar sesión: Inicio de sesión y seguridad → Contraseñas específicas de app → crea una llamada Donexto, cópiala y pégala aquí.",
   step1: "En la cuenta Apple, activa la verificación en dos pasos si aún no está.",
   step2:
     "Entra a account.apple.com → Inicio de sesión y seguridad → Contraseñas específicas de app.",
@@ -65,6 +70,9 @@ const es: Record<IcloudCopyKey, string> = {
 const en: Record<IcloudCopyKey, string> = {
   title: "Connect iCloud",
   intro: "Donexto reads only this mailbox, and only to look.",
+  openApple: "Open Apple to create the app password",
+  openHint:
+    "After you sign in: Sign-In and Security → App-Specific Passwords → create one named Donexto, copy it, and paste it here.",
   step1: "On your Apple Account, turn on two-factor authentication if it is off.",
   step2:
     "Open account.apple.com → Sign-In and Security → App-Specific Passwords.",
@@ -100,6 +108,9 @@ const en: Record<IcloudCopyKey, string> = {
 const fr: Record<IcloudCopyKey, string> = {
   title: "Connecter iCloud",
   intro: "Donexto lit seulement cette boîte, en lecture seule.",
+  openApple: "Ouvrir Apple pour créer le mot de passe",
+  openHint:
+    "Après connexion : Connexion et sécurité → Mots de passe pour application → créez-en un nommé Donexto, copiez-le et collez-le ici.",
   step1:
     "Sur le compte Apple, activez la validation en deux étapes si elle est coupée.",
   step2:
@@ -138,6 +149,9 @@ const fr: Record<IcloudCopyKey, string> = {
 const it: Record<IcloudCopyKey, string> = {
   title: "Collega iCloud",
   intro: "Donexto legge solo questa casella, in sola lettura.",
+  openApple: "Apri Apple per creare la password",
+  openHint:
+    "Dopo l’accesso: Accesso e sicurezza → Password specifiche per le app → creane una chiamata Donexto, copiala e incollala qui.",
   step1:
     "Nell’account Apple, attiva l’autenticazione a due fattori se non è già attiva.",
   step2:
@@ -176,6 +190,9 @@ const it: Record<IcloudCopyKey, string> = {
 const pt: Record<IcloudCopyKey, string> = {
   title: "Conectar iCloud",
   intro: "O Donexto lê só esta caixa, em somente leitura.",
+  openApple: "Abrir a Apple para gerar a senha",
+  openHint:
+    "Depois de entrar: Início de sessão e segurança → Senhas específicas de app → crie uma chamada Donexto, copie e cole aqui.",
   step1: "Na conta Apple, ative a verificação em duas etapas se ainda não estiver.",
   step2:
     "Abra account.apple.com → Início de sessão e segurança → Senhas específicas de app.",
@@ -217,6 +234,8 @@ const COPY: Record<AppLanguage, Record<IcloudCopyKey, string>> = {
   it,
   pt,
 };
+
+export const APPLE_ACCOUNT_URL = "https://account.apple.com";
 
 export function icloudText(language: AppLanguage, key: IcloudCopyKey): string {
   return COPY[language][key] || COPY.es[key];
