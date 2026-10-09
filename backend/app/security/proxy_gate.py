@@ -71,6 +71,9 @@ class ProxyGateMiddleware(BaseHTTPMiddleware):
             and not request_via_proxy(request)
             and not direct_access_allowed(request.method, request.url.path)
         ):
+            from app.services.runtime_metrics import bump
+
+            bump("direct_access_403")
             return JSONResponse(
                 status_code=403,
                 content={

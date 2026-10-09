@@ -4,6 +4,8 @@ import {
   Activity,
   ArrowLeft,
   CreditCard,
+  Gauge,
+  Wallet,
   Inbox,
   Loader2,
   MessageSquareWarning,
@@ -23,6 +25,8 @@ import { HmsApiError, hmsJson } from "@/lib/hmsApi";
 import "@/app/admin/admin.css";
 import { AdminLogin } from "@/app/admin/AdminLogin";
 import { ContactInbox } from "@/app/admin/ContactInbox";
+import { ExpensesPanel } from "@/app/admin/ExpensesPanel";
+import { PerformancePanel } from "@/app/admin/PerformancePanel";
 
 type AdminTab =
   | "overview"
@@ -31,7 +35,9 @@ type AdminTab =
   | "messages"
   | "feedback"
   | "promotions"
-  | "system";
+  | "system"
+  | "performance"
+  | "expenses";
 
 type OverviewResponse = {
   status: string;
@@ -141,9 +147,11 @@ const TABS: Array<{ id: AdminTab; label: string; icon: typeof Activity }> = [
   { id: "overview", label: "Resumen", icon: Activity },
   { id: "users", label: "Usuarios", icon: Users },
   { id: "billing", label: "Cobros", icon: CreditCard },
+  { id: "expenses", label: "Mis gastos", icon: Wallet },
   { id: "messages", label: "Mensajes", icon: Inbox },
   { id: "feedback", label: "Quejas e ideas", icon: MessageSquareWarning },
   { id: "promotions", label: "Promociones", icon: Tag },
+  { id: "performance", label: "Rendimiento", icon: Gauge },
   { id: "system", label: "Sistema", icon: Server },
 ];
 
@@ -295,7 +303,7 @@ function AdminPage() {
   const loadTab = useCallback(
     async (target: AdminTab) => {
       if (!session) return;
-      if (target === "messages") {
+      if (target === "messages" || target === "performance" || target === "expenses") {
         setError(null);
         setForbidden(false);
         setLoading(false);
@@ -1010,6 +1018,9 @@ function AdminPage() {
             </div>
           </section>
         )}
+
+        {!forbidden && tab === "performance" && <PerformancePanel />}
+        {!forbidden && tab === "expenses" && <ExpensesPanel />}
 
         {!forbidden && tab === "system" && health && (
           <section className="dx-admin__section">

@@ -29,6 +29,7 @@ from app.api.login_resolve import router as login_resolve_router
 from app.api.admin_contact import router as admin_contact_router
 from app.api.admin_login import router as admin_login_router
 from app.api.admin_ops import router as admin_ops_router
+from app.api.admin_perf import router as admin_perf_router
 from app.api.public_contact import router as public_contact_router
 from app.api.public_assist import router as public_assist_router
 from app.api.billing import router as billing_router
@@ -36,6 +37,7 @@ from app.core.config import settings
 from app.middleware.authentication_context import AuthenticationContextMiddleware
 from app.middleware.incident_logging import IncidentLoggingMiddleware
 from app.security.proxy_gate import ProxyGateMiddleware
+from app.middleware.request_metrics import RequestMetricsMiddleware
 from app.services.gmail_sync_job_service import resume_incomplete_jobs
 from app.services.automatic_mail_scheduler import start_automatic_mail_scheduler
 
@@ -73,6 +75,8 @@ app.add_middleware(AuthenticationContextMiddleware)
 app.add_middleware(IncidentLoggingMiddleware)
 # Último en agregarse = primero en correr: corta el acceso directo a Railway.
 app.add_middleware(ProxyGateMiddleware)
+# Afuera de todo: mide también los 403 del acceso directo.
+app.add_middleware(RequestMetricsMiddleware)
 
 
 @app.on_event("startup")
@@ -208,6 +212,7 @@ app.include_router(login_resolve_router)
 app.include_router(billing_router)
 app.include_router(admin_login_router)
 app.include_router(admin_ops_router)
+app.include_router(admin_perf_router)
 app.include_router(admin_contact_router)
 app.include_router(gmail_router)
 app.include_router(guided_import_router)

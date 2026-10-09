@@ -21,7 +21,17 @@ def allow_request(
         recent = [stamp for stamp in _hits[key] if stamp > now - window_seconds]
         if len(recent) >= max_requests:
             _hits[key] = recent
+            _count_block()
             return False
         recent.append(now)
         _hits[key] = recent
         return True
+
+
+def _count_block() -> None:
+    try:
+        from app.services.runtime_metrics import bump
+
+        bump("rate_limit_blocks")
+    except Exception:  # pragma: no cover - métricas nunca rompen el límite
+        pass
