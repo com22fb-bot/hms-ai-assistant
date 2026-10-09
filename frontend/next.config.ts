@@ -4,6 +4,7 @@ import type { NextConfig } from "next";
 
 import { appHostAdminRedirects } from "./lib/adminCanonical";
 import { DOCUMENT_CACHE_CONTROL } from "./lib/httpCacheControl";
+import { SECURITY_HEADERS } from "./lib/securityHeaders";
 
 // Root must be this folder (frontend/), not the monorepo root.
 // A package-lock.json in the parent makes Next 16 mis-detect the root
@@ -29,6 +30,8 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      // Seguridad en todo (documentos, API del Worker, imágenes).
+      { source: "/:path*", headers: SECURITY_HEADERS },
       { source: "/", headers: documentCacheHeaders },
       {
         source: "/:path((?!_next/static|_next/image).*)",
