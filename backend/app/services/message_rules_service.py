@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 import unicodedata
 from datetime import datetime, timezone
 from email.utils import getaddresses
@@ -11,6 +13,8 @@ from app.security.identity import require_google_account
 from app.services.case_engine import normalize_subject, process_message
 from app.services.oauth_storage import OAuthStorage
 from app.services.push_service import create_notification
+
+logger = logging.getLogger(__name__)
 
 
 RULE_TYPES = {
@@ -178,7 +182,10 @@ def create_classification_rule(
     explicit_value: str | None,
     apply_existing: bool,
     notify_push: bool,
+    schedule: Any = None,
 ) -> dict[str, Any]:
+    """Crea la regla. Con ``schedule`` (p. ej. BackgroundTasks.add_task), el
+    reclasificado de correos existentes corre después de responder."""
     context, account = require_google_account()
     if match_type not in RULE_TYPES:
         raise HTTPException(status_code=422, detail="Tipo de regla no válido.")
@@ -221,8 +228,19 @@ def create_classification_rule(
 
     applied = {"matched": 0, "updated": 0, "cases_created": 0, "cases_removed": 0}
     if apply_existing:
+        if schedule is not None:
+            schedule(_apply_rule_in_background, created)
+            return {"rule": created, "applied": applied, "applying_in_background": True}
         applied = apply_rule_to_existing(rule=created)
     return {"rule": created, "applied": applied}
+
+
+def _apply_rule_in_background(rule: dict[str, Any]) -> None:
+    try:
+        totals = apply_rule_to_existing(rule=rule)
+        logger.info("Regla %s aplicada en segundo plano: %s", rule.get("id"), totals)
+    except Exception:
+        logger.exception("Falló aplicar la regla %s en segundo plano", rule.get("id"))
 
 
 def deactivate_classification_rule(rule_id: str) -> dict[str, Any] | None:

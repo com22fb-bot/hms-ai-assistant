@@ -8,6 +8,7 @@ from uuid import UUID
 from fastapi import HTTPException, Request
 
 from app.database.supabase import get_supabase_client
+from app.security import auth_cache
 from app.security.donexto_verified import (
     trusted_donexto_verified,
     user_has_oauth_identity,
@@ -104,10 +105,50 @@ def _extract_bearer_token(request: Request) -> str:
     return token.strip()
 
 
+_SESSION_EXPIRED_DETAIL = {
+    "status": "unauthorized",
+    "message": (
+        "La sesión Donexto expiró o no pudo validarse. "
+        "Vuelve a iniciar sesión."
+    ),
+}
+
+
 def authenticate_request(request: Request) -> AuthenticatedUser:
-    """Validate the bearer token against Supabase Auth and return trusted data."""
+    """Validate the bearer token and return trusted data.
+
+    1. Firma y vencimiento se revisan localmente (JWKS de Supabase).
+    2. La identidad de Supabase Auth se reutiliza hasta 60 s por token.
+    """
 
     access_token = _extract_bearer_token(request)
+    try:
+        claims = auth_cache.local_claims(access_token)
+    except auth_cache.LocalTokenInvalid as error:
+        raise HTTPException(status_code=401, detail=_SESSION_EXPIRED_DETAIL) from error
+
+    key = auth_cache.token_key(access_token)
+    cached = auth_cache.user_cache.get(key)
+    if isinstance(cached, AuthenticatedUser):
+        return cached
+
+    user = _authenticate_remote(access_token)
+    if user.donexto_verified:
+        if claims is None:
+            try:
+                import jwt as _jwt
+
+                claims = _jwt.decode(access_token, options={"verify_signature": False})
+            except Exception:
+                claims = None
+        if claims is None or str(claims.get("sub") or "") == user.id:
+            auth_cache.user_cache.set(key, user, auth_cache.ttl_for_claims(claims))
+    return user
+
+
+def _authenticate_remote(access_token: str) -> AuthenticatedUser:
+    """Validate the bearer token against Supabase Auth."""
+
     client = get_supabase_client()
 
     try:
@@ -340,6 +381,53 @@ def resolve_workspace_context(
 ) -> WorkspaceContext:
     """Resolve the tenant boundary for the authenticated HMS user."""
 
+    requested_workspace = request.headers.get("x-hms-workspace-id", "").strip()
+    cache_key = (user.id, requested_workspace)
+    cached = auth_cache.context_cache.get(cache_key)
+    if cached is not None:
+        workspace_id, workspace_name, membership_role = cached
+    else:
+        workspace_id, workspace_name, membership_role = _resolve_workspace(
+            request, user
+        )
+        auth_cache.context_cache.set(
+            cache_key,
+            (workspace_id, workspace_name, membership_role),
+            auth_cache.TTL_SECONDS,
+        )
+
+    # El buzón activo se consulta siempre (cambia al conectar/desconectar).
+    google_account = _active_mailbox(workspace_id)
+
+    return WorkspaceContext(
+        user=user,
+        workspace_id=workspace_id,
+        workspace_name=workspace_name,
+        membership_role=membership_role,
+        google_account=google_account,
+    )
+
+
+def _active_mailbox(workspace_id: str) -> dict[str, Any] | None:
+    # Buzón activo del workspace. El nombre google_account es histórico:
+    # puede ser Gmail, Yahoo u Outlook/Microsoft.
+    client = get_supabase_client()
+    return _first_row(
+        client.table("communication_accounts")
+        .select("*")
+        .eq("workspace_id", workspace_id)
+        .in_("provider", MAILBOX_PROVIDERS)
+        .eq("status", "active")
+        .order("updated_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+
+
+def _resolve_workspace(
+    request: Request,
+    user: AuthenticatedUser,
+) -> tuple[str, str, str]:
     _ensure_profile(user)
     _ensure_personal_workspace(user)
     memberships = _active_memberships(user.id)
@@ -415,25 +503,10 @@ def resolve_workspace_context(
             },
         )
 
-    # Buzón activo del workspace. El nombre google_account es histórico:
-    # puede ser Gmail, Yahoo u Outlook/Microsoft.
-    google_account = _first_row(
-        client.table("communication_accounts")
-        .select("*")
-        .eq("workspace_id", workspace_id)
-        .in_("provider", MAILBOX_PROVIDERS)
-        .eq("status", "active")
-        .order("updated_at", desc=True)
-        .limit(1)
-        .execute()
-    )
-
-    return WorkspaceContext(
-        user=user,
-        workspace_id=workspace_id,
-        workspace_name=str(workspace.get("name") or "Espacio Donexto"),
-        membership_role=str(membership.get("role") or "viewer"),
-        google_account=google_account,
+    return (
+        workspace_id,
+        str(workspace.get("name") or "Espacio Donexto"),
+        str(membership.get("role") or "viewer"),
     )
 
 

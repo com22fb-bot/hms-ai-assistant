@@ -439,7 +439,7 @@ export function MailInbox({
     setSaving(true);
     setError(null);
     try {
-      await hmsJson("/api/hms/messages/rules", {
+      const saved = await hmsJson<{ applying_in_background?: boolean }>("/api/hms/messages/rules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -459,6 +459,15 @@ export function MailInbox({
       await loadThreads();
       if (detail) await openConversation(detail.latest_message_id);
       window.dispatchEvent(new Event("hms:data-changed"));
+      if (saved?.applying_in_background) {
+        // El servidor reclasifica en segundo plano: refrescar al terminar.
+        for (const delay of [4000, 12000]) {
+          window.setTimeout(() => {
+            void loadThreads();
+            window.dispatchEvent(new Event("hms:data-changed"));
+          }, delay);
+        }
+      }
     } catch (reason) {
       setError(readableError(reason));
     } finally {

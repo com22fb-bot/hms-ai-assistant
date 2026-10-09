@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, BackgroundTasks, Query
 from pydantic import BaseModel, Field
 
 from app.services.message_repository import (
@@ -74,7 +74,10 @@ def classification_rules() -> dict[str, Any]:
 
 
 @router.post("/rules")
-def create_rule(payload: ClassificationRuleRequest) -> dict[str, Any]:
+def create_rule(
+    payload: ClassificationRuleRequest,
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
     return {
         "status": "ok",
         **create_classification_rule(
@@ -85,6 +88,7 @@ def create_rule(payload: ClassificationRuleRequest) -> dict[str, Any]:
             explicit_value=payload.match_value,
             apply_existing=payload.apply_existing,
             notify_push=payload.notify_push,
+            schedule=background_tasks.add_task,
         ),
     }
 
