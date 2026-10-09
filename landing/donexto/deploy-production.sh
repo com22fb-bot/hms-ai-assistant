@@ -8,7 +8,7 @@ trap 'rm -rf "$STAGE"' EXIT
 cp -a \
   "$ROOT/index.html" "$ROOT/app.js" "$ROOT/styles.css" "$ROOT/favicon.svg" \
   "$ROOT/cookies.html" "$ROOT/privacidad.html" "$ROOT/terminos.html" \
-  "$ROOT/brand-escritorio.jpg" "$ROOT/brand-logo-3d.jpg" "$ROOT/brand-youtube.jpg" \
+  "$ROOT/brand-escritorio.jpg" "$ROOT/brand-logo-3d.jpg" "$ROOT/brand-youtube.jpg" "$ROOT/brand-escritorio.webp" "$ROOT/brand-logo-3d.webp" "$ROOT/brand-youtube.webp" \
   "$ROOT/brand" "$ROOT/_headers" \
   "$STAGE/"
 npx wrangler pages deploy "$STAGE" --project-name=donexto --commit-dirty=true --branch main
