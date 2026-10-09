@@ -14,6 +14,13 @@ router = APIRouter(
 )
 
 
+def _require_admin_context() -> None:
+    # Import tardío: admin_ops importa servicios que dependen de este módulo.
+    from app.api.admin_ops import _require_admin
+
+    _require_admin()
+
+
 def _env_is_set(name: str) -> bool:
     return bool(os.getenv(name, "").strip())
 
@@ -36,7 +43,8 @@ def health() -> dict[str, Any]:
 
 @router.get("/env-status")
 def env_status() -> dict[str, Any]:
-    """Indica si hay variables requeridas (solo booleanos; nunca secretos)."""
+    """Indica si hay variables requeridas (solo booleanos; nunca secretos). Solo admin."""
+    _require_admin_context()
     redirect = os.getenv("GOOGLE_REDIRECT_URI", "").strip().lower()
     origins = os.getenv("FRONTEND_ORIGINS", "").strip().lower()
 
@@ -107,7 +115,8 @@ def env_status() -> dict[str, Any]:
 
 @router.get("/database-health")
 def database_health() -> dict[str, Any]:
-    """Comprueba la conexión con Supabase y la tabla mail_accounts."""
+    """Comprueba la conexión con Supabase y la tabla mail_accounts. Solo admin."""
+    _require_admin_context()
     try:
         supabase = get_supabase_client()
 

@@ -18,7 +18,7 @@ export function configuredPublicApiBase(): string {
       host.includes("githubpreview.dev") ||
       host.includes("vercel.app");
 
-    if (isLocalhost || host.endsWith(".donexto.com") || host === "app.donexto.com") {
+    if (isLocalhost) {
       return RAILWAY_API_BASE;
     }
   }

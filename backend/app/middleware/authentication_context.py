@@ -31,6 +31,9 @@ _PROTECTED_PREFIXES = (
     "/billing",
     "/preferences",
     "/admin",
+    # Diagnóstico: solo con sesión de admin.
+    "/env-status",
+    "/database-health",
     "/auth/google/start",
     "/auth/google/status",
     "/auth/google/disconnect",

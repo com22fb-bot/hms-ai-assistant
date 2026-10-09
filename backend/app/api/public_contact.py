@@ -9,7 +9,9 @@ import uuid
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.security.proxy_gate import client_ip as _proxy_client_ip
 from app.security.rate_limit import allow_request
+from app.security.turnstile import turnstile_passed
 from app.services.assist import send_contact_autoreply
 from app.services.contact_inbox import persist_public_contact
 from app.services.support_notify import (
@@ -37,6 +39,8 @@ class PublicContactRequest(BaseModel):
     lang: str = Field(default="", max_length=12)
     # Honeypot. Humans leave it empty; bots often fill every input.
     website: str = Field(default="", max_length=500)
+    # Cloudflare Turnstile (widget del formulario de donexto.com).
+    turnstile_token: str = Field(default="", max_length=2048)
 
     @field_validator("email")
     @classmethod
@@ -53,22 +57,8 @@ class PublicContactRequest(BaseModel):
 
 
 def client_ip(request: Request) -> str:
-    """Visitor address for the rate limit.
-
-    Uvicorn on Railway is started without ``--proxy-headers``, so
-    ``request.client.host`` is the proxy. Railway puts the visitor in
-    ``X-Forwarded-For``.
-    """
-    forwarded = request.headers.get("x-forwarded-for", "")
-    if forwarded:
-        first = forwarded.split(",")[0].strip()
-        if first:
-            return first[:80]
-    real_ip = request.headers.get("x-real-ip", "").strip()
-    if real_ip:
-        return real_ip[:80]
-    host = getattr(getattr(request, "client", None), "host", None) or "unknown"
-    return str(host)[:80]
+    """Compatibilidad: la lógica vive en app.security.proxy_gate."""
+    return _proxy_client_ip(request)
 
 
 @router.post("/contact")
@@ -97,6 +87,15 @@ def submit_public_contact(
     if payload.website:
         logger.info("Contact honeypot tripped from %s", ip)
         return {"status": "ok"}
+
+    if not turnstile_passed(payload.turnstile_token, ip):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "status": "captcha_failed",
+                "message": "Confirma que no eres un robot y vuelve a enviar.",
+            },
+        )
 
     message_id = str(uuid.uuid4())
     try:

@@ -1,4 +1,4 @@
-/** Peticiones públicas del login (sin sesión). Si el Worker falla, prueba Railway. */
+/** Peticiones públicas del login (sin sesión), siempre por el Worker. */
 
 export const RAILWAY_API_BASE =
   "https://hms-ai-assistant-production.up.railway.app";
@@ -19,11 +19,8 @@ export function isBrowserNetworkError(error: unknown): boolean {
 }
 
 function publicApiBases(): string[] {
-  const primary = configuredPublicApiBase();
-  if (primary === RAILWAY_API_BASE) {
-    return [primary];
-  }
-  return [primary, RAILWAY_API_BASE];
+  // Solo el Worker: el acceso directo a Railway está cerrado (HMS_PROXY_SECRET).
+  return [configuredPublicApiBase()];
 }
 
 export async function postPublicHms(
