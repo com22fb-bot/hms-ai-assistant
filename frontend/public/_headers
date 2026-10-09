@@ -7,5 +7,11 @@
 # and `next.config.ts` headers.
 #
 # Last matching rule wins. Keep the hashed-chunk rule after any document rules.
+/*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
 /_next/static/*
   Cache-Control: public,max-age=31536000,immutable
