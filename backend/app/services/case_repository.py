@@ -346,6 +346,15 @@ def _count_cases(
     return _response_count(query.limit(1).execute())
 
 
+def _run_parallel(jobs: dict[str, Any]) -> dict[str, Any]:
+    """Ejecuta funciones independientes en paralelo; propaga el primer error."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(max_workers=min(len(jobs), 9)) as pool:
+        futures = {name: pool.submit(job) for name, job in jobs.items()}
+        return {name: future.result() for name, future in futures.items()}
+
+
 def dashboard() -> dict[str, Any]:
     storage, account = _context()
     client = storage.client
@@ -360,43 +369,44 @@ def dashboard() -> dict[str, Any]:
     )
     tomorrow_start = today_start + timedelta(days=1)
 
-    metrics = {
-        "total_open": _count_cases(
-            client=client,
-            account_id=account_id,
-            statuses=_OPEN_STATUSES,
+    # Las 9 consultas son independientes: se lanzan juntas en vez de una tras
+    # otra (el tiempo total es el de la más lenta, no la suma).
+    open_statuses = _OPEN_STATUSES
+    jobs: dict[str, Any] = {
+        "total_open": lambda: _count_cases(
+            client=client, account_id=account_id, statuses=open_statuses
         ),
-        "critical": _count_cases(
+        "critical": lambda: _count_cases(
             client=client,
             account_id=account_id,
-            statuses=_OPEN_STATUSES,
+            statuses=open_statuses,
             priority="critical",
         ),
-        "waiting_internal": _count_cases(
+        "waiting_internal": lambda: _count_cases(
             client=client,
             account_id=account_id,
-            statuses=_OPEN_STATUSES,
+            statuses=open_statuses,
             waiting_on="internal",
         ),
-        "waiting_external": _count_cases(
+        "waiting_external": lambda: _count_cases(
             client=client,
             account_id=account_id,
-            statuses=_OPEN_STATUSES,
+            statuses=open_statuses,
             waiting_on="external",
         ),
-        "overdue": _count_cases(
+        "overdue": lambda: _count_cases(
             client=client,
             account_id=account_id,
-            statuses=_OPEN_STATUSES,
+            statuses=open_statuses,
             due_before=now.isoformat(),
         ),
-        "resolved_today": _count_cases(
+        "resolved_today": lambda: _count_cases(
             client=client,
             account_id=account_id,
             resolved_from=today_start.isoformat(),
             resolved_before=tomorrow_start.isoformat(),
         ),
-        "unread_notifications": _response_count(
+        "unread_notifications": lambda: _response_count(
             (
                 client.table("case_notifications")
                 .select("id", count="exact")
@@ -406,31 +416,44 @@ def dashboard() -> dict[str, Any]:
                 .execute()
             )
         ),
+        "_attention": lambda: _rows(
+            (
+                client.table("intelligent_cases")
+                .select("*")
+                .eq("account_id", account_id)
+                .in_("status", open_statuses)
+                .order("risk_score", desc=True)
+                .order("last_activity_at", desc=True)
+                .limit(200)
+                .execute()
+            )
+        ),
+        "_events": lambda: _rows(
+            (
+                client.table("case_events")
+                .select("*")
+                .eq("workspace_id", workspace_id)
+                .order("created_at", desc=True)
+                .limit(200)
+                .execute()
+            )
+        ),
     }
-
-    attention = _rows(
-        (
-            client.table("intelligent_cases")
-            .select("*")
-            .eq("account_id", account_id)
-            .in_("status", _OPEN_STATUSES)
-            .order("risk_score", desc=True)
-            .order("last_activity_at", desc=True)
-            .limit(200)
-            .execute()
+    results = _run_parallel(jobs)
+    attention = results.pop("_attention")
+    events = results.pop("_events")
+    metrics = {
+        key: results[key]
+        for key in (
+            "total_open",
+            "critical",
+            "waiting_internal",
+            "waiting_external",
+            "overdue",
+            "resolved_today",
+            "unread_notifications",
         )
-    )
-
-    events = _rows(
-        (
-            client.table("case_events")
-            .select("*")
-            .eq("workspace_id", workspace_id)
-            .order("created_at", desc=True)
-            .limit(200)
-            .execute()
-        )
-    )
+    }
 
     return {
         "status": "ok",
