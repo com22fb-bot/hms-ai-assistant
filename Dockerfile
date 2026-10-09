@@ -1,5 +1,5 @@
 # Monorepo: build only backend for Railway (use EMPTY Root Directory).
-FROM python:3.12-slim-bookworm
+FROM public.ecr.aws/docker/library/python:3.12-slim-bookworm
 
 WORKDIR /app
 
