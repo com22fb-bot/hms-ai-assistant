@@ -16,6 +16,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { hmsJson } from "@/lib/hmsApi";
+import { pollWithBackoff } from "@/lib/pollWithBackoff";
 
 
 type TriageCategory = {
@@ -144,11 +145,7 @@ export function MailCategoriesPanel({
     const timer = window.setTimeout(() => {
       void loadSummary();
     }, 0);
-    const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        void loadSummary();
-      }
-    }, 30000);
+    const stopPolling = pollWithBackoff(() => loadSummary());
 
     const refresh = () => {
       void loadSummary();
@@ -158,7 +155,7 @@ export function MailCategoriesPanel({
 
     return () => {
       window.clearTimeout(timer);
-      window.clearInterval(interval);
+      stopPolling();
       window.removeEventListener("hms:classification-complete", refresh);
       window.removeEventListener("hms:data-changed", refresh);
     };

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { buildApiUrl } from "@/lib/apiBase";
 import { hmsFetch } from "@/lib/hmsApi";
+import { pollWithBackoff } from "@/lib/pollWithBackoff";
 
 import type {
   CaseDashboardResponse,
@@ -367,15 +368,11 @@ export function useCases(enabled = true) {
     const refresh = () => {
       void loadDashboard();
     };
-    const interval = window.setInterval(() => {
-      if (document.visibilityState === "visible") {
-        void loadDashboard();
-      }
-    }, 30000);
+    const stopPolling = pollWithBackoff(() => loadDashboard());
     window.addEventListener("hms:data-changed", refresh);
     window.addEventListener("hms:classification-complete", refresh);
     return () => {
-      window.clearInterval(interval);
+      stopPolling();
       window.removeEventListener("hms:data-changed", refresh);
       window.removeEventListener("hms:classification-complete", refresh);
     };

@@ -549,7 +549,7 @@ const storyShots = {
       label: "01 · 0:00–0:06",
       chapter: "Marca",
       line: "Donexto. Do Next To… Atención sobre tu correo personal.",
-      html: `<img class="vis-photo" src="./brand-youtube.jpg" alt="" />`,
+      html: `<img class="vis-photo" src="./brand-youtube.webp" alt="" />`,
     },
     {
       id: "para-quien",
@@ -557,7 +557,7 @@ const storyShots = {
       label: "02 · 0:06–0:14",
       chapter: "Criterio",
       line: "Lo que pide acción. El resto espera.",
-      html: `<img class="vis-photo wide" src="./brand-escritorio.jpg" alt="" />`,
+      html: `<img class="vis-photo wide" src="./brand-escritorio.webp" alt="" />`,
     },
     {
       id: "google",
@@ -605,7 +605,7 @@ const storyShots = {
       line: "La consola muestra qué sigue. app.donexto.com",
       html: `
         <div class="vis-cta">
-          <img class="vis-photo" src="./brand-youtube.jpg" alt="" />
+          <img class="vis-photo" src="./brand-youtube.webp" alt="" />
           <strong>app.donexto.com</strong>
           <span>Donexto · Do Next To…</span>
         </div>`,
@@ -618,7 +618,7 @@ const storyShots = {
       label: "01 · 0:00–0:06",
       chapter: "Brand",
       line: "Donexto. Do Next To… Attention on personal email.",
-      html: `<img class="vis-photo" src="./brand-youtube.jpg" alt="" />`,
+      html: `<img class="vis-photo" src="./brand-youtube.webp" alt="" />`,
     },
     {
       id: "para-quien",
@@ -626,7 +626,7 @@ const storyShots = {
       label: "02 · 0:06–0:14",
       chapter: "Standard",
       line: "What needs action. Everything else waits.",
-      html: `<img class="vis-photo wide" src="./brand-escritorio.jpg" alt="" />`,
+      html: `<img class="vis-photo wide" src="./brand-escritorio.webp" alt="" />`,
     },
     {
       id: "google",
@@ -674,7 +674,7 @@ const storyShots = {
       line: "The console shows what to do next. app.donexto.com",
       html: `
         <div class="vis-cta">
-          <img class="vis-photo" src="./brand-youtube.jpg" alt="" />
+          <img class="vis-photo" src="./brand-youtube.webp" alt="" />
           <strong>app.donexto.com</strong>
           <span>Donexto · Do Next To…</span>
         </div>`,

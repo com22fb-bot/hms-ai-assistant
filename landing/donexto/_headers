@@ -7,3 +7,20 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()
   Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; media-src 'self' https:; font-src 'self' data:; connect-src 'self' https://cloudflareinsights.com; frame-src https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com; form-action 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'self'
+
+# Imágenes: el navegador 1 día, el borde de Cloudflare 7 días.
+/*.webp
+  ! Cache-Control
+  ! CDN-Cache-Control
+  Cache-Control: public, max-age=86400
+  CDN-Cache-Control: public, max-age=604800
+/*.jpg
+  ! Cache-Control
+  ! CDN-Cache-Control
+  Cache-Control: public, max-age=86400
+  CDN-Cache-Control: public, max-age=604800
+/*.svg
+  ! Cache-Control
+  ! CDN-Cache-Control
+  Cache-Control: public, max-age=86400
+  CDN-Cache-Control: public, max-age=604800
