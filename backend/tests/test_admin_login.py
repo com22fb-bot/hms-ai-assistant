@@ -138,7 +138,9 @@ class BrandedGoogleRedirectTests(unittest.TestCase):
             "FRONTEND_ORIGINS": "https://app.donexto.com",
             "OAUTH_ENCRYPTION_KEY": "test-oauth-encryption-key-32chars!!",
         }
-        with patch.dict(os.environ, env):
+        with patch.dict(os.environ, env), patch(
+            "app.api.system._require_admin_context"
+        ):
             shape = env_status()["oauth_shape"]
         self.assertTrue(shape["redirect_is_donexto_callback"])
         self.assertFalse(shape["redirect_is_railway_callback"])

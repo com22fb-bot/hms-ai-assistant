@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
@@ -33,23 +35,34 @@ from app.api.billing import router as billing_router
 from app.core.config import settings
 from app.middleware.authentication_context import AuthenticationContextMiddleware
 from app.middleware.incident_logging import IncidentLoggingMiddleware
+from app.security.proxy_gate import ProxyGateMiddleware
 from app.services.gmail_sync_job_service import resume_incomplete_jobs
 from app.services.automatic_mail_scheduler import start_automatic_mail_scheduler
 
+
+_docs_enabled = os.getenv("HMS_ENABLE_DOCS", "").strip() == "1"
 
 app = FastAPI(
     title=settings.app_name,
     description=settings.app_description,
     version=settings.app_version,
+    # En producción no se publica el mapa de la API (/docs, /openapi.json).
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
+)
+
+# Orígenes de desarrollo (Codespaces / Vercel) solo si se piden explícitamente.
+_dev_origin_regex = (
+    r"https://.*\.(app\.github\.dev|githubpreview\.dev|vercel\.app)"
+    if os.getenv("HMS_CORS_DEV_ORIGINS", "").strip() == "1"
+    else None
 )
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.frontend_origins,
-    allow_origin_regex=(
-        r"https://.*\."
-        r"(app\.github\.dev|githubpreview\.dev|vercel\.app)"
-    ),
+    allow_origin_regex=_dev_origin_regex,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -58,6 +71,8 @@ app.add_middleware(
 
 app.add_middleware(AuthenticationContextMiddleware)
 app.add_middleware(IncidentLoggingMiddleware)
+# Último en agregarse = primero en correr: corta el acceso directo a Railway.
+app.add_middleware(ProxyGateMiddleware)
 
 
 @app.on_event("startup")
@@ -86,7 +101,6 @@ def root() -> dict[str, str]:
             "HMS_DEPLOY_MARKER",
             "donexto-api-0.4.3",
         ),
-        "documentation": "/docs",
         "dashboard": "/cases/dashboard",
         "google_login": "/auth/google/login",
         "google_status": "/auth/google/status",

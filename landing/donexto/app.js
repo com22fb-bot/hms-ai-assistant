@@ -918,7 +918,7 @@ document.getElementById("storyNext")?.addEventListener("click", () => {
 });
 
 const CONTACT_API =
-  "https://hms-ai-assistant-production.up.railway.app/public/contact";
+  "/api/hms/public/contact";
 
 function paintFormStatus(status, tone) {
   status.hidden = false;
@@ -953,6 +953,7 @@ document.getElementById("waitForm")?.addEventListener("submit", async (event) =>
   const country = String(data.get("country") || "MX");
   const message = String(data.get("message") || "").trim();
   const website = String(data.get("website") || "");
+  const turnstileToken = String(data.get("cf-turnstile-response") || "");
 
   if (!email.includes("@") || email.length < 5) {
     paintFormStatus(status, "err");
@@ -984,9 +985,11 @@ document.getElementById("waitForm")?.addEventListener("submit", async (event) =>
         message,
         lang,
         website,
+        turnstile_token: turnstileToken,
       }),
       signal: AbortSignal.timeout(15000),
     });
+    if (window.turnstile) window.turnstile.reset();
     if (!response.ok) {
       paintSendFailure(status, dict);
       return;

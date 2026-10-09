@@ -25,6 +25,17 @@ async function proxy(
   headers.delete("host");
   headers.delete("content-length");
   headers.delete("connection");
+  // El navegador no puede fingir ser el Worker ni elegir su IP.
+  headers.delete("x-donexto-proxy");
+  headers.delete("x-donexto-client-ip");
+  const proxySecret = process.env.HMS_PROXY_SECRET?.trim();
+  if (proxySecret) {
+    headers.set("x-donexto-proxy", proxySecret);
+  }
+  const visitorIp = request.headers.get("cf-connecting-ip")?.trim();
+  if (visitorIp) {
+    headers.set("x-donexto-client-ip", visitorIp);
+  }
 
   const method = request.method.toUpperCase();
   const body =
@@ -54,8 +65,6 @@ async function proxy(
       {
         status: "error",
         message: "No fue posible comunicar con el backend interno.",
-        technical_detail:
-          error instanceof Error ? error.message : String(error),
       },
       {
         status: 502,
