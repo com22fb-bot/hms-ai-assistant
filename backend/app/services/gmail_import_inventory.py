@@ -95,13 +95,15 @@ def initial_import_snapshot(
     credentials: Credentials,
     *,
     cutoff_at: datetime | None = None,
+    history_days: int | None = None,
 ) -> dict[str, Any]:
+    days = int(history_days or INITIAL_HISTORY_DAYS)
     current = cutoff_at or datetime.now(timezone.utc)
     if current.tzinfo is None:
         current = current.replace(tzinfo=timezone.utc)
 
     current = current.astimezone(timezone.utc)
-    start = current - timedelta(days=INITIAL_HISTORY_DAYS)
+    start = current - timedelta(days=days)
 
     query = (
         f"after:{int(start.timestamp())} "
@@ -130,7 +132,7 @@ def initial_import_snapshot(
             LOCAL_TIMEZONE
         ).isoformat(),
         "timezone": "America/Chihuahua",
-        "history_days": INITIAL_HISTORY_DAYS,
+        "history_days": days,
     }
 
 

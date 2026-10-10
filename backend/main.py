@@ -40,6 +40,7 @@ from app.security.proxy_gate import ProxyGateMiddleware
 from app.middleware.request_metrics import RequestMetricsMiddleware
 from app.services.gmail_sync_job_service import resume_incomplete_jobs
 from app.services.automatic_mail_scheduler import start_automatic_mail_scheduler
+from app.services.account_lifecycle import start_account_cleanup_scheduler
 
 
 _docs_enabled = os.getenv("HMS_ENABLE_DOCS", "").strip() == "1"
@@ -91,6 +92,12 @@ def resume_durable_gmail_sync_jobs() -> None:
 @app.on_event("startup")
 def start_hms_automatic_mail_sync() -> None:
     start_automatic_mail_scheduler()
+
+
+@app.on_event("startup")
+def start_donexto_account_cleanup() -> None:
+    """Limpieza diaria 3:00 a. m. CDMX. Dry-run salvo ACCOUNT_CLEANUP_DELETE_ENABLED."""
+    start_account_cleanup_scheduler()
 
 
 @app.get("/")

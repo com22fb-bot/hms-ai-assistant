@@ -74,12 +74,13 @@ def graph_address_list(entries: Any) -> str:
 
 def _history_window(
     cutoff_at: datetime | None = None,
+    history_days: int | None = None,
 ) -> tuple[datetime, datetime]:
     current = cutoff_at or datetime.now(timezone.utc)
     if current.tzinfo is None:
         current = current.replace(tzinfo=timezone.utc)
     current = current.astimezone(timezone.utc)
-    start = current - timedelta(days=INITIAL_HISTORY_DAYS)
+    start = current - timedelta(days=int(history_days or INITIAL_HISTORY_DAYS))
     return start, current
 
 
@@ -205,8 +206,9 @@ def microsoft_initial_snapshot(
     account: dict[str, Any],
     *,
     cutoff_at: datetime | None = None,
+    history_days: int | None = None,
 ) -> dict[str, Any]:
-    start, current = _history_window(cutoff_at)
+    start, current = _history_window(cutoff_at, history_days)
     inbox_ids = _list_folder_ids(account, "inbox", start)
     sent_ids = _list_folder_ids(account, "sentitems", start)
     try:
@@ -259,7 +261,7 @@ def microsoft_initial_snapshot(
         "period_start_local": start.astimezone(LOCAL_TIMEZONE).isoformat(),
         "period_end_local": current.astimezone(LOCAL_TIMEZONE).isoformat(),
         "timezone": "America/Chihuahua",
-        "history_days": INITIAL_HISTORY_DAYS,
+        "history_days": int(history_days or INITIAL_HISTORY_DAYS),
         "breakdown": {
             "received": len(inbox_ids),
             "sent": len(sent_ids),
