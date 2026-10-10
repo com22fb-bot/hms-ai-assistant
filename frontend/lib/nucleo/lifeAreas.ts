@@ -393,6 +393,7 @@ export type LifeItem = {
   /** Avisos del mismo evento unidos en este (grouping.ts). */
   groupCount?: number;
   groupIds?: string[];
+  groupCaseIds?: string[];
 };
 
 function senderLabel(

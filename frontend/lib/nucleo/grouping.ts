@@ -27,7 +27,6 @@ function subjectKey(value: string): string {
     .replace(/^\s*((re|rv|fw|fwd)\s*:\s*)+/g, "")
     .replace(/\b(para|for|pour|per)\s+\S+@\S+/g, "")
     .replace(/\S+@\S+/g, "")
-    .replace(/\d+/g, "#")
     .replace(/[^\p{L}#]+/gu, " ")
     .trim();
 }
@@ -91,6 +90,8 @@ export function groupLifeItems(items: LifeItem[]): LifeItem[] {
       sourceCount: count,
       groupCount: members.length,
       groupIds: members.map((m) => m.id),
+      groupCaseIds: [...new Set(members.map((m) => m.caseId).filter((id): id is string => Boolean(id)))],
+      caseId: rep.caseId ?? members.find((m) => m.caseId)?.caseId ?? null,
     };
     if (members.length > 1 && !/×\d+$/.test(next.line)) next.line = `${next.line} ×${members.length}`;
     if (code) {

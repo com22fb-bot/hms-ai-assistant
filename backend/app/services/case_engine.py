@@ -603,8 +603,12 @@ def process_message(
                     "risk_score": risk,
                     "confidence": 0.7000,
                     "summary": (
-                        mask_codes(
-                            (strip_css_noise(str(message.get("snippet") or "")) or body)[:500]
+                        (
+                            mask_codes(
+                                (strip_css_noise(str(message.get("snippet") or "")) or body)[:500]
+                            )
+                            if is_code
+                            else (strip_css_noise(str(message.get("snippet") or "")) or body)[:500]
                         )
                         or None
                     ),
