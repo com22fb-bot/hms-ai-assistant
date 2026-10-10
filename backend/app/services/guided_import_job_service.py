@@ -16,6 +16,8 @@ from app.services.import_failure import (
 from app.services.gmail_full_sync import sync_gmail_page
 from app.services.gmail_import_inventory import initial_import_snapshot
 from app.services.oauth_storage import OAuthStorage
+from app.database.supabase import get_supabase_client
+from app.services.account_lifecycle import history_days_for_workspace
 from app.services.icloud_imap import (
     IcloudImapError,
     stored_icloud_uses_app_password,
@@ -586,6 +588,11 @@ def start_guided_import(
                 "La importación inicial ya fue completada."
             )
 
+        # Ventana por plan: mensual/prueba 90 días, anual 6 meses.
+        plan_history_days = history_days_for_workspace(
+            get_supabase_client(), workspace_id
+        )
+
         if is_icloud_provider(account):
             email, app_password = _icloud_secret(account)
             snapshot = yahoo_initial_snapshot(
@@ -594,6 +601,7 @@ def start_guided_import(
                 cutoff_at=now,
                 oauth=False,
                 mailbox_provider="icloud",
+                history_days=plan_history_days,
             )
             query = str(snapshot["query"])
             expected = int(snapshot["eligible_messages"])
@@ -618,6 +626,7 @@ def start_guided_import(
                 app_password,
                 cutoff_at=now,
                 oauth=oauth,
+                history_days=plan_history_days,
             )
             query = str(snapshot["query"])
             expected = int(snapshot["eligible_messages"])
@@ -636,7 +645,9 @@ def start_guided_import(
             selection_categories = ["six_month_history"]
             batch_size = YAHOO_PAGE_SIZE
         elif is_microsoft_provider(account):
-            snapshot = microsoft_initial_snapshot(account, cutoff_at=now)
+            snapshot = microsoft_initial_snapshot(
+                account, cutoff_at=now, history_days=plan_history_days
+            )
             query = str(snapshot["query"])
             expected = int(snapshot["eligible_messages"])
             job_mode = "historical"
@@ -661,6 +672,7 @@ def start_guided_import(
             snapshot = initial_import_snapshot(
                 credentials,
                 cutoff_at=now,
+                history_days=plan_history_days,
             )
             query = str(snapshot["query"])
             expected = int(snapshot["eligible_messages"])

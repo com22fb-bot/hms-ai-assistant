@@ -95,13 +95,15 @@ def initial_import_snapshot(
     credentials: Credentials,
     *,
     cutoff_at: datetime | None = None,
+    history_days: int | None = None,
 ) -> dict[str, Any]:
+    days = int(history_days or INITIAL_HISTORY_DAYS)
     current = cutoff_at or datetime.now(timezone.utc)
     if current.tzinfo is None:
         current = current.replace(tzinfo=timezone.utc)
 
     current = current.astimezone(timezone.utc)
-    start = current - timedelta(days=INITIAL_HISTORY_DAYS)
+    start = current - timedelta(days=days)
 
     query = (
         f"after:{int(start.timestamp())} "
@@ -130,18 +132,20 @@ def initial_import_snapshot(
             LOCAL_TIMEZONE
         ).isoformat(),
         "timezone": "America/Chihuahua",
-        "history_days": INITIAL_HISTORY_DAYS,
+        "history_days": days,
     }
 
 
-def inventory(credentials: Credentials) -> dict[str, Any]:
+def inventory(
+    credentials: Credentials, history_days: int | None = None
+) -> dict[str, Any]:
     service = _service(credentials)
     profile = (
         service.users()
         .getProfile(userId="me")
         .execute(num_retries=2)
     )
-    snapshot = initial_import_snapshot(credentials)
+    snapshot = initial_import_snapshot(credentials, history_days=history_days)
 
     base_query = snapshot["query"]
     breakdown_queries = {
@@ -238,6 +242,7 @@ def _list_stored_message_ids(account_id: str) -> list[str]:
 def compare_inventory(
     credentials: Credentials,
     account_id: str,
+    history_days: int | None = None,
 ) -> dict[str, Any]:
     service = _service(credentials)
     profile = (
@@ -245,7 +250,7 @@ def compare_inventory(
         .getProfile(userId="me")
         .execute(num_retries=2)
     )
-    snapshot = initial_import_snapshot(credentials)
+    snapshot = initial_import_snapshot(credentials, history_days=history_days)
     gmail_ids = _list_message_ids(
         service,
         query=snapshot["query"],

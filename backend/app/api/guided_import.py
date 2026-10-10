@@ -83,9 +83,20 @@ def _icloud_secret(account: dict[str, Any]) -> tuple[str, str]:
     return email, secret
 
 
+def _plan_history_days(account: dict[str, Any]) -> int:
+    """Ventana del plan: mensual/prueba 90 días, anual 6 meses."""
+    from app.database.supabase import get_supabase_client
+    from app.services.account_lifecycle import history_days_for_workspace
+
+    return history_days_for_workspace(
+        get_supabase_client(), str(account.get("workspace_id") or "")
+    )
+
+
 @router.get("/inventory")
 def import_inventory() -> dict[str, Any]:
     account = _mailbox_account()
+    days = _plan_history_days(account)
     if is_icloud_provider(account):
         email, app_password = _icloud_secret(account)
         try:
@@ -94,6 +105,7 @@ def import_inventory() -> dict[str, Any]:
                 app_password,
                 oauth=False,
                 mailbox_provider="icloud",
+                history_days=days,
             )
         except IcloudImapError as error:
             raise HTTPException(
@@ -107,7 +119,9 @@ def import_inventory() -> dict[str, Any]:
     if is_yahoo_provider(account):
         email, app_password, oauth = _yahoo_secret(account)
         try:
-            return yahoo_inventory(email, app_password, oauth=oauth)
+            return yahoo_inventory(
+                email, app_password, oauth=oauth, history_days=days
+            )
         except YahooImapError as error:
             raise HTTPException(
                 status_code=400,
@@ -118,7 +132,7 @@ def import_inventory() -> dict[str, Any]:
             ) from error
     if is_microsoft_provider(account):
         try:
-            return microsoft_inventory(account)
+            return microsoft_inventory(account, history_days=days)
         except MicrosoftImportError as error:
             raise HTTPException(
                 status_code=400,
@@ -127,7 +141,7 @@ def import_inventory() -> dict[str, Any]:
                     "message": str(error),
                 },
             ) from error
-    return inventory(_google_credentials(account))
+    return inventory(_google_credentials(account), history_days=days)
 
 
 @router.get("/status")
@@ -210,4 +224,5 @@ def import_compare() -> dict[str, Any]:
     return compare_inventory(
         _google_credentials(account),
         str(account["id"]),
+        history_days=_plan_history_days(account),
     )

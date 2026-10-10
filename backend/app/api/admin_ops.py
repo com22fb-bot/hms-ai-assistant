@@ -452,3 +452,37 @@ def admin_health_extended() -> dict[str, Any]:
         "admin_configured": bool(allow),
         "admin_allowlist_count": len(allow),
     }
+
+
+@router.get("/lifecycle")
+def admin_lifecycle() -> dict[str, Any]:
+    """Info: cuentas en prueba y suscripciones no renovadas, con días restantes."""
+    _require_admin()
+    from app.services.account_lifecycle import lifecycle_overview
+
+    client = get_supabase_client()
+    overview = lifecycle_overview(client)
+    try:
+        runs = client.table("account_cleanup_runs").select("*").order(
+            "ran_at", desc=True
+        ).limit(5).execute()
+        overview["recent_runs"] = _rows(runs)
+    except Exception:
+        overview["recent_runs"] = []
+    return overview
+
+
+@router.post("/lifecycle/remind/{group}")
+def admin_lifecycle_remind(group: str) -> dict[str, Any]:
+    """Botón del dueño: manda por Resend el recordatorio de suscripción al grupo."""
+    _require_admin()
+    from app.services.account_lifecycle import send_subscribe_reminders
+
+    if group not in {"trial", "lapsed"}:
+        raise HTTPException(
+            status_code=400,
+            detail={"status": "invalid_group", "message": "Grupo inválido."},
+        )
+    result = send_subscribe_reminders(get_supabase_client(), group)
+    return {"status": "ok", "group": group, **result}
+

@@ -83,12 +83,13 @@ def _quoted_mailbox(name: str) -> str:
 
 def _history_window(
     cutoff_at: datetime | None = None,
+    history_days: int | None = None,
 ) -> tuple[datetime, datetime]:
     current = cutoff_at or datetime.now(timezone.utc)
     if current.tzinfo is None:
         current = current.replace(tzinfo=timezone.utc)
     current = current.astimezone(timezone.utc)
-    start = current - timedelta(days=INITIAL_HISTORY_DAYS)
+    start = current - timedelta(days=int(history_days or INITIAL_HISTORY_DAYS))
     return start, current
 
 
@@ -182,6 +183,7 @@ def yahoo_initial_snapshot(
     cutoff_at: datetime | None = None,
     oauth: bool = False,
     mailbox_provider: str = "yahoo",
+    history_days: int | None = None,
 ) -> dict[str, Any]:
     address, app_password = _prepare_imap_secret(
         address,
@@ -189,7 +191,7 @@ def yahoo_initial_snapshot(
         oauth=oauth,
         mailbox_provider=mailbox_provider,
     )
-    start, current = _history_window(cutoff_at)
+    start, current = _history_window(cutoff_at, history_days)
 
     client = _open_mailbox_client(
         address,
@@ -243,7 +245,7 @@ def yahoo_initial_snapshot(
         "period_start_local": start.astimezone(LOCAL_TIMEZONE).isoformat(),
         "period_end_local": current.astimezone(LOCAL_TIMEZONE).isoformat(),
         "timezone": "America/Chihuahua",
-        "history_days": INITIAL_HISTORY_DAYS,
+        "history_days": int(history_days or INITIAL_HISTORY_DAYS),
         "breakdown": {
             "received": len(grouped.get("inbox", [])),
             "sent": len(grouped.get("sent", [])),
@@ -263,12 +265,14 @@ def yahoo_inventory(
     *,
     oauth: bool = False,
     mailbox_provider: str = "yahoo",
+    history_days: int | None = None,
 ) -> dict[str, Any]:
     snapshot = yahoo_initial_snapshot(
         address,
         app_password,
         oauth=oauth,
         mailbox_provider=mailbox_provider,
+        history_days=history_days,
     )
     snapshot.pop("yahoo_refs", None)
     breakdown = snapshot.pop("breakdown")

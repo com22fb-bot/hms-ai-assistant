@@ -327,7 +327,7 @@ export function GuidedImportWizard({
               <div>
                 <span className="hms-import-kicker">Donexto · Do Next To…</span>
                 <h2 id="hms-import-title">
-                  Tu historial de seis meses está listo.
+                  Tu historial de correo está listo.
                 </h2>
                 <p>
                   Donexto descargará todos los mensajes elegibles y después
