@@ -318,7 +318,7 @@ const QUERY_STOP_WORDS = new Set([
   "do", "have", "i", "de", "el", "la", "en", "y", "o", "a", "al", "me", "por", "un",
   "le", "les", "des", "du", "et", "mon", "mes", "il", "lo", "gli", "di", "e", "o", "os",
   "as", "do", "da", "meu", "minha", "es", "ya", "sus", "su", "tus", "tu", "show", "list",
-  "muestra", "muestrame", "dime", "ver",
+  "muestra", "muestrame", "dime", "ver", "cual", "cuanta", "cuanta", "son", "fue", "sera", "esta", "estan", "hay", "del", "los", "nos", "les", "quiero", "saber", "favor", "porfa",
 ]);
 
 export type AskIntent = {
@@ -432,10 +432,41 @@ export function hasAskCriteria(intent: AskIntent): boolean {
  * Local "Pregunta a Donexto": parses the question with fixed vocabularies
  * (area, time window, status, amount) and ranks the user's own items.
  */
-export function askLocal(items: LifeItem[], query: string, now = new Date()): AskResult {
-  const intent = parseAsk(query);
-  // "qué hay", "show me", "?" …: never dump the whole mailbox.
-  if (!hasAskCriteria(intent)) return { intent, hits: [], vague: true };
+/** Synonyms so "costo" finds "precio"/"cargo" and "suscripción" finds "membresía". */
+const ASK_SYNONYMS: string[][] = [
+  ["costo", "precio", "cargo", "cobro", "importe", "monto", "cost", "price", "charge", "prix", "prezzo", "preco"],
+  ["suscripcion", "suscripciones", "membresia", "plan", "renovacion", "subscription", "membership", "abonnement", "abbonamento", "assinatura"],
+  ["pedido", "orden", "compra", "order", "commande", "ordine", "encomenda"],
+  ["factura", "recibo", "invoice", "bill", "cfdi"],
+  ["envio", "paquete", "entrega", "rastreo", "shipping", "package", "delivery", "tracking"],
+];
+
+/** Term variants: synonyms + stem (accent-insensitive, partial). */
+export function termVariants(term: string): string[] {
+  const out = new Set([term]);
+  for (const group of ASK_SYNONYMS) {
+    if (group.some((word) => word === term || (term.length >= 5 && word.startsWith(term.slice(0, 5))))) {
+      for (const word of group) out.add(word);
+    }
+  }
+  return [...out];
+}
+
+function stemHit(text: string, term: string): boolean {
+  if (text.includes(term)) return true;
+  // Partial match: "suscripcion" ≈ "suscripciones", "facturas" ≈ "factura".
+  if (term.length >= 5) {
+    const stem = term.slice(0, Math.max(4, term.length - 2));
+    return text.includes(stem);
+  }
+  return false;
+}
+
+function termHit(text: string, term: string): boolean {
+  return termVariants(term).some((variant) => stemHit(text, variant));
+}
+
+function runAsk(items: LifeItem[], intent: AskIntent, now: Date): Array<{ item: LifeItem; score: number }> {
   const scored: Array<{ item: LifeItem; score: number }> = [];
   for (const item of items) {
     if (intent.areas.length && !intent.areas.includes(item.area)) continue;
@@ -448,7 +479,7 @@ export function askLocal(items: LifeItem[], query: string, now = new Date()): As
     let score = 0;
     let missing = 0;
     for (const term of intent.terms) {
-      if (text.includes(term)) score += title.includes(term) ? 3 : 2;
+      if (termHit(text, term)) score += termHit(title, term) ? 3 : 2;
       else missing += 1;
     }
     const structured = intent.areas.length > 0 || intent.time !== null || intent.status !== null || intent.amount !== null;
@@ -456,6 +487,23 @@ export function askLocal(items: LifeItem[], query: string, now = new Date()): As
     if (!structured && missing > 0 && intent.terms.length > 1 && score < 2 * Math.ceil(intent.terms.length / 2)) continue;
     if (isOpenStatus(item.status)) score += 1;
     scored.push({ item, score });
+  }
+  return scored;
+}
+
+export function askLocal(items: LifeItem[], query: string, now = new Date()): AskResult {
+  const intent = parseAsk(query);
+  // "qué hay", "show me", "?" …: never dump the whole mailbox.
+  if (!hasAskCriteria(intent)) return { intent, hits: [], vague: true };
+  let scored = runAsk(items, intent, now);
+  // An area word ("suscripción") must not hide everything: if the area filter
+  // leaves nothing, search all areas, treating the area words as text.
+  if (!scored.length && intent.areas.length) {
+    const areaTerms = foldText(query)
+      .split(/[^a-z0-9]+/)
+      .filter((token) => token.length > 3 && !QUERY_STOP_WORDS.has(token) && !intent.terms.includes(token));
+    const relaxed: AskIntent = { ...intent, areas: [], terms: [...intent.terms, ...areaTerms] };
+    scored = runAsk(items, relaxed, now).filter((row) => row.score > 1);
   }
   scored.sort((left, right) => right.score - left.score || right.item.when.localeCompare(left.item.when));
   return { intent, hits: scored.map((row) => row.item), vague: false };

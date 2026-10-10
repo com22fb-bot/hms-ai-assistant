@@ -45,6 +45,37 @@ const e = (
 ): HelpEntry => ({ id, target, strong, weak, copy, hoverOnly });
 
 export const HELP_ENTRIES: HelpEntry[] = [
+  // --- Producto: precio, planes, prueba, importación (mismo texto que /asistencia y Términos) ---
+  e("pricing", { view: "settings", tab: "account", focus: "plan" },
+    ["costo de la suscripcion", "precio de la suscripcion", "cuanto cuesta donexto", "precio de donexto", "costo de donexto", "cuanto cuesta la suscripcion", "cuanto cuesta el plan", "plan anual", "plan mensual", "planes de donexto", "cuanto cobran", "how much is donexto", "donexto price", "subscription price", "subscription cost", "annual plan", "monthly plan", "prix de l abonnement", "prezzo dell abbonamento", "preco da assinatura"],
+    ["costo", "precio", "cuesta", "cuestan", "cobran", "tarifa", "suscripcion", "plan", "planes", "mensualidad", "anual", "price", "pricing", "cost", "subscription", "prix", "abonnement", "prezzo", "abbonamento", "preco", "assinatura", "cuanto"],
+    {
+      es: { title: "Precio de Donexto", body: "Plan mensual: US$19.99 al mes en América (€19.99 en la Unión Europea y el resto del mundo). Plan anual: US$175.99 / €175.99 al año: lo de 3 cafés latte al mes más 1 mes gratis, unos 26.7% menos que 12 meses del mensual. Prueba gratis de 3 días (próximamente). Puedes cancelar cuando quieras.", cta: "Ver mi cuenta" },
+      en: { title: "Donexto pricing", body: "Monthly plan: US$19.99 per month in the Americas (€19.99 in the EU and the rest of the world). Annual plan: US$175.99 / €175.99 per year: 3 lattes a month plus 1 month free, about 26.7% less than 12 monthly payments. 3-day free trial (coming soon). Cancel anytime.", cta: "See my account" },
+      fr: { title: "Prix de Donexto", body: "Mensuel : 19,99 US$ par mois sur le continent américain (19,99 € dans l’UE et le reste du monde). Annuel : 175,99 US$ / 175,99 € par an, environ 26,7 % de moins que 12 mois. Essai gratuit de 3 jours (bientôt). Annulable à tout moment.", cta: "Voir mon compte" },
+      it: { title: "Prezzo di Donexto", body: "Mensile: US$19,99 al mese nelle Americhe (€19,99 nell’UE e nel resto del mondo). Annuale: US$175,99 / €175,99 all’anno, circa il 26,7% in meno di 12 mesi. Prova gratuita di 3 giorni (prossimamente). Annulli quando vuoi.", cta: "Vedi il mio account" },
+      pt: { title: "Preço da Donexto", body: "Mensal: US$19,99 por mês nas Américas (€19,99 na UE e no resto do mundo). Anual: US$175,99 / €175,99 por ano, cerca de 26,7% menos que 12 meses. Teste grátis de 3 dias (em breve). Cancele quando quiser.", cta: "Ver minha conta" },
+    }),
+  e("trial", { view: "settings", tab: "account", focus: "plan" },
+    ["prueba gratis", "prueba gratuita", "periodo de prueba", "dias de prueba", "free trial", "trial", "essai gratuit", "prova gratuita", "teste gratis"],
+    ["prueba", "gratis", "gratuita", "free", "essai", "prova", "teste"],
+    {
+      es: { title: "Prueba gratis", body: "La prueba gratis dura 3 días (próximamente). Al terminar no se cobra nada si no te suscribes. Si no te suscribes, conservamos tu cuenta 1 semana y después se borra de forma automática; te avisamos antes por correo.", cta: "Ver mi cuenta" },
+      en: { title: "Free trial", body: "The free trial lasts 3 days (coming soon). Nothing is charged when it ends unless you subscribe. If you don’t, we keep your account 1 week and then it is deleted automatically; we email you first.", cta: "See my account" },
+      fr: { title: "Essai gratuit", body: "L’essai gratuit dure 3 jours (bientôt). Rien n’est facturé à la fin sauf si vous vous abonnez. Sinon, le compte est conservé 1 semaine puis supprimé ; nous vous prévenons par courriel.", cta: "Voir mon compte" },
+      it: { title: "Prova gratuita", body: "La prova gratuita dura 3 giorni (prossimamente). Alla fine non si paga nulla se non ti abboni. Altrimenti conserviamo l’account 1 settimana e poi viene eliminato; ti avvisiamo prima via email.", cta: "Vedi il mio account" },
+      pt: { title: "Teste grátis", body: "O teste grátis dura 3 dias (em breve). Nada é cobrado no fim se você não assinar. Se não assinar, mantemos a conta 1 semana e depois ela é excluída; avisamos antes por e-mail.", cta: "Ver minha conta" },
+    }),
+  e("importWindow", { view: "settings", tab: "mail", focus: "mail-card" },
+    ["cuantos dias importa", "cuanto correo importa", "cuanto historial", "historial de correo", "cuantos meses", "ultimos 90 dias", "6 meses de correo", "how much history", "how far back", "import window", "combien d historique", "quanto storico", "quanto historico"],
+    ["historial", "importa", "importar", "meses", "history", "import", "historique", "storico", "historico"],
+    {
+      es: { title: "Cuánto correo traemos", body: "Al conectar tu buzón, el plan mensual trae los últimos 90 días de correo y el plan anual los últimos 6 meses. Donexto solo lee: no envía, no borra ni mueve correos.", cta: "Abrir Configuración › Correo" },
+      en: { title: "How much mail we bring in", body: "When you connect your mailbox, the monthly plan brings in the last 90 days and the annual plan the last 6 months. Donexto only reads: it never sends, deletes or moves mail.", cta: "Open Settings › Mail" },
+      fr: { title: "Quelle quantité de courrier", body: "À la connexion, l’abonnement mensuel importe les 90 derniers jours et l’annuel les 6 derniers mois. Donexto lit seulement.", cta: "Ouvrir Réglages › Courrier" },
+      it: { title: "Quanta posta importiamo", body: "Collegando la casella, il piano mensile importa gli ultimi 90 giorni e quello annuale gli ultimi 6 mesi. Donexto legge soltanto.", cta: "Apri Impostazioni › Posta" },
+      pt: { title: "Quanto e-mail trazemos", body: "Ao conectar a caixa, o plano mensal traz os últimos 90 dias e o anual os últimos 6 meses. A Donexto só lê.", cta: "Abrir Configuração › E-mail" },
+    }),
   e("logout", { view: "settings", tab: "account", focus: "logout" },
     ["cerrar sesion", "cerrar la sesion", "cierro sesion", "cierre de sesion", "salir de la app", "salir de la aplicacion", "salir de donexto", "uscire dall app", "uscire dall applicazione", "esci dall app", "uscire da donexto", "sair do app", "sair do aplicativo", "sair da aplicacao", "sair da conta", "sair da donexto", "exit the app", "quit the app", "leave the app", "quitter l application", "quitter l app", "sortir de l application", "logout", "log out", "sign out", "signout", "log off", "se deconnecter", "deconnexion", "me deconnecter", "disconnettersi", "terminar sessao", "encerrar sessao", "desloguear", "deslogear"],
     // Generic verbs ("salir de netflix") only count with a how-to word.
