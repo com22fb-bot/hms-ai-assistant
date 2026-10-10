@@ -102,6 +102,38 @@ def history_days_for_workspace(client: Any, workspace_id: str) -> int:
     return MONTHLY_HISTORY_DAYS
 
 
+
+def plan_status_for_workspace(client: Any, workspace_id: str, now: datetime | None = None) -> dict[str, Any]:
+    """Estado del plan para el onboarding: prueba (días restantes), plan o sin plan."""
+    current = now or datetime.now(timezone.utc)
+    try:
+        members = _rows(
+            client.table("workspace_members").select("profile_id").eq("workspace_id", workspace_id).execute()
+        )
+        profile_ids = [str(row["profile_id"]) for row in members if row.get("profile_id")]
+        if profile_ids:
+            profiles = _rows(client.table("profiles").select("id,email").in_("id", profile_ids).execute())
+            if any(str(p.get("email") or "").lower() in protected_emails() for p in profiles):
+                return {"state": "owner", "plan_code": "annual", "days_left": None, "history_days": ANNUAL_HISTORY_DAYS}
+            plans = _rows(
+                client.table("account_plans").select("plan_code,status,trial_ends_at,period_ends_at")
+                .in_("user_id", profile_ids).execute()
+            )
+            for plan in plans:
+                code = str(plan.get("plan_code") or "")
+                status = str(plan.get("status") or "")
+                if status == "active" and code in ("monthly", "annual"):
+                    return {"state": "active", "plan_code": code, "days_left": None,
+                            "history_days": history_days_for_plan(code)}
+                if status == "trialing":
+                    ends = _parse(plan.get("trial_ends_at"))
+                    left = max(0, (ends - current).days + (1 if (ends - current).seconds else 0)) if ends else None
+                    return {"state": "trial", "plan_code": "trial", "days_left": left,
+                            "history_days": MONTHLY_HISTORY_DAYS}
+    except Exception:
+        logger.info("plan status lookup failed", exc_info=True)
+    return {"state": "none", "plan_code": None, "days_left": None, "history_days": MONTHLY_HISTORY_DAYS}
+
 # ------------------------------------------------------------------ plazos
 def _parse(value: Any) -> datetime | None:
     if isinstance(value, datetime):

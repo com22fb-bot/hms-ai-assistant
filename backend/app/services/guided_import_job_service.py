@@ -8,6 +8,7 @@ from typing import Any
 
 from google.oauth2.credentials import Credentials
 
+from app.services.import_categories import clean_exclude, gmail_query_exclusions
 from app.services.import_failure import (
     failure_message,
     failure_reason,
@@ -276,6 +277,7 @@ def _run_job(job_id: str) -> None:
                     batch_size=int(job.get("batch_size") or YAHOO_PAGE_SIZE),
                     oauth=False,
                     mailbox_provider="icloud",
+                    exclude=list((job.get("metadata") or {}).get("exclude") or []),
                 )
             elif is_yahoo_provider(account):
                 metadata = dict(job.get("metadata") or {})
@@ -293,6 +295,7 @@ def _run_job(job_id: str) -> None:
                     offset=offset,
                     batch_size=int(job.get("batch_size") or YAHOO_PAGE_SIZE),
                     oauth=oauth,
+                    exclude=list((job.get("metadata") or {}).get("exclude") or []),
                 )
             elif is_microsoft_provider(account):
                 metadata = dict(job.get("metadata") or {})
@@ -307,6 +310,7 @@ def _run_job(job_id: str) -> None:
                     refs=refs,
                     offset=offset,
                     batch_size=int(job.get("batch_size") or MICROSOFT_PAGE_SIZE),
+                    exclude=list((job.get("metadata") or {}).get("exclude") or []),
                 )
             else:
                 credentials = get_google_credentials_for_account(
@@ -319,6 +323,7 @@ def _run_job(job_id: str) -> None:
                     page_token=job.get("next_page_token"),
                     query=job.get("query"),
                     account_id=account_id,
+                    exclude=list((job.get("metadata") or {}).get("exclude") or []),
                 )
 
             current = _job(job_id)
@@ -565,6 +570,7 @@ def start_guided_import(
     account: dict[str, Any],
     mode: str,
     credentials: Credentials | None = None,
+    exclude: list[str] | None = None,
 ) -> dict[str, Any]:
     if not _enabled():
         raise ValueError(
@@ -797,6 +803,25 @@ def start_guided_import(
             batch_size = 100
     else:
         raise ValueError("Modo de importación no válido.")
+
+    # Importación personalizada: lo excluido no se descarga ni se guarda.
+    # Las sincronizaciones posteriores heredan la elección de la inicial.
+    if mode == "initial":
+        chosen = clean_exclude(exclude)
+    else:
+        chosen = clean_exclude(
+            ((completed_initial or {}).get("metadata") or {}).get("exclude")
+        )
+    if chosen:
+        metadata["exclude"] = chosen
+        if (
+            not is_icloud_provider(account)
+            and not is_yahoo_provider(account)
+            and not is_microsoft_provider(account)
+        ):
+            extra = gmail_query_exclusions(chosen)
+            if extra:
+                query = f"{query} {extra}".strip()
 
     payload = {
         "workspace_id": workspace_id,
