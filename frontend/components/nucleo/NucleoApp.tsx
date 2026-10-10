@@ -79,6 +79,7 @@ import { Nexto } from "@/components/nucleo/Nexto";
 import { NextoDock } from "@/components/nucleo/NextoDock";
 import { TopTen } from "@/components/nucleo/TopTen";
 import { localizeItems } from "@/lib/nucleo/explain";
+import { groupLifeItems } from "@/lib/nucleo/grouping";
 import { insightExcerpts, insightLine, type MailInsight } from "@/lib/nucleo/insights";
 import { isClosedStatus, runCaseAction, snoozeUntil, type CaseAction } from "@/lib/nucleo/caseActions";
 import {
@@ -168,7 +169,7 @@ export function NucleoApp(props: NucleoAppProps) {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("appearance");
   const [rawItems, setItems] = useState<LifeItem[]>(props.fixtureItems ?? []);
   // Plain-language headlines in the UI language (rule-based, see explain.ts).
-  const items = useMemo(() => localizeItems(rawItems, language), [rawItems, language]);
+  const items = useMemo(() => groupLifeItems(localizeItems(rawItems, language)), [rawItems, language]);
   const [loading, setLoading] = useState(!props.preview);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -617,7 +618,10 @@ export function NucleoApp(props: NucleoAppProps) {
   }
 
   function setItemStatus(id: string, status: string) {
-    setItems((current) => current.map((row) => row.id === id ? { ...row, status } : row));
+    // A grouped row stands for every repeated notice: update all of them.
+    const ids = new Set(items.find((row) => row.id === id)?.groupIds ?? [id]);
+    ids.add(id);
+    setItems((current) => current.map((row) => ids.has(row.id) ? { ...row, status } : row));
   }
 
   function setSnoozePref(id: string, until: string | null) {
@@ -629,8 +633,12 @@ export function NucleoApp(props: NucleoAppProps) {
 
   /** Server write for hecho / posponer / reabrir (per-user endpoint, not the locked PATCH). */
   async function sendCaseAction(item: LifeItem, action: CaseAction, until?: Date) {
-    if (!item.caseId || props.preview) return { ok: true as const, status: null };
-    return runCaseAction((url, init) => hmsJson(url, init), item.caseId, action, until);
+    const caseIds = item.groupCaseIds?.length ? item.groupCaseIds : item.caseId ? [item.caseId] : [];
+    if (!caseIds.length || props.preview) return { ok: true as const, status: null };
+    const results = await Promise.all(
+      caseIds.map((id) => runCaseAction((url, init) => hmsJson(url, init), id, action, until)),
+    );
+    return results.find((result) => !result.ok) ?? results[0];
   }
 
   async function markDone(item: LifeItem) {
