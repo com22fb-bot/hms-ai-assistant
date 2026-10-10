@@ -46,7 +46,7 @@ const e = (
 
 export const HELP_ENTRIES: HelpEntry[] = [
   // --- Producto: precio, planes, prueba, importación (mismo texto que /asistencia y Términos) ---
-  e("pricing", { view: "settings", tab: "account", focus: "plan" },
+  e("pricing", { view: "settings", tab: "account" },
     ["costo de la suscripcion", "precio de la suscripcion", "cuanto cuesta donexto", "precio de donexto", "costo de donexto", "cuanto cuesta la suscripcion", "cuanto cuesta el plan", "plan anual", "plan mensual", "planes de donexto", "cuanto cobran", "how much is donexto", "donexto price", "subscription price", "subscription cost", "annual plan", "monthly plan", "prix de l abonnement", "prezzo dell abbonamento", "preco da assinatura"],
     ["costo", "precio", "cuesta", "cuestan", "cobran", "tarifa", "suscripcion", "plan", "planes", "mensualidad", "anual", "price", "pricing", "cost", "subscription", "prix", "abonnement", "prezzo", "abbonamento", "preco", "assinatura", "cuanto"],
     {
@@ -56,7 +56,7 @@ export const HELP_ENTRIES: HelpEntry[] = [
       it: { title: "Prezzo di Donexto", body: "Mensile: US$19,99 al mese nelle Americhe (€19,99 nell’UE e nel resto del mondo). Annuale: US$175,99 / €175,99 all’anno, circa il 26,7% in meno di 12 mesi. Prova gratuita di 3 giorni (prossimamente). Annulli quando vuoi.", cta: "Vedi il mio account" },
       pt: { title: "Preço da Donexto", body: "Mensal: US$19,99 por mês nas Américas (€19,99 na UE e no resto do mundo). Anual: US$175,99 / €175,99 por ano, cerca de 26,7% menos que 12 meses. Teste grátis de 3 dias (em breve). Cancele quando quiser.", cta: "Ver minha conta" },
     }),
-  e("trial", { view: "settings", tab: "account", focus: "plan" },
+  e("trial", { view: "settings", tab: "account" },
     ["prueba gratis", "prueba gratuita", "periodo de prueba", "dias de prueba", "free trial", "trial", "essai gratuit", "prova gratuita", "teste gratis"],
     ["prueba", "gratis", "gratuita", "free", "essai", "prova", "teste"],
     {
@@ -66,7 +66,7 @@ export const HELP_ENTRIES: HelpEntry[] = [
       it: { title: "Prova gratuita", body: "La prova gratuita dura 3 giorni (prossimamente). Alla fine non si paga nulla se non ti abboni. Altrimenti conserviamo l’account 1 settimana e poi viene eliminato; ti avvisiamo prima via email.", cta: "Vedi il mio account" },
       pt: { title: "Teste grátis", body: "O teste grátis dura 3 dias (em breve). Nada é cobrado no fim se você não assinar. Se não assinar, mantemos a conta 1 semana e depois ela é excluída; avisamos antes por e-mail.", cta: "Ver minha conta" },
     }),
-  e("importWindow", { view: "settings", tab: "mail", focus: "mail-card" },
+  e("importWindow", { view: "settings", tab: "mail", focus: "importMail" },
     ["cuantos dias importa", "cuanto correo importa", "cuanto historial", "historial de correo", "cuantos meses", "ultimos 90 dias", "6 meses de correo", "how much history", "how far back", "import window", "combien d historique", "quanto storico", "quanto historico"],
     ["historial", "importa", "importar", "meses", "history", "import", "historique", "storico", "historico"],
     {

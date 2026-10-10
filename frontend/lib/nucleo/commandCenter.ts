@@ -452,18 +452,20 @@ export function termVariants(term: string): string[] {
   return [...out];
 }
 
-function stemHit(text: string, term: string): boolean {
-  if (text.includes(term)) return true;
-  // Partial match: "suscripcion" ≈ "suscripciones", "facturas" ≈ "factura".
-  if (term.length >= 5) {
-    const stem = term.slice(0, Math.max(4, term.length - 2));
-    return text.includes(stem);
-  }
-  return false;
+function words(text: string): string[] {
+  return text.split(/[^a-z0-9]+/).filter(Boolean);
 }
 
+/** Whole-word prefix match only: never a substring inside another word. */
 function termHit(text: string, term: string): boolean {
-  return termVariants(term).some((variant) => stemHit(text, variant));
+  const list = words(text);
+  // The user's own word: plural/singular tolerance ("facturas" ≈ "factura").
+  const stem = term.length >= 5 ? term.slice(0, Math.max(4, term.length - 2)) : term;
+  if (list.some((word) => word === term || word.startsWith(stem))) return true;
+  // Synonyms: the whole synonym, optionally pluralised ("precio" → "precios").
+  return termVariants(term)
+    .filter((variant) => variant !== term)
+    .some((variant) => list.some((word) => word === variant || (variant.length >= 5 && word.startsWith(variant) && word.length - variant.length <= 2)));
 }
 
 function runAsk(items: LifeItem[], intent: AskIntent, now: Date): Array<{ item: LifeItem; score: number }> {
@@ -501,7 +503,8 @@ export function askLocal(items: LifeItem[], query: string, now = new Date()): As
   if (!scored.length && intent.areas.length) {
     const areaTerms = foldText(query)
       .split(/[^a-z0-9]+/)
-      .filter((token) => token.length > 3 && !QUERY_STOP_WORDS.has(token) && !intent.terms.includes(token));
+      // Only the words that triggered the area filter; time/status words stay filters.
+      .filter((token) => !intent.terms.includes(token) && AREA_WORDS.some((entry) => matchAny(token, entry.terms)));
     const relaxed: AskIntent = { ...intent, areas: [], terms: [...intent.terms, ...areaTerms] };
     scored = runAsk(items, relaxed, now).filter((row) => row.score > 1);
   }

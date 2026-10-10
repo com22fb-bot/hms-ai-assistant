@@ -33,3 +33,8 @@ test("partial match: facturas finds factura", () => {
   const res = askLocal([item("a", "Tu factura de CFE", "bills")], "facturas cfe");
   assert.equal(res.hits.length, 1);
 });
+
+test("no substring noise: costo does not match important", () => {
+  const res = askLocal([item("a", "Important update about your account", "work")], "costo");
+  assert.equal(res.hits.length, 0);
+});
