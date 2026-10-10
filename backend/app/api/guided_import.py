@@ -35,6 +35,8 @@ router = APIRouter(
 
 class ImportStartRequest(BaseModel):
     mode: Literal["initial", "incremental"] = "initial"
+    # Personalizado: categorías que NO se descargan (social, promos, áreas…).
+    exclude: list[str] = []
 
 
 def _mailbox_account() -> dict[str, Any]:
@@ -144,6 +146,44 @@ def import_inventory() -> dict[str, Any]:
     return inventory(_google_credentials(account), history_days=days)
 
 
+@router.get("/preview")
+def import_preview() -> dict[str, Any]:
+    """Vista previa por esferas/áreas y redes sociales + estado del plan."""
+    from app.database.supabase import get_supabase_client
+    from app.services.account_lifecycle import plan_status_for_workspace
+    from app.services.import_preview import (
+        build_preview,
+        gmail_headers,
+        imap_headers,
+        microsoft_headers,
+    )
+
+    account = _mailbox_account()
+    days = _plan_history_days(account)
+    try:
+        if is_icloud_provider(account):
+            email, app_password = _icloud_secret(account)
+            headers = imap_headers(email, app_password, oauth=False, mailbox_provider="icloud", days=days)
+        elif is_yahoo_provider(account):
+            email, app_password, oauth = _yahoo_secret(account)
+            headers = imap_headers(email, app_password, oauth=oauth, mailbox_provider="yahoo", days=days)
+        elif is_microsoft_provider(account):
+            headers = microsoft_headers(account, days)
+        else:
+            headers = gmail_headers(_google_credentials(account), days)
+        preview = build_preview(headers)
+    except HTTPException:
+        raise
+    except Exception:
+        preview = build_preview([])
+        preview["unavailable"] = True
+    preview["history_days"] = days
+    preview["plan"] = plan_status_for_workspace(
+        get_supabase_client(), str(account.get("workspace_id") or "")
+    )
+    return preview
+
+
 @router.get("/status")
 def import_status() -> dict[str, Any]:
     return get_guided_import_status(_mailbox_account())
@@ -165,6 +205,7 @@ def import_start(payload: ImportStartRequest) -> dict[str, Any]:
             credentials=credentials,
             account=account,
             mode=payload.mode,
+            exclude=payload.exclude,
         )
     except IcloudImapError as error:
         raise HTTPException(

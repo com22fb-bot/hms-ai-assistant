@@ -3,6 +3,7 @@
 import Image from "next/image";
 import {
   AlertTriangle,
+  BadgeCheck,
   CheckCircle2,
   Clock3,
   Inbox,
@@ -39,6 +40,66 @@ type Inventory = {
   };
   notice: string;
 };
+
+type PlanStatus = {
+  state: "trial" | "active" | "owner" | "none";
+  plan_code: string | null;
+  days_left: number | null;
+  history_days: number;
+};
+
+type Preview = {
+  sampled: number;
+  categories: Record<string, number>;
+  spheres: { hogar: number; ocupacion: number; personal: number };
+  social_platforms: Record<string, number>;
+  scale: number;
+  history_days: number;
+  plan: PlanStatus;
+  unavailable?: boolean;
+};
+
+/** 13 áreas (catalogo-maestro.yaml) con su esfera por defecto. */
+const AREAS: Array<{ id: string; label: string; sphere: "hogar" | "ocupacion" | "personal" }> = [
+  { id: "money", label: "Dinero", sphere: "personal" },
+  { id: "bills", label: "Recibos", sphere: "hogar" },
+  { id: "orders", label: "Pedidos", sphere: "personal" },
+  { id: "subscriptions", label: "Suscripciones", sphere: "personal" },
+  { id: "work", label: "Trabajo", sphere: "ocupacion" },
+  { id: "home", label: "Hogar y familia", sphere: "hogar" },
+  { id: "health", label: "Salud", sphere: "personal" },
+  { id: "travel", label: "Viajes", sphere: "personal" },
+  { id: "security", label: "Seguridad", sphere: "personal" },
+  { id: "government", label: "Trámites", sphere: "personal" },
+  { id: "insurance", label: "Seguros", sphere: "hogar" },
+  { id: "education", label: "Educación", sphere: "personal" },
+  { id: "agenda", label: "Agenda", sphere: "ocupacion" },
+];
+const SPHERES: Array<{ id: "hogar" | "ocupacion" | "personal"; label: string }> = [
+  { id: "hogar", label: "Hogar" },
+  { id: "ocupacion", label: "Ocupación" },
+  { id: "personal", label: "Personal" },
+];
+/** Redes que Donexto reconoce por el dominio del remitente. */
+const SOCIAL_LIST = [
+  "YouTube", "Instagram", "Facebook", "TikTok", "LinkedIn", "X/Twitter", "Snapchat", "Telegram",
+  "WhatsApp", "Pinterest", "Reddit", "Discord", "Threads", "WeChat", "VK", "Twitch", "Tumblr",
+  "Quora", "Bluesky", "LINE", "Weibo",
+];
+
+function planLabel(plan: PlanStatus | undefined): string {
+  if (!plan) return "…";
+  if (plan.state === "trial") {
+    return plan.days_left === null ? "Prueba gratis" : `Prueba: ${plan.days_left} ${plan.days_left === 1 ? "día" : "días"}`;
+  }
+  if (plan.state === "active") return plan.plan_code === "annual" ? "Plan anual" : "Plan mensual";
+  if (plan.state === "owner") return "Cuenta del equipo";
+  return "Sin plan";
+}
+
+function estimate(count: number, scale: number): number {
+  return Math.round(count * (scale || 1));
+}
 
 type ImportProgress = {
   expected: number;
@@ -123,6 +184,9 @@ export function GuidedImportWizard({
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<Preview | null>(null);
+  const [choice, setChoice] = useState<"all" | "custom">("all");
+  const [exclude, setExclude] = useState<string[]>([]);
   const processingSeen = useRef(false);
   const completionSent = useRef(false);
 
@@ -141,6 +205,14 @@ export function GuidedImportWizard({
       { cache: "no-store" },
     );
     setInventory(data);
+    // Vista previa por esferas/áreas: no bloquea el botón de descarga.
+    void hmsJson<Preview>(`${API}/preview`, { cache: "no-store" })
+      .then((value) => setPreview(value))
+      .catch(() => setPreview(null));
+  }
+
+  function toggle(id: string) {
+    setExclude((current) => current.includes(id) ? current.filter((x) => x !== id) : [...current, id]);
   }
 
   useEffect(() => {
@@ -257,7 +329,10 @@ export function GuidedImportWizard({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ mode }),
+        body: JSON.stringify({
+          mode,
+          exclude: mode === "initial" && choice === "custom" ? exclude : [],
+        }),
       });
       await loadStatus();
     } catch (reason) {
@@ -281,7 +356,7 @@ export function GuidedImportWizard({
       aria-modal="true"
       aria-labelledby="hms-import-title"
     >
-      <section className="hms-import-modal">
+      <section className={`hms-import-modal${status?.needs_initial_import && !status.active ? " is-review" : ""}`}>
         <button
           className="hms-import-close"
           type="button"
@@ -330,20 +405,20 @@ export function GuidedImportWizard({
                   Tu historial de correo está listo.
                 </h2>
                 <p>
-                  Donexto descargará todos los mensajes elegibles y después
-                  los clasificará automáticamente.
+                  Elige si traemos todo o solo lo que te importa. Después
+                  Donexto lo clasifica en tus 3 esferas y 13 áreas.
                 </p>
               </div>
             </div>
 
-            <section className="hms-import-summary">
+            <section className="hms-import-summary is-compact">
               <div>
-                <Mail size={22} />
+                <Mail size={18} />
                 <span>Cuenta conectada</span>
                 <strong>{inventory.email}</strong>
               </div>
               <div>
-                <Clock3 size={22} />
+                <Clock3 size={18} />
                 <span>Periodo</span>
                 <strong>
                   {formatLocalDate(inventory.period_start_local)}
@@ -352,38 +427,98 @@ export function GuidedImportWizard({
                 </strong>
               </div>
               <div className="is-primary">
-                <Inbox size={22} />
-                <span>Mensajes que se descargarán</span>
+                <Inbox size={18} />
+                <span>Mensajes elegibles</span>
                 <strong>
                   {inventory.eligible_messages.toLocaleString()}
                 </strong>
               </div>
-            </section>
-
-            <div className="hms-import-breakdown">
-              {inventory.breakdown.map((item) => (
-                <article key={item.key}>
-                  <span>{LABELS[item.key] ?? item.key}</span>
-                  <strong>{item.count.toLocaleString()}</strong>
-                </article>
-              ))}
-            </div>
-
-            <section className="hms-import-exclusions">
-              <ShieldCheck size={22} />
               <div>
-                <strong>Exclusiones automáticas</strong>
-                <span>
-                  Borradores {inventory.excluded.drafts.toLocaleString()}
-                  {" · "}Spam {inventory.excluded.spam.toLocaleString()}
-                  {" · "}Papelera {inventory.excluded.trash.toLocaleString()}
-                </span>
-                <small>
-                  Donexto no borrará, archivará, marcará ni modificará
-                  mensajes en el proveedor.
-                </small>
+                <BadgeCheck size={18} />
+                <span>Tu plan</span>
+                <strong>{planLabel(preview?.plan)}</strong>
               </div>
             </section>
+
+            <p className="hms-import-line">
+              {inventory.breakdown.map((item) => `${LABELS[item.key] ?? item.key} ${item.count.toLocaleString()}`).join(" · ")}
+              {" · "}Excluidos siempre: borradores {inventory.excluded.drafts.toLocaleString()}, spam {inventory.excluded.spam.toLocaleString()}, papelera {inventory.excluded.trash.toLocaleString()}
+            </p>
+
+            <section className="hms-import-spheres" aria-label="Vista previa por esferas">
+              {SPHERES.map((sphere) => (
+                <article key={sphere.id}>
+                  <span>{sphere.label}</span>
+                  <strong>{preview ? `~${estimate(preview.spheres[sphere.id], preview.scale).toLocaleString()}` : "…"}</strong>
+                  <small>
+                    {AREAS.filter((area) => area.sphere === sphere.id)
+                      .map((area) => area.label)
+                      .join(" · ")}
+                  </small>
+                </article>
+              ))}
+            </section>
+
+            <div className="hms-import-choice" role="radiogroup" aria-label="Qué descargar">
+              <button
+                type="button"
+                role="radio"
+                aria-checked={choice === "all"}
+                className={choice === "all" ? "is-on" : ""}
+                onClick={() => setChoice("all")}
+              >
+                Bajar todo
+              </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={choice === "custom"}
+                className={choice === "custom" ? "is-on" : ""}
+                onClick={() => setChoice("custom")}
+              >
+                Personalizado
+              </button>
+              <small>
+                <ShieldCheck size={14} /> Solo lectura: Donexto no borra, archiva, marca ni mueve nada en tu correo.
+              </small>
+            </div>
+
+            {choice === "custom" ? (
+              <section className="hms-import-custom" aria-label="Categorías a importar">
+                <p>Desmarca lo que no quieres traer. Lo que quites no se descarga.</p>
+                <div className="hms-import-chips">
+                  {AREAS.map((area) => (
+                    <label key={area.id} className={exclude.includes(area.id) ? "is-off" : ""}>
+                      <input type="checkbox" checked={!exclude.includes(area.id)} onChange={() => toggle(area.id)} />
+                      {area.label}
+                      {preview?.categories[area.id] ? <em>~{estimate(preview.categories[area.id], preview.scale)}</em> : null}
+                    </label>
+                  ))}
+                  <label className={exclude.includes("promos") ? "is-off" : ""}>
+                    <input type="checkbox" checked={!exclude.includes("promos")} onChange={() => toggle("promos")} />
+                    Promociones
+                    {preview?.categories.promos ? <em>~{estimate(preview.categories.promos, preview.scale)}</em> : null}
+                  </label>
+                  <label className={exclude.includes("other") ? "is-off" : ""}>
+                    <input type="checkbox" checked={!exclude.includes("other")} onChange={() => toggle("other")} />
+                    Otros
+                  </label>
+                </div>
+                <label className={`hms-import-social ${exclude.includes("social") ? "is-off" : ""}`}>
+                  <input type="checkbox" checked={!exclude.includes("social")} onChange={() => toggle("social")} />
+                  <span>
+                    <b>Redes sociales</b>
+                    {preview?.categories.social ? <em> ~{estimate(preview.categories.social, preview.scale)}</em> : null}
+                    <small>
+                      {(Object.keys(preview?.social_platforms ?? {}).length
+                        ? Object.keys(preview?.social_platforms ?? {})
+                        : SOCIAL_LIST
+                      ).join(" · ")}
+                    </small>
+                  </span>
+                </label>
+              </section>
+            ) : null}
 
             <div className="hms-import-actions">
               <button
@@ -405,7 +540,9 @@ export function GuidedImportWizard({
                 )}
                 {starting
                   ? "Iniciando…"
-                  : `Descargar y clasificar ${inventory.eligible_messages.toLocaleString()} mensajes`}
+                  : choice === "custom" && exclude.length
+                    ? "Descargar lo elegido y clasificar"
+                    : `Descargar y clasificar ${inventory.eligible_messages.toLocaleString()} mensajes`}
               </button>
             </div>
           </>

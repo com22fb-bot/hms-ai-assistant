@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.services.import_categories import skip_message
 import email
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
@@ -399,6 +400,7 @@ def sync_yahoo_page(
     batch_size: int = YAHOO_PAGE_SIZE,
     oauth: bool = False,
     mailbox_provider: str = "yahoo",
+    exclude: list[str] | None = None,
 ) -> dict[str, Any]:
     account_id = str(account["id"])
     address, app_password = _prepare_imap_secret(
@@ -417,6 +419,7 @@ def sync_yahoo_page(
     storage = OAuthStorage()
     client_db = storage.client
     inserted = 0
+    skipped_excluded = 0
     duplicates = 0
     errors = 0
     inserted_message_ids: list[str] = []
@@ -496,6 +499,9 @@ def sync_yahoo_page(
                         received_at = None
                 received_at_iso = _to_iso(received_at or _utc_now())
                 sender = _format_sender(from_raw)
+                if skip_message(exclude, sender, subject):
+                    skipped_excluded += 1
+                    continue
                 recipients = _parse_addresses(to_raw)
                 cc = _parse_addresses(cc_raw)
                 bcc = _parse_addresses(bcc_raw)
@@ -613,6 +619,7 @@ def sync_yahoo_page(
         "inserted": inserted,
         "inserted_message_ids": inserted_message_ids,
         "duplicates": duplicates,
+        "skipped_excluded": skipped_excluded,
         "errors": errors,
         "error_details": error_details,
         "next_page_token": str(next_offset) if has_more else None,

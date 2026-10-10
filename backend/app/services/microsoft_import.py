@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.services.import_categories import skip_message
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -346,6 +347,7 @@ def sync_microsoft_page(
     refs: list[str],
     offset: int,
     batch_size: int = MICROSOFT_PAGE_SIZE,
+    exclude: list[str] | None = None,
 ) -> dict[str, Any]:
     account_id = str(account["id"])
     address = str(account.get("email") or "").strip().lower()
@@ -358,6 +360,7 @@ def sync_microsoft_page(
     storage = OAuthStorage()
     client_db = storage.client
     inserted = 0
+    skipped_excluded = 0
     duplicates = 0
     errors = 0
     inserted_message_ids: list[str] = []
@@ -425,6 +428,9 @@ def sync_microsoft_page(
             else:
                 received_at_iso = _to_iso(_utc_now())
             sender = _format_sender(from_raw)
+            if skip_message(exclude, sender, subject):
+                skipped_excluded += 1
+                continue
             recipients = _parse_addresses(to_raw)
             cc = _parse_addresses(cc_raw)
             bcc = _parse_addresses(bcc_raw)
@@ -521,6 +527,7 @@ def sync_microsoft_page(
         "inserted": inserted,
         "inserted_message_ids": inserted_message_ids,
         "duplicates": duplicates,
+        "skipped_excluded": skipped_excluded,
         "errors": errors,
         "error_details": error_details,
         "next_page_token": str(next_offset) if has_more else None,

@@ -7,6 +7,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from app.services.import_categories import skip_message
 from app.services.gmail_sync import (
     _extract_bodies,
     _first_row,
@@ -90,6 +91,7 @@ def sync_gmail_page(
     page_token: str | None = None,
     query: str | None = None,
     account_id: str | None = None,
+    exclude: list[str] | None = None,
 ) -> dict[str, Any]:
     """
     Sincroniza una página de Gmail.
@@ -119,6 +121,7 @@ def sync_gmail_page(
     started_at = _utc_now()
 
     inserted = 0
+    skipped_excluded = 0
     duplicates = 0
     errors = 0
     error_details: list[dict[str, str]] = []
@@ -243,6 +246,9 @@ def sync_gmail_page(
                 cc = _parse_addresses(cc_raw)
                 bcc = _parse_addresses(bcc_raw)
                 sender = _format_sender(sender_raw)
+                if skip_message(exclude, sender, subject, labels):
+                    skipped_excluded += 1
+                    continue
 
                 participant_values: list[str] = []
 
@@ -377,6 +383,7 @@ def sync_gmail_page(
             "inserted": inserted,
             "inserted_message_ids": inserted_message_ids,
             "duplicates": duplicates,
+            "skipped_excluded": skipped_excluded,
             "errors": errors,
             "error_details": error_details,
             "next_page_token": next_page_token,
