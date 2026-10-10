@@ -446,6 +446,7 @@ def classify_pending_messages(
                     else None
                 ),
                 normalized_subject=normalized_subject,
+                workspace_id=workspace_id,
             )
             category, score, reason, actionable = classify_message(
                 message,

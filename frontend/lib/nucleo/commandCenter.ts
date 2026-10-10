@@ -134,6 +134,8 @@ export function needsActionToday(
 ): LifeItem[] {
   return items
     .filter((item) => isOpenStatus(item.status) && !snoozed(item))
+    // Códigos de verificación: "Cuando puedas", nunca "Requiere acción hoy".
+    .filter((item) => item.kind !== "verification_code")
     .filter((item) => {
       const bucket = dueBucket(item, now);
       if (bucket === "overdue" || bucket === "today") return true;

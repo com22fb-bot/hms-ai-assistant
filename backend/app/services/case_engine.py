@@ -67,6 +67,67 @@ _REQUEST_TERMS = (
 )
 
 
+# --- Agrupación por evento (catalogo-maestro.yaml · agrupacion) -------------
+import re as _re
+from datetime import timedelta as _td
+
+_SECURITY_RE = _re.compile(
+    r"(alerta de seguridad|security alert|nuevo inicio de sesi[oó]n|new sign-?in|"
+    r"nuevo dispositivo|new device|actividad (inusual|sospechosa)|unusual activity|"
+    r"suspicious (activity|sign)|alerte de s[eé]curit[eé]|avviso di sicurezza|alerta de seguran[cç]a|"
+    r"contrase[nñ]a (se ha )?(cambiado|actualizado)|password (changed|was changed|reset))",
+    _re.I,
+)
+_CODE_RE = _re.compile(
+    r"(c[oó]digo de (verificaci[oó]n|seguridad|acceso)|verification code|security code|"
+    r"one[- ]time (pass(word|code)|code)|\botp\b|es tu c[oó]digo|is your .{0,30}code|"
+    r"code de v[eé]rification|codice di verifica|c[oó]digo de verifica[cç][aã]o)",
+    _re.I,
+)
+_CODE_DIGITS = _re.compile(r"(?<![\d-])\d{4,8}(?![\d-])")
+_GENERIC_LABELS = {"mail", "email", "accounts", "account", "noreply", "no-reply", "info",
+                   "notifications", "notification", "alerts", "news", "em", "e", "m", "mg", "www"}
+_SECOND_LEVEL = {"com", "co", "net", "org", "gob", "gov", "edu", "ac"}
+EVENT_WINDOW_DAYS = {"security_alert": 7, "verification_code": 1}
+
+
+def brand_of_email(email: str | None) -> str:
+    """accounts.google.com / noreply@google.com -> google; e.bbva.mx -> bbva."""
+    domain = str(email or "").split("@")[-1].strip().lower().strip(">")
+    labels = [part for part in domain.split(".") if part]
+    if len(labels) > 1:
+        labels.pop()
+    if len(labels) > 1 and labels[-1] in _SECOND_LEVEL:
+        labels.pop()
+    while labels and labels[-1] in _GENERIC_LABELS:
+        labels.pop()
+    return labels[-1] if labels else ""
+
+
+def event_topic(text: str) -> str | None:
+    if _CODE_RE.search(text or ""):
+        return "verification_code"
+    if _SECURITY_RE.search(text or ""):
+        return "security_alert"
+    return None
+
+
+def event_key_for(sender_email: str | None, text: str) -> tuple[str, int] | None:
+    """Clave de evento por usuario: marca + tema. Ventana en días."""
+    topic = event_topic(text)
+    brand = brand_of_email(sender_email)
+    if not topic or not brand:
+        return None
+    return f"{brand}:{topic}", EVENT_WINDOW_DAYS[topic]
+
+
+def mask_codes(text: str | None) -> str | None:
+    """Nunca mostrar códigos de verificación (decisión 2)."""
+    if text is None:
+        return None
+    return _CODE_DIGITS.sub("••••••", text)
+
+
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
@@ -289,7 +350,17 @@ def _find_case_for_message(
     account_id: str,
     thread_id: str | None,
     normalized_subject: str,
+    workspace_id: str | None = None,
+    event_key: str | None = None,
+    received_at: str | None = None,
+    window_days: int = 7,
 ) -> dict[str, Any] | None:
+    """Busca el caso abierto del mismo evento.
+
+    Alcance: el usuario (workspace, todos sus buzones), no solo el buzón.
+    Orden: mismo hilo del buzón → misma clave de evento (marca+tema) dentro de
+    la ventana → mismo asunto normalizado.
+    """
     if thread_id:
         response = (
             client.table("intelligent_cases")
@@ -301,9 +372,33 @@ def _find_case_for_message(
             .limit(1)
             .execute()
         )
-
         found = _first_row(response)
+        if found:
+            return found
 
+    scope_column, scope_value = (
+        ("workspace_id", workspace_id) if workspace_id else ("account_id", account_id)
+    )
+
+    if event_key:
+        query = (
+            client.table("intelligent_cases")
+            .select("*")
+            .eq(scope_column, scope_value)
+            .eq("metadata->>event_key", event_key)
+            .in_("status", _OPEN_STATUSES)
+        )
+        if received_at:
+            try:
+                anchor = datetime.fromisoformat(str(received_at).replace("Z", "+00:00"))
+                query = query.gte(
+                    "last_activity_at", (anchor - _td(days=window_days)).isoformat()
+                )
+            except ValueError:
+                pass
+        found = _first_row(
+            query.order("last_activity_at", desc=True).limit(1).execute()
+        )
         if found:
             return found
 
@@ -311,16 +406,14 @@ def _find_case_for_message(
         response = (
             client.table("intelligent_cases")
             .select("*")
-            .eq("account_id", account_id)
+            .eq(scope_column, scope_value)
             .eq("normalized_subject", normalized_subject)
             .in_("status", _OPEN_STATUSES)
             .order("last_activity_at", desc=True)
             .limit(1)
             .execute()
         )
-
         found = _first_row(response)
-
         if found:
             return found
 
@@ -453,6 +546,15 @@ def process_message(
         for term in _REMINDER_TERMS
     )
 
+    event = event_key_for(sender_email, text)
+    event_key = event[0] if event else None
+    is_code = bool(event_key and event_key.endswith(":verification_code"))
+    if is_code:
+        subject = mask_codes(subject) or subject
+        body = mask_codes(body) or body
+        text = f"{subject}\n{body}"
+        normalized_subject = normalize_subject(subject)
+
     existing_case = _find_case_for_message(
         client=client,
         account_id=account_id,
@@ -462,6 +564,10 @@ def process_message(
             else None
         ),
         normalized_subject=normalized_subject,
+        workspace_id=workspace_id,
+        event_key=event_key,
+        received_at=received_at,
+        window_days=event[1] if event else 7,
     )
 
     created = existing_case is None
@@ -472,6 +578,9 @@ def process_message(
             is_unread=bool(message.get("is_unread")),
             reminder_count=1 if is_reminder else 0,
         )
+        if is_code:
+            # Código de verificación = "Cuando puedas"; nunca urgente.
+            priority, level = "low", 1
 
         requester_email = (
             sender_email
@@ -494,7 +603,9 @@ def process_message(
                     "risk_score": risk,
                     "confidence": 0.7000,
                     "summary": (
-                        (strip_css_noise(str(message.get("snippet") or "")) or body)[:500]
+                        mask_codes(
+                            (strip_css_noise(str(message.get("snippet") or "")) or body)[:500]
+                        )
                         or None
                     ),
                     "requested_action": _requested_action(text),
@@ -516,6 +627,7 @@ def process_message(
                     "metadata": {
                         "created_by": "case_engine_v1",
                         "initial_message_direction": direction,
+                        **({"event_key": event_key} if event_key else {}),
                     },
                 }
             )
@@ -568,7 +680,9 @@ def process_message(
                 risk,
             ),
             "priority": (
-                priority
+                "low"
+                if is_code
+                else priority
                 if priority in ("high", "critical")
                 else case.get("priority") or priority
             ),

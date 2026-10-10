@@ -79,6 +79,7 @@ import { Nexto } from "@/components/nucleo/Nexto";
 import { NextoDock } from "@/components/nucleo/NextoDock";
 import { TopTen } from "@/components/nucleo/TopTen";
 import { localizeItems } from "@/lib/nucleo/explain";
+import { groupLifeItems } from "@/lib/nucleo/grouping";
 import { insightExcerpts, insightLine, type MailInsight } from "@/lib/nucleo/insights";
 import { isClosedStatus, runCaseAction, snoozeUntil, type CaseAction } from "@/lib/nucleo/caseActions";
 import {
@@ -168,7 +169,7 @@ export function NucleoApp(props: NucleoAppProps) {
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("appearance");
   const [rawItems, setItems] = useState<LifeItem[]>(props.fixtureItems ?? []);
   // Plain-language headlines in the UI language (rule-based, see explain.ts).
-  const items = useMemo(() => localizeItems(rawItems, language), [rawItems, language]);
+  const items = useMemo(() => groupLifeItems(localizeItems(rawItems, language)), [rawItems, language]);
   const [loading, setLoading] = useState(!props.preview);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");

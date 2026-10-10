@@ -390,6 +390,9 @@ export type LifeItem = {
   kind?: string;
   /** Backend insight (main idea + exact quotes). Its area/kind win over keywords. */
   insight?: MailInsight | null;
+  /** Avisos del mismo evento unidos en este (grouping.ts). */
+  groupCount?: number;
+  groupIds?: string[];
 };
 
 function senderLabel(
@@ -587,6 +590,7 @@ export function monthMoney(items: LifeItem[], now = new Date()): MonthMoney {
 export type Urgency = "high" | "med" | "low";
 
 export function urgencyOf(item: LifeItem, now = new Date()): Urgency {
+  if (item.kind === "verification_code") return "low";
   if (item.priority === "critical" || item.priority === "high") return "high";
   if (item.area === "security") return "high";
   if (!item.dueAt) return item.priority === "low" ? "low" : "med";
