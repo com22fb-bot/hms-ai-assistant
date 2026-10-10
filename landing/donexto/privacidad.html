@@ -103,6 +103,7 @@
         color: var(--ink);
         font-size: 0.92rem;
       }
+      .legal-lang { background: transparent; color: inherit; border: 1px solid currentColor; border-radius: 999px; padding: 0.3rem 0.6rem; font: inherit; }
     </style>
   </head>
   <body>
@@ -130,7 +131,7 @@
 
     <main>
       <article class="legal-doc">
-        <p class="updated">Última actualización: 6 de octubre de 2026</p>
+        <p class="updated">Última actualización: 9 de octubre de 2026</p>
         <h1>Política de Privacidad de Donexto</h1>
         <p class="legal-lead">
           En Donexto, a cargo de Héctor Marcial Salcido Roacho (el Titular), con
@@ -163,6 +164,7 @@
           <a href="#transferencias">5. Transferencias a la nube en Estados Unidos</a>
           <a href="#derechos">6. Tus derechos</a>
           <a href="#baja">7. Baja, bloqueo y borrado</a>
+          <a href="#conservacion">7 bis. Cuánto tiempo conservamos tu cuenta</a>
           <a href="#cookies">8. Cookies</a>
           <a href="#menores">9. Menores</a>
           <a href="#mx">10. Anexo México (LFPDPPP)</a>
@@ -242,6 +244,24 @@
             hace falta para clasificar, texto del mensaje.
           </li>
           <li>
+            Clasificación del correo: la esfera de vida (Hogar, Ocupación o
+            Personal), el área (Dinero y finanzas, Compras y pedidos,
+            Suscripciones y servicios, Trabajo y negocios, Hogar y familia,
+            Salud y bienestar, Facturas y vencimientos, Viajes y reservas,
+            Seguridad y cuentas, Gobierno y documentos, Educación, Agenda y
+            Social y comunicaciones), la prioridad y los datos que el aviso
+            contiene, como importes, comercios, fechas límite, números de
+            pedido, guía, factura o reservación.
+          </li>
+          <li>
+            País y moneda: el país aproximado desde el que te conectas, deducido
+            de tu dirección IP por nuestro proveedor de red (Cloudflare), para
+            mostrarte precios y montos en tu moneda y saber si el servicio ya
+            está disponible en tu país. Puedes cambiarlo. Si contratas un plan,
+            el país de tu tarjeta o de facturación es el que vale. (La detección
+            al registrarte se activará próximamente.)
+          </li>
+          <li>
             Datos de uso de Donexto: tus configuraciones, tus correcciones y
             registros técnicos esenciales (registros de sesión, errores y
             seguridad).
@@ -250,6 +270,22 @@
         <p>
           Finalidad: clasificar el correo que llega y crear casos (casos, no
           correos) en tu panel. Tú eliges qué se alerta y qué no.
+        </p>
+        <p>
+          Datos sensibles: algunos correos contienen información de salud
+          (citas, resultados, recetas) o financiera (cargos, depósitos, estados
+          de cuenta, deudas). Al conectar tu buzón y aceptar este aviso, nos
+          das tu consentimiento expreso para tratar esa información solo para
+          clasificarla y mostrártela en tu panel. Las notificaciones al celular
+          de salud no muestran detalles, y los códigos de verificación nunca
+          aparecen en una notificación: solo dentro de la app. Puedes retirar
+          tu consentimiento desconectando el buzón o eliminando tu cuenta.
+        </p>
+        <p>
+          Montos convertidos: el “dinero detectado” es lo que aparece en tus
+          correos, no el saldo de tu banco. Cuando mostramos un monto o un
+          precio en tu moneda local, la conversión es aproximada y solo de
+          referencia; el cobro se hace en la moneda indicada al pagar.
         </p>
         <p>
           No usamos esos datos para fines secundarios. No los vendemos ni los
@@ -272,7 +308,8 @@
         </p>
         <p>
           En principio, pedimos y conservamos solo lo necesario para prestarte
-          esa capa de atención. No publicamos plazos fijos de retención por tipo
+          esa capa de atención. Fuera de los plazos de conservación de cuentas
+          del apartado 7 bis, no publicamos plazos fijos de retención por tipo
           de dato. Al darte de baja, bloqueamos o borramos conforme a la ley
           aplicable, como se indica más abajo.
         </p>
@@ -504,6 +541,19 @@
           específica de app en account.apple.com.
         </p>
 
+        <h2 id="conservacion">7 bis. Cuánto tiempo conservamos tu cuenta</h2>
+        <p>
+          Prueba gratis sin suscripción: conservamos la cuenta y sus datos 1
+          semana después de que termina la prueba. Suscripción no renovada: 1
+          mes después del vencimiento. Después, un proceso automático diario
+          (3:00 a. m., hora de la Ciudad de México) borra la cuenta, los
+          buzones conectados, las autorizaciones de lectura, las
+          clasificaciones y los casos. Antes del borrado te enviamos dos
+          recordatorios por correo: a la mitad del plazo y 1 día antes. Al
+          conectar un buzón, importamos los últimos 90 días de correo con el
+          plan mensual y los últimos 6 meses con el plan anual.
+        </p>
+
         <h2 id="cookies">8. Cookies</h2>
         <p>
           Usamos solo lo técnico indispensable para la sesión, la misma política
@@ -624,5 +674,6 @@
         reservados
       </p>
     </footer>
+    <script src="./legal-i18n.js" defer></script>
   </body>
 </html>
