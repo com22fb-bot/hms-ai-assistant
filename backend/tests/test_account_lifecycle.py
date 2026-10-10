@@ -125,6 +125,28 @@ class CleanupTests(unittest.TestCase):
         self.assertEqual(sent, [])
 
 
+class SafetyTests(unittest.TestCase):
+    def test_unknown_email_fails_closed(self):
+        db = _db()
+        db["profiles"] = []  # sin correo: no se puede comprobar protección
+        deleted = []
+        res = lc.run_daily_cleanup(_Client(db), now=NOW, delete=True, send_reminders=False,
+                                   deleter=lambda c, u: deleted.append(u))
+        self.assertEqual(deleted, [])
+        self.assertGreaterEqual(res["skipped_protected"], 1)
+
+    def test_active_trial_not_reminded(self):
+        db = _db()
+        db["account_plans"].append({"user_id": "u6", "plan_code": "trial", "status": "trialing",
+                                    "trial_ends_at": (NOW + timedelta(days=2)).isoformat()})
+        db["profiles"].append({"id": "u6", "email": "active-trial@example.com"})
+        sent = []
+        res = lc.send_subscribe_reminders(_Client(db), "trial", now=NOW,
+                                          sender=lambda to, s, b: sent.append(to) or True)
+        self.assertNotIn("active-trial@example.com", sent)
+        self.assertEqual(res["skipped_active"], 1)
+
+
 class OverviewTests(unittest.TestCase):
     def test_groups_and_days_left(self):
         ov = lc.lifecycle_overview(_Client(_db()), NOW)
@@ -140,6 +162,7 @@ class OverviewTests(unittest.TestCase):
         res = lc.send_subscribe_reminders(_Client(_db()), "trial", now=NOW,
                                           sender=lambda to, s, b: sent.append(to) or True)
         self.assertNotIn("hmcelinfo@gmail.com", sent)
+        # u1 ya terminó la prueba (por borrar); u2 también terminó. u4 protegida.
         self.assertEqual(res["skipped_protected"], 1)
         self.assertEqual(res["sent"], 2)
         with self.assertRaises(ValueError):

@@ -136,14 +136,16 @@ def initial_import_snapshot(
     }
 
 
-def inventory(credentials: Credentials) -> dict[str, Any]:
+def inventory(
+    credentials: Credentials, history_days: int | None = None
+) -> dict[str, Any]:
     service = _service(credentials)
     profile = (
         service.users()
         .getProfile(userId="me")
         .execute(num_retries=2)
     )
-    snapshot = initial_import_snapshot(credentials)
+    snapshot = initial_import_snapshot(credentials, history_days=history_days)
 
     base_query = snapshot["query"]
     breakdown_queries = {
@@ -240,6 +242,7 @@ def _list_stored_message_ids(account_id: str) -> list[str]:
 def compare_inventory(
     credentials: Credentials,
     account_id: str,
+    history_days: int | None = None,
 ) -> dict[str, Any]:
     service = _service(credentials)
     profile = (
@@ -247,7 +250,7 @@ def compare_inventory(
         .getProfile(userId="me")
         .execute(num_retries=2)
     )
-    snapshot = initial_import_snapshot(credentials)
+    snapshot = initial_import_snapshot(credentials, history_days=history_days)
     gmail_ids = _list_message_ids(
         service,
         query=snapshot["query"],

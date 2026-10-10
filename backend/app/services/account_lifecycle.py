@@ -263,13 +263,17 @@ def send_subscribe_reminders(
     send = sender or _default_sender
     overview = lifecycle_overview(client, now)
     rows = overview["trials"] if group == "trial" else overview["lapsed"]
-    result = {"sent": 0, "skipped_protected": 0, "skipped_no_email": 0, "failed": 0}
+    result = {"sent": 0, "skipped_protected": 0, "skipped_no_email": 0, "skipped_active": 0, "failed": 0}
     for row in rows:
-        if row.get("protected"):
-            result["skipped_protected"] += 1
+        # Solo cuentas cuya prueba o suscripción ya terminó (no pruebas en curso).
+        if row.get("phase") != "por_borrar":
+            result["skipped_active"] += 1
             continue
-        if not row.get("email"):
-            result["skipped_no_email"] += 1
+        if row.get("protected") or not row.get("email"):
+            if not row.get("email"):
+                result["skipped_no_email"] += 1
+            else:
+                result["skipped_protected"] += 1
             continue
         subject, body = reminder_message(group, _parse(row.get("delete_at")))
         try:
@@ -328,7 +332,8 @@ def run_daily_cleanup(
         if not user_id or retention is None:
             continue
         email = emails.get(user_id, "")
-        if email in protected:
+        # Falla cerrada: sin correo conocido no se puede comprobar la protección.
+        if not email or email in protected:
             counts["skipped_protected"] += 1
             continue
         if now >= retention.delete_at:

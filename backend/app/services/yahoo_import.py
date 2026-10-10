@@ -265,12 +265,14 @@ def yahoo_inventory(
     *,
     oauth: bool = False,
     mailbox_provider: str = "yahoo",
+    history_days: int | None = None,
 ) -> dict[str, Any]:
     snapshot = yahoo_initial_snapshot(
         address,
         app_password,
         oauth=oauth,
         mailbox_provider=mailbox_provider,
+        history_days=history_days,
     )
     snapshot.pop("yahoo_refs", None)
     breakdown = snapshot.pop("breakdown")

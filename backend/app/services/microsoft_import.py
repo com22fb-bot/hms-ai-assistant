@@ -275,8 +275,10 @@ def microsoft_initial_snapshot(
     }
 
 
-def microsoft_inventory(account: dict[str, Any]) -> dict[str, Any]:
-    snapshot = microsoft_initial_snapshot(account)
+def microsoft_inventory(
+    account: dict[str, Any], history_days: int | None = None
+) -> dict[str, Any]:
+    snapshot = microsoft_initial_snapshot(account, history_days=history_days)
     snapshot.pop("microsoft_refs", None)
     breakdown = snapshot.pop("breakdown")
     excluded = snapshot.pop("excluded")
