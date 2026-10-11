@@ -900,6 +900,10 @@ function applyLang() {
     const key = el.getAttribute("data-i18n");
     if (!key || dict[key] == null) return;
     el.textContent = dict[key];
+    // Precios sin cortar en pantallas angostas (US$175.99, €19.99).
+    if (/(?:US\$|MX\$|R\$|€)\s?\d|\d\s?(?:US\$|€)/.test(el.textContent)) {
+      el.innerHTML = el.innerHTML.replace(/(?:US\$|MX\$|R\$|€)\s?\d[\d.,]*|\d[\d.,]*\d\s?(?:US\$|€)/g, (m) => `<bdi class="price-nowrap">${m}</bdi>`);
+    }
   });
 
   document.querySelectorAll("[data-i18n-placeholder]").forEach((el) => {
