@@ -34,6 +34,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
+import logging
+
 from cryptography.fernet import Fernet, InvalidToken
 
 
@@ -49,6 +51,18 @@ SUPPORTED_PROVIDERS = {
 ACTIVE_ACCOUNT_STATUSES = {
     "active",
 }
+
+
+_logger = logging.getLogger(__name__)
+
+
+def _rows_of(response: Any) -> list[dict[str, Any]]:
+    data = getattr(response, "data", None)
+    if isinstance(data, list):
+        return [row for row in data if isinstance(row, dict)]
+    if isinstance(data, dict):
+        return [data]
+    return []
 
 
 class OAuthStorageError(RuntimeError):
@@ -593,6 +607,10 @@ class OAuthStorage:
                     "Supabase no confirmó la actualización de la cuenta."
                 )
 
+            if status == "active":
+                self.retire_orphan_duplicates(
+                    normalized_provider, provider_account_id, str(updated["id"])
+                )
             return updated
 
         create_response = (
@@ -608,7 +626,72 @@ class OAuthStorage:
                 "Supabase no confirmó la creación de la cuenta."
             )
 
+        if status == "active":
+            self.retire_orphan_duplicates(
+                normalized_provider, provider_account_id, str(created["id"])
+            )
         return created
+
+    def _workspace_has_active_members(self, workspace_id: str) -> bool:
+        rows = _rows_of(
+            self.client.table("workspace_members")
+            .select("profile_id")
+            .eq("workspace_id", workspace_id)
+            .eq("status", "active")
+            .limit(1)
+            .execute()
+        )
+        return bool(rows)
+
+    def retire_orphan_duplicates(
+        self,
+        provider: str,
+        provider_account_id: str,
+        keep_account_id: str,
+    ) -> list[str]:
+        """Marca como ``superseded`` las copias activas del mismo buzón.
+
+        Solo toca filas cuyo workspace ya no tiene miembros activos (restos de
+        usuarios borrados). Nunca reasigna ni lee datos de otro workspace con
+        miembros: eso mezclaría buzones entre personas distintas. No borra nada
+        (mensajes, casos y credenciales quedan para la consolidación revisada).
+        Best effort: un fallo aquí no rompe la conexión del usuario.
+        """
+        retired: list[str] = []
+        try:
+            rows = _rows_of(
+                self.client.table("communication_accounts")
+                .select("id,workspace_id")
+                .eq("provider", _normalize_provider(provider))
+                .eq("provider_account_id", provider_account_id)
+                .eq("status", "active")
+                .neq("id", keep_account_id)
+                .execute()
+            )
+            for row in rows:
+                account_id = str(row.get("id") or "")
+                workspace_id = str(row.get("workspace_id") or "")
+                if not account_id or not workspace_id:
+                    continue
+                if self._workspace_has_active_members(workspace_id):
+                    continue
+                self.client.table("communication_accounts").update(
+                    {"status": "superseded"}
+                ).eq("id", account_id).eq("status", "active").execute()
+                retired.append(account_id)
+        except Exception as error:  # noqa: BLE001 - best effort, sin PII
+            _logger.warning(
+                "retire_orphan_duplicates fallo provider=%s error=%s",
+                provider,
+                type(error).__name__,
+            )
+        if retired:
+            _logger.info(
+                "retire_orphan_duplicates provider=%s retired=%d",
+                provider,
+                len(retired),
+            )
+        return retired
 
     def get_account(
         self,

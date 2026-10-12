@@ -45,7 +45,9 @@ def _message_direction(labels: list[str]) -> str:
 
     if "DRAFT" in normalized:
         return "draft"
-    if "SENT" in normalized and "INBOX" not in normalized:
+    # SENT manda: un correo enviado por el usuario (incluido el que se envía
+    # a sí mismo y por eso también lleva INBOX) es saliente.
+    if "SENT" in normalized:
         return "outbound"
     if "INBOX" in normalized:
         return "inbound"
