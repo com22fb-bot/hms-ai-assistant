@@ -119,6 +119,7 @@ def _workspaces_with_members(client: Any, workspace_ids: set[str]) -> set[str]:
         .select("workspace_id")
         .in_("workspace_id", sorted(workspace_ids))
         .eq("status", "active")
+        .is_("deleted_at", "null")
         .execute()
     )
     return {str(row.get("workspace_id")) for row in rows if row.get("workspace_id")}

@@ -638,6 +638,7 @@ class OAuthStorage:
             .select("profile_id")
             .eq("workspace_id", workspace_id)
             .eq("status", "active")
+            .is_("deleted_at", "null")
             .limit(1)
             .execute()
         )

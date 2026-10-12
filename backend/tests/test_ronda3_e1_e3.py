@@ -15,14 +15,50 @@ from tests.fake_supabase import FakeSupabase
 
 
 # ---------------------------------------------------------------- E3
-def test_e3_sent_con_inbox_es_saliente():
-    from app.services.gmail_full_sync import _message_direction
+CASES = [
+    (["SENT", "INBOX"], None, "outbound"),       # enviado a uno mismo
+    (["SENT"], None, "outbound"),
+    (["INBOX"], None, "inbound"),
+    (["DRAFT"], None, "draft"),
+    (["DRAFT", "SENT"], None, "draft"),
+    (["CATEGORY_PROMOTIONS"], None, "inbound"),
+    ([], "outbound", "outbound"),                  # sin etiquetas: respeta lo guardado (IMAP/Graph)
+    (None, None, "inbound"),
+]
 
-    assert _message_direction(["SENT", "INBOX"]) == "outbound"
-    assert _message_direction(["SENT"]) == "outbound"
-    assert _message_direction(["INBOX"]) == "inbound"
-    assert _message_direction(["DRAFT", "SENT"]) == "draft"
-    assert _message_direction(["CATEGORY_PROMOTIONS"]) == "inbound"
+
+@pytest.mark.parametrize("labels,stored,expected", CASES)
+def test_e3_regla_unica_en_los_tres_modulos(labels, stored, expected):
+    from app.services import case_engine, gmail_full_sync, safe_case_classifier
+    from app.services.mail_direction import direction_from_labels
+
+    assert direction_from_labels(labels, stored) == expected
+    message = {"labels": labels, "direction": stored}
+    assert case_engine._message_direction(message) == expected
+    assert safe_case_classifier._message_direction(message) == expected
+    if stored is None:
+        assert gmail_full_sync._message_direction(labels or []) == expected
+
+
+def test_e3_auto_enviado_sigue_clasificandose_como_entrante_en_triage():
+    from app.services.mail_direction import is_self_delivered
+    from app.services.safe_case_classifier import classify_message
+
+    assert is_self_delivered(["SENT", "INBOX"]) and not is_self_delivered(["SENT"])
+    sent_only = classify_message({"labels": ["SENT"], "subject": "x", "sender": "yo@example.test"},
+                                 existing_case=None)
+    assert sent_only[2] == "Mensaje enviado sin un caso abierto previo."
+    self_sent = classify_message({"labels": ["SENT", "INBOX"], "subject": "x", "sender": "yo@example.test"},
+                                 existing_case=None)
+    assert self_sent[2] != "Mensaje enviado sin un caso abierto previo."
+
+
+def test_e3_un_solo_lugar_define_la_regla():
+    import pathlib
+    root = pathlib.Path(__file__).parents[1] / "app"
+    offenders = [str(p) for p in root.rglob("*.py")
+                 if '"SENT" in' in p.read_text() and p.name != "mail_direction.py"]
+    assert not offenders, offenders
 
 
 # ---------------------------------------------------------------- E2
@@ -39,6 +75,7 @@ def _world():
         "workspace_members": [
             {"workspace_id": "ws-live", "profile_id": "p1", "status": "active"},
             {"workspace_id": "ws-other", "profile_id": "p2", "status": "active"},
+            {"workspace_id": "ws-dead-2", "profile_id": "p3", "status": "active", "deleted_at": "2026-08-01"},
         ],
         "communication_accounts": [
             {"id": "orph-1", "workspace_id": "ws-dead-1", "provider": "google", "provider_account_id": "G", "status": "active"},

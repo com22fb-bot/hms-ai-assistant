@@ -29,6 +29,10 @@ class _Query:
     def neq(self, col, val):
         self.filters.append(lambda r: str(r.get(col)) != str(val)); return self
 
+    def is_(self, col, val):
+        want_null = str(val).lower() == "null"
+        self.filters.append(lambda r: (r.get(col) is None) == want_null); return self
+
     def in_(self, col, vals):
         vals = {str(v) for v in vals}
         self.filters.append(lambda r: str(r.get(col)) in vals); return self

@@ -8,6 +8,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from app.services.import_categories import skip_message
+from app.services.mail_direction import direction_from_labels
 from app.services.gmail_sync import (
     _extract_bodies,
     _first_row,
@@ -41,17 +42,7 @@ def _rows(response: Any) -> list[dict[str, Any]]:
 
 
 def _message_direction(labels: list[str]) -> str:
-    normalized = {str(label).upper() for label in labels}
-
-    if "DRAFT" in normalized:
-        return "draft"
-    # SENT manda: un correo enviado por el usuario (incluido el que se envía
-    # a sí mismo y por eso también lleva INBOX) es saliente.
-    if "SENT" in normalized:
-        return "outbound"
-    if "INBOX" in normalized:
-        return "inbound"
-    return "inbound"
+    return direction_from_labels(labels)
 
 
 def _references_list(raw_value: str) -> list[str]:

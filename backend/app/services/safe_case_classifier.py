@@ -4,6 +4,7 @@ from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
 
+from app.services.mail_direction import direction_from_labels, is_self_delivered
 from app.services.classification_catalog import (
     identify_sender,
     is_marketing_local_part,
@@ -173,14 +174,7 @@ def _now_iso() -> str:
 
 
 def _message_direction(message: dict[str, Any]) -> str:
-    labels = {str(item).upper() for item in (message.get("labels") or [])}
-    if "DRAFT" in labels:
-        return "draft"
-    if "SENT" in labels and "INBOX" not in labels:
-        return "outbound"
-    if "INBOX" in labels:
-        return "inbound"
-    return str(message.get("direction") or "inbound")
+    return direction_from_labels(message.get("labels"), message.get("direction"))
 
 
 def _text_has_any(text: str, terms: tuple[str, ...]) -> bool:
@@ -277,7 +271,7 @@ def classify_message(
     subject = str(message.get("subject") or "")
     body = str(message.get("body_text") or message.get("snippet") or "")
     short_text = f"{subject}\n{body[:1600]}".lower()
-    self_delivered = "SENT" in labels and "INBOX" in labels
+    self_delivered = is_self_delivered(labels)
     direction = _message_direction(message)
 
     if "DRAFT" in labels:

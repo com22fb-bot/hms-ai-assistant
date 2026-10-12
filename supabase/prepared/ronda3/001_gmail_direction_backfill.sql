@@ -1,24 +1,18 @@
--- RONDA 3 · PREPARADA · NO APLICAR SIN APROBACIÓN
--- Gmail: un mensaje con etiqueta SENT es saliente aunque también tenga INBOX
--- (correos que el usuario se envía a sí mismo). Prod 12-oct: 50 filas afectadas.
-begin;
-create table if not exists public.ops_r3_direction_backup (
-  message_id uuid primary key,
-  old_direction text,
-  changed_at timestamptz not null default now()
-);
-insert into public.ops_r3_direction_backup (message_id, old_direction)
-select m.id, m.direction
-from public.communication_messages m
-where m.provider = 'google'
-  and m.labels ? 'SENT'
-  and not (m.labels ? 'DRAFT')
-  and m.direction is distinct from 'outbound'
-on conflict (message_id) do nothing;
-
-update public.communication_messages m
-set direction = 'outbound', updated_at = now()
-from public.ops_r3_direction_backup b
-where b.message_id = m.id
-  and m.direction is distinct from 'outbound';
-commit;
+-- RONDA 3 · PREPARADA · NO APLICAR SIN APROBACIÓN (requiere 000_ops_infra.sql)
+-- Gmail: SENT => outbound aunque tenga INBOX (prod 12-oct: 50 filas). Rollback:
+-- select * from ops_r3_rollback('<op_id>');  (no pisa filas modificadas después)
+do $$
+declare v_op uuid; r record;
+begin
+  insert into public.ops_r3_operation (script) values ('001_gmail_direction_backfill') returning op_id into v_op;
+  for r in
+    select m.id, to_jsonb(m) as before_row from public.communication_messages m
+    where m.provider = 'google' and m.labels ? 'SENT' and not (m.labels ? 'DRAFT')
+      and m.direction is distinct from 'outbound'
+  loop
+    update public.communication_messages set direction = 'outbound' where id = r.id;
+    perform public.ops_r3_log(v_op, 'communication_messages', r.id, 'update', r.before_row);
+  end loop;
+  update public.ops_r3_operation set status = 'done', finished_at = now() where op_id = v_op;
+  raise notice 'op_id=%', v_op;
+end $$;
