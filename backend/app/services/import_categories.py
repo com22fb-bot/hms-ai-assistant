@@ -106,6 +106,11 @@ def skip_message(exclude: Iterable[str] | None, sender: str | None, subject: str
         # C1: seguridad y códigos nunca se saltan, aunque se excluya "social".
         if is_security_or_code(sender, subject):
             return False
+        from app.services.brain_v1.protected import brand_mismatch
+
+        # A15 (Etapa 1.3): un posible phishing nunca se excluye ni se oculta; solo puede ir a revisión.
+        if brand_mismatch(sender, subject):
+            return False
     return import_category(sender, subject, labels) in excluded
 
 

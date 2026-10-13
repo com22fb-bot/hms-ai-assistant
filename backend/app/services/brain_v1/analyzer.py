@@ -15,7 +15,7 @@ from app.services.brain_v1.dates import DateResult, extract_dates
 from app.services.brain_v1.documents import doc_key, extract_amount, period_key
 from app.services.brain_v1.protected import SECURITY_ACTION_RE, fold, is_security_or_code, phishing_suspect, protected_type
 
-BRAIN_VERSION = "brain-v1-etapa1-2"
+BRAIN_VERSION = "brain-v1-etapa1-3"
 
 RULE_CONFIDENCE = {
     "security": 0.9, "verification": 0.9, "payment_confirmation": 0.85, "partial_payment": 0.6,
@@ -23,6 +23,7 @@ RULE_CONFIDENCE = {
     "request": 0.7, "social": 0.9, "promotional": 0.85, "invoice_info": 0.7, "legacy_action": 0.6,
     "legacy_notice": 0.7, "legacy_info": 0.75, "ambiguous": 0.35, "excluded": 0.95, "outbound": 0.7,
     "security_action": 0.9, "phishing_suspect": 0.3, "outbound_wait": 0.8, "bulk": 0.8,
+    "booking": 0.85, "auto_notice": 0.8,
 }
 
 VERIFY_RE = re.compile(
@@ -50,8 +51,39 @@ APPT_CANCEL_RE = re.compile(
 )
 APPT_RE = re.compile(
     r"((cita|appointment|consulta).{0,60}(confirmad|agendad|programad|confirmed|scheduled|booked|reservad)|"
-    r"(confirmamos|confirmed|recordatorio de) (tu |su |your )?(cita|appointment|consulta)|appointment reminder)"
+    r"(confirmamos|confirmed|recordatorio de) (tu |su |your )?(cita|appointment|consulta)|appointment reminder|"
+    # A12 (Etapa 1.3): "Confirmación de cita para pasaporte"
+    r"confirmacion de (tu |su |la )?(cita|consulta))"
 )
+# A12 (Etapa 1.3): confirmaciones automáticas de reservación, itinerario o registro (plantillas).
+BOOKING_RE = re.compile(
+    r"(reservacion confirmada|reserva confirmada|confirmacion de (tu |su )?(reservacion|reserva|registro|boleto|vuelo)|"
+    r"(tu|su) (registro|reservacion|reserva) (esta |fue |ha sido )?confirmad|registro confirmado|tu itinerario|itinerario de viaje|"
+    r"pase de abordar|boarding pass|booking (is )?confirmed|reservation confirmed|your (itinerary|booking|reservation)|"
+    r"registration (is )?confirmed|you'?re registered|e-?ticket)"
+)
+TRANSACTIONAL_LOCALS = re.compile(
+    r"^(reservas?|reservaciones|reservations?|booking|bookings|citas|agenda|eventos?|events?|registro|registros|"
+    r"itinerarios?|tickets?|boletos|viajes|travel|confirmaciones|confirmations?|avisos|notificaciones|alertas|alerts|"
+    r"pedidos|orders?|envios|shipping|devoluciones|returns|resultados|cuentas|accounts|billing|facturacion)$"
+)
+# A13 (Etapa 1.3): avisos automáticos que no piden nada.
+ORDER_NOTICE_RE = re.compile(
+    r"(tu pedido (ha sido |fue |esta )?(confirmado|enviado|en camino|entregado)|pedido (enviado|entregado|confirmado)|"
+    r"tu (paquete|envio) (fue |ha sido |esta )?(entregado|enviado|en camino)|fue entregado|tu reembolso|reembolso (en proceso|aprobado|emitido)|"
+    r"devolucion (recibida|aprobada|en proceso)|your order (has been |was |is )?(confirmed|shipped|delivered|on its way)|"
+    r"has (been )?(shipped|delivered)|your refund)"
+)
+ORDER_ACTION_RE = re.compile(
+    r"(rechazad|declined|actualiza|update your|cancelaremos|will be cancel|recoge|recoger|pick ?up|tienes hasta|"
+    r"antes del|a mas tardar|paga|pague|pay now|confirma|confirm)"
+)
+CARD_CHARGE_RE = re.compile(
+    r"(cargo (realizado|aplicado|por)|se realizo un cargo|compra (realizada|aprobada) con tu tarjeta|cargo .{0,30}tarjeta|"
+    r"charge (of|was made|was posted)|a charge .{0,40}card|purchase (on|with) your card|card was charged)"
+)
+RESULTS_RE = re.compile(r"(resultados (ya )?(estan |estan listos|listos|disponibles)|tus resultados|results are (ready|available)|your (test )?results)")
+AUTO_RENEW_RE = re.compile(r"(se renovara automaticamente|renovacion automatica|renovara el|will (auto-?)?renew|auto-?renew|renews automatically)")
 # A9 (Etapa 1.2): cita reprogramada → actualiza la cita existente con la nueva fecha explícita.
 APPT_RESCHEDULE_RE = re.compile(
     r"((cita|appointment|consulta).{0,60}(reprogramad|rescheduled|reagendad|cambiada (al|para))|"
@@ -233,6 +265,13 @@ def analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> An
         analysis.reschedule = True
         if analysis.dates.event_at:
             return analysis
+    automated = _sender_is_automated(sender) or bool(TRANSACTIONAL_LOCALS.match(sender_email.split("@")[0].lower()))
+    if BOOKING_RE.search(text) and automated:
+        # A12: confirmación automática con fecha explícita → compromiso programado. Nunca para correos de personas.
+        booking = build("booking", "notice", True, "Confirmación automática de reservación, itinerario o registro.",
+                        kind="booking", protected=prot)
+        if booking.dates.event_at:
+            return booking
     if APPT_RE.search(text):
         analysis = build("appointment", "action_required", True, "Cita confirmada: compromiso con fecha.",
                          kind="appointment", protected=prot or "health")
@@ -241,6 +280,18 @@ def analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> An
             analysis.confidence = 0.4
             analysis.reason = "Cita sin fecha clara; requiere revisión."
         return analysis
+
+    if automated and not PAY_DEMAND_RE.search(text):
+        # A13: plantillas automáticas que solo informan.
+        if ORDER_NOTICE_RE.search(text) and not ORDER_ACTION_RE.search(text):
+            return build("auto_notice", "informational", False, "Aviso automático de pedido, envío, entrega o reembolso.",
+                         protected=prot)
+        if CARD_CHARGE_RE.search(text):
+            return build("auto_notice", "notice", False, "Cargo con tarjeta: aviso protegido del banco.", protected="bank")
+        if RESULTS_RE.search(text):
+            return build("auto_notice", "notice", False, "Resultados disponibles: aviso de salud.", protected="health")
+        if AUTO_RENEW_RE.search(text):
+            return build("auto_notice", "notice", False, "Renovación automática: aviso, sin pendiente.", protected=prot)
 
     identity = identify_sender(sender) or {}
     vertical = str(identity.get("vertical") or "")

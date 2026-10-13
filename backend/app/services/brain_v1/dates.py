@@ -51,6 +51,8 @@ _NUM = r"(\d{1,2}|" + "|".join(NUMBERS) + r")"
 PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("iso", re.compile(r"\b(20\d{2})-(\d{1,2})-(\d{1,2})\b")),
     ("slash", re.compile(r"\b(\d{1,2})[/.](\d{1,2})[/.](20\d{2}|\d{2})\b")),
+    # A12 (Etapa 1.3): rango "del 12 al 15 de diciembre" → empieza el 12.
+    ("es_range", re.compile(r"\bdel? (\d{1,2}) al (\d{1,2}) de (" + _MONTH_NAMES + r")\.?(?:,? (?:de|del)? ?(20\d{2}))?\b")),
     ("es_long", re.compile(r"\b(\d{1,2}) de (" + _MONTH_NAMES + r")\.?(?:,? (?:de|del)? ?(20\d{2}))?\b")),
     ("en_long", re.compile(r"\b(" + _MONTH_NAMES + r")\.? (\d{1,2})(?:st|nd|rd|th)?(?:,? (20\d{2}))?\b")),
     ("en_dmy", re.compile(r"\b(\d{1,2}) (" + _MONTH_NAMES + r")\.? (20\d{2})\b")),
@@ -153,6 +155,10 @@ def _parse_in(sentence: str, anchor: date, english: bool) -> list[tuple[date | s
                     value = _safe(y, a, b)
                 else:
                     value = _safe(y, b, a)
+            elif kind == "es_range":
+                d, mo = int(m[1]), MONTHS[m[3]]
+                y = int(m[4]) if m[4] else _year_for(mo, d, anchor)
+                value = _safe(y, mo, d)
             elif kind == "es_long":
                 d, mo = int(m[1]), MONTHS[m[2]]
                 y = int(m[3]) if m[3] else _year_for(mo, d, anchor)
@@ -225,7 +231,7 @@ def extract_dates(subject: str | None, body: str | None, received_at: Any, *, ki
     found: list[Found] = []
     ambiguous: str | None = None
     # A9/A8: en citas, eventos y esperas, la señal puede venir en el asunto ("Webinar ...", "Tu itinerario").
-    subject_event = kind in {"appointment", "appointment_cancel", "event"} and bool(EVENT_CUE.search(fold(subject or "")))
+    subject_event = kind in {"appointment", "appointment_cancel", "event", "booking"} and bool(EVENT_CUE.search(fold(subject or "")))
     for sentence_raw in _SPLIT.split(raw):
         sentence = fold(sentence_raw).strip()
         if not sentence:
@@ -239,7 +245,7 @@ def extract_dates(subject: str | None, body: str | None, received_at: Any, *, ki
         dates = _parse_in(sentence, anchor, english)
         if not dates:
             continue
-        if kind in {"appointment", "appointment_cancel", "event"} and has_event:
+        if kind in {"appointment", "appointment_cancel", "event", "booking"} and has_event:
             role = "event"
         elif has_due:
             role = "due"
@@ -258,6 +264,11 @@ def extract_dates(subject: str | None, body: str | None, received_at: Any, *, ki
     for role in ("due", "event"):
         items = [f for f in found if f.role == role]
         values = {f.value for f in items}
+        if role == "event" and kind == "booking" and len(values) > 1:
+            # A12: una reservación trae llegada y salida; el compromiso empieza en la primera fecha.
+            first = min(values)
+            items = [f for f in items if f.value == first]
+            values = {first}
         if len(values) > 1:
             result.date_ambiguous = True
             result.ambiguous_evidence = items[-1].evidence

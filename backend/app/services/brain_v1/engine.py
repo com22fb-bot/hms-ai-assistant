@@ -77,7 +77,7 @@ def find_case_v1(client: Any, *, workspace_id: str, account_id: str, message: di
         rows = _open_cases(client, workspace_id, statuses=OPEN_V1 + ["no_action"],
                            metadata__group_key=f"{analysis.brand}:account_verification")
         return rows[0] if rows else None
-    if analysis.rule in {"appointment", "appointment_cancel"}:
+    if analysis.rule in {"appointment", "appointment_cancel", "booking"}:
         rows = _open_cases(client, workspace_id, metadata__appt_key=analysis.sender_domain)
         if analysis.rule == "appointment_cancel":
             when = (analysis.dates.event_at or "")[:10]
@@ -137,6 +137,8 @@ def _priority(analysis: Analysis, text: str, received_at: str) -> tuple[str, int
         return "critical", 3  # A2: alerta de seguridad con acción → N1
     if analysis.rule == "outbound_wait":
         return "normal", 1  # A8: la espera es del otro; el plazo no es un riesgo del usuario
+    if analysis.rule in {"appointment", "booking"}:
+        return _scheduled_priority(analysis.dates.event_at, received_at), 1  # A14
     if analysis.rule in {"invoice_due", "charge_due", "request", "appointment"}:
         priority = "normal" if priority == "low" else priority
         due = analysis.dates.due_at or analysis.dates.event_at
@@ -151,6 +153,18 @@ def _priority(analysis: Analysis, text: str, received_at: str) -> tuple[str, int
 
 
 PRIORITY_LEVEL = {"critical": "N1", "high": "N1", "normal": "N2", "low": "N3"}
+
+
+def _scheduled_priority(event_at: str | None, received_at: str | None) -> str:
+    """A14 (Etapa 1.3): lo programado es N3; N2 si el evento es dentro de 3 días o menos. Nunca N1 por ser cita."""
+    if not event_at or not received_at:
+        return "low"
+    try:
+        start = datetime.fromisoformat(str(event_at).replace("Z", "+00:00"))
+        got = datetime.fromisoformat(str(received_at).replace("Z", "+00:00"))
+    except ValueError:
+        return "low"
+    return "normal" if (start - got).total_seconds() <= 3 * 86400 else "low"
 
 
 def process_message_v1(*, client: Any, workspace_id: str, account_id: str, message: dict[str, Any],
@@ -232,7 +246,7 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
         result = "linked"
     elif case is None:
         priority, level = _priority(analysis, text, received_at)
-        if analysis.rule == "appointment":
+        if analysis.rule in {"appointment", "booking"}:
             status = "scheduled"
         elif analysis.rule == "verification" and analysis.brand != "donexto":
             status = "no_action"  # A7: verificación de terceros: un elemento agrupado, nunca pendiente
@@ -256,12 +270,12 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
         }
         if analysis.rule == "verification":
             metadata["group_key"] = f"{analysis.brand}:account_verification"
-        if analysis.rule == "appointment":
+        if analysis.rule in {"appointment", "booking"}:
             metadata["appt_key"] = analysis.sender_domain
         response = client.table("intelligent_cases").insert({
             "workspace_id": workspace_id, "account_id": account_id, "primary_thread_id": message.get("thread_id"),
             "title": subject, "normalized_subject": normalized,
-            "case_type": "meeting" if analysis.rule == "appointment" else _classify_case_type(text),
+            "case_type": "meeting" if analysis.rule in {"appointment", "booking"} else _classify_case_type(text),
             "status": status, "priority": priority, "risk_score": 50 if priority in {"high", "critical"} else 30,
             "confidence": analysis.confidence, "summary": snippet or None, "requested_action": _requested_action(text),
             "requester_name": sender_name if direction == "inbound" else None,
@@ -309,6 +323,8 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
             updates["metadata"]["previous_event_at"] = case.get("event_at") or meta.get("event_at")
             if case.get("status") in {"new", "needs_review"}:
                 updates["status"] = "scheduled"
+            if case.get("status") in {"scheduled", "new", "needs_review"}:
+                updates["priority"] = _scheduled_priority(analysis.dates.event_at, received_at)  # A14
         if direction == "outbound":
             updates["status"] = "waiting_external" if case.get("status") in {"new", "in_progress"} else case.get("status")
             updates["waiting_on"] = "external"
