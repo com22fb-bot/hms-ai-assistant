@@ -170,6 +170,10 @@ def _with_period(analysis: Analysis, subject: str, body: str, received: Any) -> 
 def _headers(message: dict[str, Any]) -> dict[str, str]:
     """A10: cabeceras del mensaje (columna headers o metadata.headers), con nombres en minúsculas."""
     raw = message.get("headers")
+    stored = message.get("mail_headers")
+    if not isinstance(raw, dict) and isinstance(stored, dict):
+        # PR #128: columna communication_messages.mail_headers (migración 006).
+        raw = {"list-unsubscribe": stored.get("list_unsubscribe") or "", "list-id": stored.get("list_id") or ""}
     if not isinstance(raw, dict):
         meta = message.get("metadata") if isinstance(message.get("metadata"), dict) else {}
         raw = meta.get("headers") if isinstance(meta.get("headers"), dict) else {}

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
-_MAX = 1000
+_MAX = 512  # límite por cabecera: List-Unsubscribe típico < 300 bytes
 WANTED = {"list-unsubscribe": "list_unsubscribe",
           "list-unsubscribe-post": "list_unsubscribe_post",
           "list-id": "list_id"}
@@ -30,7 +30,7 @@ def _from_pairs(pairs: Iterable[tuple[Any, Any]]) -> dict[str, str | None]:
 
 
 def _labels(values: Iterable[Any] | None) -> list[str]:
-    return [str(v)[:200] for v in dict.fromkeys(values or []) if str(v or "").strip()][:50]
+    return [str(v)[:100] for v in dict.fromkeys(values or []) if str(v or "").strip()][:30]
 
 
 def gmail_mail_headers(headers: list[dict[str, Any]] | None, label_ids: Iterable[Any] | None) -> dict[str, Any]:
