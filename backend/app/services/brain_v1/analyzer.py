@@ -266,6 +266,8 @@ class Analysis:
     reschedule: bool = False
     phishing_brand: str | None = None
     severity: str | None = None
+    area: str | None = None
+    area_tags: list[str] = field(default_factory=list)
 
     def signals(self) -> dict[str, Any]:
         return {
@@ -273,6 +275,7 @@ class Analysis:
             "doc_key": self.doc_key, "key_source": self.key_source if self.doc_key else None, "amount": self.amount, "confidence": self.confidence,
             "suppressed": self.suppressed, "bulk": self.bulk, "reschedule": self.reschedule,
             "phishing_brand": self.phishing_brand, "triage": self.triage, "severity": self.severity,
+            "area": self.area, "area_tags": self.area_tags,
             "review_reason": self.reason if self.triage == "review" or self.confidence < 0.5 else None,
             **self.dates.as_metadata(),
         }
@@ -312,6 +315,17 @@ def is_bulk(headers: dict[str, str]) -> bool:
 
 
 def analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> Analysis:
+    result = _analyze(message, user_verified=user_verified)
+    from app.services.brain_v1.taxonomy import classify_area
+
+    subject = str(message.get("subject") or "")
+    body = str(message.get("body_text") or message.get("snippet") or "")
+    info = classify_area(result.rule, fold(f"{subject}\n{body[:3000]}"), str(message.get("sender") or ""), result.confidence)
+    result.area, result.area_tags = info["area"], info["tags"]
+    return result
+
+
+def _analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> Analysis:
     from app.services.case_engine import _sender_parts, brand_of_email
     from app.services.classification_catalog import identify_sender, is_marketing_local_part
     from app.services.import_categories import sender_domain as _domain, social_platform

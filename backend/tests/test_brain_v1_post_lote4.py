@@ -190,3 +190,30 @@ class LessAmbiguousTests(unittest.TestCase):
     def test_ambiguous_rule_still_exists(self):
         a = analyze("ana@amigos.example", "hola", "oye, luego vemos lo de aquello", R)
         self.assertEqual(a.rule, "ambiguous")
+
+
+class TaxonomyV1Tests(unittest.TestCase):
+    """Taxonomía v1 aprobada (13-oct-2026): un área principal + etiquetas secundarias."""
+
+    def test_security_and_bills_areas(self):
+        self.assertEqual(analyze("no-reply@nube-azul.example", "Aviso", "Tu cuenta puede estar comprometida.", R).area, "security")
+        self.assertEqual(analyze("cobros@papeleria.example", "Factura 9", "Factura 9 por $10.00 MXN. Fecha límite de pago 2026-05-20.", R).area, "bills")
+
+    def test_events_separate_from_travel(self):
+        ev = analyze("boletos@foro-norte.example", "Boletos confirmados", "Tus boletos están confirmados para el concierto del 2026-08-09 a las 20:00.", R)
+        fl = analyze("vuelos@viajes-unidos.example", "Vuelo confirmado", "Tu vuelo ZX10 está confirmado para el 2026-09-20 a las 07:00.", R)
+        self.assertEqual((ev.area, fl.area), ("agenda", "travel"))
+
+    def test_social_and_promos(self):
+        self.assertEqual(analyze("x@facebookmail.com", "Nuevo comentario", "Alguien comentó tu foto.", R).area, "social")
+        self.assertEqual(analyze("ofertas@tienda-azul.example", "Ofertas", "Descuentos de la semana en toda la tienda.", R).area, "promos")
+
+    def test_insurance_is_secondary_tag_on_bill(self):
+        a = analyze("cobros@aseguradora-uno.example", "Factura póliza 77", "Factura de póliza 77 por $900.00 MXN. Fecha límite de pago 2026-05-20.", R)
+        self.assertEqual(a.area, "bills")
+        self.assertIn("insurance", a.area_tags)
+
+    def test_signals_carry_area(self):
+        s = analyze("ana@amigos.example", "hola", "oye, luego vemos lo de aquello", R).signals()
+        self.assertIn("area", s)
+        self.assertEqual(s["area"], "other")  # baja confianza analizada = Otros (distinto de pendiente)
