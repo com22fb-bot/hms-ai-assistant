@@ -26,12 +26,14 @@ SOCIAL_PLATFORMS: dict[str, str] = {
     "nextdoor.com": "Nextdoor", "meetup.com": "Meetup", "strava.com": "Strava",
 }
 
-# 13 áreas → esfera por defecto (catalogo-maestro.yaml; la app decide la esfera).
+# Catálogo vigente de Donexto: 16 áreas (frontend/lib/nucleo/lifeAreas.ts · LIFE_AREA_IDS).
+# 13 áreas de vida con esfera + 3 grupos sin esfera: social, promos, other.
+# Cada mensaje cae en exactamente UNA categoría, así que los totales no se duplican.
 AREA_SPHERE: dict[str, str] = {
     "money": "personal", "bills": "hogar", "orders": "personal", "subscriptions": "personal",
     "work": "ocupacion", "home": "hogar", "health": "personal", "travel": "personal",
     "security": "personal", "government": "personal", "insurance": "hogar",
-    "education": "personal", "agenda": "ocupacion",
+    "education": "personal", "events": "ocupacion",
 }
 
 _AREA_RULES: tuple[tuple[str, str], ...] = (
@@ -45,7 +47,7 @@ _AREA_RULES: tuple[tuple[str, str], ...] = (
     ("insurance", r"seguro|poliza|insurance|policy|gnp|axa|aseguradora"),
     ("government", r"\bsat\b|imss|issste|infonavit|gobierno|government|tramite|impuesto|tax|curp|rfc"),
     ("education", r"escuela|school|colegiatura|universidad|university|curso|course|clase"),
-    ("agenda", r"invitaci|invitation|calendar|calendario|reunion|meeting|evento|event|recordatorio|reminder"),
+    ("events", r"invitaci|invitation|calendar|calendario|reunion|meeting|evento|event|recordatorio|reminder"),
     ("work", r"proyecto|project|cliente|client|cotizaci|propuesta|contrato|nomina|payroll"),
     ("home", r"hogar|casa|renta|mantenimiento|condominio|familia|family"),
 )
@@ -53,6 +55,8 @@ _PROMO_RE = re.compile(r"oferta|descuento|promo|sale|% off|newsletter|boletin|cu
 _COMPILED = tuple((area, re.compile(pattern)) for area, pattern in _AREA_RULES)
 
 CATEGORY_IDS = ("social", "promos", *AREA_SPHERE.keys(), "other")
+# Id antiguo de la vista previa → id del catálogo vigente.
+_ALIASES = {"agenda": "events"}
 
 
 def _fold(text: str) -> str:
@@ -91,7 +95,8 @@ def import_category(sender: str | None, subject: str | None, labels: Iterable[st
 
 def clean_exclude(values: Iterable[str] | None) -> list[str]:
     allowed = set(CATEGORY_IDS)
-    return sorted({str(v) for v in (values or []) if str(v) in allowed})
+    mapped = (_ALIASES.get(str(v), str(v)) for v in (values or []))
+    return sorted({v for v in mapped if v in allowed})
 
 
 def skip_message(exclude: Iterable[str] | None, sender: str | None, subject: str | None, labels: Iterable[str] = ()) -> bool:
@@ -132,6 +137,11 @@ def _sender_name(sender: str) -> str:
     return name or address or str(sender or "")
 
 
+# Un remitente solo aparece como ejemplo si envió al menos este número de
+# correos (remitentes masivos u organizaciones, no personas sueltas).
+EXAMPLE_MIN_MESSAGES = 3
+
+
 def summarize(headers: Iterable[tuple[str, str, list[str]]], max_examples: int = 3) -> dict:
     """Cuenta una muestra de (remitente, asunto, etiquetas) por categoría, esfera y red."""
     categories: dict[str, int] = {key: 0 for key in CATEGORY_IDS}
@@ -152,7 +162,8 @@ def summarize(headers: Iterable[tuple[str, str, list[str]]], max_examples: int =
         if platform:
             platforms[platform] = platforms.get(platform, 0) + 1
     examples = {
-        key: [n for n, _ in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:max_examples]]
+        key: [n for n, c in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])) if c >= EXAMPLE_MIN_MESSAGES][:max_examples]
         for key, counts in senders.items() if counts
     }
+    examples = {k: v for k, v in examples.items() if v}
     return {"sampled": total, "categories": categories, "spheres": spheres, "social_platforms": platforms, "examples": examples}

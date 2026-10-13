@@ -156,6 +156,7 @@ def import_preview() -> dict[str, Any]:
     from app.services.import_preview import (
         build_preview,
         cache_get,
+        cache_key,
         cache_put,
         gmail_headers,
         imap_headers,
@@ -164,8 +165,8 @@ def import_preview() -> dict[str, Any]:
 
     account = _mailbox_account()
     days = _plan_history_days(account)
-    cache_key = f"{account.get('id') or account.get('address')}:{days}"
-    cached = cache_get(cache_key)
+    key = cache_key(str(account.get("workspace_id") or ""), str(account.get("id") or ""), days)
+    cached = cache_get(key)
     if cached is not None:
         preview = dict(cached)
         preview["cached"] = True
@@ -186,13 +187,17 @@ def import_preview() -> dict[str, Any]:
         else:
             headers = gmail_headers(_google_credentials(account), days, stats=stats)
         preview = build_preview(headers, stats.get("total") or None)
-        if not headers:
+        failed = int(stats.get("failed") or 0)
+        preview["partial"] = bool(failed or stats.get("timed_out"))
+        if not headers and (failed or stats.get("timed_out")):
+            # Error ≠ «no hay correos»: nunca se muestra 0 por un fallo.
             preview["unavailable"] = True
-        else:
-            cache_put(cache_key, {k: v for k, v in preview.items() if k != "plan"} | {"history_days": days})
+        elif not preview["partial"]:
+            cache_put(key, preview | {"history_days": days})
     except HTTPException:
         raise
     except Exception as error:
+        # Sin remitentes, asuntos ni ids en el log: solo el tipo de error.
         logging.getLogger(__name__).warning("import preview failed: %s", type(error).__name__)
         preview = build_preview([])
         preview["unavailable"] = True
