@@ -71,50 +71,129 @@ def _storage(fake):
 
 
 def _world():
+    # Estado posible con el índice único: a lo sumo una fila viva por buzón.
     return FakeSupabase({
         "workspace_members": [
             {"workspace_id": "ws-live", "profile_id": "p1", "status": "active"},
             {"workspace_id": "ws-other", "profile_id": "p2", "status": "active"},
-            {"workspace_id": "ws-dead-2", "profile_id": "p3", "status": "active", "deleted_at": "2026-08-01"},
         ],
         "communication_accounts": [
-            {"id": "orph-1", "workspace_id": "ws-dead-1", "provider": "google", "provider_account_id": "G", "status": "active"},
-            {"id": "orph-2", "workspace_id": "ws-dead-2", "provider": "google", "provider_account_id": "G", "status": "active"},
-            {"id": "other", "workspace_id": "ws-other", "provider": "google", "provider_account_id": "G", "status": "active"},
-            {"id": "x", "workspace_id": "ws-dead-3", "provider": "google", "provider_account_id": "OTRO", "status": "active"},
+            {"id": "orph-1", "workspace_id": "ws-dead-1", "provider": "google", "provider_account_id": "G",
+             "email": "A@Example.test", "status": "active", "updated_at": "2026-10-01"},
+            {"id": "old", "workspace_id": "ws-dead-2", "provider": "google", "provider_account_id": "G",
+             "email": "a@example.test", "status": "inactive", "updated_at": "2026-09-01"},
+            {"id": "x", "workspace_id": "ws-dead-3", "provider": "google", "provider_account_id": "OTRO",
+             "email": "b@example.test", "status": "active"},
         ],
     })
 
 
-def test_e2_reconectar_crea_y_retira_huerfanas_sin_tocar_otros_usuarios():
+def _live(fake, key="a@example.test"):
+    return [r for r in fake.tables["communication_accounts"]
+            if r.get("address_key") == key and r["status"] in ("active", "needs_reauth")]
+
+
+def test_e2_resignup_mueve_la_fila_viva_en_vez_de_duplicar():
     fake = _world()
-    created = _storage(fake).upsert_communication_account(
+    acc = _storage(fake).upsert_communication_account(
         provider="google", provider_account_id="G", email="a@example.test", workspace_id="ws-live")
-    st = {r["id"]: r["status"] for r in fake.tables["communication_accounts"]}
-    assert st["orph-1"] == st["orph-2"] == "superseded"
-    assert st["other"] == "active"          # otro usuario con el mismo buzón: intocable
-    assert st["x"] == "active"              # otro buzón
-    assert st[created["id"]] == "active"
-    # no borra nada
+    assert acc["id"] == "orph-1" and acc["workspace_id"] == "ws-live" and acc["status"] == "active"
+    assert len(fake.tables["communication_accounts"]) == 3       # no se insertó nada
+    assert [r["id"] for r in _live(fake)] == ["orph-1"]
+    assert {r["id"]: r["status"] for r in fake.tables["communication_accounts"]}["x"] == "active"
     assert not [c for c in fake.calls if c[1] == "delete"]
+
+
+def test_e2_direccion_normalizada_mayusculas_y_espacios():
+    fake = _world()
+    acc = _storage(fake).upsert_communication_account(
+        provider="gmail", provider_account_id="G2", email="  A@EXAMPLE.TEST ", workspace_id="ws-live")
+    assert acc["id"] == "orph-1"
+    assert len(_live(fake)) == 1
+
+
+def test_e2_mismo_correo_otro_proveedor_no_choca():
+    fake = _world()
+    acc = _storage(fake).upsert_communication_account(
+        provider="microsoft", provider_account_id="M", email="a@example.test", workspace_id="ws-live")
+    assert acc["id"] not in {"orph-1", "old", "x"}
+    assert len(_live(fake)) == 2
+
+
+def test_e2_reutiliza_inactiva_si_no_hay_viva():
+    fake = _world()
+    fake.tables["communication_accounts"] = [r for r in fake.tables["communication_accounts"] if r["id"] != "orph-1"]
+    acc = _storage(fake).upsert_communication_account(
+        provider="google", provider_account_id="G", email="a@example.test", workspace_id="ws-live")
+    assert acc["id"] == "old" and acc["workspace_id"] == "ws-live" and acc["status"] == "active"
 
 
 def test_e2_reconectar_mismo_workspace_reutiliza_fila():
     fake = _world()
-    fake.tables["communication_accounts"].append(
-        {"id": "live", "workspace_id": "ws-live", "provider": "google", "provider_account_id": "G", "status": "needs_reauth"})
+    fake.tables["communication_accounts"] = [
+        {"id": "live", "workspace_id": "ws-live", "provider": "google", "provider_account_id": "G",
+         "email": "a@example.test", "status": "needs_reauth"}]
     acc = _storage(fake).upsert_communication_account(
-        provider="google", provider_account_id="G", workspace_id="ws-live")
+        provider="google", provider_account_id="G", email="a@example.test", workspace_id="ws-live")
     assert acc["id"] == "live" and acc["status"] == "active"
-    assert len([r for r in fake.tables["communication_accounts"] if r["workspace_id"] == "ws-live"]) == 1
+    assert len(fake.tables["communication_accounts"]) == 1
+
+
+def test_e2_insercion_concurrente_reintenta_y_reutiliza():
+    """Simula la carrera: entre la búsqueda y el insert otra conexión crea la
+    fila viva. El insert choca con el índice (23505) y se reintenta."""
+    fake = FakeSupabase({"workspace_members": [], "communication_accounts": []})
+    storage = _storage(fake)
+    real_find = storage._find_reusable_account
+    state = {"n": 0}
+
+    def racing_find(*args):
+        state["n"] += 1
+        if state["n"] == 1:
+            fake.tables["communication_accounts"].append(fake._derive("communication_accounts", {
+                "id": "winner", "workspace_id": "ws-a", "provider": "google", "provider_account_id": "G",
+                "email": "a@example.test", "status": "active"}))
+            return None
+        return real_find(*args)
+
+    storage._find_reusable_account = racing_find
+    acc = storage.upsert_communication_account(
+        provider="google", provider_account_id="G", email="a@example.test", workspace_id="ws-b")
+    assert acc["id"] == "winner" and acc["workspace_id"] == "ws-b"
+    assert len(fake.tables["communication_accounts"]) == 1
+
+
+def test_e2_carrera_persistente_falla_sin_duplicar():
+    fake = FakeSupabase({"workspace_members": [], "communication_accounts": [
+        {"id": "w", "workspace_id": "ws-a", "provider": "google", "provider_account_id": "G",
+         "email": "a@example.test", "status": "active"}]})
+    storage = _storage(fake)
+    storage._find_reusable_account = lambda *a: None
+    from app.services.oauth_storage import OAuthStorageError
+    with pytest.raises(OAuthStorageError):
+        storage.upsert_communication_account(
+            provider="google", provider_account_id="G", email="a@example.test", workspace_id="ws-b")
+    assert len(fake.tables["communication_accounts"]) == 1
+
+
+def test_e2_otro_error_no_se_reintenta():
+    fake = FakeSupabase({"workspace_members": [], "communication_accounts": []})
+    storage = _storage(fake)
+    storage._find_reusable_account = lambda *a: (_ for _ in ()).throw(RuntimeError("red"))
+    with pytest.raises(RuntimeError):
+        storage.upsert_communication_account(provider="google", provider_account_id="G", workspace_id="ws")
 
 
 def test_e2_fallo_al_retirar_no_rompe_conexion(caplog):
-    fake = _world()
+    fake = FakeSupabase({"workspace_members": [], "communication_accounts": [
+        {"id": "o", "workspace_id": "ws-dead", "provider": "google", "provider_account_id": "G",
+         "email": "otra@example.test", "status": "active"}]})
     storage = _storage(fake)
+    storage._find_reusable_account = lambda *a: None   # buzón con otra dirección: no se reutiliza
     storage._workspace_has_active_members = lambda _ws: (_ for _ in ()).throw(RuntimeError("boom a@b.c"))
     with caplog.at_level(logging.WARNING):
-        acc = storage.upsert_communication_account(provider="google", provider_account_id="G", workspace_id="ws-live")
+        acc = storage.upsert_communication_account(
+            provider="google", provider_account_id="G", email="a@example.test", workspace_id="ws-live")
     assert acc["status"] == "active"
     assert "a@b.c" not in caplog.text and "RuntimeError" in caplog.text
 
@@ -148,9 +227,10 @@ def test_e1_solo_cuentas_activas_en_workspaces_con_miembros():
         {"id": "live", "workspace_id": "ws-live", "provider": "google", "status": "active"},
         {"id": "reauth", "workspace_id": "ws-live", "provider": "google", "status": "needs_reauth"},
         {"id": "sup", "workspace_id": "ws-live", "provider": "google", "status": "superseded"},
+        {"id": "other", "workspace_id": "ws-other", "provider": "google", "status": "active"},
     ]
     ids = {a["id"] for a in eligible_accounts(fake)}
-    assert ids == {"live", "other"}
+    assert ids == {"live", "other"}   # orph-1/x: activas pero en workspaces sin miembros
 
 
 def _job(status, mode, hours_ago):
@@ -220,3 +300,24 @@ def test_e1_reconexion_reactiva_cuenta_needs_reauth():
         {"id": "a", "workspace_id": "ws", "provider": "google", "provider_account_id": "G", "status": "needs_reauth"}]})
     acc = _storage(fake).upsert_communication_account(provider="google", provider_account_id="G", workspace_id="ws")
     assert acc["status"] == "active"
+
+
+# ---------------------------------------------------------------- reconexión (UI)
+def test_estado_informa_needs_reauth(monkeypatch):
+    from types import SimpleNamespace
+
+    from app.api import auth
+
+    fake = FakeSupabase({"communication_accounts": [
+        {"id": "a", "workspace_id": "ws", "provider": "microsoft", "provider_account_id": "M",
+         "email": "a@example.test", "status": "needs_reauth"}]})
+    monkeypatch.setattr(auth, "oauth_storage", _storage(fake))
+    monkeypatch.setattr(auth, "require_request_context",
+                        lambda: SimpleNamespace(google_account=None, workspace_id="ws"))
+    st = auth.get_google_connection_status()
+    assert st.connected is False and st.needs_reauth is True
+    assert st.email == "a@example.test" and st.provider == "microsoft"
+    assert st.login_url == "/auth/microsoft/start"
+    monkeypatch.setattr(auth, "require_request_context",
+                        lambda: SimpleNamespace(google_account=None, workspace_id="otro"))
+    assert auth.get_google_connection_status().needs_reauth is False
