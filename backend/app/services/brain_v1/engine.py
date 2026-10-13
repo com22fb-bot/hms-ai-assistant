@@ -22,19 +22,40 @@ STATUS_LABELS = {
 }
 OPEN_V1 = ["new", "analyzing", "in_progress", "delegated", "waiting_internal", "waiting_external", "scheduled", "needs_review"]
 GROUP_WINDOW_DAYS = 30
+CLOSED_V1 = {"resolved", "closed", "archived", "no_action"}
 
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _open_cases(client: Any, workspace_id: str, **filters: str) -> list[dict[str, Any]]:
+PRIORITY_RANK = {"low": 0, "normal": 1, "high": 2, "critical": 3}
+
+
+def _max_priority(*values: Any) -> str:
+    known = [str(v) for v in values if str(v) in PRIORITY_RANK]
+    return max(known, key=PRIORITY_RANK.__getitem__) if known else "normal"
+
+
+def _no_null_dates(updates: dict[str, Any], case: dict[str, Any]) -> dict[str, Any]:
+    """A6 (Etapa 1.2): una actualización nunca pone due_at/event_at en null si el caso ya tenía valor."""
+    for column in ("due_at", "event_at"):
+        if column in updates and updates[column] is None and case.get(column):
+            updates.pop(column)
+    meta = updates.get("metadata")
+    if isinstance(meta, dict) and meta.get("event_at") is None and _meta(case).get("event_at"):
+        meta["event_at"] = _meta(case)["event_at"]
+    return updates
+
+
+def _open_cases(client: Any, workspace_id: str, *, statuses: list[str] | None = None,
+                **filters: str) -> list[dict[str, Any]]:
     from app.services.case_engine import _rows
 
     query = client.table("intelligent_cases").select("*").eq("workspace_id", workspace_id)
     for column, value in filters.items():
         query = query.eq(column.replace("__", "->>"), value)
-    rows = _rows(query.in_("status", OPEN_V1).order("last_activity_at", desc=True).limit(50).execute())
+    rows = _rows(query.in_("status", statuses or OPEN_V1).order("last_activity_at", desc=True).limit(50).execute())
     rows.sort(key=lambda r: str(r.get("last_activity_at") or ""), reverse=True)
     return rows
 
@@ -52,7 +73,9 @@ def find_case_v1(client: Any, *, workspace_id: str, account_id: str, message: di
         if rows:
             return rows[0]
     if analysis.rule == "verification":
-        rows = _open_cases(client, workspace_id, metadata__group_key=f"{analysis.brand}:account_verification")
+        # A7: el grupo de verificaciones de terceros vive en no_action; los repetidos se le suman.
+        rows = _open_cases(client, workspace_id, statuses=OPEN_V1 + ["no_action"],
+                           metadata__group_key=f"{analysis.brand}:account_verification")
         return rows[0] if rows else None
     if analysis.rule in {"appointment", "appointment_cancel"}:
         rows = _open_cases(client, workspace_id, metadata__appt_key=analysis.sender_domain)
@@ -60,6 +83,8 @@ def find_case_v1(client: Any, *, workspace_id: str, account_id: str, message: di
             when = (analysis.dates.event_at or "")[:10]
             same_day = [r for r in rows if when and str(_meta(r).get("event_at") or "")[:10] == when]
             return (same_day or rows or [None])[0]
+        if analysis.reschedule:
+            return rows[0] if rows else None  # A9: la reprogramación mueve la cita abierta del mismo remitente
         when = (analysis.dates.event_at or "")[:10]
         same_day = [r for r in rows if when and str(_meta(r).get("event_at") or "")[:10] == when]
         return same_day[0] if same_day else None  # una cita nueva en otra fecha es otro compromiso
@@ -108,6 +133,10 @@ def _priority(analysis: Analysis, text: str, received_at: str) -> tuple[str, int
     risk, priority, level = _risk_and_priority(text=text, is_unread=False, reminder_count=0)
     if analysis.rule == "verification":
         return "low", 1
+    if analysis.rule == "security_action":
+        return "critical", 3  # A2: alerta de seguridad con acción → N1
+    if analysis.rule == "outbound_wait":
+        return "normal", 1  # A8: la espera es del otro; el plazo no es un riesgo del usuario
     if analysis.rule in {"invoice_due", "charge_due", "request", "appointment"}:
         priority = "normal" if priority == "low" else priority
         due = analysis.dates.due_at or analysis.dates.event_at
@@ -165,10 +194,13 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
         evidence = {"message_id": message_id, "snippet": snippet, "amount": analysis.amount, "doc_key": analysis.doc_key,
                     "payment_source": "otro_remitente" if cross_sender else "mismo_remitente"}
         if strong:
+            # A11: un caso resuelto baja a N3; la prioridad más alta que tuvo queda en metadata.
+            peak = _max_priority(case.get("priority"), meta.get("priority_max"))
             client.table("intelligent_cases").update({
                 "status": "resolved", "resolved_at": received_at, "last_activity_at": received_at,
-                "source_count": int(case.get("source_count") or 0) + 1, "waiting_on": "none",
-                "metadata": {**meta, "payment_status": "confirmed", "payment_evidence": evidence},
+                "source_count": int(case.get("source_count") or 0) + 1, "waiting_on": "none", "priority": "low",
+                "metadata": {**meta, "payment_status": "confirmed", "payment_evidence": evidence,
+                             "priority_max": peak, "priority_max_level": PRIORITY_LEVEL[peak]},
             }).eq("id", case["id"]).execute()
             create_case_event(client=client, workspace_id=workspace_id, case_id=str(case["id"]), message_id=message_id,
                               event_type="payment_confirmed", level=2, title="Pago confirmado",
@@ -202,6 +234,10 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
         priority, level = _priority(analysis, text, received_at)
         if analysis.rule == "appointment":
             status = "scheduled"
+        elif analysis.rule == "verification" and analysis.brand != "donexto":
+            status = "no_action"  # A7: verificación de terceros: un elemento agrupado, nunca pendiente
+        elif analysis.rule == "outbound_wait":
+            status = "waiting_external"  # A8
         elif analysis.confidence < 0.5:
             status = "needs_review"
         else:
@@ -216,6 +252,7 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
             "event_at": dates.event_at, "event_evidence": dates.event_evidence,
             "due_evidence": dates.due_evidence, "date_ambiguous": dates.date_ambiguous,
             "ambiguous_evidence": dates.ambiguous_evidence, "priority_level": PRIORITY_LEVEL[priority],
+            "priority_max": priority, "priority_max_level": PRIORITY_LEVEL[priority],
         }
         if analysis.rule == "verification":
             metadata["group_key"] = f"{analysis.brand}:account_verification"
@@ -229,7 +266,7 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
             "confidence": analysis.confidence, "summary": snippet or None, "requested_action": _requested_action(text),
             "requester_name": sender_name if direction == "inbound" else None,
             "requester_email": sender_email if direction == "inbound" else None,
-            "waiting_on": "internal", "opened_at": received_at, "last_activity_at": received_at,
+            "waiting_on": "external" if status == "waiting_external" else "internal", "opened_at": received_at, "last_activity_at": received_at,
             "due_at": dates.due_at, "event_at": dates.event_at,
             "source_count": 1, "reminder_count": 0, "metadata": metadata,
         }).execute()
@@ -257,14 +294,31 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
         if analysis.dates.due_at and not case.get("due_at"):
             updates["due_at"] = analysis.dates.due_at
             updates["metadata"]["due_evidence"] = analysis.dates.due_evidence
+        if reminder:
+            # A11: se registra la prioridad máxima vista (la prioridad del caso no cambia aquí).
+            new_priority, _ = _priority(analysis, text, received_at)
+            current = str(case.get("priority") or "normal")
+            peak = _max_priority(current, new_priority, meta.get("priority_max"))
+            updates["metadata"]["priority_max"] = peak
+            updates["metadata"]["priority_max_level"] = PRIORITY_LEVEL[peak]
+        if analysis.reschedule and analysis.dates.event_at:
+            # A9 + A6: solo otra fecha explícita con evidencia cambia event_at.
+            updates["event_at"] = analysis.dates.event_at
+            updates["metadata"]["event_at"] = analysis.dates.event_at
+            updates["metadata"]["event_evidence"] = analysis.dates.event_evidence
+            updates["metadata"]["previous_event_at"] = case.get("event_at") or meta.get("event_at")
+            if case.get("status") in {"new", "needs_review"}:
+                updates["status"] = "scheduled"
         if direction == "outbound":
             updates["status"] = "waiting_external" if case.get("status") in {"new", "in_progress"} else case.get("status")
             updates["waiting_on"] = "external"
         if case.get("status") == "needs_review" and updates["confidence"] >= 0.5:
             updates["status"] = "new"
+        _no_null_dates(updates, case)
         client.table("intelligent_cases").update(updates).eq("id", case["id"]).execute()
         create_case_event(client=client, workspace_id=workspace_id, case_id=str(case["id"]), message_id=message_id,
-                          event_type="reminder_received" if reminder else "external_reply", level=2,
+                          event_type="appointment_rescheduled" if analysis.reschedule else
+                          "reminder_received" if reminder else "external_reply", level=2,
                           title="Recordatorio recibido" if reminder else "Nueva evidencia recibida",
                           description=snippet[:200], dedupe_key=f"v1_link:{message_id}")
 

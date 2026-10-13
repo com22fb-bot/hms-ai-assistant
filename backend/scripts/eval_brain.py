@@ -60,7 +60,8 @@ def run_pipeline(corpus: list[dict], flag: bool) -> dict:
             "id": item["id"], "thread_id": item["thread_id"], "account_id": A, "external_message_id": item["id"],
             "sender": item["sender"], "recipients": [{"email": "usuario@correo.example"}], "cc": [], "bcc": [],
             "subject": item["subject"], "body_text": item["body_text"], "snippet": item["body_text"][:200],
-            "received_at": item["received_at"], "labels": item["labels"], "is_unread": True, "direction": "inbound",
+            "received_at": item["received_at"], "labels": item["labels"], "headers": item.get("headers") or {},
+            "is_unread": True, "direction": "inbound",
             "case_processed": False, "ai_processed": False,
         })
 
@@ -184,11 +185,28 @@ def evaluate(corpus: list[dict], run: dict, flag: bool) -> dict:
     triage_ok = sum(TRIAGE_MAP.get(msgs[c["id"]].get("triage_category"), "?") == c["label"]["triage"] for c in corpus)
     n_keys = len(exp_keys)
     covered = n_keys - len(missing)
+    # Adenda 1.2: % en review y casos faltantes separados por zona. label.zona = "humana" | "estructurada";
+    # sin etiqueta: categoría protegida (factura, banco, salud...) o remitente automatizado → estructurada; resto → petición humana.
+    from app.services.safe_case_classifier import _sender_is_automated
+
+    def zona(key: str) -> str:
+        first = by_id[exp_keys[key][0]]
+        if first["label"].get("zona"):
+            return first["label"]["zona"]
+        structured = first["label"].get("protected") or _sender_is_automated(first["sender"])
+        return "estructurada" if structured else "humana"
+
+    review_ids = [c["id"] for c in corpus if msgs[c["id"]].get("triage_category") == "review"]
+    missing_structured = [k for k in missing if zona(k) == "estructurada"]
+    missing_human = [k for k in missing if zona(k) != "estructurada"]
     metrics = {
         "flag": "ON" if flag else "OFF", "emails": len(corpus), "expected_cases": n_keys,
         "predicted_cases": len(pred_cases), "case_precision": round(correct_pred / max(len(pred_cases), 1), 3),
         "case_recall": round(covered / max(n_keys, 1), 3),
         "missing_case_rate": round(len(missing) / max(n_keys, 1), 3), "missing_cases": missing,
+        "missing_structured": len(missing_structured), "missing_structured_keys": missing_structured,
+        "missing_human_requests": len(missing_human), "missing_human_request_keys": missing_human,
+        "review_rate": round(len(review_ids) / max(len(corpus), 1), 3), "review_ids": review_ids,
         "false_pending": len(false_pending), "false_pending_rate": round(len(false_pending) / max(len(no_case_expected), 1), 3),
         "false_pending_ids": false_pending, "duplicates": len(duplicates), "duplicate_keys": duplicates,
         "wrong_merges": len(wrong_merges), "wrong_merge_detail": wrong_merges,
@@ -282,6 +300,7 @@ def main() -> int:
     for flag in ([False, True] if args.flag == "both" else [args.flag == "on"]):
         results.append(evaluate(corpus, run_pipeline(corpus, flag), flag))
     keys = ["emails", "expected_cases", "predicted_cases", "case_precision", "case_recall", "missing_case_rate",
+            "missing_structured", "missing_human_requests", "review_rate",
             "false_pending", "false_pending_rate", "duplicates", "wrong_merges", "date_accuracy", "invented_dates",
             "protected_lost", "protected_lost_headers_only", "status_accuracy", "priority_accuracy", "triage_accuracy", "possible_payment_ok", "cross_sender_auto_closed", "errors"]
     print("métrica | " + " | ".join(f"flag {r['flag']}" for r in results))
