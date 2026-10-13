@@ -311,5 +311,20 @@ for row in rows:
     if label["case_key"] == "VT":
         label["status"] = "sin acción"
 
+# ---------------- Etapa 1.3 · decisiones de ASTRA (adenda 1.3) ----------------
+# A14: lo programado es N3; N2 si el evento es dentro de 3 días o menos. Una cita cancelada (sin acción) queda N3.
+from datetime import datetime as _dt
+for row in rows:
+    label = row["label"]
+    if label["status"] in {"programado", "sin acción"} and label["event_at"]:
+        got = _dt.fromisoformat(row["received_at"].replace("Z", "+00:00"))
+        ev = label["event_at"]
+        start = _dt.fromisoformat(ev + ("" if "T" in ev else "T00:00") + "-06:00")
+        soon = (start - got).total_seconds() <= 3 * 86400
+        label["priority"] = "N2" if soon and label["status"] == "programado" else "N3"
+    # A12: una reservación automática con fecha explícita es un compromiso programado.
+    if row["id"] == "in3":
+        label.update({"crea_caso": True, "case_key": "IN3", "status": "programado", "event_at": "2026-12-12", "priority": "N3"})
+
 OUT.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8")
 print(f"{len(rows)} correos → {OUT}")
