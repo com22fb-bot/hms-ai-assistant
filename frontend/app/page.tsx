@@ -22,6 +22,7 @@ import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
 import "@/components/mail-inbox.css";
 import { useCases } from "@/hooks/useCases";
 import { useGoogleStatus } from "@/hooks/useGoogleStatus";
+import { reauthPrompt } from "@/lib/reauth";
 import { useAppAuth } from "@/hooks/useAppAuth";
 import { ACCOUNT_VS_MAILBOX } from "@/lib/accountVsMailbox";
 import { mailboxConnectModeFromEmail } from "@/lib/mailboxSignup";
@@ -471,6 +472,8 @@ function Dashboard({
     setNotice(null);
   }
 
+  const reauth = reauthPrompt(connection);
+
   function requestMailboxOrExplain() {
     if (connection?.connected) {
       setGuidedImportOpen(true);
@@ -560,6 +563,15 @@ function Dashboard({
       />
       {notice ? (
         <p className="nx-external-notice" role="status">{notice}</p>
+      ) : null}
+      {reauth && !notice ? (
+        <div className="nx-external-notice nx-reauth" role="alert">
+          <strong>{reauth.title}</strong>
+          <span>{reauth.detail}</span>
+          <button type="button" className="nx-reauth-btn" onClick={requestMailboxOrExplain}>
+            Reconectar
+          </button>
+        </div>
       ) : null}
 
         {mailboxPickerOpen ? (
