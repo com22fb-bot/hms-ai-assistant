@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.services.brain_v1.headers import graph_mail_headers
 from app.services.brain_v1 import brain_v1_enabled
 from app.services.import_categories import skip_message
 import re
@@ -34,6 +35,7 @@ MICROSOFT_SELECT = (
     "internetMessageId,hasAttachments"
 )
 MICROSOFT_HEADER_SELECT = "id,subject,from"
+MICROSOFT_BRAIN_EXTRA = ",internetMessageHeaders,categories,inferenceClassification"
 
 
 class MicrosoftImportError(RuntimeError):
@@ -421,7 +423,7 @@ def sync_microsoft_page(
             payload = _graph_get_with_refresh(
                 account,
                 f"{MICROSOFT_GRAPH_BASE}/me/messages/{message_id}",
-                params={"$select": MICROSOFT_SELECT},
+                params={"$select": MICROSOFT_SELECT + (MICROSOFT_BRAIN_EXTRA if brain_v1_enabled() else "")},
             )
             subject = str(payload.get("subject") or "(Sin asunto)")
             from_raw = graph_address(payload.get("from") if isinstance(payload.get("from"), dict) else {})
@@ -495,6 +497,7 @@ def sync_microsoft_page(
                         "received_at": received_at_iso,
                         "has_attachments": bool(payload.get("hasAttachments")),
                         "labels": labels,
+                        **({"mail_headers": graph_mail_headers(payload)} if brain_v1_enabled() else {}),
                         "is_unread": not bool(payload.get("isRead")),
                         "snippet": snippet,
                         "direction": direction,

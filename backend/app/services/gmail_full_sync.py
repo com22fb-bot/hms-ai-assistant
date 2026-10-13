@@ -7,6 +7,8 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+from app.services.brain_v1 import brain_v1_enabled
+from app.services.brain_v1.headers import gmail_mail_headers
 from app.services.import_categories import skip_message
 from app.services.mail_direction import direction_from_labels
 from app.services.gmail_sync import (
@@ -312,6 +314,9 @@ def sync_gmail_page(
                     "case_processed": False,
                     "ai_processed": False,
                 }
+
+                if brain_v1_enabled():
+                    message_payload["mail_headers"] = gmail_mail_headers(headers, labels)
 
                 insert_response = (
                     client.table("communication_messages")
