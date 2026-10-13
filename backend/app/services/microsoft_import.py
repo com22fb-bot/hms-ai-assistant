@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.services.brain_v1 import brain_v1_enabled
 from app.services.import_categories import skip_message
 import re
 from datetime import datetime, timedelta, timezone
@@ -32,6 +33,7 @@ MICROSOFT_SELECT = (
     "receivedDateTime,isRead,body,bodyPreview,conversationId,"
     "internetMessageId,hasAttachments"
 )
+MICROSOFT_HEADER_SELECT = "id,subject,from"
 
 
 class MicrosoftImportError(RuntimeError):
@@ -403,6 +405,19 @@ def sync_microsoft_page(
         if external_message_id in existing_ids:
             continue
         try:
+            if exclude and brain_v1_enabled():
+                # C10: cabeceras primero; el cuerpo solo si el mensaje no está excluido.
+                head = _graph_get_with_refresh(
+                    account,
+                    f"{MICROSOFT_GRAPH_BASE}/me/messages/{message_id}",
+                    params={"$select": MICROSOFT_HEADER_SELECT},
+                )
+                head_sender = _format_sender(
+                    graph_address(head.get("from") if isinstance(head.get("from"), dict) else {})
+                )
+                if skip_message(exclude, head_sender, str(head.get("subject") or "(Sin asunto)")):
+                    skipped_excluded += 1
+                    continue
             payload = _graph_get_with_refresh(
                 account,
                 f"{MICROSOFT_GRAPH_BASE}/me/messages/{message_id}",

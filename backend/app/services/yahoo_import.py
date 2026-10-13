@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.services.brain_v1 import brain_v1_enabled
 from app.services.import_categories import skip_message
 import email
 from datetime import datetime, timedelta, timezone
@@ -380,6 +381,22 @@ def _fetch_uid_message(
     return email.message_from_bytes(raw_bytes), flags_text
 
 
+HEADER_ONLY_SPEC = "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE LIST-ID LIST-UNSUBSCRIBE)])"
+
+
+def _fetch_uid_headers(client: Any, uid: str) -> tuple[str, str]:
+    """Solo cabeceras, sin marcar como leído (PEEK). Devuelve (From, Subject)."""
+    status, fetched = client.uid("FETCH", uid, HEADER_ONLY_SPEC)
+    raw = b""
+    for part in fetched or []:
+        if isinstance(part, tuple) and len(part) >= 2 and isinstance(part[1], bytes):
+            raw = part[1]
+    if status != "OK" or not raw:
+        return "", ""
+    parsed = email.message_from_bytes(raw)
+    return _decode_header_value(parsed.get("From")), _decode_header_value(parsed.get("Subject"))
+
+
 def _external_thread_id(parsed: email.message.Message, fallback: str) -> str:
     in_reply = _decode_header_value(parsed.get("In-Reply-To")).strip()
     message_id = _decode_header_value(parsed.get("Message-ID")).strip()
@@ -474,6 +491,16 @@ def sync_yahoo_page(
                 if selected_folder != folder:
                     _select_folder(imap_client, folder, mailbox_provider)
                     selected_folder = folder
+                if exclude and brain_v1_enabled():
+                    # C10: cabeceras primero (BODY.PEEK[HEADER.FIELDS]); el cuerpo solo si no está excluido.
+                    head_from, head_subject = _fetch_uid_headers(imap_client, uid)
+                    if skip_message(
+                        exclude,
+                        _format_sender(head_from),
+                        head_subject or "(Sin asunto)",
+                    ):
+                        skipped_excluded += 1
+                        continue
                 parsed, flags_text = _fetch_uid_message(
                     imap_client,
                     uid,
