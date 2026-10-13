@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from app.services.brain_v1.dates import DateResult, extract_dates
-from app.services.brain_v1.documents import doc_key, extract_amount
+from app.services.brain_v1.documents import doc_key, extract_amount, period_key
 from app.services.brain_v1.protected import fold, is_security_or_code, protected_type
 
 BRAIN_VERSION = "brain-v1-etapa1"
@@ -81,11 +81,12 @@ class Analysis:
     brand: str = ""
     sender_domain: str = ""
     suppressed: bool = False
+    key_source: str = "folio"
 
     def signals(self) -> dict[str, Any]:
         return {
             "brain_version": BRAIN_VERSION, "rule": self.rule, "protected": self.protected,
-            "doc_key": self.doc_key, "amount": self.amount, "confidence": self.confidence,
+            "doc_key": self.doc_key, "key_source": self.key_source if self.doc_key else None, "amount": self.amount, "confidence": self.confidence,
             "suppressed": self.suppressed, **self.dates.as_metadata(),
         }
 
@@ -99,6 +100,14 @@ def _confidence(rule: str, *, doc: bool, dates: DateResult) -> float:
     if dates.date_ambiguous:
         value -= 0.15
     return round(max(0.05, min(value, 0.95)), 2)
+
+
+def _with_period(analysis: Analysis, subject: str, body: str, received: Any) -> Analysis:
+    """C4b: factura o cobro sin folio → clave marca + periodo (mes de facturación o de recepción)."""
+    if not analysis.doc_key:
+        analysis.doc_key = period_key(analysis.brand, subject, body, received)
+        analysis.key_source = "periodo"
+    return analysis
 
 
 def analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> Analysis:
@@ -185,14 +194,14 @@ def analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> An
     # C3: factura o cobro que pide pago → accionable aunque el remitente sea desconocido.
     if demand and invoice_term and not promo_terms:
         rule = "invoice_due" if re.search(r"(factura|cfdi|recibo|invoice|\bbill\b|estado de cuenta|statement)", text) else "charge_due"
-        return build(rule, "action_required", True, "Factura o cobro que pide un pago.",
-                     with_doc=True, protected="invoice")
+        return _with_period(build(rule, "action_required", True, "Factura o cobro que pide un pago.",
+                                  with_doc=True, protected="invoice"), subject, body, received)
     if marketing:
         return build("promotional", "promotional", False,
                      "Publicidad o boletín; las palabras 'urgente' o 'último aviso' no crean pendiente.")
     if demand and re.search(r"(saldo|adeudo|cuanto antes|pago pendiente|pendiente de pago|suspension)", text):
-        return build("charge_due", "action_required", True, "Cobro pendiente sin factura adjunta.",
-                     with_doc=True, protected="invoice")
+        return _with_period(build("charge_due", "action_required", True, "Cobro pendiente sin factura adjunta.",
+                                  with_doc=True, protected="invoice"), subject, body, received)
     if REQUEST_RE.search(text) and not _sender_is_automated(sender):
         return build("request", "action_required", True, "Solicitud directa de una persona.", with_doc=True,
                      protected=prot)

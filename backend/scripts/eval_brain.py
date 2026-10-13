@@ -171,6 +171,16 @@ def evaluate(corpus: list[dict], run: dict, flag: bool) -> dict:
         if protected_type(h["from"], h["subject"], None, {"list-unsubscribe": h.get("list-unsubscribe") or ""}) is None:
             protected_lost_headers.append(item["id"])
 
+    # C5b: pagos de otro remitente o sin folio → "posible pago, confirmar", nunca resuelto.
+    possible_expected = [c for c in corpus if c["label"].get("posible_pago")]
+    possible_ok = 0
+    auto_closed_wrong = 0
+    for item in possible_expected:
+        case = cases.get(msg_case.get(item["id"]))
+        if case and case["status"] not in CLOSED and (case.get("metadata") or {}).get("payment_status") == "possible":
+            possible_ok += 1
+        if case and case["status"] in CLOSED:
+            auto_closed_wrong += 1
     triage_ok = sum(TRIAGE_MAP.get(msgs[c["id"]].get("triage_category"), "?") == c["label"]["triage"] for c in corpus)
     n_keys = len(exp_keys)
     covered = n_keys - len(missing)
@@ -188,6 +198,7 @@ def evaluate(corpus: list[dict], run: dict, flag: bool) -> dict:
         "status_accuracy": round(status_ok / max(covered, 1), 3), "priority_accuracy": round(priority_ok / max(covered, 1), 3),
         "triage_accuracy": round(triage_ok / len(corpus), 3), "errors": run["summary"].get("errors"),
         "elapsed_s": round(run["elapsed_s"], 3),
+        "possible_payment_ok": f"{possible_ok}/{len(possible_expected)}", "cross_sender_auto_closed": auto_closed_wrong,
     }
     metrics["partd"] = part_d(corpus, msgs, cases, msg_case, events, metrics)
     return metrics
@@ -251,6 +262,10 @@ def check(metrics: dict) -> list[str]:
         failures.append("false_pending_rate")
     if metrics["missing_case_rate"] > THRESHOLDS["missing_case_rate"]:
         failures.append("missing_case_rate")
+    if metrics["cross_sender_auto_closed"]:
+        failures.append("cross_sender_auto_closed")
+    if metrics["possible_payment_ok"].split("/")[0] != metrics["possible_payment_ok"].split("/")[1]:
+        failures.append("possible_payment")
     if not all(row["pasa"] for row in metrics["partd"]):
         failures.append("partd")
     return failures
@@ -268,7 +283,7 @@ def main() -> int:
         results.append(evaluate(corpus, run_pipeline(corpus, flag), flag))
     keys = ["emails", "expected_cases", "predicted_cases", "case_precision", "case_recall", "missing_case_rate",
             "false_pending", "false_pending_rate", "duplicates", "wrong_merges", "date_accuracy", "invented_dates",
-            "protected_lost", "protected_lost_headers_only", "status_accuracy", "priority_accuracy", "triage_accuracy", "errors"]
+            "protected_lost", "protected_lost_headers_only", "status_accuracy", "priority_accuracy", "triage_accuracy", "possible_payment_ok", "cross_sender_auto_closed", "errors"]
     print("métrica | " + " | ".join(f"flag {r['flag']}" for r in results))
     for key in keys:
         print(f"{key} | " + " | ".join(str(r[key]) for r in results))

@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.services.brain_v1.analyzer import BRAIN_VERSION, Analysis, analyze
-from app.services.brain_v1.documents import amounts_compatible
+from app.services.brain_v1.documents import amounts_compatible, brand_mentioned, extract_doc_token
 
 STATUS_LABELS = {
     "new": "pendiente", "in_progress": "en seguimiento", "scheduled": "programado",
@@ -81,6 +81,27 @@ def find_case_v1(client: Any, *, workspace_id: str, account_id: str, message: di
     return None
 
 
+def _cross_sender_payment_case(client: Any, workspace_id: str, analysis: Analysis, text: str) -> dict[str, Any] | None:
+    """C5b: pago confirmado por otro remitente (p. ej. un banco) o sin folio.
+
+    Coincide si un caso abierto de factura/cobro es de la misma marca (o el texto la menciona) y el importe
+    es compatible, o si el folio del pago aparece en el caso. Nunca cierra: queda "posible pago, confirmar".
+    """
+    token = extract_doc_token(text, "")
+    for row in _open_cases(client, workspace_id):
+        meta = _meta(row)
+        if meta.get("rule") not in {"invoice_due", "charge_due"}:
+            continue
+        if token and str(meta.get("doc_key") or "").endswith(":" + token):
+            return row
+        if token and (meta.get("key_source") or "folio") == "folio":
+            continue  # C4: folios distintos nunca se unen
+        same_brand = meta.get("brand") == analysis.brand or brand_mentioned(meta.get("brand"), text)
+        if same_brand and amounts_compatible(meta.get("amount"), analysis.amount):
+            return row
+    return None
+
+
 def _priority(analysis: Analysis, text: str, received_at: str) -> tuple[str, int]:
     from app.services.case_engine import _risk_and_priority
 
@@ -126,16 +147,23 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
                         analysis=analysis, normalized_subject=normalized)
     result = "linked"
 
+    cross_sender = False
+    if analysis.rule in {"payment_confirmation", "partial_payment"} and not case:
+        case = _cross_sender_payment_case(client, workspace_id, analysis, text)
+        cross_sender = case is not None
     if analysis.rule in {"payment_confirmation", "partial_payment"}:
         if not case:
             return None, "no_case"
         meta = _meta(case)
         strong = (
-            analysis.rule == "payment_confirmation" and analysis.doc_key
+            not cross_sender
+            and (meta.get("key_source") or "folio") == "folio"
+            and analysis.rule == "payment_confirmation" and analysis.doc_key
             and meta.get("doc_key") == analysis.doc_key
             and amounts_compatible(meta.get("amount"), analysis.amount)
         )
-        evidence = {"message_id": message_id, "snippet": snippet, "amount": analysis.amount, "doc_key": analysis.doc_key}
+        evidence = {"message_id": message_id, "snippet": snippet, "amount": analysis.amount, "doc_key": analysis.doc_key,
+                    "payment_source": "otro_remitente" if cross_sender else "mismo_remitente"}
         if strong:
             client.table("intelligent_cases").update({
                 "status": "resolved", "resolved_at": received_at, "last_activity_at": received_at,
@@ -181,7 +209,8 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
         dates = analysis.dates
         metadata = {
             "created_by": BRAIN_VERSION, "rule": analysis.rule, "initial_message_direction": direction,
-            "doc_key": analysis.doc_key, "amount": analysis.amount, "protected": analysis.protected,
+            "doc_key": analysis.doc_key, "key_source": analysis.key_source if analysis.doc_key else None,
+            "brand": analysis.brand, "amount": analysis.amount, "protected": analysis.protected,
             "message_confidences": {message_id: analysis.confidence},
             "evidence": [{"message_id": message_id, "snippet": snippet}],
             "event_at": dates.event_at, "event_evidence": dates.event_evidence,
