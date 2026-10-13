@@ -1,0 +1,47 @@
+name: Backend tests + brain eval
+on:
+  pull_request:
+    paths:
+      - "backend/**"
+      - "supabase/migrations/**"
+      - ".github/workflows/backend-brain.yml"
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-brain.yml"
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      FRONTEND_ORIGINS: https://app.donexto.com
+      SUPABASE_URL: https://example.supabase.co
+      SUPABASE_SECRET_KEY: test-secret-key-not-real
+      OAUTH_ENCRYPTION_KEY: test-oauth-encryption-key-32chars!!
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt pytest
+      - name: Full backend suite
+        run: python -m pytest -q
+      - name: Brain corpus eval (baseline OFF + acceptance ON)
+        run: |
+          python scripts/eval_brain.py --flag both --check --json brain-eval.json | tee brain-eval.txt
+          { echo '```'; cat brain-eval.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: brain-eval
+          path: backend/brain-eval.json
