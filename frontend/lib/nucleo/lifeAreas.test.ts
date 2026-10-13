@@ -18,6 +18,7 @@ import "./commandCenter.test.ts";
 import "../mailFrame.test.ts";
 import "./helpKb.test.ts";
 import "./cleanText.test.ts";
+import "./brainStates.test.ts";
 import "./explain.test.ts";
 import "./topTen.test.ts";
 import "./mailRefresh.test.ts";

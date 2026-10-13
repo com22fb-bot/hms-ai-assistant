@@ -327,7 +327,14 @@ const OPEN_STATUSES = new Set([
   "delegated",
   "waiting_internal",
   "waiting_external",
+  // Cerebro v1: un compromiso programado y lo que requiere revisión siguen abiertos.
+  // "no_action" es cerrado (igual que en el backend, CLOSED_V1).
+  "scheduled",
+  "needs_review",
 ]);
+
+/** Estados que solo escribe el cerebro v1; con la bandera apagada nunca aparecen. */
+export const BRAIN_V1_STATUSES = new Set(["scheduled", "no_action", "needs_review"]);
 
 export function isOpenStatus(status: string): boolean {
   return OPEN_STATUSES.has(status);
@@ -345,6 +352,7 @@ export type InboxCase = {
   requester_email: string | null;
   last_activity_at: string;
   due_at: string | null;
+  event_at?: string | null;
   source_count: number;
   /** Backend mail insight of the case's primary email (read-only, computed on the fly). */
   insight?: MailInsight | null;
@@ -371,6 +379,10 @@ export type LifeItem = {
   sender: string;
   when: string;
   dueAt: string | null;
+  /** Cerebro v1: fecha del evento (cita, reservación), distinta del vencimiento. */
+  eventAt?: string | null;
+  /** Cerebro v1: caso needs_review o correo en revisión sin caso. */
+  needsReview?: boolean;
   status: string;
   priority: string;
   amount: number | null;
@@ -447,7 +459,9 @@ export function buildLifeItems(
       area: insightArea(insight, classified.area),
       sender: senderLabel(item.requester_name, item.requester_email),
       when: item.last_activity_at,
-      dueAt: item.due_at,
+      dueAt: item.due_at ?? item.event_at ?? null,
+      eventAt: item.event_at ?? null,
+      needsReview: item.status === "needs_review",
       status: item.status,
       priority: item.priority,
       amount: primary?.value ?? null,
@@ -497,6 +511,7 @@ export function buildLifeItems(
       sender: senderLabel(thread.sender, null),
       when: thread.latest_received_at || new Date(0).toISOString(),
       dueAt: null,
+      needsReview: thread.triage_category === "review",
       status: "new",
       priority: "normal",
       amount: amounts[0]?.value ?? null,
