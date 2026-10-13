@@ -59,9 +59,11 @@ type Preview = {
   unavailable?: boolean;
   examples?: Record<string, string[]>;
   exact?: boolean;
+  partial?: boolean;
+  coverage?: number;
 };
 
-/** 13 áreas (catalogo-maestro.yaml) con su esfera por defecto. */
+/** 13 áreas de vida con esfera; con Redes sociales, Promociones y Otros suman las 16 de lifeAreas.ts. */
 const AREAS: Array<{ id: string; label: string; sphere: "hogar" | "ocupacion" | "personal" }> = [
   { id: "money", label: "Dinero", sphere: "personal" },
   { id: "bills", label: "Recibos", sphere: "hogar" },
@@ -75,7 +77,7 @@ const AREAS: Array<{ id: string; label: string; sphere: "hogar" | "ocupacion" | 
   { id: "government", label: "Trámites", sphere: "personal" },
   { id: "insurance", label: "Seguros", sphere: "hogar" },
   { id: "education", label: "Educación", sphere: "personal" },
-  { id: "agenda", label: "Agenda", sphere: "ocupacion" },
+  { id: "events", label: "Eventos", sphere: "ocupacion" },
 ];
 const SPHERES: Array<{ id: "hogar" | "ocupacion" | "personal"; label: string }> = [
   { id: "hogar", label: "Hogar" },
@@ -234,7 +236,7 @@ export function GuidedImportWizard({
           setFocusArea((current) => (current === id ? null : id));
         }}
       >
-        {preview.exact ? "" : "~"}{value.toLocaleString()}
+        {preview.exact && !preview.partial ? "" : "~"}{value.toLocaleString()}
       </em>
     );
   }
@@ -434,7 +436,7 @@ export function GuidedImportWizard({
                 </h2>
                 <p>
                   Elige si traemos todo o solo lo que te importa. Después
-                  Donexto lo clasifica en tus 3 esferas y 13 áreas.
+                  Donexto lo clasifica en tus 3 esferas y 16 áreas.
                 </p>
               </div>
             </div>
@@ -479,7 +481,7 @@ export function GuidedImportWizard({
                   <span>{sphere.label}</span>
                   <strong>
                     {preview && !preview.unavailable
-                      ? `${preview.exact ? "" : "~"}${estimate(preview.spheres[sphere.id], preview.scale).toLocaleString()}`
+                      ? `${preview.exact && !preview.partial ? "" : "~"}${estimate(preview.spheres[sphere.id], preview.scale).toLocaleString()}`
                       : previewLoading ? "…" : "—"}
                   </strong>
                   <small>
@@ -493,15 +495,17 @@ export function GuidedImportWizard({
 
             {previewLoading ? (
               <p className="hms-import-scan" role="status">
-                <span aria-hidden="true" /> Analizando remitentes y asuntos (nunca el contenido)…
+                <span aria-hidden="true" /> Analizando solo remitentes y asuntos (nunca el contenido). Puede tardar hasta 2 minutos…
               </p>
             ) : preview?.unavailable ? (
               <p className="hms-import-scan is-warn" role="status">No pudimos calcular la vista previa ahora. Puedes importar igual; todo se clasifica al llegar.</p>
             ) : preview ? (
               <p className="hms-import-scan is-done">
-                {preview.exact
-                  ? `Revisamos los ${preview.sampled.toLocaleString()} mensajes (solo remitente y asunto).`
-                  : `Estimado con ${preview.sampled.toLocaleString()} mensajes recientes (solo remitente y asunto).`}
+                {preview.partial
+                  ? `Resultado parcial: analizamos ${preview.sampled.toLocaleString()} mensajes; los números son aproximados.`
+                  : preview.exact
+                    ? `Revisamos los ${preview.sampled.toLocaleString()} mensajes (solo remitente y asunto).`
+                    : `Estimado con una muestra de ${preview.sampled.toLocaleString()} mensajes (${Math.round((preview.coverage ?? 0) * 100)}% del total), solo remitente y asunto.`}
               </p>
             ) : null}
 
