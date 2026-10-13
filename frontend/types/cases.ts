@@ -7,7 +7,11 @@ export type CaseStatus =
   | "waiting_external"
   | "resolved"
   | "closed"
-  | "archived";
+  | "archived"
+  // Cerebro v1 (solo aparecen con BRAIN_V1_ENABLED en el backend)
+  | "scheduled"
+  | "no_action"
+  | "needs_review";
 
 export type CasePriority =
   | "low"
@@ -32,6 +36,7 @@ export type IntelligentCase = {
   opened_at: string;
   last_activity_at: string;
   due_at: string | null;
+  event_at?: string | null;
   resolved_at: string | null;
   source_count: number;
   reminder_count: number;
