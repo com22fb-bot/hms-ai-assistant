@@ -15,7 +15,7 @@ from app.services.brain_v1.dates import DateResult, extract_dates
 from app.services.brain_v1.documents import doc_key, extract_amount, period_key
 from app.services.brain_v1.protected import SECURITY_ACTION_RE, fold, is_security_or_code, phishing_suspect, protected_type
 
-BRAIN_VERSION = "brain-v1-etapa1-3"
+BRAIN_VERSION = "brain-v1-cierre"
 
 RULE_CONFIDENCE = {
     "security": 0.9, "verification": 0.9, "payment_confirmation": 0.85, "partial_payment": 0.6,
@@ -37,7 +37,7 @@ PAYMENT_CONFIRM_RE = re.compile(
     # A5 (Etapa 1.2): "Pago de servicio aplicado", "Se realizó el pago", "tu pago fue procesado".
     r"pago\b[^.\n]{0,30}\b(aplicad|realizad|procesad|exitos|acreditad|efectuad|completad)|"
     r"se (realizo|aplico|proceso|acredito|efectuo|registro) (el|tu|su|un) (pago|abono)|"
-    r"recibimos un abono|payment[^.\n]{0,20}(was |has been )?(processed|applied|completed|successful))"
+    r"recibimos un abono|\bpagaste\b|\byou paid\b|payment[^.\n]{0,20}(was |has been )?(processed|applied|completed|successful))"
 )
 NEGATED_PAYMENT_RE = re.compile(
     r"(\bno (hemos )?(recibido|registrado)|\bnot (yet )?received|have not received|\baun no|sin recibir|"
@@ -91,7 +91,7 @@ APPT_RESCHEDULE_RE = re.compile(
 )
 # A8 (Etapa 1.2): correo saliente que deja al usuario esperando algo con fecha.
 WAIT_RE = re.compile(
-    r"(quedo (en espera|atento|pendiente) de|quedamos (en espera|atentos|pendientes) de|en espera de (su|tu)|"
+    r"(quedo (en espera|atento|atenta|pendiente) (de|a) (su|tu|la|el)|quedo (en espera|atento|pendiente) de|quedamos (en espera|atentos|pendientes) de|en espera de (su|tu)|"
     r"espero (su|tu) (respuesta|cotizacion|confirmacion|envio|propuesta)|"
     r"(awaiting|look forward to|waiting for) (your|the) (reply|response|quote|quotation|confirmation|proposal))"
 )
@@ -144,7 +144,9 @@ class Analysis:
             "brain_version": BRAIN_VERSION, "rule": self.rule, "protected": self.protected,
             "doc_key": self.doc_key, "key_source": self.key_source if self.doc_key else None, "amount": self.amount, "confidence": self.confidence,
             "suppressed": self.suppressed, "bulk": self.bulk, "reschedule": self.reschedule,
-            "phishing_brand": self.phishing_brand, **self.dates.as_metadata(),
+            "phishing_brand": self.phishing_brand, "triage": self.triage,
+            "review_reason": self.reason if self.triage == "review" or self.confidence < 0.5 else None,
+            **self.dates.as_metadata(),
         }
 
 

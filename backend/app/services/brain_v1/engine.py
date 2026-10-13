@@ -72,6 +72,12 @@ def find_case_v1(client: Any, *, workspace_id: str, account_id: str, message: di
         rows = _open_cases(client, workspace_id, metadata__doc_key=key)
         if rows:
             return rows[0]
+        if analysis.key_source == "folio" and analysis.rule in {"invoice_due", "charge_due"}:
+            # f) (cierre v1): copia del mismo folio en otro buzón después de pagado → se une al caso resuelto,
+            # sin reabrirlo ni duplicarlo.
+            rows = _open_cases(client, workspace_id, statuses=["resolved", "closed"], metadata__doc_key=key)
+            if rows:
+                return rows[0]
     if analysis.rule == "verification":
         # A7: el grupo de verificaciones de terceros vive en no_action; los repetidos se le suman.
         rows = _open_cases(client, workspace_id, statuses=OPEN_V1 + ["no_action"],
@@ -178,6 +184,12 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
     from app.utils.html_text import strip_css_noise
 
     message_id = str(message["id"])
+    # Control 7.2 (idempotencia): un mensaje ya ligado a un caso nunca vuelve a crear, unir ni cerrar nada.
+    from app.services.case_engine import _rows as _rows_q
+
+    already = _rows_q(client.table("case_messages").select("case_id").eq("message_id", message_id).limit(1).execute())
+    if already:
+        return str(already[0]["case_id"]), "already_linked"
     received_at = _to_iso(message.get("received_at"))
     subject = strip_css_noise(str(message.get("subject") or "")) or "(Sin asunto)"
     body = str(message.get("body_text") or message.get("snippet") or "")
@@ -301,7 +313,8 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
             "metadata": {**meta, "message_confidences": confidences,
                          "evidence": (meta.get("evidence") or [])[-9:] + [{"message_id": message_id, "snippet": snippet}]},
         }
-        reminder = analysis.rule in {"invoice_due", "charge_due", "request", "legacy_action", "verification"}
+        reminder = (analysis.rule in {"invoice_due", "charge_due", "request", "legacy_action", "verification"}
+                    and case.get("status") not in CLOSED_V1)
         if reminder:
             updates["reminder_count"] = int(case.get("reminder_count") or 0) + 1
         # C2: un recordatorio puede completar la fecha, nunca sobrescribir una con evidencia.

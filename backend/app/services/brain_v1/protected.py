@@ -38,7 +38,8 @@ SECURITY_RE = re.compile(
 SECURITY_ACTION_RE = re.compile(
     r"(alguien (conoce|tiene|uso) tu contrasena|someone (knows|has|used) your password|"
     r"(bloqueamos|hemos bloqueado|se bloqueo) (el |tu )?acceso|acceso bloqueado|cuenta (comprometida|bloqueada)|"
-    r"account (locked|compromised)|(?<!si no fuiste tu, )(?<!si no fuiste tu )\bcambia (tu|la|su) contrasena|"
+    r"account (has been |was )?(locked|compromised)|(we )?(have )?locked your account|reset your password (now|immediately)|"
+    r"(?<!si no fuiste tu, )(?<!si no fuiste tu )\bcambia (tu|la|su) contrasena|"
     r"change your password (now|immediately)|accion (inmediata|requerida)|immediate action)"
 )
 # A3 (Etapa 1.2): marcas que suplantan los fraudes. Se compara con el dominio del remitente.
@@ -54,7 +55,7 @@ PHISH_ASK_RE = re.compile(
     r"contrasena|clave de acceso|numero de tarjeta|verify your identity|confirm your (details|information)|update your (payment|billing))"
 )
 PHISH_URGENT_RE = re.compile(
-    r"(enlace|link|haz clic|da clic|click|ingresa aqui|proximas? \d+ (horas|minutos)|\d+ horas|inmediat|urgente|"
+    r"(enlace|link|haz clic|da clic|click|ingresa aqui|\baqui\b|\bhoy\b|proximas? \d+ (horas|minutos)|\d+ horas|inmediat|urgente|"
     r"sera (suspendida|suspendido|bloqueada|cancelada)|suspend|hoy mismo|de lo contrario|within \d+ hours|immediately)"
 )
 
