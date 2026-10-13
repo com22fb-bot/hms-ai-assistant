@@ -441,6 +441,23 @@
   font: 14px/1.45 Inter, ui-sans-serif, system-ui, sans-serif;
 }
 
+.nx-reauth {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nx-reauth-btn {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: #f4f7fb;
+  color: #121826;
+  font: 600 13px/1.2 Inter, ui-sans-serif, system-ui, sans-serif;
+  cursor: pointer;
+}
+
 /* ==========================================================================
    One-screen layout: the app is exactly one viewport tall. Only the main
    column may scroll (and on wide screens the dashboard fits without it).

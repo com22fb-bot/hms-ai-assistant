@@ -34,6 +34,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
+import logging
+
 from cryptography.fernet import Fernet, InvalidToken
 
 
@@ -49,6 +51,18 @@ SUPPORTED_PROVIDERS = {
 ACTIVE_ACCOUNT_STATUSES = {
     "active",
 }
+
+
+_logger = logging.getLogger(__name__)
+
+
+def _rows_of(response: Any) -> list[dict[str, Any]]:
+    data = getattr(response, "data", None)
+    if isinstance(data, list):
+        return [row for row in data if isinstance(row, dict)]
+    if isinstance(data, dict):
+        return [data]
+    return []
 
 
 class OAuthStorageError(RuntimeError):
@@ -255,6 +269,21 @@ def _decrypt(value: str | None) -> str | None:
 
 def _state_hash(raw_state: str) -> str:
     return hashlib.sha256(raw_state.encode("utf-8")).hexdigest()
+
+
+LIVE_ACCOUNT_STATUSES = ("active", "needs_reauth")
+
+
+def _address_key(email: str | None, provider_account_id: str) -> str:
+    """Igual que la columna generada communication_accounts.address_key."""
+    base = (email or "").strip(" ") or provider_account_id
+    return base.strip(" ").lower()
+
+
+def _is_unique_violation(error: Exception) -> bool:
+    code = str(getattr(error, "code", "") or "")
+    text = str(error)
+    return code == "23505" or "23505" in text or "duplicate key" in text
 
 
 def _first_row(response: Any) -> dict[str, Any] | None:
@@ -550,18 +579,6 @@ class OAuthStorage:
                 "workspace_id es obligatorio para guardar una cuenta OAuth."
             )
 
-        existing_response = (
-            self.client.table("communication_accounts")
-            .select("*")
-            .eq("workspace_id", str(workspace_id))
-            .eq("provider", normalized_provider)
-            .eq("provider_account_id", provider_account_id)
-            .limit(1)
-            .execute()
-        )
-
-        existing = _first_row(existing_response)
-
         payload = {
             "workspace_id": str(workspace_id),
             "provider": normalized_provider,
@@ -578,37 +595,169 @@ class OAuthStorage:
             ),
         }
 
-        if existing:
-            update_response = (
-                self.client.table("communication_accounts")
-                .update(payload)
-                .eq("id", existing["id"])
-                .execute()
+        # Un buzón (proveedor + dirección normalizada) tiene como máximo una
+        # fila viva (índice único parcial ux_comm_accounts_live_address). Al
+        # reconectar se reutiliza esa fila, aunque viva en otro workspace
+        # (p. ej. el usuario se borró y volvió a registrarse): se mueve en
+        # lugar de crear un duplicado. Si dos conexiones simultáneas chocan
+        # con el índice, la perdedora relee y actualiza la fila ganadora.
+        last_error: Exception | None = None
+        for _attempt in range(3):
+            existing = self._find_reusable_account(
+                normalized_provider,
+                provider_account_id,
+                _address_key(email, provider_account_id),
+                str(workspace_id),
             )
-
-            updated = _first_row(update_response)
-
-            if not updated:
-                raise OAuthStorageError(
-                    "Supabase no confirmó la actualización de la cuenta."
+            try:
+                if existing:
+                    saved = _first_row(
+                        self.client.table("communication_accounts")
+                        .update(payload)
+                        .eq("id", existing["id"])
+                        .execute()
+                    )
+                    if not saved:
+                        raise OAuthStorageError(
+                            "Supabase no confirmó la actualización de la cuenta."
+                        )
+                    if str(existing.get("workspace_id")) != str(workspace_id):
+                        _logger.info(
+                            "upsert_communication_account movida provider=%s",
+                            normalized_provider,
+                        )
+                else:
+                    saved = _first_row(
+                        self.client.table("communication_accounts")
+                        .insert(payload)
+                        .execute()
+                    )
+                    if not saved:
+                        raise OAuthStorageError(
+                            "Supabase no confirmó la creación de la cuenta."
+                        )
+            except OAuthStorageError:
+                raise
+            except Exception as error:  # noqa: BLE001
+                if not _is_unique_violation(error):
+                    raise
+                last_error = error
+                _logger.info(
+                    "upsert_communication_account carrera provider=%s reintento",
+                    normalized_provider,
                 )
+                continue
 
-            return updated
+            if status == "active":
+                self.retire_orphan_duplicates(
+                    normalized_provider, provider_account_id, str(saved["id"])
+                )
+            return saved
 
-        create_response = (
-            self.client.table("communication_accounts")
-            .insert(payload)
-            .execute()
+        raise OAuthStorageError(
+            "No fue posible guardar la cuenta por conexiones simultáneas."
+        ) from last_error
+
+    def _find_reusable_account(
+        self,
+        provider: str,
+        provider_account_id: str,
+        address_key: str,
+        workspace_id: str,
+    ) -> dict[str, Any] | None:
+        """Fila a reutilizar: primero la viva (active/needs_reauth), luego la
+        del mismo workspace, luego la más reciente."""
+        rows: dict[str, dict[str, Any]] = {}
+        for column, value in (
+            ("provider_account_id", provider_account_id),
+            ("address_key", address_key),
+        ):
+            for row in _rows_of(
+                self.client.table("communication_accounts")
+                .select("*")
+                .eq("provider", provider)
+                .eq(column, value)
+                .execute()
+            ):
+                if row.get("id"):
+                    rows[str(row["id"])] = row
+        if not rows:
+            return None
+
+        def rank(row: dict[str, Any]) -> tuple[int, int]:
+            live = str(row.get("status")) in LIVE_ACCOUNT_STATUSES
+            same = str(row.get("workspace_id")) == workspace_id
+            return (0 if live else 1, 0 if same else 1)
+
+        best = min(rank(r) for r in rows.values())
+        same_rank = [r for r in rows.values() if rank(r) == best]
+        # dentro del mismo rango, la más reciente
+        return max(
+            same_rank,
+            key=lambda r: str(r.get("updated_at") or r.get("created_at") or ""),
         )
 
-        created = _first_row(create_response)
+    def _workspace_has_active_members(self, workspace_id: str) -> bool:
+        rows = _rows_of(
+            self.client.table("workspace_members")
+            .select("profile_id")
+            .eq("workspace_id", workspace_id)
+            .eq("status", "active")
+            .is_("deleted_at", "null")
+            .limit(1)
+            .execute()
+        )
+        return bool(rows)
 
-        if not created:
-            raise OAuthStorageError(
-                "Supabase no confirmó la creación de la cuenta."
+    def retire_orphan_duplicates(
+        self,
+        provider: str,
+        provider_account_id: str,
+        keep_account_id: str,
+    ) -> list[str]:
+        """Marca como ``superseded`` las copias activas del mismo buzón.
+
+        Solo toca filas cuyo workspace ya no tiene miembros activos (restos de
+        usuarios borrados). Nunca reasigna ni lee datos de otro workspace con
+        miembros: eso mezclaría buzones entre personas distintas. No borra nada
+        (mensajes, casos y credenciales quedan para la consolidación revisada).
+        Best effort: un fallo aquí no rompe la conexión del usuario.
+        """
+        retired: list[str] = []
+        try:
+            rows = _rows_of(
+                self.client.table("communication_accounts")
+                .select("id,workspace_id")
+                .eq("provider", _normalize_provider(provider))
+                .eq("provider_account_id", provider_account_id)
+                .eq("status", "active")
+                .neq("id", keep_account_id)
+                .execute()
             )
-
-        return created
+            for row in rows:
+                account_id = str(row.get("id") or "")
+                workspace_id = str(row.get("workspace_id") or "")
+                if not account_id or not workspace_id:
+                    continue
+                if self._workspace_has_active_members(workspace_id):
+                    continue
+                self.client.table("communication_accounts").update(
+                    {"status": "superseded"}
+                ).eq("id", account_id).eq("status", "active").execute()
+                retired.append(account_id)
+        except Exception as error:  # noqa: BLE001 - best effort, sin PII
+            _logger.warning(
+                "retire_orphan_duplicates fallo provider=%s error=%s",
+                provider,
+                type(error).__name__,
+            )
+        if retired:
+            _logger.info(
+                "retire_orphan_duplicates provider=%s retired=%d",
+                provider,
+                len(retired),
+            )
+        return retired
 
     def get_account(
         self,

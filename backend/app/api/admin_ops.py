@@ -192,6 +192,15 @@ def cleanup_user_records(client: Any, user_id: str) -> None:
         for account in accounts:
             account_id = str(account.get("id") or "")
             if account_id:
+                # Primero desactivar: si un borrado posterior falla, la fila no
+                # queda "active" en un workspace huérfano (origen de duplicados
+                # y de trabajo del sincronizador sobre cuentas muertas).
+                try:
+                    client.table("communication_accounts").update(
+                        {"status": "inactive"}
+                    ).eq("id", account_id).execute()
+                except Exception:
+                    logger.info("admin cleanup skip deactivate", exc_info=False)
                 _best_effort_delete(client, "oauth_credentials", "account_id", account_id)
         for table in _WORKSPACE_CLEANUP_TABLES:
             _best_effort_delete(client, table, "workspace_id", workspace_id)

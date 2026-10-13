@@ -1,0 +1,8 @@
+-- Tablas que faltan en el esquema local de pruebas (mínimas, con las FK reales de prod)
+create table if not exists auth.identities (id uuid primary key default gen_random_uuid(), user_id uuid references auth.users(id) on delete cascade, provider text);
+create table if not exists public.push_subscriptions (id uuid primary key default gen_random_uuid(), workspace_id uuid references public.workspaces(id) on delete cascade, profile_id uuid references public.profiles(id) on delete cascade);
+create table if not exists public.push_delivery_log (id uuid primary key default gen_random_uuid(), notification_id uuid references public.hms_notifications(id) on delete cascade, subscription_id uuid references public.push_subscriptions(id) on delete set null);
+create table if not exists public.organizational_patterns (id uuid primary key default gen_random_uuid(), workspace_id uuid references public.workspaces(id) on delete cascade);
+create table if not exists public.oauth_states (id uuid primary key default gen_random_uuid(), workspace_id uuid references public.workspaces(id) on delete cascade, profile_id uuid references public.profiles(id) on delete cascade);
+create table if not exists public.reclassification_backup_rows (id uuid primary key default gen_random_uuid(), run_id uuid references public.case_reclassification_runs(id) on delete cascade);
+create table if not exists public.case_triage_backups (id uuid primary key default gen_random_uuid(), run_id uuid references public.case_reclassification_runs(id) on delete cascade, case_id uuid references public.intelligent_cases(id) on delete cascade);

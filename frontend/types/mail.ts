@@ -9,6 +9,7 @@ export type GoogleConnectionStatus = {
   login_url: string | null;
   message: string | null;
   mail_read_available?: boolean;
+  needs_reauth?: boolean;
 };
 
 export type GmailMessage = {
