@@ -57,6 +57,8 @@ type Preview = {
   history_days: number;
   plan: PlanStatus;
   unavailable?: boolean;
+  examples?: Record<string, string[]>;
+  exact?: boolean;
 };
 
 /** 13 áreas (catalogo-maestro.yaml) con su esfera por defecto. */
@@ -95,6 +97,10 @@ function planLabel(plan: PlanStatus | undefined): string {
   if (plan.state === "active") return plan.plan_code === "annual" ? "Plan anual" : "Plan mensual";
   if (plan.state === "owner") return "Cuenta del equipo";
   return "Sin plan";
+}
+
+function examplesFor(preview: Preview | null, id: string): string {
+  return (preview?.examples?.[id] ?? []).join(", ");
 }
 
 function estimate(count: number, scale: number): number {
@@ -187,6 +193,8 @@ export function GuidedImportWizard({
   const [preview, setPreview] = useState<Preview | null>(null);
   const [choice, setChoice] = useState<"all" | "custom">("all");
   const [exclude, setExclude] = useState<string[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [focusArea, setFocusArea] = useState<string | null>(null);
   const processingSeen = useRef(false);
   const completionSent = useRef(false);
 
@@ -206,9 +214,29 @@ export function GuidedImportWizard({
     );
     setInventory(data);
     // Vista previa por esferas/áreas: no bloquea el botón de descarga.
+    setPreviewLoading(true);
     void hmsJson<Preview>(`${API}/preview`, { cache: "no-store" })
       .then((value) => setPreview(value))
-      .catch(() => setPreview(null));
+      .catch(() => setPreview(null))
+      .finally(() => setPreviewLoading(false));
+  }
+
+  function countBadge(id: string) {
+    if (!preview || preview.unavailable) return null;
+    const value = estimate(preview.categories[id] ?? 0, preview.scale);
+    const sample = examplesFor(preview, id);
+    return (
+      <em
+        title={sample ? `Ej.: ${sample}` : undefined}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setFocusArea((current) => (current === id ? null : id));
+        }}
+      >
+        {preview.exact ? "" : "~"}{value.toLocaleString()}
+      </em>
+    );
   }
 
   function toggle(id: string) {
@@ -449,7 +477,11 @@ export function GuidedImportWizard({
               {SPHERES.map((sphere) => (
                 <article key={sphere.id}>
                   <span>{sphere.label}</span>
-                  <strong>{preview ? `~${estimate(preview.spheres[sphere.id], preview.scale).toLocaleString()}` : "…"}</strong>
+                  <strong>
+                    {preview && !preview.unavailable
+                      ? `${preview.exact ? "" : "~"}${estimate(preview.spheres[sphere.id], preview.scale).toLocaleString()}`
+                      : previewLoading ? "…" : "—"}
+                  </strong>
                   <small>
                     {AREAS.filter((area) => area.sphere === sphere.id)
                       .map((area) => area.label)
@@ -458,6 +490,20 @@ export function GuidedImportWizard({
                 </article>
               ))}
             </section>
+
+            {previewLoading ? (
+              <p className="hms-import-scan" role="status">
+                <span aria-hidden="true" /> Analizando remitentes y asuntos (nunca el contenido)…
+              </p>
+            ) : preview?.unavailable ? (
+              <p className="hms-import-scan is-warn" role="status">No pudimos calcular la vista previa ahora. Puedes importar igual; todo se clasifica al llegar.</p>
+            ) : preview ? (
+              <p className="hms-import-scan is-done">
+                {preview.exact
+                  ? `Revisamos los ${preview.sampled.toLocaleString()} mensajes (solo remitente y asunto).`
+                  : `Estimado con ${preview.sampled.toLocaleString()} mensajes recientes (solo remitente y asunto).`}
+              </p>
+            ) : null}
 
             <div className="hms-import-choice" role="radiogroup" aria-label="Qué descargar">
               <button
@@ -491,24 +537,30 @@ export function GuidedImportWizard({
                     <label key={area.id} className={exclude.includes(area.id) ? "is-off" : ""}>
                       <input type="checkbox" checked={!exclude.includes(area.id)} onChange={() => toggle(area.id)} />
                       {area.label}
-                      {preview?.categories[area.id] ? <em>~{estimate(preview.categories[area.id], preview.scale)}</em> : null}
+                      {countBadge(area.id)}
                     </label>
                   ))}
                   <label className={exclude.includes("promos") ? "is-off" : ""}>
                     <input type="checkbox" checked={!exclude.includes("promos")} onChange={() => toggle("promos")} />
                     Promociones
-                    {preview?.categories.promos ? <em>~{estimate(preview.categories.promos, preview.scale)}</em> : null}
+                    {countBadge("promos")}
                   </label>
                   <label className={exclude.includes("other") ? "is-off" : ""}>
                     <input type="checkbox" checked={!exclude.includes("other")} onChange={() => toggle("other")} />
                     Otros
+                    {countBadge("other")}
                   </label>
                 </div>
+                {focusArea && examplesFor(preview, focusArea) ? (
+                  <p className="hms-import-examples" role="status">
+                    Ejemplos: {examplesFor(preview, focusArea)}
+                  </p>
+                ) : null}
                 <label className={`hms-import-social ${exclude.includes("social") ? "is-off" : ""}`}>
                   <input type="checkbox" checked={!exclude.includes("social")} onChange={() => toggle("social")} />
                   <span>
                     <b>Redes sociales</b>
-                    {preview?.categories.social ? <em> ~{estimate(preview.categories.social, preview.scale)}</em> : null}
+                    {" "}{countBadge("social")}
                     <small>
                       {(Object.keys(preview?.social_platforms ?? {}).length
                         ? Object.keys(preview?.social_platforms ?? {})
