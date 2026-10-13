@@ -140,7 +140,12 @@ def _priority(analysis: Analysis, text: str, received_at: str) -> tuple[str, int
     if analysis.rule == "verification":
         return "low", 1
     if analysis.rule == "security_action":
-        return "critical", 3  # A2: alerta de seguridad con acción → N1
+        # Política única de seguridad: crítica solo con urgencia explícita + riesgo significativo; si no, N2.
+        return ("critical", 3) if analysis.severity == "critical" else ("normal", 2)
+    if analysis.rule == "security_unverified":
+        return "normal", 2  # remitente no confiable: revisión, nunca crítica automática
+    if analysis.rule == "bill_followup":
+        return "normal", 1  # sin vencimiento: seguimiento, nunca urgencia inventada
     if analysis.rule == "outbound_wait":
         return "normal", 1  # A8: la espera es del otro; el plazo no es un riesgo del usuario
     if analysis.rule in {"appointment", "booking"}:

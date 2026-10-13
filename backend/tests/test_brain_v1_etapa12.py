@@ -63,8 +63,14 @@ class A1A2SecurityTests(unittest.TestCase):
         self.assertIn("s1", links)
         self.assertEqual(cases[links["s1"]]["priority"], "critical")
 
-    def test_conditional_security_stays_notice(self):
+    def test_conditional_security_is_visible_case_not_critical(self):
+        # Política de seguridad post lote 3: «si no fuiste tú» con acción nunca se oculta; caso visible, no crítico.
         a = analyze("seguridad@app.example", "Nuevo inicio de sesión", "Detectamos un inicio de sesión desde Puebla. Si no fuiste tú, cambia tu contraseña.")
+        self.assertEqual((a.rule, a.actionable), ("security_action", True))
+        self.assertNotEqual(a.severity, "critical")
+
+    def test_informative_security_stays_notice(self):
+        a = analyze("seguridad@app.example", "Nuevo inicio de sesión", "Detectamos un inicio de sesión desde Puebla.")
         self.assertEqual((a.rule, a.actionable), ("security", False))
 
 
