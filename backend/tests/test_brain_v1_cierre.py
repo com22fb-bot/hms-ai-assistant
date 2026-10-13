@@ -98,7 +98,7 @@ class ControlTests(unittest.TestCase):
     def test_signals_carry_version_confidence_and_review_reason(self):
         a = analyze("ana@amigos.example", "hola", "oye, luego vemos lo de aquello")
         s = a.signals()
-        self.assertEqual(s["brain_version"], "brain-v1-politicas")
+        self.assertEqual(s["brain_version"], "brain-v1-post-lote4")
         self.assertIn("confidence", s)
         if a.triage == "review":
             self.assertTrue(s["review_reason"])

@@ -43,8 +43,11 @@ EVENT_CUE = re.compile(
     r"(\bcita\b|appointment|reunion|meeting|consulta|\bevento\b|\bevent\b|vuelo|flight|agendad|programad|scheduled|"
     r"webinar|entrevista|interview|llegue|arrive|itinerario|itinerary|reservacion|reservation|check-?in|"
     r"reprogramad|rescheduled|registro (esta )?confirmado|"
-    r"entradas?|boletos?|tickets?|hospedaje|estancia|alojamiento|hotel|\bstay\b|lodging|concierto|concert|funcion)"
+    r"entradas?|boletos?|tickets?|hospedaje|estancia|alojamiento|hotel|\bstay\b|lodging|concierto|concert|funcion|"
+    # Post lote 4: reservas de restaurante o lugar ("tu mesa está reservada para el ...").
+    r"\breserva\b|\breservad[ao]s?\b|\bmesa\b|salida|departure)"
 )
+RENEWAL_CUE = re.compile(r"(renovar|renueva|renew|proximo cobro|proximo cargo|next (charge|billing))")
 _MONTH_NAMES = "|".join(sorted(MONTHS, key=len, reverse=True))
 _WD = "|".join(WEEKDAYS)
 _NUM = r"(\d{1,2}|" + "|".join(NUMBERS) + r")"
@@ -241,6 +244,9 @@ def extract_dates(subject: str | None, body: str | None, received_at: Any, *, ki
         has_event = bool(EVENT_CUE.search(sentence)) or subject_event
         if kind == "waiting":
             has_due, has_event = True, False
+        if kind == "renewal":
+            # Post lote 4: la fecha de una renovación próxima es la fecha del cobro (vencimiento), solo con señal explícita.
+            has_due, has_event = bool(RENEWAL_CUE.search(sentence)), False
         if not (has_due or has_event):
             continue
         dates = _parse_in(sentence, anchor, english)
@@ -254,6 +260,11 @@ def extract_dates(subject: str | None, body: str | None, received_at: Any, *, ki
             role = "event"
         evidence = sentence_raw.strip()[:240]
         distinct = {d for d, _ in dates}
+        if (kind == "booking" and len(distinct) == 2 and "AMBIGUOUS" not in distinct
+                and re.search(r"\bdel?\b[^.]{0,40}\bal?\b", sentence) and role == "event"):
+            # Post lote 4 (4): "del 2026-12-15 al 2026-12-18" (llegada y salida) → empieza en la primera fecha.
+            distinct = {min(distinct)}  # type: ignore[type-var]
+            dates = [(min(d for d, _ in dates), dates[0][1])]  # type: ignore[type-var]
         if "AMBIGUOUS" in distinct or len(distinct) > 1:
             ambiguous = evidence
             continue
