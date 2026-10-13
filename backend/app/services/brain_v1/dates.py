@@ -42,7 +42,8 @@ DUE_CUE = re.compile(
 EVENT_CUE = re.compile(
     r"(\bcita\b|appointment|reunion|meeting|consulta|\bevento\b|\bevent\b|vuelo|flight|agendad|programad|scheduled|"
     r"webinar|entrevista|interview|llegue|arrive|itinerario|itinerary|reservacion|reservation|check-?in|"
-    r"reprogramad|rescheduled|registro (esta )?confirmado)"
+    r"reprogramad|rescheduled|registro (esta )?confirmado|"
+    r"entradas?|boletos?|tickets?|hospedaje|estancia|alojamiento|hotel|\bstay\b|lodging|concierto|concert|funcion)"
 )
 _MONTH_NAMES = "|".join(sorted(MONTHS, key=len, reverse=True))
 _WD = "|".join(WEEKDAYS)

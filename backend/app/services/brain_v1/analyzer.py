@@ -15,14 +15,14 @@ from app.services.brain_v1.dates import DateResult, extract_dates
 from app.services.brain_v1.documents import doc_key, extract_amount, period_key
 from app.services.brain_v1.protected import SECURITY_ACTION_RE, fold, is_security_or_code, phishing_suspect, protected_type
 
-BRAIN_VERSION = "brain-v1-cierre"
+BRAIN_VERSION = "brain-v1-politicas"
 
 RULE_CONFIDENCE = {
     "security": 0.9, "verification": 0.9, "payment_confirmation": 0.85, "partial_payment": 0.6,
     "appointment": 0.85, "appointment_cancel": 0.85, "invoice_due": 0.85, "charge_due": 0.75,
     "request": 0.7, "social": 0.9, "promotional": 0.85, "invoice_info": 0.7, "legacy_action": 0.6,
     "legacy_notice": 0.7, "legacy_info": 0.75, "ambiguous": 0.35, "excluded": 0.95, "outbound": 0.7,
-    "security_action": 0.9, "phishing_suspect": 0.3, "outbound_wait": 0.8, "bulk": 0.8,
+    "security_action": 0.9, "security_unverified": 0.4, "bill_followup": 0.45, "phishing_suspect": 0.3, "outbound_wait": 0.8, "bulk": 0.8,
     "booking": 0.85, "auto_notice": 0.8,
 }
 
@@ -60,12 +60,25 @@ BOOKING_RE = re.compile(
     r"(reservacion confirmada|reserva confirmada|confirmacion de (tu |su )?(reservacion|reserva|registro|boleto|vuelo)|"
     r"(tu|su) (registro|reservacion|reserva) (esta |fue |ha sido )?confirmad|registro confirmado|tu itinerario|itinerario de viaje|"
     r"pase de abordar|boarding pass|booking (is )?confirmed|reservation confirmed|your (itinerary|booking|reservation)|"
-    r"registration (is )?confirmed|you'?re registered|e-?ticket)"
+    r"registration (is )?confirmed|you'?re registered|e-?ticket|"
+    # Política de reservas (post lote 3): vuelos, hospedaje y entradas, solo confirmaciones firmes.
+    r"(tu|su|your) (vuelo|flight) (esta |fue |ha sido |is |has been )?(confirmad|confirmed)|vuelo confirmado|flight confirmed|"
+    r"confirmacion de (tu |su )?(hospedaje|estancia|alojamiento|hotel|entrada|entradas|boletos)|"
+    r"(tus?|sus?) (hospedaje|estancia|alojamiento|entrada|entradas|boleto|boletos) (esta |estan |fue |fueron |ha sido )?confirmad|"
+    r"(hotel|stay|lodging) (reservation|booking) (is )?confirmed|your stay is confirmed|"
+    r"(your )?tickets? (is |are )?confirmed|your tickets|order of tickets confirmed)"
+)
+# Nunca es confirmación firme: solicitud, propuesta, cancelación, pendiente o tentativa.
+BOOKING_NOT_FIRM_RE = re.compile(
+    r"(cancelad|cancelled|canceled|solicitud de (reserva|reservacion)|booking request|reservation request|propuesta|"
+    r"proposal|por confirmar|pendiente de confirmacion|pending confirmation|awaiting confirmation|tentativ|on hold|"
+    r"\bhold\b|lista de espera|waitlist|cotizacion|quote)"
 )
 TRANSACTIONAL_LOCALS = re.compile(
     r"^(reservas?|reservaciones|reservations?|booking|bookings|citas|agenda|eventos?|events?|registro|registros|"
     r"itinerarios?|tickets?|boletos|viajes|travel|confirmaciones|confirmations?|avisos|notificaciones|alertas|alerts|"
-    r"pedidos|orders?|envios|shipping|devoluciones|returns|resultados|cuentas|accounts|billing|facturacion)$"
+    r"pedidos|orders?|envios|shipping|devoluciones|returns|resultados|cuentas|accounts|billing|facturacion|"
+    r"estados?|estadosdecuenta|facturas|recibos|statements?|invoices?|hospedaje|hotel|hotels|vuelos|flights|itinerary|itineraries|calendar|calendario)$"
 )
 # A13 (Etapa 1.3): avisos automáticos que no piden nada.
 ORDER_NOTICE_RE = re.compile(
@@ -84,6 +97,50 @@ CARD_CHARGE_RE = re.compile(
 )
 RESULTS_RE = re.compile(r"(resultados (ya )?(estan |estan listos|listos|disponibles)|tus resultados|results are (ready|available)|your (test )?results)")
 AUTO_RENEW_RE = re.compile(r"(se renovara automaticamente|renovacion automatica|renovara el|will (auto-?)?renew|auto-?renew|renews automatically)")
+# Política de renovaciones (post lote 3): renovación YA realizada = informativa, sin tarea de pago.
+RENEWED_RE = re.compile(
+    r"(se renovo (correctamente|automaticamente|con exito|exitosamente)?|(tu|su) (suscripcion|plan|membresia) (fue|ha sido) renovad|"
+    r"renovacion (realizada|exitosa|completada|confirmada)|(was|has been) (successfully )?renewed|renewed successfully|"
+    r"renewal (was )?(successful|complete|confirmed))"
+)
+# Política de facturas (post lote 3): documento ya pagado, domiciliado o sin saldo → solo informativo.
+BILL_SETTLED_RE = re.compile(
+    r"(pagad[oa]|liquidad[oa]|saldo (actual|pendiente)?:? ?\$?0(\.00)?\b|sin saldo|no (tienes|hay) saldo|domiciliad|cargo automatico|"
+    r"se cargara automaticamente|no (se requiere|requiere|necesitas)[^.\n]{0,30}(pago|accion)|paid in full|no payment (is )?(due|required)|"
+    r"autopay|automatic payment|comprobante|recibo de pago|payment receipt)"
+)
+# Política de pagos (post lote 3): un pago ANTERIOR nunca es evidencia de pago de un documento nuevo.
+PREVIOUS_PAYMENT_RE = re.compile(
+    r"(pago anterior|pagos anteriores|(tu|su) ultimo pago|periodo anterior|previous payment|prior payment|last payment|"
+    r"previous (bill|invoice|statement))"
+)
+# Política de seguridad (post lote 3): tipo, prioridad y tarea van por separado.
+SECURITY_STATE_RE = re.compile(
+    r"(cuenta (comprometida|bloqueada|suspendida|restringida)|(bloqueamos|hemos bloqueado|suspendimos|restringimos) (tu |su )?(cuenta|acceso)|"
+    r"acceso (bloqueado|no autorizado)|account (has been |was |is )?(compromised|locked|suspended|restricted)|"
+    r"(we )?(have )?(locked|suspended|restricted) your account|unauthorized (access|sign-?in|login)|"
+    r"alguien (conoce|tiene|uso) tu contrasena|someone (knows|has|used) your password)"
+)
+SECURITY_CHECK_RE = re.compile(
+    r"(si no (fuiste|eras) tu|if (this )?(wasn'?t|was not) you|if you didn'?t)[^.\n]{0,80}"
+    r"(protege|revisa|verifica|cambia|restablece|asegura|secure|review|check|change|reset)"
+)
+SECURITY_URGENT_RE = re.compile(
+    r"(inmediat|urgente|de inmediato|cuanto antes|hoy mismo|immediately|right away|urgent|as soon as possible|"
+    r"\bahora\b|\bnow\b|within \d+ (hours|minutes)|en las proximas? \d+ (horas|minutos))"
+)
+SECURITY_RISK_RE = re.compile(
+    r"(comprometid|compromised|acceso no autorizado|unauthorized|alguien (conoce|tiene|uso) tu contrasena|"
+    r"someone (knows|has|used) your password|fraude|fraud|cargo no reconocido|unrecognized (charge|transaction)|"
+    r"datos (expuestos|filtrados)|data breach|filtracion)"
+)
+# Un remitente que pide credenciales o datos no es confiable para abrir un caso de seguridad.
+CREDENTIAL_ASK_RE = re.compile(
+    r"((comparte|envia|enviar|escribe|ingresa|confirma|proporciona|share|send|enter|provide|confirm)[^.\n]{0,30}"
+    r"(contrasena|password|nip|\bpin\b|cvv|clave|codigo|code|datos bancarios|bank details|tarjeta|card number)|"
+    r"verifica(r)? tu identidad[^.\n]{0,40}(enlace|link|liga)|verify your identity[^.\n]{0,40}(link|below|here)|"
+    r"(enlace|link|liga)[^.\n]{0,40}verif)"
+)
 # A9 (Etapa 1.2): cita reprogramada → actualiza la cita existente con la nueva fecha explícita.
 APPT_RESCHEDULE_RE = re.compile(
     r"((cita|appointment|consulta).{0,60}(reprogramad|rescheduled|reagendad|cambiada (al|para))|"
@@ -138,13 +195,14 @@ class Analysis:
     bulk: bool = False
     reschedule: bool = False
     phishing_brand: str | None = None
+    severity: str | None = None
 
     def signals(self) -> dict[str, Any]:
         return {
             "brain_version": BRAIN_VERSION, "rule": self.rule, "protected": self.protected,
             "doc_key": self.doc_key, "key_source": self.key_source if self.doc_key else None, "amount": self.amount, "confidence": self.confidence,
             "suppressed": self.suppressed, "bulk": self.bulk, "reschedule": self.reschedule,
-            "phishing_brand": self.phishing_brand, "triage": self.triage,
+            "phishing_brand": self.phishing_brand, "triage": self.triage, "severity": self.severity,
             "review_reason": self.reason if self.triage == "review" or self.confidence < 0.5 else None,
             **self.dates.as_metadata(),
         }
@@ -235,11 +293,30 @@ def analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> An
     # C1: seguridad y códigos primero, aunque el remitente sea una red social.
     # A7: un código nunca abre caso, aunque diga "confirma tu cuenta".
     sec = is_security_or_code(sender, subject, body)
+    if not sec and SECURITY_STATE_RE.search(text):
+        sec = "security"  # política de seguridad: cuenta comprometida o bloqueada siempre es tipo seguridad
     if sec == "code" or (sec and not VERIFY_RE.search(text)):
-        if sec == "security" and SECURITY_ACTION_RE.search(text):
-            # A2: alerta que pide actuar (contraseña conocida, acceso bloqueado) → caso N1.
-            return build("security_action", "action_required", True,
-                         "Alerta de seguridad que pide actuar: cambia tu contraseña o revisa el acceso.", protected=sec)
+        if sec == "security":
+            # Política única de seguridad: el TIPO es "seguridad" (protegido, nunca oculto); la TAREA existe si la
+            # cuenta está comprometida/bloqueada o si se pide comprobar actividad; la PRIORIDAD se decide aparte
+            # (crítica solo con urgencia explícita + riesgo significativo).
+            state = bool(SECURITY_STATE_RE.search(text) or SECURITY_ACTION_RE.search(text))
+            check = bool(SECURITY_CHECK_RE.search(text))
+            if (state or check) and CREDENTIAL_ASK_RE.search(text):
+                result = build("security_unverified", "review", True,
+                               "Alerta de seguridad que pide credenciales o datos por enlace: caso visible en revisión, "
+                               "nunca se oculta ni se trata como legítima.",
+                               protected=sec)
+                result.severity = "review"
+                return result
+            if state or check:
+                urgent = bool(SECURITY_URGENT_RE.search(text)) and bool(SECURITY_RISK_RE.search(text))
+                result = build("security_action", "action_required", True,
+                               "Alerta de seguridad que requiere tu atención: revisa el acceso a tu cuenta."
+                               if state else "Actividad que debes comprobar («si no fuiste tú»): caso visible.",
+                               protected=sec)
+                result.severity = "critical" if urgent else ("compromise" if state else "check")
+                return result
         return build("security", "notice", False,
                      "Alerta de seguridad o código de acceso: protegido, nunca se descarta como ruido.", protected=sec)
 
@@ -253,7 +330,7 @@ def analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> An
         return build("verification", "notice", True,
                      "Solicitud de verificación de cuenta; se agrupa en un solo elemento.")
 
-    if PAYMENT_CONFIRM_RE.search(text) and not NEGATED_PAYMENT_RE.search(text):
+    if PAYMENT_CONFIRM_RE.search(text) and not NEGATED_PAYMENT_RE.search(text) and not PREVIOUS_PAYMENT_RE.search(text):
         rule = "partial_payment" if PARTIAL_RE.search(text) else "payment_confirmation"
         return build(rule, "notice", True, "Confirmación de pago; se busca el caso con el mismo folio.",
                      with_doc=True, protected="invoice")
@@ -268,7 +345,7 @@ def analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> An
         if analysis.dates.event_at:
             return analysis
     automated = _sender_is_automated(sender) or bool(TRANSACTIONAL_LOCALS.match(sender_email.split("@")[0].lower()))
-    if BOOKING_RE.search(text) and automated:
+    if BOOKING_RE.search(text) and automated and not BOOKING_NOT_FIRM_RE.search(text):
         # A12: confirmación automática con fecha explícita → compromiso programado. Nunca para correos de personas.
         booking = build("booking", "notice", True, "Confirmación automática de reservación, itinerario o registro.",
                         kind="booking", protected=prot)
@@ -292,6 +369,9 @@ def analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> An
             return build("auto_notice", "notice", False, "Cargo con tarjeta: aviso protegido del banco.", protected="bank")
         if RESULTS_RE.search(text):
             return build("auto_notice", "notice", False, "Resultados disponibles: aviso de salud.", protected="health")
+        if RENEWED_RE.search(text) and not PAY_DEMAND_RE.search(text):
+            return build("auto_notice", "notice", False, "Renovación ya realizada: aviso informativo, sin tarea de pago.",
+                         protected=prot)
         if AUTO_RENEW_RE.search(text):
             return build("auto_notice", "notice", False, "Renovación automática: aviso, sin pendiente.", protected=prot)
 
@@ -329,6 +409,16 @@ def analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> An
         return build("request", "action_required", True, "Solicitud directa de una persona.", with_doc=True,
                      protected=prot)
 
+    if (invoice_term and re.search(r"(factura|cfdi|recibo|invoice|estado de cuenta|statement)", text)
+            and automated and not BILL_SETTLED_RE.search(text) and extract_amount(subject, body)):
+        # Política de facturas (post lote 3): factura con importe y sin vencimiento escrito → caso de seguimiento
+        # en revisión, SIN fecha límite (nunca se infiere del fin del periodo).
+        followup = _with_period(build("bill_followup", "review", True,
+                                      "Factura con importe y sin fecha límite escrita: seguimiento en revisión, sin vencimiento.",
+                                      with_doc=True, protected="invoice"), subject, body, received)
+        followup.dates.due_at = None
+        followup.dates.due_evidence = None
+        return followup
     if invoice_term and re.search(r"(factura|cfdi|recibo|invoice|estado de cuenta|statement)", text):
         return build("invoice_info", "notice", False, "Comprobante o estado de cuenta informativo, sin cobro pendiente.",
                      protected=prot)
