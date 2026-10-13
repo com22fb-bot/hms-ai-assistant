@@ -10,6 +10,7 @@ Etiquetas por correo:
   priority   N1 | N2 | N3 del caso, o null
   protected  security | code | bank | government | invoice | health | null
   partd      id del caso de la Parte D (opcional)
+  posible_pago  el correo debe dejar el caso en 'posible pago, confirmar' (nunca resuelto)
 Cada correo trae además 'solo_cabeceras' (from, subject, list-id, list-unsubscribe).
 Fechas de recepción en UTC; 16:00Z = 10:00 America/Mexico_City.
 Ejecutar: python tests/brain_corpus/build_corpus.py
@@ -24,14 +25,15 @@ rows: list[dict] = []
 
 
 def add(mid, sender, subject, body, received, *, triage, key=None, status=None, due=None, event=None,
-        priority=None, protected=None, labels=None, list_unsub=None, partd=None, thread=None):
+        priority=None, protected=None, labels=None, list_unsub=None, partd=None, thread=None, possible_payment=False):
     rows.append({
         "id": mid, "thread_id": thread or f"t-{mid}", "sender": sender, "subject": subject, "body_text": body,
         "received_at": received, "labels": ["INBOX"] + (labels or []),
         "headers": {"list-unsubscribe": list_unsub} if list_unsub else {},
         "solo_cabeceras": {"from": sender, "subject": subject, "list-unsubscribe": list_unsub},
         "label": {"triage": triage, "crea_caso": key is not None, "case_key": key, "status": status, "due_at": due,
-                  "event_at": event, "priority": priority, "protected": protected, "partd": partd},
+                  "event_at": event, "priority": priority, "protected": protected, "partd": partd,
+                  "posible_pago": possible_payment},
     })
 
 
@@ -279,6 +281,25 @@ for i, (mid, snd, subj, body) in enumerate([
 add("sx9", "no-reply@accounts.google.com", "Código de verificación de Google", "G-448812 es tu código de verificación.", "2026-10-21T18:00:00Z", triage="aviso", protected="code")
 add("r13", "maestro@academia-k.example", "Tarea pendiente", "Por favor envía la tarea dentro de dos días.", "2026-10-20T16:00:00Z", triage="accion", key="REL-r13", status="pendiente", due="2026-10-22", priority="N1")
 add("r14", "jefe@empresa-z.example", "Presentación del cliente", "Necesitamos que envíes la presentación hoy mismo.", "2026-10-21T16:00:00Z", triage="accion", key="REL-r14", status="pendiente", due="2026-10-21", priority="N1")
+
+# ---------------- Etapa 1.1 · C4b (sin folio: clave = marca + periodo) ----------------
+TA = "avisos@telefonia-uno.example"
+add("p4b-oct", TA, "Tu recibo de octubre", "Tu recibo de octubre por $389.00 ya está disponible. Fecha límite de pago: 25 de octubre de 2026.", "2026-10-05T16:00:00Z", triage="accion", key="P4B-TU-2026-10", status="pendiente", due="2026-10-25", priority="N2", protected="invoice")
+add("p4b-oct-r", TA, "Recordatorio: Tu recibo de octubre", "Recordatorio: tu recibo de octubre por $389.00 vence el 25 de octubre de 2026. Por favor pague.", "2026-10-20T16:00:00Z", triage="accion", key="P4B-TU-2026-10", status="pendiente", due="2026-10-25", priority="N2", protected="invoice")
+add("p4b-nov", TA, "Tu recibo de noviembre", "Tu recibo de noviembre por $389.00 ya está disponible. Fecha límite de pago: 25 de noviembre de 2026.", "2026-11-05T16:00:00Z", triage="accion", key="P4B-TU-2026-11", status="pendiente", due="2026-11-25", priority="N2", protected="invoice")
+AS = "cobranza@agua-sur.example"
+add("p4b-a1", AS, "Aviso de cobro del servicio", "Tiene un saldo pendiente de $210.00. Favor de pagar a más tardar el 20 de octubre.", "2026-10-03T16:00:00Z", triage="accion", key="P4B-AS-2026-10", status="pendiente", due="2026-10-20", priority="N2", protected="invoice")
+add("p4b-a1r", AS, "Aviso de cobro del servicio", "Recordatorio: saldo pendiente de $210.00. Favor de pagar a más tardar el 20 de octubre.", "2026-10-12T16:00:00Z", triage="accion", key="P4B-AS-2026-10", status="pendiente", due="2026-10-20", priority="N2", protected="invoice")
+add("p4b-a2", AS, "Aviso de cobro del servicio", "Tiene un saldo pendiente de $210.00. Favor de pagar a más tardar el 20 de noviembre.", "2026-11-04T16:00:00Z", triage="accion", key="P4B-AS-2026-11", status="pendiente", due="2026-11-20", priority="N2", protected="invoice")
+
+# ---------------- Etapa 1.1 · C5b (pago confirmado por otro remitente) ----------------
+AV = "cobros@aguadelvalle.example"
+add("p5b-inv", AV, "Factura AV-3301 de Agua del Valle", "Su factura AV-3301 por $512.00 vence el 8 de noviembre de 2026. Favor de realizar el pago.", "2026-10-20T16:00:00Z", triage="accion", key="P5B-AV", status="pendiente", due="2026-11-08", priority="N2", protected="invoice")
+add("p5b-bank", "notificaciones@banco-azul.example", "Pago de servicio aplicado", "Pago aplicado: servicio AGUADELVALLE por $512.00 con tu tarjeta terminación 4421.", "2026-10-22T16:00:00Z", triage="aviso", key="P5B-AV", status="pendiente", due="2026-11-08", priority="N2", protected="bank", possible_payment=True)
+GR = "facturas@gasolinera-roja.example"
+add("p5b-inv2", GR, "Factura GR-7710", "Factura GR-7710 por $1,300.00. Fecha de vencimiento: 2026-11-12. Favor de realizar el pago.", "2026-10-21T16:00:00Z", triage="accion", key="P5B-GR", status="pendiente", due="2026-11-12", priority="N2", protected="invoice")
+add("p5b-bank2", "alertas@banco-verde.example", "Pago realizado", "Pago aplicado a GASOLINERA ROJA por $99.00.", "2026-10-23T16:00:00Z", triage="aviso", protected="bank")
+add("p5b-same", GR, "Gracias por tu pago", "Gracias por su pago de $1,300.00. ¡Lo esperamos pronto!", "2026-10-25T16:00:00Z", triage="aviso", key="P5B-GR", status="pendiente", due="2026-11-12", priority="N2", protected="invoice", possible_payment=True)
 
 OUT.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8")
 print(f"{len(rows)} correos → {OUT}")

@@ -192,3 +192,35 @@ class C10HeadersFirstTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class C4bPeriodTests(unittest.TestCase):
+    def test_billing_month_or_received_month(self):
+        from app.services.brain_v1.documents import billing_period, period_key
+
+        self.assertEqual(billing_period("Tu recibo de octubre", "", "2026-11-02T16:00:00Z"), ("2026-10", "facturacion"))
+        self.assertEqual(billing_period("Aviso de cobro", "Saldo pendiente", "2026-11-02T16:00:00Z"), ("2026-11", "recepcion"))
+        self.assertEqual(billing_period("Tu recibo de diciembre", "", "2027-01-03T16:00:00Z"), ("2026-12", "facturacion"))
+        # 05:00Z del 1-nov = 31-oct 23:00 en CDMX → mes de recepción octubre
+        self.assertEqual(billing_period("Aviso de cobro", "", "2026-11-01T05:00:00Z")[0], "2026-10")
+        self.assertNotEqual(period_key("x", "Tu recibo de octubre", "", "2026-10-05T16:00:00Z"),
+                            period_key("x", "Tu recibo de noviembre", "", "2026-11-05T16:00:00Z"))
+
+
+class C5bCrossSenderTests(unittest.TestCase):
+    def test_brand_mentioned_ignores_generic_words(self):
+        from app.services.brain_v1.documents import brand_mentioned
+
+        self.assertTrue(brand_mentioned("aguadelvalle", "Pago aplicado: servicio AGUADELVALLE por $512.00"))
+        self.assertTrue(brand_mentioned("gasolinera-roja", "Pago a GASOLINERA ROJA"))
+        self.assertFalse(brand_mentioned("cobros-pagos", "Pago aplicado a cobros"))
+
+    def test_corpus_cross_sender_never_auto_resolves(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+        import eval_brain
+
+        with _Flag(True):
+            corpus = eval_brain.load_corpus()
+            metrics = eval_brain.evaluate(corpus, eval_brain.run_pipeline(corpus, True), True)
+        self.assertEqual(metrics["cross_sender_auto_closed"], 0)
+        self.assertEqual(metrics["possible_payment_ok"], "2/2")
