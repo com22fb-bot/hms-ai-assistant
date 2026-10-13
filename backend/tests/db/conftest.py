@@ -17,7 +17,10 @@ psycopg = pytest.importorskip("psycopg")
 from psycopg.conninfo import conninfo_to_dict  # noqa: E402
 
 HERE = Path(__file__).parent
-PREP = HERE.parents[2] / "supabase" / "prepared" / "ronda3"
+PREP = HERE.parents[2] / "supabase" / "migrations"
+OPS_INFRA = "20261012_001_r3_ops_infra.sql"
+ORPHAN_GUARDS = "20261012_002_r3_orphan_guards.sql"
+UNIQUE_MAILBOX = "20261012_003_r3_unique_live_mailbox.sql"
 ALLOWED_HOSTS = {"localhost", "127.0.0.1", "::1"}
 ALLOWED_ADMIN_DBS = {"postgres", "r3_admin"}
 
@@ -74,7 +77,7 @@ def db():
     for f in ("supabase_stubs.sql", "schema_prod_tables.sql", "schema_prod_constraints.sql",
               "schema_prod_security.sql"):
         conn.execute((HERE / f).read_text())
-    conn.execute((PREP / "000_ops_infra.sql").read_text())
+    conn.execute((PREP / OPS_INFRA).read_text())
     try:
         yield conn
     finally:
