@@ -350,11 +350,49 @@ def get_active_google_credentials() -> Credentials:
     )
 
 
+_REAUTH_LOGIN_URL = {
+    "google": "/auth/google/start",
+    "microsoft": "/auth/microsoft/start",
+    "yahoo": "/auth/yahoo/start",
+}
+
+
+def _needs_reauth_account(workspace_id: Any) -> dict[str, Any] | None:
+    """Buzón del workspace marcado needs_reauth (token vencido o revocado)."""
+    if not workspace_id:
+        return None
+    try:
+        accounts = oauth_storage.list_accounts(
+            include_disconnected=True, workspace_id=workspace_id
+        )
+    except Exception:  # noqa: BLE001 - el estado no debe romperse por esto
+        return None
+    for account in accounts:
+        if str(account.get("status")) == "needs_reauth":
+            return account
+    return None
+
+
 def get_google_connection_status() -> GoogleConnectionStatus:
     context = require_request_context()
     account = context.google_account
 
     if not account:
+        stale = _needs_reauth_account(context.workspace_id)
+        if stale:
+            return GoogleConnectionStatus(
+                connected=False,
+                needs_reauth=True,
+                email=stale.get("email") or None,
+                provider=str(stale.get("provider") or "google"),
+                message=(
+                    "Tu buzón perdió la autorización. Vuelve a conectarlo "
+                    "para seguir recibiendo correos."
+                ),
+                login_url=_REAUTH_LOGIN_URL.get(
+                    str(stale.get("provider") or "google"), "/auth/google/start"
+                ),
+            )
         return GoogleConnectionStatus(
             connected=False,
             message=(

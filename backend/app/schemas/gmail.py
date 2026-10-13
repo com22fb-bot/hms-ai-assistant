@@ -32,3 +32,4 @@ class GoogleConnectionStatus(BaseModel):
     login_url: str | None = None
     message: str | None = None
     mail_read_available: bool = False
+    needs_reauth: bool = False
