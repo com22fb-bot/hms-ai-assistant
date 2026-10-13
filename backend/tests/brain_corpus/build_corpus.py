@@ -301,5 +301,15 @@ add("p5b-inv2", GR, "Factura GR-7710", "Factura GR-7710 por $1,300.00. Fecha de 
 add("p5b-bank2", "alertas@banco-verde.example", "Pago realizado", "Pago aplicado a GASOLINERA ROJA por $99.00.", "2026-10-23T16:00:00Z", triage="aviso", protected="bank")
 add("p5b-same", GR, "Gracias por tu pago", "Gracias por su pago de $1,300.00. ¡Lo esperamos pronto!", "2026-10-25T16:00:00Z", triage="aviso", key="P5B-GR", status="pendiente", due="2026-11-12", priority="N2", protected="invoice", possible_payment=True)
 
+# ---------------- Etapa 1.2 · decisiones de ASTRA aplicadas a las etiquetas ----------------
+# A11: un caso resuelto queda en N3 (la prioridad máxima se guarda en metadata.priority_max).
+# A7: verificaciones de terceros = un elemento agrupado en "sin acción", nunca pendiente.
+for row in rows:
+    label = row["label"]
+    if label["status"] == "resuelto":
+        label["priority"] = "N3"
+    if label["case_key"] == "VT":
+        label["status"] = "sin acción"
+
 OUT.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8")
 print(f"{len(rows)} correos → {OUT}")
