@@ -126,9 +126,22 @@ def billing_period(subject: str | None, body: str | None, received_at) -> tuple[
     return local.strftime("%Y-%m"), "recepcion"
 
 
+LINE_ID_RE = re.compile(
+    r"\b(linea|cuenta|contrato|servicio|suscripcion|numero de cliente|no\.? de cliente|medidor|poliza|line|account|contract)\b"
+    r"[^.\n]{0,25}?(?:terminacion|terminada en|con terminacion|ending in|no\.?|numero|#|:)?\s*\**(?!(?:19|20)\d{2}\b)(\d{4,})\b"
+)
+
+
+def line_id(subject: str | None, body: str | None) -> str | None:
+    """Cierre v1: identificador de línea/contrato/cuenta (últimos 4 dígitos) para no unir líneas distintas."""
+    m = LINE_ID_RE.search(fold(f"{subject or ''}\n{(body or '')[:2000]}"))
+    return m[2][-4:] if m else None
+
+
 def period_key(brand: str, subject: str | None, body: str | None, received_at) -> str:
     period, _ = billing_period(subject, body, received_at)
-    return f"{brand or 'sin-marca'}:periodo:{period}"
+    line = line_id(subject, body)
+    return f"{brand or 'sin-marca'}:{'linea-' + line + ':' if line else ''}periodo:{period}"
 
 
 _GENERIC_BRAND_TOKENS = {"pagos", "pago", "recibos", "recibo", "facturas", "factura", "facturacion", "cobros", "cobranza",
