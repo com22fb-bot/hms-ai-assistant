@@ -84,7 +84,7 @@ def import_category(sender: str | None, subject: str | None, labels: Iterable[st
     for area, pattern in _COMPILED:
         if pattern.search(text):
             return area
-    if "CATEGORY_PROMOTIONS" in label_set or _PROMO_RE.search(text):
+    if "CATEGORY_PROMOTIONS" in label_set or "HAS_LIST_HEADERS" in label_set or _PROMO_RE.search(text):
         return "promos"
     return "other"
 
@@ -126,19 +126,33 @@ def gmail_query_exclusions(exclude: Iterable[str] | None) -> str:
     return " ".join(parts)
 
 
-def summarize(headers: Iterable[tuple[str, str, list[str]]]) -> dict:
+def _sender_name(sender: str) -> str:
+    name, address = parseaddr(str(sender or ""))
+    name = (name or "").strip().strip('"')
+    return name or address or str(sender or "")
+
+
+def summarize(headers: Iterable[tuple[str, str, list[str]]], max_examples: int = 3) -> dict:
     """Cuenta una muestra de (remitente, asunto, etiquetas) por categoría, esfera y red."""
     categories: dict[str, int] = {key: 0 for key in CATEGORY_IDS}
     spheres = {"hogar": 0, "ocupacion": 0, "personal": 0}
     platforms: dict[str, int] = {}
+    senders: dict[str, dict[str, int]] = {key: {} for key in CATEGORY_IDS}
     total = 0
     for sender, subject, labels in headers:
         total += 1
         category = import_category(sender, subject, labels)
         categories[category] += 1
+        name = _sender_name(sender)
+        if name:
+            senders[category][name] = senders[category].get(name, 0) + 1
         if category in AREA_SPHERE:
             spheres[AREA_SPHERE[category]] += 1
         platform = social_platform(sender)
         if platform:
             platforms[platform] = platforms.get(platform, 0) + 1
-    return {"sampled": total, "categories": categories, "spheres": spheres, "social_platforms": platforms}
+    examples = {
+        key: [n for n, _ in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:max_examples]]
+        for key, counts in senders.items() if counts
+    }
+    return {"sampled": total, "categories": categories, "spheres": spheres, "social_platforms": platforms, "examples": examples}

@@ -13,7 +13,7 @@ from typing import Any
 
 from app.services.import_categories import summarize
 
-SAMPLE_SIZE = 150
+SAMPLE_SIZE = 1000
 
 
 def _decode(value: str | None) -> str:
@@ -23,27 +23,100 @@ def _decode(value: str | None) -> str:
         return value or ""
 
 
-def gmail_headers(credentials: Any, days: int, limit: int = SAMPLE_SIZE) -> list[tuple[str, str, list[str]]]:
+GMAIL_SCAN_CAP = 3000
+_BATCH = 40
+_CACHE: dict[str, tuple[float, dict[str, Any]]] = {}
+CACHE_TTL = 1800.0
+_HEADER_NAMES = ["From", "Subject", "List-Id", "List-Unsubscribe"]
+
+
+def cache_get(key: str) -> dict[str, Any] | None:
+    import time
+
+    hit = _CACHE.get(key)
+    if hit and time.time() - hit[0] < CACHE_TTL:
+        return hit[1]
+    return None
+
+
+def cache_put(key: str, value: dict[str, Any]) -> None:
+    import time
+
+    if len(_CACHE) > 500:
+        _CACHE.clear()
+    _CACHE[key] = (time.time(), value)
+
+
+def _labels_with_list_hint(headers: dict[str, str], labels: list[str]) -> list[str]:
+    out = list(labels)
+    if headers.get("list-id") or headers.get("list-unsubscribe"):
+        out.append("HAS_LIST_HEADERS")
+    return out
+
+
+def gmail_list_ids(service: Any, query: str, cap: int = GMAIL_SCAN_CAP) -> tuple[list[str], int]:
+    """Todos los ids elegibles (paginado) hasta `cap`; devuelve (ids, total_estimado)."""
+    ids: list[str] = []
+    token: str | None = None
+    estimate = 0
+    while True:
+        kwargs: dict[str, Any] = {"userId": "me", "q": query, "maxResults": 500}
+        if token:
+            kwargs["pageToken"] = token
+        page = service.users().messages().list(**kwargs).execute()
+        ids.extend(row["id"] for row in page.get("messages") or [] if row.get("id"))
+        token = page.get("nextPageToken")
+        estimate = max(estimate, len(ids))
+        if not token:
+            break
+        if len(ids) >= cap:
+            estimate = max(estimate, int(page.get("resultSizeEstimate") or 0) + len(ids))
+            break
+    return ids[:cap], estimate
+
+
+def gmail_headers(credentials: Any, days: int, limit: int = GMAIL_SCAN_CAP, stats: dict[str, Any] | None = None) -> list[tuple[str, str, list[str]]]:
+    """Solo metadatos (From, Subject, List-*, etiquetas). Nunca pide cuerpos."""
+    import time
+
     from app.services.gmail_import_inventory import EXCLUDED_QUERY, _service
 
     start = datetime.now(timezone.utc) - timedelta(days=days)
     service = _service(credentials)
-    listing = service.users().messages().list(
-        userId="me", q=f"after:{int(start.timestamp())} {EXCLUDED_QUERY}".strip(), maxResults=limit
-    ).execute()
-    out: list[tuple[str, str, list[str]]] = []
+    ids, total = gmail_list_ids(service, f"after:{int(start.timestamp())} {EXCLUDED_QUERY}".strip(), limit)
+    out: dict[str, tuple[str, str, list[str]]] = {}
+    pending = list(ids)
+    for attempt in range(4):
+        failed: list[str] = []
 
-    def collect(_request_id: str, response: dict[str, Any] | None, exception: Exception | None) -> None:
-        if exception or not response:
-            return
-        headers = {h.get("name", "").lower(): h.get("value", "") for h in (response.get("payload") or {}).get("headers") or []}
-        out.append((headers.get("from", ""), headers.get("subject", ""), list(response.get("labelIds") or [])))
+        def collect(request_id: str, response: dict[str, Any] | None, exception: Exception | None) -> None:
+            if exception or not response:
+                failed.append(request_id)
+                return
+            headers = {h.get("name", "").lower(): h.get("value", "") for h in (response.get("payload") or {}).get("headers") or []}
+            labels = _labels_with_list_hint(headers, list(response.get("labelIds") or []))
+            out[request_id] = (headers.get("from", ""), headers.get("subject", ""), labels)
 
-    batch = service.new_batch_http_request(callback=collect)
-    for row in (listing.get("messages") or [])[:limit]:
-        batch.add(service.users().messages().get(userId="me", id=row["id"], format="metadata", metadataHeaders=["From", "Subject"]))
-    batch.execute()
-    return out
+        for i in range(0, len(pending), _BATCH):
+            batch = service.new_batch_http_request(callback=collect)
+            for mid in pending[i:i + _BATCH]:
+                batch.add(
+                    service.users().messages().get(userId="me", id=mid, format="metadata", metadataHeaders=_HEADER_NAMES),
+                    request_id=mid,
+                )
+            try:
+                batch.execute()
+            except Exception:
+                failed.extend(pending[i:i + _BATCH])
+        pending = [mid for mid in failed if mid not in out]
+        if not pending:
+            break
+        time.sleep(0.5 * (attempt + 1))
+    if stats is not None:
+        stats["total"] = total
+        stats["listed"] = len(ids)
+        stats["failed"] = len(pending)
+    return list(out.values())
 
 
 def imap_headers(address: str, secret: str, *, oauth: bool, mailbox_provider: str, days: int, limit: int = SAMPLE_SIZE) -> list[tuple[str, str, list[str]]]:
@@ -108,5 +181,6 @@ def build_preview(headers: list[tuple[str, str, list[str]]], eligible: int | Non
     sampled = summary["sampled"]
     summary["eligible_messages"] = eligible
     # Estimación sobre el total: la muestra son los mensajes más recientes.
-    summary["scale"] = (eligible / sampled) if eligible and sampled else 1.0
+    summary["scale"] = (eligible / sampled) if eligible and sampled and eligible > sampled else 1.0
+    summary["exact"] = summary["scale"] == 1.0
     return summary
