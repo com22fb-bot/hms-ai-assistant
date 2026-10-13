@@ -24,10 +24,66 @@ SECURITY_RE = re.compile(
     r"(alerta de seguridad|security alert|aviso de seguridad|nuevo inicio de sesion|inicio de sesion (nuevo|sospechoso|inusual|desde)|"
     r"new sign-?in|sign-?in (attempt|alert|from)|suspicious (activity|sign|login)|unusual (activity|sign|login)|"
     r"actividad (inusual|sospechosa)|intento de (acceso|inicio)|nuevo dispositivo|new device|dispositivo no reconocido|"
-    r"unrecognized device|contrasena (se ha )?(cambiad|actualizad|restablecid)|restablec\w* (tu |su )?contrasena|"
+    r"unrecognized device|contrasena (se ha )?(cambiad|actualizad|restablecid)|"
+    # A1 (Etapa 1.2): cambio o restablecimiento de contraseña en cualquier redacción, también de redes sociales.
+    r"(cambiaste|actualizaste|restableciste|se cambio|se actualizo|se restablecio) (tu |la |su )?contrasena|"
+    r"contrasena\b[^.\n]{0,40}\b(se )?(cambio|actualizo|restablecio|modifico)|"
+    r"password (has been |was )?(changed|updated|reset)|your password (was|has been)|cambio de contrasena|"
+    r"new login detected|alguien (conoce|tiene|uso) tu contrasena|someone (knows|has|used) your password|"
+    r"(bloqueamos|hemos bloqueado|se bloqueo) (el |tu )?acceso|acceso bloqueado|restablec\w* (tu |su )?contrasena|"
     r"password (changed|was changed|reset)|reset your password|two[- ]factor|2fa|autenticacion (en|de) dos|"
     r"protege tu cuenta|secure your account|cuenta (comprometida|bloqueada)|account (locked|compromised))",
 )
+# A2 (Etapa 1.2): alerta de seguridad que pide actuar ya → N1. "Si no fuiste tú, ..." es condicional (aviso).
+SECURITY_ACTION_RE = re.compile(
+    r"(alguien (conoce|tiene|uso) tu contrasena|someone (knows|has|used) your password|"
+    r"(bloqueamos|hemos bloqueado|se bloqueo) (el |tu )?acceso|acceso bloqueado|cuenta (comprometida|bloqueada)|"
+    r"account (locked|compromised)|(?<!si no fuiste tu, )(?<!si no fuiste tu )\bcambia (tu|la|su) contrasena|"
+    r"change your password (now|immediately)|accion (inmediata|requerida)|immediate action)"
+)
+# A3 (Etapa 1.2): marcas que suplantan los fraudes. Se compara con el dominio del remitente.
+PHISH_BRANDS = (
+    "banamex", "citibanamex", "bbva", "santander", "banorte", "hsbc", "scotiabank", "inbursa", "banregio", "banco azteca",
+    "nu", "paypal", "mercado pago", "mercadopago", "mercado libre", "mercadolibre", "amazon", "netflix", "apple", "icloud",
+    "microsoft", "outlook", "hotmail", "google", "gmail", "facebook", "instagram", "whatsapp", "sat", "imss", "cfe",
+    "telmex", "dhl", "fedex", "estafeta", "correos de mexico", "spotify", "uber", "didi", "liverpool", "coppel", "oxxo",
+)
+PHISH_ASK_RE = re.compile(
+    r"(\bpaga\b|\bpague\b|\bpagar\b|realiza (un|el) pago|deposita|transfiere|verifica(r)? tu identidad|"
+    r"confirma(r)? tus datos|actualiza(r)? tus datos|ingresa tus datos|tus datos bancarios|\bnip\b|\bcvv\b|"
+    r"contrasena|clave de acceso|numero de tarjeta|verify your identity|confirm your (details|information)|update your (payment|billing))"
+)
+PHISH_URGENT_RE = re.compile(
+    r"(enlace|link|haz clic|da clic|click|ingresa aqui|proximas? \d+ (horas|minutos)|\d+ horas|inmediat|urgente|"
+    r"sera (suspendida|suspendido|bloqueada|cancelada)|suspend|hoy mismo|de lo contrario|within \d+ hours|immediately)"
+)
+
+
+def brand_mismatch(sender: str | None, subject: str | None, body: str | None = None) -> str | None:
+    """Marca mencionada en asunto/cuerpo que no corresponde al dominio del remitente (o None)."""
+    domain = re.sub(r"[^a-z0-9]", "", _domain(sender))
+    if not domain:
+        return None
+    text = fold(f"{subject or ''}\n{(body or '')[:1600]}")
+    for brand in PHISH_BRANDS:
+        if re.search(r"\b" + re.escape(brand) + r"\b", text) and re.sub(r"[^a-z0-9]", "", brand) not in domain:
+            if len(brand) <= 3 and not re.search(r"\b" + re.escape(brand) + r"\b", fold(subject or "")):
+                continue  # siglas cortas (sat, cfe, nu) solo cuentan en el asunto
+            return brand
+    return None
+
+
+def phishing_suspect(sender: str | None, subject: str | None, body: str | None = None) -> str | None:
+    """A3: marca ajena al dominio + petición de pago/datos + clic o urgencia → marca suplantada; si no, None."""
+    brand = brand_mismatch(sender, subject, body)
+    if not brand:
+        return None
+    text = fold(f"{subject or ''}\n{(body or '')[:1600]}")
+    if PHISH_ASK_RE.search(text) and PHISH_URGENT_RE.search(text):
+        return brand
+    return None
+
+
 CODE_RE = re.compile(
     r"(codigo de (verificacion|seguridad|acceso|confirmacion)|verification code|security code|login code|"
     r"one[- ]time (pass(word|code)|code)|\botp\b|es tu codigo|is your .{0,30}code|clave dinamica|token de acceso|"

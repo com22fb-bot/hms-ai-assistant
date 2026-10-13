@@ -21,6 +21,10 @@ DOC_RE = re.compile(
 # Variantes: "factura folio XX-0919", "Folio de la factura pagada: AG-1"
 DIGIT_DOC_RE = re.compile(r"\b(?:folio|factura|invoice|pedido|orden|order|recibo)\s*(?:no\.?|#|:)?\s*#?\s*([a-z]{0,5}-?\d[a-z0-9\-/]{1,30})")
 LABEL_COLON_RE = re.compile(r"\b(?:folio|factura|invoice|pedido|referencia)\b[^:\n]{0,30}:\s*([a-z0-9][a-z0-9\-/]{2,36})")
+# A4 (Etapa 1.2): "Factura Telmex No. TX-88213", "Invoice ACME # 991": etiqueta + hasta 2 palabras + No./Núm./#.
+LABEL_NUM_RE = re.compile(
+    r"\b(?:factura|folio|invoice|pedido|orden|order|recibo)\b(?:\s+[a-z]+){0,2}?\s+(?:no\.?|num(?:ero)?\.?|n[°º]|#)\s*:?\s*([a-z0-9][a-z0-9\-/]{2,36})"
+)
 HASH_RE = re.compile(r"#\s?([a-z]{0,4}-?\d[a-z0-9\-]{1,20})")
 UUID_RE = re.compile(r"\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b")
 AMOUNT_RE = re.compile(
@@ -50,7 +54,7 @@ def extract_doc_token(subject: str | None, body: str | None) -> str | None:
     m = UUID_RE.search(text)
     if m:
         return m[1].upper()
-    for pattern in (DOC_RE, DIGIT_DOC_RE, LABEL_COLON_RE, HASH_RE):
+    for pattern in (DOC_RE, DIGIT_DOC_RE, LABEL_NUM_RE, LABEL_COLON_RE, HASH_RE):
         for m in pattern.finditer(text):
             token = m[1].strip("-/.")
             if _valid(token):

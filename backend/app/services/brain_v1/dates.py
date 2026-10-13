@@ -41,7 +41,8 @@ DUE_CUE = re.compile(
 )
 EVENT_CUE = re.compile(
     r"(\bcita\b|appointment|reunion|meeting|consulta|\bevento\b|\bevent\b|vuelo|flight|agendad|programad|scheduled|"
-    r"webinar|entrevista|interview|llegue|arrive)"
+    r"webinar|entrevista|interview|llegue|arrive|itinerario|itinerary|reservacion|reservation|check-?in|"
+    r"reprogramad|rescheduled|registro (esta )?confirmado)"
 )
 _MONTH_NAMES = "|".join(sorted(MONTHS, key=len, reverse=True))
 _WD = "|".join(WEEKDAYS)
@@ -61,6 +62,8 @@ PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("eom", re.compile(r"\b(fin de mes|finales de mes|end of (the )?month|ultimo dia del mes)\b")),
 ]
 TIME_RE = re.compile(r"\b(\d{1,2})(?::(\d{2}))\s*(am|pm|a\.m\.|p\.m\.|hrs|h)?\b|\b(\d{1,2})\s*(am|pm|a\.m\.|p\.m\.)\b")
+# A9: "a las 9:00 de la noche/tarde" → pm; "de la mañana" → am.
+PM_HINT_RE = re.compile(r"\b(de la (tarde|noche)|in the (afternoon|evening))\b")
 
 
 @dataclass
@@ -118,10 +121,18 @@ def _safe(y: int, m: int, d: int) -> date | None:
         return None
 
 
+# A9 (Etapa 1.2): "martes 20 de octubre", "jueves, 29 de octubre de 2026": el día de la semana confirma la fecha
+# explícita, no es otra fecha. Si no coincide con la fecha, es ambiguo.
+WEEKDAY_WITH_DATE_RE = re.compile(r"\b(" + "|".join(WEEKDAYS) + r")\b,?\s+(?:el\s+)?(?=\d{1,2}(?: de |[/.-]| (?:" + "|".join(sorted(MONTHS, key=len, reverse=True)) + r")))")
+
+
 def _parse_in(sentence: str, anchor: date, english: bool) -> list[tuple[date | str, int]]:
     """Fechas en la oración: (fecha | 'AMBIGUOUS', posición)."""
     out: list[tuple[date | str, int]] = []
     taken: list[tuple[int, int]] = []
+    named_weekdays = [(m[1], m.start()) for m in WEEKDAY_WITH_DATE_RE.finditer(sentence)]
+    if named_weekdays:
+        sentence = WEEKDAY_WITH_DATE_RE.sub(lambda m: " " * len(m[0]), sentence)  # misma longitud: posiciones intactas
 
     def free(span: tuple[int, int]) -> bool:
         return all(span[1] <= a or span[0] >= b for a, b in taken)
@@ -177,6 +188,10 @@ def _parse_in(sentence: str, anchor: date, english: bool) -> list[tuple[date | s
             taken.append(m.span())
             out.append((value, m.start()))
     out.sort(key=lambda item: item[1])
+    for name, pos in named_weekdays:
+        nxt = next((i for i, (_, at) in enumerate(out) if at >= pos), None)
+        if nxt is not None and isinstance(out[nxt][0], date) and out[nxt][0].weekday() != WEEKDAYS[name]:
+            out[nxt] = ("AMBIGUOUS", out[nxt][1])
     return out
 
 
@@ -192,6 +207,8 @@ def _time_in(sentence: str) -> time | None:
         h += 12
     if suffix.startswith("a") and h == 12:
         h = 0
+    if not suffix and PM_HINT_RE.search(sentence) and h < 12:
+        h += 12
     if h > 23 or mi > 59:
         return None
     return time(h, mi)
@@ -207,18 +224,22 @@ def extract_dates(subject: str | None, body: str | None, received_at: Any, *, ki
     english = bool(re.search(r"\b(the|your|please|due|appointment|invoice|payment)\b", raw.lower()))
     found: list[Found] = []
     ambiguous: str | None = None
+    # A9/A8: en citas, eventos y esperas, la señal puede venir en el asunto ("Webinar ...", "Tu itinerario").
+    subject_event = kind in {"appointment", "appointment_cancel", "event"} and bool(EVENT_CUE.search(fold(subject or "")))
     for sentence_raw in _SPLIT.split(raw):
         sentence = fold(sentence_raw).strip()
         if not sentence:
             continue
         has_due = bool(DUE_CUE.search(sentence))
-        has_event = bool(EVENT_CUE.search(sentence))
+        has_event = bool(EVENT_CUE.search(sentence)) or subject_event
+        if kind == "waiting":
+            has_due, has_event = True, False
         if not (has_due or has_event):
             continue
         dates = _parse_in(sentence, anchor, english)
         if not dates:
             continue
-        if kind in {"appointment", "appointment_cancel"} and has_event:
+        if kind in {"appointment", "appointment_cancel", "event"} and has_event:
             role = "event"
         elif has_due:
             role = "due"
