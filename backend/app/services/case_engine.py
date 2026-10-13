@@ -169,6 +169,12 @@ def _first_row(response: Any) -> dict[str, Any] | None:
     return rows[0] if rows else None
 
 
+def _brain_v1_on() -> bool:
+    from app.services.brain_v1 import brain_v1_enabled
+
+    return brain_v1_enabled()
+
+
 def normalize_subject(subject: str | None) -> str:
     value = (subject or "").strip().lower()
 
@@ -182,6 +188,18 @@ def normalize_subject(subject: str | None) -> str:
     while value != previous:
         previous = value
         value = prefix_pattern.sub("", value).strip()
+
+    if _brain_v1_on():
+        # C4: "Recordatorio: Factura X" y "Factura X" son el mismo asunto.
+        notice_prefix = re.compile(
+            r"^(?:(?:re|fw|fwd|rv|enc|aw|wg|recordatorio|reminder|aviso|[uú]ltimo aviso|"
+            r"segundo aviso|final notice|friendly reminder)\s*:\s*)+",
+            flags=re.IGNORECASE,
+        )
+        previous = None
+        while value != previous:
+            previous = value
+            value = notice_prefix.sub("", value).strip()
 
     value = re.sub(r"\[[^\]]{1,30}\]", " ", value)
     value = re.sub(r"\s+", " ", value)

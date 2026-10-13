@@ -28,6 +28,9 @@ class _Query:
         self.op = "delete"; return self
 
     def eq(self, col, val):
+        if "->>" in col:  # filtro JSON de PostgREST (metadata->>clave)
+            column, key = col.split("->>", 1)
+            self.filters.append(lambda r: str((r.get(column) or {}).get(key)) == str(val)); return self
         self.filters.append(lambda r: str(r.get(col)) == str(val)); return self
 
     def neq(self, col, val):

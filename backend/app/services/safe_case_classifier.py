@@ -418,6 +418,18 @@ def classify_pending_messages(
             query = query.gte("received_at", received_after)
         response = query.order("received_at", desc=True).limit(safe_limit).execute()
         messages = _rows(response)
+
+    from app.services.brain_v1 import brain_v1_enabled
+
+    if brain_v1_enabled():
+        from app.services.brain_v1.engine import classify_pending_messages_v1
+
+        return classify_pending_messages_v1(
+            client=client,
+            account_id=account_id,
+            workspace_id=workspace_id,
+            messages=messages,
+        )
     processed = 0
     created_cases = 0
     linked_cases = 0
