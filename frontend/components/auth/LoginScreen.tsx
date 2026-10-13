@@ -9,6 +9,7 @@ import {
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { GmailConnectNotice } from "@/components/auth/GmailConnectNotice";
+import { confirmGoogleConsent } from "@/lib/googleConsentNotice";
 import { IcloudConnectForm } from "@/components/auth/IcloudConnectForm";
 import { YahooConnectForm } from "@/components/auth/YahooConnectForm";
 import { LanguageStrip } from "@/components/UserSettingsPanel";
@@ -621,6 +622,10 @@ export function LoginScreen({
         setError(noticeErrorMessage(started.payload) || message);
         setBusy(false);
         throw new Error(message);
+      }
+      if (!(await confirmGoogleConsent(language))) {
+        setBusy(false);
+        return;
       }
       window.location.assign(payload.authorization_url);
     } catch (requestError) {

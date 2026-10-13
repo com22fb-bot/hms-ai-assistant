@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { buildApiUrl } from "@/lib/apiBase";
+import { confirmGoogleConsent } from "@/lib/googleConsentNotice";
 import { hmsFetch } from "@/lib/hmsApi";
 
 import type {
@@ -156,6 +157,9 @@ export function useConnection() {
       );
     }
 
+    if (!(await confirmGoogleConsent())) {
+      return;
+    }
     window.location.assign(payload.authorization_url);
   }, []);
 
