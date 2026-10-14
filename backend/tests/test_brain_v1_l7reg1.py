@@ -159,3 +159,40 @@ def test_today_is_never_due_at():
 def test_no_date_is_invented():
     r = _a("cobros@luz.example", "Recibo", "Tu recibo de luz por $500.00 está disponible.")
     assert r.dates.due_at is None and r.dates.event_at is None
+
+
+# L7reg2 (decisiones ASTRA a-d) ------------------------------------------------------------------
+def test_a_fraud_is_review_plus_alert_without_reliable_topic():
+    r = _a("ceo@empresa-x.example", "Urgente", "Soy el director general: transfiere hoy el depósito a esta cuenta nueva, es confidencial.")
+    assert r.security_flag == "N1" and r.area is None and r.area_review_reason
+
+
+def test_a_fraud_keeps_area_only_with_reliable_topic_and_alert_never_hidden():
+    info = classify_v2("phishing_suspect", fold("Tu pedido 551 y tu membresía\nTu paquete del pedido 551 de tu suscripción está retenido; "
+                                                "paga $40 para liberarlo."),
+                       "x@y.example", 0.4, phishing=True)
+    assert info["area"] == "compras" and info["security_flag"] == "N1" and info["review_reason"]
+
+
+def test_b_review_with_explicit_topic_keeps_area_and_review_mark():
+    info = classify_v2("ambiguous", fold("Póliza vigente\nTu póliza cubre internet y telefonía."), "x@y.example", 0.4,
+                       triage="review")
+    assert info["area"] == "salud" and info["review_reason"]
+
+
+def test_c_charges_by_context():
+    personal = _a("billing@servicio.example", "Paqüte retenid0", "Tu facturra por $489.00 vence el 13/11/2026.")
+    assert personal.area == "dinero"
+    order = _a("billing@tienda.example", "Factura", "La factura de tu pedido 7781 por $489.00 vence el 13/11/2026.")
+    assert order.area == "compras"
+    work = _a("cxp@consultores.example", "Factura", "Factura por servicios de consultoría; total a pagar $40,000.00, vence el 10/12/2026.")
+    assert work.area == "trabajo"
+
+
+def test_d_spam_is_only_a_secondary_tag_and_promo_is_not_spam():
+    spam = _a("bulk@marketing.example", "Oferta milagrosa", "Mensaje no solicitado: producto milagro.")
+    assert spam.area == "promociones" and "Spam" in spam.area_tags
+    promo = _a("ofertas@tienda.example", "Rebajas", "30% de descuento en toda la tienda este fin de semana.")
+    assert promo.area == "promociones" and "Spam" not in promo.area_tags
+    from app.services.brain_v1.taxonomy_v2 import AREAS
+    assert "spam" not in AREAS and "Spam" not in AREAS.values()
