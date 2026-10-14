@@ -295,6 +295,7 @@ class Analysis:
     ref_key: str | None = None  # marca + folio/pedido: vincula correos relacionados (pedido → envío → reembolso)
     related_to: str | None = None
     text_normalized: bool = False  # la clasificación salió del texto normalizado (faltas, homoglifos)
+    llm: dict[str, Any] | None = None  # respaldo LLM (BRAIN_V1_LLM_FALLBACK); None = no se consultó
 
     def signals(self) -> dict[str, Any]:
         return {
@@ -307,6 +308,7 @@ class Analysis:
             "phishing_signals": self.phishing_signals or None, "area_review_reason": self.area_review_reason,
             "content_key": self.content_key, "duplicate_of": self.duplicate_of,
             "ref_key": self.ref_key, "related_to": self.related_to, "text_normalized": self.text_normalized or None,
+            **({"llm": self.llm} if self.llm else {}),
             "review_reason": self.reason if self.triage == "review" or self.confidence < 0.5 else None,
             **self.dates.as_metadata(),
         }
@@ -395,6 +397,18 @@ def _weak(result: Analysis) -> bool:
 
 
 def analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> Analysis:
+    """Reglas deterministas y, solo con BRAIN_V1_LLM_FALLBACK activo, respaldo LLM cuando las reglas no están seguras."""
+    result = _analyze_rules(message, user_verified=user_verified)
+    from app.services.brain_v1 import llm_fallback
+
+    if llm_fallback.enabled():
+        subject = str(message.get("subject") or "")
+        body = _decode_body(str(message.get("body_text") or message.get("snippet") or ""))
+        result = llm_fallback.apply(result, message, subject, body)
+    return result
+
+
+def _analyze_rules(message: dict[str, Any], *, user_verified: bool | None = None) -> Analysis:
     """Primera pasada sobre el texto tal cual. Si queda débil (ambiguo, sin área o sin señal), segunda pasada sobre el
     texto normalizado (faltas, homoglifos, invisibles). La segunda solo se adopta si aporta: seguridad que la primera
     no vio, un área donde no había, o una regla específica en vez de una genérica."""
