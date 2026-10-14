@@ -151,8 +151,13 @@ def import_preview() -> dict[str, Any]:
     """Vista previa por esferas/áreas y redes sociales + estado del plan."""
     from app.database.supabase import get_supabase_client
     from app.services.account_lifecycle import plan_status_for_workspace
+    import logging
+
     from app.services.import_preview import (
         build_preview,
+        cache_get,
+        cache_key,
+        cache_put,
         gmail_headers,
         imap_headers,
         microsoft_headers,
@@ -160,6 +165,16 @@ def import_preview() -> dict[str, Any]:
 
     account = _mailbox_account()
     days = _plan_history_days(account)
+    key = cache_key(str(account.get("workspace_id") or ""), str(account.get("id") or ""), days)
+    cached = cache_get(key)
+    if cached is not None:
+        preview = dict(cached)
+        preview["cached"] = True
+        preview["plan"] = plan_status_for_workspace(
+            get_supabase_client(), str(account.get("workspace_id") or "")
+        )
+        return preview
+    stats: dict[str, Any] = {}
     try:
         if is_icloud_provider(account):
             email, app_password = _icloud_secret(account)
@@ -170,11 +185,20 @@ def import_preview() -> dict[str, Any]:
         elif is_microsoft_provider(account):
             headers = microsoft_headers(account, days)
         else:
-            headers = gmail_headers(_google_credentials(account), days)
-        preview = build_preview(headers)
+            headers = gmail_headers(_google_credentials(account), days, stats=stats)
+        preview = build_preview(headers, stats.get("total") or None)
+        failed = int(stats.get("failed") or 0)
+        preview["partial"] = bool(failed or stats.get("timed_out"))
+        if not headers and (failed or stats.get("timed_out")):
+            # Error ≠ «no hay correos»: nunca se muestra 0 por un fallo.
+            preview["unavailable"] = True
+        elif not preview["partial"]:
+            cache_put(key, preview | {"history_days": days})
     except HTTPException:
         raise
-    except Exception:
+    except Exception as error:
+        # Sin remitentes, asuntos ni ids en el log: solo el tipo de error.
+        logging.getLogger(__name__).warning("import preview failed: %s", type(error).__name__)
         preview = build_preview([])
         preview["unavailable"] = True
     preview["history_days"] = days
