@@ -38,7 +38,8 @@ _FIELDS = "labelIds,payload/headers"
 # nombres de remitentes masivos por área. Nunca asuntos, ids ni contenido.
 _CACHE: dict[tuple[str, str, int], tuple[float, dict[str, Any]]] = {}
 _CACHE_ALLOWED = {"sampled", "categories", "spheres", "social_platforms", "examples",
-                  "eligible_messages", "scale", "exact", "partial", "coverage", "history_days"}
+                  "eligible_messages", "scale", "exact", "partial", "coverage", "history_days",
+                  "worlds", "areas", "review", "security", "protected", "taxonomy"}
 
 
 def cache_key(workspace_id: str, account_id: str, days: int) -> tuple[str, str, int] | None:

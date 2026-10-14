@@ -58,6 +58,42 @@ CATEGORY_IDS = ("social", "promos", *AREA_SPHERE.keys(), "other")
 # Id antiguo de la vista previa → id del catálogo vigente.
 _ALIASES = {"agenda": "events"}
 
+# ── Taxonomía v2 (aprobada 13-oct-2026, docs/TAXONOMIA_V2.md) ─────────────────
+# Solo vista previa e importación personalizada (cabeceras). No depende de
+# BRAIN_V1_ENABLED y no cambia import_category (lo usa brain_v1).
+# 3 mundos · 7 áreas. Seguridad es alerta transversal, no área. "Por revisar"
+# es un estado. No existe "Otros".
+V2_AREAS: tuple[tuple[str, str, str], ...] = (
+    ("trabajo", "Trabajo y negocios", "ocupacion"),
+    ("hogar", "Hogar y familia", "hogar"),
+    ("dinero", "Dinero y facturas", "hogar"),
+    ("compras", "Compras y suscripciones", "hogar"),
+    ("salud", "Salud y seguros", "personal"),
+    ("viajes", "Viajes y eventos", "personal"),
+    ("promociones", "Promociones y social", "personal"),
+)
+V2_AREA_IDS = tuple(a for a, _, _ in V2_AREAS)
+V2_AREA_WORLD = {a: w for a, _, w in V2_AREAS}
+WORLD_IDS = ("ocupacion", "hogar", "personal")
+REVIEW_ID = "revisar"
+LEGACY_TO_V2: dict[str, str] = {
+    "work": "trabajo",
+    "home": "hogar", "education": "hogar",
+    "money": "dinero", "bills": "dinero", "government": "dinero",
+    "orders": "compras", "subscriptions": "compras",
+    "health": "salud", "insurance": "salud",
+    "travel": "viajes", "events": "viajes",
+    "promos": "promociones", "social": "promociones",
+    "other": REVIEW_ID,
+}
+# Categorías protegidas: se descargan aunque su área esté desmarcada, salvo que
+# el usuario las apague (exclude contiene "proteger:<id>").
+PROTECTED_IDS = ("seguridad", "bancos", "gobierno", "facturas", "salud")
+PROTECTED_PREFIX = "proteger:"
+_LEGACY_PROTECTED = {"money": "bancos", "government": "gobierno", "bills": "facturas", "health": "salud"}
+_SECURITY_RE = dict(_COMPILED)["security"]
+V2_EXCLUDE_IDS = (*V2_AREA_IDS, REVIEW_ID, *(PROTECTED_PREFIX + p for p in PROTECTED_IDS))
+
 
 def _fold(text: str) -> str:
     decomposed = unicodedata.normalize("NFKD", (text or "").lower())
@@ -94,9 +130,28 @@ def import_category(sender: str | None, subject: str | None, labels: Iterable[st
 
 
 def clean_exclude(values: Iterable[str] | None) -> list[str]:
-    allowed = set(CATEGORY_IDS)
+    allowed = set(CATEGORY_IDS) | set(V2_EXCLUDE_IDS)
     mapped = (_ALIASES.get(str(v), str(v)) for v in (values or []))
     return sorted({v for v in mapped if v in allowed})
+
+
+def is_security(sender: str | None, subject: str | None) -> bool:
+    return bool(_SECURITY_RE.search(_fold(f"{subject or ''} {sender or ''}")))
+
+
+def v2_area(sender: str | None, subject: str | None, labels: Iterable[str] = ()) -> str:
+    """Área v2 (una de V2_AREA_IDS) o "revisar". Seguridad nunca es área."""
+    legacy = import_category(sender, subject, labels)
+    if legacy == "security":
+        text = _fold(f"{subject or ''} {sender or ''}")
+        legacy = next((a for a, pat in _COMPILED if a != "security" and pat.search(text)), "other")
+    return LEGACY_TO_V2.get(legacy, REVIEW_ID)
+
+
+def protected_class(sender: str | None, subject: str | None, labels: Iterable[str] = ()) -> str | None:
+    if is_security(sender, subject):
+        return "seguridad"
+    return _LEGACY_PROTECTED.get(import_category(sender, subject, labels))
 
 
 def skip_message(exclude: Iterable[str] | None, sender: str | None, subject: str | None, labels: Iterable[str] = ()) -> bool:
@@ -116,12 +171,22 @@ def skip_message(exclude: Iterable[str] | None, sender: str | None, subject: str
         # A15 (Etapa 1.3): un posible phishing nunca se excluye ni se oculta; solo puede ir a revisión.
         if brand_mismatch(sender, subject):
             return False
+    if excluded & set(V2_EXCLUDE_IDS):
+        # Elección v2 (pantalla nueva): protegidas encendidas nunca se saltan.
+        protected = protected_class(sender, subject, labels)
+        if protected and PROTECTED_PREFIX + protected not in excluded:
+            return False
+        if v2_area(sender, subject, labels) in excluded:
+            return True
+    # Ids heredados (importaciones guardadas antes de v2): comportamiento idéntico.
     return import_category(sender, subject, labels) in excluded
 
 
 def gmail_query_exclusions(exclude: Iterable[str] | None) -> str:
     """Filtro de Gmail para no descargar lo excluido (búsqueda solo lectura)."""
     excluded = set(exclude or ())
+    if "promociones" in excluded and all(PROTECTED_PREFIX + p in excluded for p in PROTECTED_IDS):
+        excluded |= {"social", "promos"}
     parts: list[str] = []
     if "social" in excluded:
         domains = " OR ".join(sorted(SOCIAL_PLATFORMS))
@@ -148,6 +213,11 @@ def summarize(headers: Iterable[tuple[str, str, list[str]]], max_examples: int =
     spheres = {"hogar": 0, "ocupacion": 0, "personal": 0}
     platforms: dict[str, int] = {}
     senders: dict[str, dict[str, int]] = {key: {} for key in CATEGORY_IDS}
+    areas: dict[str, int] = {a: 0 for a in V2_AREA_IDS}
+    worlds = {w: 0 for w in WORLD_IDS}
+    areas_review = [0]
+    security = 0
+    protected: dict[str, int] = {p: 0 for p in PROTECTED_IDS}
     total = 0
     for sender, subject, labels in headers:
         total += 1
@@ -158,6 +228,17 @@ def summarize(headers: Iterable[tuple[str, str, list[str]]], max_examples: int =
             senders[category][name] = senders[category].get(name, 0) + 1
         if category in AREA_SPHERE:
             spheres[AREA_SPHERE[category]] += 1
+        area = v2_area(sender, subject, labels)
+        if area == REVIEW_ID:
+            areas_review[0] += 1
+        else:
+            areas[area] += 1
+            worlds[V2_AREA_WORLD[area]] += 1
+        if is_security(sender, subject):
+            security += 1
+        prot = protected_class(sender, subject, labels)
+        if prot:
+            protected[prot] += 1
         platform = social_platform(sender)
         if platform:
             platforms[platform] = platforms.get(platform, 0) + 1
@@ -166,4 +247,18 @@ def summarize(headers: Iterable[tuple[str, str, list[str]]], max_examples: int =
         for key, counts in senders.items() if counts
     }
     examples = {k: v for k, v in examples.items() if v}
-    return {"sampled": total, "categories": categories, "spheres": spheres, "social_platforms": platforms, "examples": examples}
+    for area in V2_AREA_IDS:
+        merged: dict[str, int] = {}
+        for legacy, target in LEGACY_TO_V2.items():
+            if target == area:
+                for n, c in senders.get(legacy, {}).items():
+                    merged[n] = merged.get(n, 0) + c
+        names = [n for n, c in sorted(merged.items(), key=lambda kv: (-kv[1], kv[0])) if c >= EXAMPLE_MIN_MESSAGES][:max_examples]
+        if names:
+            examples[area] = names
+    return {
+        "sampled": total, "categories": categories, "spheres": worlds,
+        "worlds": worlds, "areas": areas, "review": areas_review[0],
+        "security": security, "protected": protected,
+        "social_platforms": platforms, "examples": examples, "taxonomy": "v2",
+    }
