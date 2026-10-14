@@ -36,6 +36,26 @@ _DEPOSIT_RE = re.compile(r"(deposita|invierte|transfiere|send)[^.\n]{0,40}(cuent
 _PRIZE_RE = re.compile(r"(ganaste|has sido seleccionad|eres el ganador|you (have )?won|felicidades.{0,30}(premio|iphone|ganaste))")
 _DATA_ASK_RE = re.compile(r"(tus datos|datos personales|respondiendo con|reclama tu premio|claim your prize)")
 _URGENT_LINK_RE = re.compile(r"(suspendid|bloquead|lleno|perder|expira)")
+# L7reg1 (3) · señales nuevas, en el orden pedido por ASTRA. Cada una exige un VERBO DE PETICIÓN dirigido al usuario;
+# una advertencia ("no compartas tu contraseña") nunca cuenta. Texto plegado (y normalizado en la 2.ª pasada).
+_NEG = r"(?<!no )(?<!nunca )(?<!never )(?<!don't )(?<!not )"
+_SHARE_SECRET_RE = re.compile(
+    _NEG + r"\b(comparte|compartenos|envianos|dinos|share|send us|partage|envie|informe|compartilhe)\b[^.\n]{0,30}"
+    r"\b(el |tu |su |your |o |seu |sua |votre )?(pin|nip|contrasena|password|mot de passe|senha|codigo|code|cvv|clave)\b"
+    r"|\bpide (contrasena|password|pin|nip)[^.\n]{0,40}(codigo de un solo uso|otp)")
+_HOLD_FEE_RE = re.compile(r"(retenid|liberar|held|retenu|retido)[^\n]{0,80}\b(paga|pague|pago|pay|payer|pagar|pagamento)\b"
+                          r"|\b(paga|pague|pay|pagar)\b[^\n]{0,40}(para liberar|to release|liberarlo)"
+                          r"|requiere pago urgente")
+_CEO_ROLE_RE = re.compile(r"\b(ceo|director general|directora general|gerente general|presidente|dueno)\b[^\n]{0,40}"
+                          r"\b(transfiere|transferencia|deposita|deposito|wire|paga)\b")
+_CEO_SECRET_RE = re.compile(r"\btransferencia (urgente|inmediata)[^.\n]{0,30}(confidencial|discreta)"
+                            r"|fuera del proceso (habitual|normal)|outside (the )?normal process")
+_PERSONAL_DATA_RE = re.compile(
+    _NEG + r"\b(envia|envianos|proporciona|solicita|solicitan|comparte|confirma|send|provide)\b[^.\n]{0,30}"
+    r"\b(identificacion|datos personales|tus datos|direccion|curp|\bine\b|pasaporte|ssn|social security|fecha de nacimiento)")
+_PRIZE2_RE = re.compile(r"(reclamar el premio|reclama tu premio|ganaste un (premio|sorteo)|supuesta ganancia|you won)")
+_CRYPTO_DEPOSIT_RE = re.compile(r"(deposita|invierte|envia|send|transfiere)[^.\n]{0,20}(cripto|crypto|bitcoin|btc|usdt|ether)"
+                                r"|duplica tus (cripto|bitcoin|inversion)")
 
 
 @dataclass
@@ -83,5 +103,18 @@ def detect(sender: str, text: str) -> PhishingVerdict:
     prize = bool(_PRIZE_RE.search(text) and _DATA_ASK_RE.search(text))
     if prize:
         sig.append("premio_pide_datos"); tags.append("Suplantación de identidad")
-    strong = cred or ceo or too_good or prize or (fee and "dominio_parecido" in sig) or ("cripto_deposito" in sig)
+    # L7reg1 (3): credenciales/PIN → pago falso → CEO → datos personales → (faltas: vía texto normalizado) → cripto.
+    extra = False
+    if not cred and _SHARE_SECRET_RE.search(text):
+        sig.append("pide_pin_o_contrasena"); tags.append("Phishing sospechoso"); extra = True
+    if not fee and _HOLD_FEE_RE.search(text):
+        sig.append("pago_falso"); tags.append("Fraude financiero"); extra = True
+    if not ceo and (_CEO_ROLE_RE.search(text) or _CEO_SECRET_RE.search(text)):
+        sig.append("fraude_ceo"); tags.append("Cambio sospechoso de datos bancarios"); extra = True
+    if not prize and _PERSONAL_DATA_RE.search(text) and (_PRIZE2_RE.search(text) or _PRIZE_RE.search(text) or _CEO_PRESSURE_RE.search(text)):
+        sig.append("pide_datos_personales"); tags.append("Riesgo de privacidad"); extra = True
+    if "cripto_deposito" not in sig and _CRYPTO_DEPOSIT_RE.search(text):
+        sig.append("cripto_deposito"); tags.append("Fraude financiero"); extra = True
+    strong = (cred or ceo or too_good or prize or extra or (fee and "dominio_parecido" in sig)
+              or ("cripto_deposito" in sig))
     return PhishingVerdict(is_phishing=bool(strong or len(sig) >= 2), signals=sig, tags=list(dict.fromkeys(tags)))
