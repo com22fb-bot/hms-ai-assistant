@@ -192,28 +192,32 @@ class LessAmbiguousTests(unittest.TestCase):
         self.assertEqual(a.rule, "ambiguous")
 
 
-class TaxonomyV1Tests(unittest.TestCase):
-    """Taxonomía v1 aprobada (13-oct-2026): un área principal + etiquetas secundarias."""
+class TaxonomyV2Tests(unittest.TestCase):
+    """Taxonomía v2 (13-oct-2026): 7 áreas, Seguridad solo como bandera, Por revisar = área None."""
 
-    def test_security_and_bills_areas(self):
-        self.assertEqual(analyze("no-reply@nube-azul.example", "Aviso", "Tu cuenta puede estar comprometida.", R).area, "security")
-        self.assertEqual(analyze("cobros@papeleria.example", "Factura 9", "Factura 9 por $10.00 MXN. Fecha límite de pago 2026-05-20.", R).area, "bills")
+    def test_security_is_flag_not_area(self):
+        a = analyze("no-reply@nube-azul.example", "Aviso", "Tu cuenta puede estar comprometida.", R)
+        self.assertNotEqual(a.area, "security")
+        self.assertIn(a.security_flag, {"N1", "N2"})
+        self.assertEqual(analyze("cobros@papeleria.example", "Factura 9", "Factura 9 por $10.00 MXN. Fecha límite de pago 2026-05-20.", R).area, "dinero")
 
-    def test_events_separate_from_travel(self):
+    def test_events_and_travel_share_area(self):
         ev = analyze("boletos@foro-norte.example", "Boletos confirmados", "Tus boletos están confirmados para el concierto del 2026-08-09 a las 20:00.", R)
         fl = analyze("vuelos@viajes-unidos.example", "Vuelo confirmado", "Tu vuelo ZX10 está confirmado para el 2026-09-20 a las 07:00.", R)
-        self.assertEqual((ev.area, fl.area), ("agenda", "travel"))
+        self.assertEqual((ev.area, fl.area), ("viajes", "viajes"))
+        self.assertIn("Vuelos", fl.area_tags)
 
     def test_social_and_promos(self):
-        self.assertEqual(analyze("x@facebookmail.com", "Nuevo comentario", "Alguien comentó tu foto.", R).area, "social")
-        self.assertEqual(analyze("ofertas@tienda-azul.example", "Ofertas", "Descuentos de la semana en toda la tienda.", R).area, "promos")
+        self.assertEqual(analyze("x@facebookmail.com", "Nuevo comentario", "Alguien comentó tu foto.", R).area, "promociones")
+        self.assertEqual(analyze("ofertas@tienda-azul.example", "Ofertas", "Descuentos de la semana en toda la tienda.", R).area, "promociones")
 
-    def test_insurance_is_secondary_tag_on_bill(self):
+    def test_insurance_premium_bill_is_money_with_seguros_tag(self):
         a = analyze("cobros@aseguradora-uno.example", "Factura póliza 77", "Factura de póliza 77 por $900.00 MXN. Fecha límite de pago 2026-05-20.", R)
-        self.assertEqual(a.area, "bills")
-        self.assertIn("insurance", a.area_tags)
+        self.assertEqual(a.area, "dinero")
+        self.assertIn("Seguros", a.area_tags)
 
     def test_signals_carry_area(self):
         s = analyze("ana@amigos.example", "hola", "oye, luego vemos lo de aquello", R).signals()
         self.assertIn("area", s)
-        self.assertEqual(s["area"], "other")  # baja confianza analizada = Otros (distinto de pendiente)
+        self.assertIsNone(s["area"])  # sin tema = Por revisar (no existe "Otros")
+        self.assertTrue(s["area_review_reason"])
