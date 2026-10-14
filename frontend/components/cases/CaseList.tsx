@@ -23,6 +23,9 @@ const statusLabels: Record<IntelligentCase["status"], string> = {
   resolved: "Resuelto",
   closed: "Cerrado",
   archived: "Archivado",
+  scheduled: "Programado",
+  no_action: "Sin acción",
+  needs_review: "Requiere revisión",
 };
 
 function formatDate(value: string): string {
@@ -104,6 +107,13 @@ export default function CaseList({ cases, loading }: Props) {
                 <Clock3 size={14} />
                 {formatDate(item.last_activity_at)}
               </span>
+
+              {item.event_at ? (
+                <span className="case-event-at">
+                  <Clock3 size={14} />
+                  Evento: {formatDate(item.event_at)}
+                </span>
+              ) : null}
             </div>
           </div>
 

@@ -13,7 +13,10 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.services.brain_v1.analyzer import BRAIN_VERSION, Analysis, analyze
-from app.services.brain_v1.documents import amounts_compatible, brand_mentioned, extract_doc_token
+import re
+
+from app.services.brain_v1.documents import amounts_compatible, brand_mentioned, extract_doc_token, line_id
+from app.services.brain_v1.protected import fold
 
 STATUS_LABELS = {
     "new": "pendiente", "in_progress": "en seguimiento", "scheduled": "programado",
@@ -72,13 +75,26 @@ def find_case_v1(client: Any, *, workspace_id: str, account_id: str, message: di
         rows = _open_cases(client, workspace_id, metadata__doc_key=key)
         if rows:
             return rows[0]
+        if analysis.key_source == "folio" and analysis.rule in {"invoice_due", "charge_due"}:
+            # f) (cierre v1): copia del mismo folio en otro buzón después de pagado → se une al caso resuelto,
+            # sin reabrirlo ni duplicarlo.
+            rows = _open_cases(client, workspace_id, statuses=["resolved", "closed"], metadata__doc_key=key)
+            if rows:
+                return rows[0]
     if analysis.rule == "verification":
         # A7: el grupo de verificaciones de terceros vive en no_action; los repetidos se le suman.
         rows = _open_cases(client, workspace_id, statuses=OPEN_V1 + ["no_action"],
                            metadata__group_key=f"{analysis.brand}:account_verification")
         return rows[0] if rows else None
-    if analysis.rule in {"appointment", "appointment_cancel", "booking"}:
+    if analysis.rule in {"appointment", "appointment_cancel", "booking", "booking_cancel"}:
         rows = _open_cases(client, workspace_id, metadata__appt_key=analysis.sender_domain)
+        if analysis.rule == "booking_cancel":
+            # Post lote 4 (4): la cancelación solo actualiza la reserva de esa fecha; sin fecha, solo si hay una única.
+            when = (analysis.dates.event_at or "")[:10]
+            if when:
+                same_day = [r for r in rows if str(_meta(r).get("event_at") or "")[:10] == when]
+                return same_day[0] if same_day else None
+            return rows[0] if len(rows) == 1 else None
         if analysis.rule == "appointment_cancel":
             when = (analysis.dates.event_at or "")[:10]
             same_day = [r for r in rows if when and str(_meta(r).get("event_at") or "")[:10] == when]
@@ -87,6 +103,10 @@ def find_case_v1(client: Any, *, workspace_id: str, account_id: str, message: di
             return rows[0] if rows else None  # A9: la reprogramación mueve la cita abierta del mismo remitente
         when = (analysis.dates.event_at or "")[:10]
         same_day = [r for r in rows if when and str(_meta(r).get("event_at") or "")[:10] == when]
+        if analysis.rule == "booking":
+            # Post lote 4 (4): dos reservas del mismo dominio y día (vuelo y hotel) son compromisos distintos.
+            sender = str(message.get("sender") or "").lower()
+            same_day = [r for r in same_day if not _meta(r).get("appt_sender") or _meta(r).get("appt_sender") in sender]
         return same_day[0] if same_day else None  # una cita nueva en otra fecha es otro compromiso
     thread_id = message.get("thread_id")
     if thread_id:
@@ -113,18 +133,57 @@ def _cross_sender_payment_case(client: Any, workspace_id: str, analysis: Analysi
     es compatible, o si el folio del pago aparece en el caso. Nunca cierra: queda "posible pago, confirmar".
     """
     token = extract_doc_token(text, "")
+    line = line_id(text, "")
+    remaining = _remaining_amount(text) if analysis.rule == "partial_payment" else None
     for row in _open_cases(client, workspace_id):
         meta = _meta(row)
-        if meta.get("rule") not in {"invoice_due", "charge_due"}:
+        # Post lote 4 (3): también las facturas en seguimiento (sin fecha) pueden recibir el pago.
+        if meta.get("rule") not in {"invoice_due", "charge_due", "bill_followup"}:
             continue
         if token and str(meta.get("doc_key") or "").endswith(":" + token):
             return row
         if token and (meta.get("key_source") or "folio") == "folio":
             continue  # C4: folios distintos nunca se unen
         same_brand = meta.get("brand") == analysis.brand or brand_mentioned(meta.get("brand"), text)
-        if same_brand and amounts_compatible(meta.get("amount"), analysis.amount):
+        if not same_brand:
+            continue  # el emisor es evidencia obligatoria cuando no hay folio
+        same_line = bool(line) and f"linea-{line}:" in str(meta.get("doc_key") or "")
+        if amounts_compatible(meta.get("amount"), analysis.amount) or same_line:
             return row
+        if remaining is not None and analysis.amount is not None and amounts_compatible(meta.get("amount"), analysis.amount + remaining):
+            return row  # pago parcial: pagado + saldo restante = total de la factura
     return None
+
+
+_REMAINING_RE = re.compile(r"(saldo restante|restante|remaining balance|saldo pendiente|resta por pagar)[^$\d\n]{0,15}\$?\s?(\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)")
+
+
+def _remaining_amount(text: str) -> float | None:
+    m = _REMAINING_RE.search(fold(text))
+    try:
+        return round(float(m[2].replace(",", "")), 2) if m else None
+    except ValueError:
+        return None
+
+
+def _payment_uncertain(client: Any, workspace_id: str, analysis: Analysis, text: str) -> bool:
+    """Post lote 4 (3): pago sin caso. Incierto (→ revisión) si dice expresamente que no trae referencia, o si no trae
+    referencia y su importe coincide con una obligación abierta (de cualquier emisor); nunca se une ni la cierra."""
+    if _NO_REFERENCE_RE.search(fold(text)):
+        return True
+    if extract_doc_token(text, ""):
+        return False
+    for row in _open_cases(client, workspace_id):
+        meta = _meta(row)
+        if meta.get("rule") in {"invoice_due", "charge_due", "bill_followup"} and amounts_compatible(meta.get("amount"), analysis.amount):
+            return True
+    return False
+
+
+_NO_REFERENCE_RE = re.compile(
+    r"(sin (numero de )?(factura|referencia|folio)|no (se )?incluye (el |un )?(numero de )?(factura|referencia|folio)|"
+    r"without (an? )?(invoice|reference)( number)?|no (invoice|reference) (number )?(was )?(included|provided))"
+)
 
 
 def _priority(analysis: Analysis, text: str, received_at: str) -> tuple[str, int]:
@@ -134,7 +193,16 @@ def _priority(analysis: Analysis, text: str, received_at: str) -> tuple[str, int
     if analysis.rule == "verification":
         return "low", 1
     if analysis.rule == "security_action":
-        return "critical", 3  # A2: alerta de seguridad con acción → N1
+        # Política única de seguridad: crítica solo con urgencia explícita + riesgo significativo; si no, N2.
+        if analysis.severity == "critical":
+            return "critical", 3
+        return ("high", 3) if analysis.severity == "risk" else ("normal", 2)  # post lote 4: riesgo comprobado = N1
+    if analysis.rule == "security_unverified":
+        return "normal", 2  # remitente no confiable: revisión, nunca crítica automática
+    if analysis.rule == "bill_followup":
+        return "normal", 1  # sin vencimiento: seguimiento, nunca urgencia inventada
+    if analysis.rule in {"renewal_upcoming", "renewal_action"}:
+        return "normal", 1  # post lote 4 (5): suscripción: visible, no urgente
     if analysis.rule == "outbound_wait":
         return "normal", 1  # A8: la espera es del otro; el plazo no es un riesgo del usuario
     if analysis.rule in {"appointment", "booking"}:
@@ -145,7 +213,7 @@ def _priority(analysis: Analysis, text: str, received_at: str) -> tuple[str, int
         if due:
             try:
                 days = (datetime.fromisoformat(due) - datetime.fromisoformat(received_at.replace("Z", "+00:00"))).days
-                if days <= 3:
+                if 0 <= days <= 3:  # post lote 4 (7): una fecha ya vencida no sube sola a alta
                     priority = "high" if priority != "critical" else priority
             except ValueError:
                 pass
@@ -178,6 +246,12 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
     from app.utils.html_text import strip_css_noise
 
     message_id = str(message["id"])
+    # Control 7.2 (idempotencia): un mensaje ya ligado a un caso nunca vuelve a crear, unir ni cerrar nada.
+    from app.services.case_engine import _rows as _rows_q
+
+    already = _rows_q(client.table("case_messages").select("case_id").eq("message_id", message_id).limit(1).execute())
+    if already:
+        return str(already[0]["case_id"]), "already_linked"
     received_at = _to_iso(message.get("received_at"))
     subject = strip_css_noise(str(message.get("subject") or "")) or "(Sin asunto)"
     body = str(message.get("body_text") or message.get("snippet") or "")
@@ -196,7 +270,7 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
         cross_sender = case is not None
     if analysis.rule in {"payment_confirmation", "partial_payment"}:
         if not case:
-            return None, "no_case"
+            return None, ("payment_uncertain" if _payment_uncertain(client, workspace_id, analysis, text) else "no_case")
         meta = _meta(case)
         strong = (
             not cross_sender
@@ -204,6 +278,7 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
             and analysis.rule == "payment_confirmation" and analysis.doc_key
             and meta.get("doc_key") == analysis.doc_key
             and amounts_compatible(meta.get("amount"), analysis.amount)
+            and meta.get("rule") in {"invoice_due", "charge_due"}  # post lote 4: nunca cierra un seguimiento sin confirmar
         )
         evidence = {"message_id": message_id, "snippet": snippet, "amount": analysis.amount, "doc_key": analysis.doc_key,
                     "payment_source": "otro_remitente" if cross_sender else "mismo_remitente"}
@@ -224,7 +299,10 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
         else:
             client.table("intelligent_cases").update({
                 "last_activity_at": received_at, "source_count": int(case.get("source_count") or 0) + 1,
-                "metadata": {**meta, "payment_status": "possible", "payment_hint": "posible pago, confirmar",
+                "metadata": {**meta, **({"payment_status": "partial", "payment_hint": "pago parcial; sigue abierto",
+                                         "payment_remaining": _remaining_amount(text)}
+                                        if analysis.rule == "partial_payment" else
+                                        {"payment_status": "possible", "payment_hint": "posible pago, confirmar"}),
                              "payment_evidence": evidence},
             }).eq("id", case["id"]).execute()
             create_case_event(client=client, workspace_id=workspace_id, case_id=str(case["id"]), message_id=message_id,
@@ -232,7 +310,7 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
                               description="Coincidencia parcial (folio o importe); el caso sigue abierto.",
                               dedupe_key=f"possible_payment:{message_id}", metadata=evidence)
             result = "possible_payment"
-    elif analysis.rule == "appointment_cancel":
+    elif analysis.rule in {"appointment_cancel", "booking_cancel"}:
         if not case:
             return None, "no_case"
         client.table("intelligent_cases").update({
@@ -246,8 +324,10 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
         result = "linked"
     elif case is None:
         priority, level = _priority(analysis, text, received_at)
-        if analysis.rule in {"appointment", "booking"}:
+        if analysis.rule in {"appointment", "booking", "renewal_upcoming"}:
             status = "scheduled"
+        elif analysis.rule == "bill_followup":
+            status = "needs_review"  # post lote 4 (2): sin fecha escrita = seguimiento en revisión, nunca pendiente firme
         elif analysis.rule == "verification" and analysis.brand != "donexto":
             status = "no_action"  # A7: verificación de terceros: un elemento agrupado, nunca pendiente
         elif analysis.rule == "outbound_wait":
@@ -272,6 +352,13 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
             metadata["group_key"] = f"{analysis.brand}:account_verification"
         if analysis.rule in {"appointment", "booking"}:
             metadata["appt_key"] = analysis.sender_domain
+        if analysis.rule == "booking":
+            metadata["appt_sender"] = sender_email.lower() if sender_email else None
+        if analysis.dates.due_at and analysis.rule in {"invoice_due", "charge_due"}:
+            try:
+                metadata["overdue"] = datetime.fromisoformat(analysis.dates.due_at) < datetime.fromisoformat(received_at.replace("Z", "+00:00"))
+            except ValueError:
+                pass
         response = client.table("intelligent_cases").insert({
             "workspace_id": workspace_id, "account_id": account_id, "primary_thread_id": message.get("thread_id"),
             "title": subject, "normalized_subject": normalized,
@@ -301,7 +388,8 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
             "metadata": {**meta, "message_confidences": confidences,
                          "evidence": (meta.get("evidence") or [])[-9:] + [{"message_id": message_id, "snippet": snippet}]},
         }
-        reminder = analysis.rule in {"invoice_due", "charge_due", "request", "legacy_action", "verification"}
+        reminder = (analysis.rule in {"invoice_due", "charge_due", "request", "legacy_action", "verification"}
+                    and case.get("status") not in CLOSED_V1)
         if reminder:
             updates["reminder_count"] = int(case.get("reminder_count") or 0) + 1
         # C2: un recordatorio puede completar la fecha, nunca sobrescribir una con evidencia.
@@ -328,7 +416,7 @@ def process_message_v1(*, client: Any, workspace_id: str, account_id: str, messa
         if direction == "outbound":
             updates["status"] = "waiting_external" if case.get("status") in {"new", "in_progress"} else case.get("status")
             updates["waiting_on"] = "external"
-        if case.get("status") == "needs_review" and updates["confidence"] >= 0.5:
+        if case.get("status") == "needs_review" and updates["confidence"] >= 0.5 and _meta(case).get("rule") != "bill_followup":
             updates["status"] = "new"
         _no_null_dates(updates, case)
         client.table("intelligent_cases").update(updates).eq("id", case["id"]).execute()
@@ -401,7 +489,11 @@ def classify_pending_messages_v1(*, client: Any, account_id: str, workspace_id: 
                     case_id, outcome = process_message_v1(client=client, workspace_id=workspace_id,
                                                           account_id=account_id, message=message, analysis=analysis)
             triage = analysis.triage
-            if outcome == "no_case" and analysis.rule in {"payment_confirmation", "partial_payment", "appointment_cancel"}:
+            if outcome == "payment_uncertain":
+                # Post lote 4 (3): pago sin obligación identificable → revisión, nunca aviso suelto ni cierre.
+                outcome, triage = "no_case", "review"
+            elif outcome == "no_case" and analysis.rule in {"payment_confirmation", "partial_payment", "appointment_cancel",
+                                                              "booking_cancel"}:
                 triage = "notice"
             client.table("communication_messages").update({
                 "normalized_subject": normalize_subject(str(message.get("subject") or "")),

@@ -43,6 +43,7 @@ import {
   areaChip,
   buildLifeItems,
   isOpenStatus,
+  BRAIN_V1_STATUSES,
   urgencyOf,
   type InboxCase,
   type InboxThread,
@@ -113,7 +114,7 @@ export type MailSyncState =
   | { phase: "error"; reason: "auth" | "failed" | "timeout"; message?: string };
 
 type ViewId = "today" | "areas" | "money" | "orders" | "subs" | "alerts" | "settings";
-type StatusFilter = "open" | "done" | "all" | "high";
+type StatusFilter = "open" | "done" | "all" | "high" | "review";
 
 export type NucleoAppProps = {
   userId: string;
@@ -781,7 +782,8 @@ export function NucleoApp(props: NucleoAppProps) {
   const actionToday = needsActionToday(items, new Date(clock), snoozed);
   const ordersOpen = openItems.filter((item) => item.area === "orders").length;
   const alertCount = openItems.filter((item) => item.area === "security" || item.priority === "high" || item.priority === "critical" || itemMatchesRules(item, prefs.alertRules)).length + notes.filter((note) => !note.read_at).length;
-  const visible = filterItems(items, view, areaFilter, statusFilter, prefs);
+  const brainActive = items.some((item) => item.source === "case" && BRAIN_V1_STATUSES.has(item.status));
+  const visible = filterItems(items, view, areaFilter, brainActive || statusFilter !== "review" ? statusFilter : "open", prefs);
   const spoken = summaryParts(actionToday.map((item) => item.line), actionToday.length, 3);
   const summary = actionToday.length === 0
     ? t("summaryEmpty")
@@ -1147,6 +1149,7 @@ export function NucleoApp(props: NucleoAppProps) {
                   connected={props.connected}
                   statusFilter={statusFilter}
                   onStatus={setStatusFilter}
+                  showReview={brainActive}
                   locale={locale}
                   notes={view === "alerts" ? notes : []}
                   onOpen={openItem}
@@ -1307,6 +1310,8 @@ function ListView(props: {
   connected: boolean;
   statusFilter: StatusFilter;
   onStatus: (filter: StatusFilter) => void;
+  /** Cerebro v1: el filtro "Por revisar" solo aparece si hay estados del cerebro (bandera encendida). */
+  showReview?: boolean;
   locale: string;
   notes: AppNotification[];
   onOpen: (item: LifeItem) => void;
@@ -1321,9 +1326,9 @@ function ListView(props: {
         {props.onClearArea ? <button type="button" className="btn sm" onClick={props.onClearArea}><X className="i" />{props.t("clearFilter")}</button> : null}
       </div>
       <div className="filters" role="toolbar">
-        {(["open", "high", "done", "all"] as StatusFilter[]).map((filter) => (
+        {((props.showReview ? ["open", "high", "review", "done", "all"] : ["open", "high", "done", "all"]) as StatusFilter[]).map((filter) => (
           <button key={filter} type="button" className={props.statusFilter === filter ? "btn primary sm" : "btn sm"} onClick={() => props.onStatus(filter)}>
-            {props.t(filter === "open" ? "filtersOpen" : filter === "done" ? "filtersDone" : filter === "high" ? "filtersHigh" : "filtersAll")}
+            {props.t(filter === "open" ? "filtersOpen" : filter === "done" ? "filtersDone" : filter === "high" ? "filtersHigh" : filter === "review" ? "filtersReview" : "filtersAll")}
           </button>
         ))}
       </div>
@@ -1521,6 +1526,7 @@ function filterItems(items: LifeItem[], view: ViewId, area: LifeAreaId | "all", 
     if (view === "areas" && area !== "all" && item.area !== area) return false;
     if (status === "open" && !isOpenStatus(item.status)) return false;
     if (status === "done" && isOpenStatus(item.status)) return false;
+    if (status === "review" && !item.needsReview) return false;
     if (status === "high" && item.priority !== "high" && item.priority !== "critical" && urgencyOf(item) !== "high") return false;
     return true;
   });
@@ -1592,6 +1598,9 @@ function statusLabel(t: (key: NxKey) => string, status: string): string {
   if (status === "delegated") return t("statusDelegated");
   if (status === "resolved" || status === "done") return t("statusResolved");
   if (status === "closed" || status === "archived") return t("statusClosed");
+  if (status === "scheduled") return t("statusScheduled");
+  if (status === "no_action") return t("statusNoAction");
+  if (status === "needs_review") return t("statusNeedsReview");
   return status;
 }
 
