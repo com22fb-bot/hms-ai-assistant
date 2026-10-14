@@ -42,11 +42,12 @@ DUE_CUE = re.compile(
 EVENT_CUE = re.compile(
     r"(\bcita\b|appointment|reunion|meeting|consulta|\bevento\b|\bevent\b|vuelo|flight|agendad|programad|scheduled|"
     r"webinar|entrevista|interview|llegue|arrive|itinerario|itinerary|reservacion|reservation|check-?in|"
-    r"reprogramad|rescheduled|registro (esta )?confirmado|"
+    r"reprogramad|rescheduled|registro (esta )?confirmado|\bjunta\b|\bdeparts?\b|te esperamos|"
     r"entradas?|boletos?|tickets?|hospedaje|estancia|alojamiento|hotel|\bstay\b|lodging|concierto|concert|funcion|"
     # Post lote 4: reservas de restaurante o lugar ("tu mesa está reservada para el ...").
     r"\breserva\b|\breservad[ao]s?\b|\bmesa\b|salida|departure)"
 )
+QUOTE_HEADER_RE = re.compile(r"(\b(escribio|wrote)\s*:|^\s*>|forwarded message|mensaje reenviado|mensaje original|original message)")
 RENEWAL_CUE = re.compile(r"(renovar|renueva|renew|proximo cobro|proximo cargo|next (charge|billing))")
 _MONTH_NAMES = "|".join(sorted(MONTHS, key=len, reverse=True))
 _WD = "|".join(WEEKDAYS)
@@ -132,8 +133,12 @@ def _safe(y: int, m: int, d: int) -> date | None:
 WEEKDAY_WITH_DATE_RE = re.compile(r"\b(" + "|".join(WEEKDAYS) + r")\b,?\s+(?:el\s+)?(?=\d{1,2}(?: de |[/.-]| (?:" + "|".join(sorted(MONTHS, key=len, reverse=True)) + r")))")
 
 
-def _parse_in(sentence: str, anchor: date, english: bool) -> list[tuple[date | str, int]]:
-    """Fechas en la oración: (fecha | 'AMBIGUOUS', posición)."""
+# "hoy" se conserva: es el mismo día de recepción (política A14), no una inferencia.
+_RELATIVE_KINDS = {"pasado", "manana", "weekday", "in_days", "eom"}
+
+
+def _parse_in(sentence: str, anchor: date, english: bool, *, explicit_only: bool = False) -> list[tuple[date | str, int]]:
+    """Fechas en la oración: (fecha | 'AMBIGUOUS', posición). explicit_only: sin fechas relativas (mañana, el viernes)."""
     out: list[tuple[date | str, int]] = []
     taken: list[tuple[int, int]] = []
     named_weekdays = [(m[1], m.start()) for m in WEEKDAY_WITH_DATE_RE.finditer(sentence)]
@@ -144,6 +149,8 @@ def _parse_in(sentence: str, anchor: date, english: bool) -> list[tuple[date | s
         return all(span[1] <= a or span[0] >= b for a, b in taken)
 
     for kind, pattern in PATTERNS:
+        if explicit_only and kind in _RELATIVE_KINDS:
+            continue
         for m in pattern.finditer(sentence):
             if not free(m.span()):
                 continue
@@ -249,15 +256,19 @@ def extract_dates(subject: str | None, body: str | None, received_at: Any, *, ki
             has_due, has_event = bool(RENEWAL_CUE.search(sentence)), False
         if not (has_due or has_event):
             continue
-        dates = _parse_in(sentence, anchor, english)
-        if not dates:
-            continue
         if kind in {"appointment", "appointment_cancel", "event", "booking"} and has_event:
             role = "event"
         elif has_due:
             role = "due"
         else:
             role = "event"
+        # Fix event_at: un evento solo toma fecha escrita; "mañana", "el viernes" o "en 3 días" no crean event_at.
+        # Las cabeceras de citas reenviadas ("El 3 oct 2026, Ana escribió:") no son la fecha del evento.
+        if role == "event" and QUOTE_HEADER_RE.search(sentence):
+            continue
+        dates = _parse_in(sentence, anchor, english, explicit_only=(role == "event"))
+        if not dates:
+            continue
         evidence = sentence_raw.strip()[:240]
         distinct = {d for d, _ in dates}
         if (kind == "booking" and len(distinct) == 2 and "AMBIGUOUS" not in distinct

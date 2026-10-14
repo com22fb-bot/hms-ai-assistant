@@ -243,6 +243,20 @@ REQUEST_EXTRA_RE = re.compile(
     r"((puedes|podrias|pueden|podrian) (revisar|firmar|enviarme|mandarme|compartirme|confirmarme|decirme|ayudarme)|"
     r"\bavisame\b|me avisas|confirmame|dime (que|si|cuando|a que)|let me know|(could|can) you (review|sign|check))"
 )
+EVENT_NOUN_RE = re.compile(
+    r"(\breunion\b|\bjunta\b|\bmeeting\b|\bcita\b|appointment|\bvuelo\b|\bflight\b|\bdeparts?\b|check-?in|"
+    r"\bhotel\b|\breservacion\b|\breserva\b|\bbooking\b|\breservation\b|\bconcierto\b|\bconcert\b|\bevento\b|"
+    r"\bevent\b|\bfuncion\b|\bboarding\b|pase de abordar|\bmesa para\b|\bte esperamos\b|\bconferencia\b|\bcongreso\b)"
+)
+EVENT_TRAVEL_RE = re.compile(
+    r"(\bvuelo\b|\bflight\b|\bdeparts?\b|check-?in|\bhotel\b|\bhospedaje\b|\bboarding\b|pase de abordar|"
+    r"\bconcierto\b|\bconcert\b|\bboletos?\b|\btickets?\b|\bmesa para\b|\brestaurante\b|\bfuncion\b)"
+)
+# Fecha escrita (no relativa): ISO, dd/mm/aaaa, "9 de noviembre", "December 19".
+EXPLICIT_DATE_RE = re.compile(
+    r"(\b20\d{2}-\d{1,2}-\d{1,2}\b|\b\d{1,2}[/.]\d{1,2}[/.](20)?\d{2}\b|\b\d{1,2} de [a-z]{3,}|"
+    r"\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.? \d{1,2}\b|\b\d{1,2} (jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\b)"
+)
 SOCIAL_LABEL = "CATEGORY_SOCIAL"
 PROMO_LABEL = "CATEGORY_PROMOTIONS"
 
@@ -278,6 +292,7 @@ class Analysis:
     duplicate_case_id: str | None = None
     ref_key: str | None = None  # marca + folio/pedido: vincula correos relacionados (pedido → envío → reembolso)
     related_to: str | None = None
+    text_normalized: bool = False  # la clasificación salió del texto normalizado (faltas, homoglifos)
 
     def signals(self) -> dict[str, Any]:
         return {
@@ -289,7 +304,7 @@ class Analysis:
             "security_flag": self.security_flag, "security_tags": self.security_tags,
             "phishing_signals": self.phishing_signals or None, "area_review_reason": self.area_review_reason,
             "content_key": self.content_key, "duplicate_of": self.duplicate_of,
-            "ref_key": self.ref_key, "related_to": self.related_to,
+            "ref_key": self.ref_key, "related_to": self.related_to, "text_normalized": self.text_normalized or None,
             "review_reason": self.reason if self.triage == "review" or self.confidence < 0.5 else None,
             **self.dates.as_metadata(),
         }
@@ -370,7 +385,38 @@ def content_key(message: dict[str, Any]) -> str | None:
     return hashlib.sha256(f"{sender}|{subject}|{body}".encode()).hexdigest()[:32]
 
 
+_WEAK_RULES = {"ambiguous", "legacy_info", "legacy_notice", "legacy_action"}
+
+
+def _weak(result: Analysis) -> bool:
+    return result.rule in _WEAK_RULES or (result.area is None and result.security_flag is None)
+
+
 def analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> Analysis:
+    """Primera pasada sobre el texto tal cual. Si queda débil (ambiguo, sin área o sin señal), segunda pasada sobre el
+    texto normalizado (faltas, homoglifos, invisibles). La segunda solo se adopta si aporta: seguridad que la primera
+    no vio, un área donde no había, o una regla específica en vez de una genérica."""
+    from app.services.brain_v1.normalize import normalize
+
+    first = _analyze_v2(message, user_verified=user_verified)
+    if not _weak(first) and first.security_flag:
+        return first
+    subject = str(message.get("subject") or "")
+    raw_body = _decode_body(str(message.get("body_text") or message.get("snippet") or ""))
+    n_subject, n_body = normalize(subject), normalize(raw_body[:6000])
+    if n_subject == fold(subject) and n_body == fold(raw_body[:6000]):
+        return first
+    second = _analyze_v2({**message, "subject": n_subject, "body_text": n_body}, user_verified=user_verified)
+    gains_security = bool(second.security_flag) and not first.security_flag
+    # Una corrección nunca convierte un correo en publicidad/social: eso solo lo decide el texto original.
+    gains_topic = _weak(first) and not _weak(second) and second.rule not in {"promotional", "social", "bulk"}
+    if gains_security or gains_topic:
+        second.text_normalized = True
+        return second
+    return first
+
+
+def _analyze_v2(message: dict[str, Any], *, user_verified: bool | None = None) -> Analysis:
     from app.services.brain_v1.phishing_v2 import detect
     from app.services.brain_v1.taxonomy import classify_area
     from app.services.brain_v1.taxonomy_v2 import classify_v2
@@ -564,6 +610,16 @@ def _analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> A
         return analysis
 
     demand_text = PAY_LABEL_RE.sub(" ", text)  # Post lote 4 (2): "total a pagar" no es exigencia
+    # Fix event_at: reunión, junta, cita, vuelo, hotel, reserva o evento con FECHA EXPLÍCITA (nunca relativa) → compromiso
+    # programado (event_at, distinto de due_at). Sin fecha explícita sigue el flujo normal.
+    if (EVENT_NOUN_RE.search(text) and not PAY_DEMAND_RE.search(demand_text) and not PROMO_RE.search(text)
+            and not BOOKING_NOT_FIRM_RE.search(text) and not BOOKING_PENDING_RE.search(text)):
+        travel = bool(EVENT_TRAVEL_RE.search(text))
+        event = build("booking" if travel else "appointment", "notice" if travel else "action_required", True,
+                      "Evento con fecha explícita (reunión, cita, vuelo, hospedaje o reserva).",
+                      kind="booking" if travel else "appointment", protected=prot)
+        if event.dates.event_at and EXPLICIT_DATE_RE.search(fold(event.dates.event_evidence or "")):
+            return event
     if automated and not PAY_DEMAND_RE.search(demand_text):
         # A13: plantillas automáticas que solo informan.
         if ORDER_NOTICE_RE.search(text) and not ORDER_ACTION_RE.search(text):
