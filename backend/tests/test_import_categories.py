@@ -36,6 +36,23 @@ class ImportCategoryTests(unittest.TestCase):
         self.assertEqual(s["spheres"], {"ocupacion": 1, "hogar": 1, "personal": 1})
         self.assertEqual(s["social_platforms"], {"YouTube": 1})
 
+    def test_astra_v2_corrections(self):
+        gov = ("SAT <avisos@sat.gob.mx>", "Tramite de RFC")
+        self.assertEqual(ic.v2_area(*gov), "revisar")
+        self.assertEqual(ic.protected_class(*gov), "gobierno")
+        self.assertEqual(ic.v2_area("Escuela <a@escuela.mx>", "Colegiatura escuela"), ic.LEGACY_TO_V2["education"])
+        self.assertEqual(ic.LEGACY_TO_V2["education"], "hogar")
+        self.assertEqual(ic.LEGACY_TO_V2["events"], "viajes")
+        self.assertEqual(ic.LEGACY_TO_V2["insurance"], "salud")
+        # Por revisar desmarcado: el gobierno protegido se descarga; apagando la protección se salta.
+        self.assertFalse(ic.skip_message(["revisar"], *gov))
+        self.assertTrue(ic.skip_message(["revisar", "proteger:gobierno"], *gov))
+        # La protección es por correo, no por área: un seguro (no protegido) en Salud se salta.
+        self.assertTrue(ic.skip_message(["salud"], "GNP <a@gnp.mx>", "Tu poliza de seguro"))
+        s = ic.summarize([gov + ([],)])
+        self.assertEqual(s["review"], 1)
+        self.assertEqual(s["protected"]["gobierno"], 1)
+
 
 if __name__ == "__main__":
     unittest.main()
