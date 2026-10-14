@@ -272,6 +272,22 @@ _NO_AREA_RULES = {"ambiguous"}
 _REVIEW_KEEPS_AREA = {"bill_followup"}
 
 
+_CHARGE_RULES = {"invoice_due", "charge_due", "bill_followup", "invoice_info", "bill_settled"}
+# El cobro corresponde a una compra: "factura de tu pedido", "cargo por la renovación", "tu suscripción por $".
+_PURCHASE_CHARGE_RE = _rx(
+    r"(factura|cargo|cobro|recibo|pago|invoice|charge)[^.\n]{0,40}\b(pedido|compra|orden|suscripcion|membresia|renovacion|plan)\b",
+    r"\b(pedido|compra|orden|suscripcion|membresia|renovacion|order|subscription)\b[^.\n]{0,40}(factura|cargo|cobro|total|\$|mxn|usd)")
+
+
+def _reliable_topic(text: str) -> str | None:
+    strong: dict[str, int] = {}
+    for area, weight, pattern in TOPIC_SIGNALS:
+        if weight >= 3 and pattern.search(text):
+            strong[area] = strong.get(area, 0) + 1
+    hits = [a for a, n in strong.items() if n >= 2]
+    return hits[0] if len(hits) == 1 and all(n < 2 for a, n in strong.items() if a != hits[0]) else None
+
+
 def _sender_tokens(sender_l: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", sender_l.replace(".invalid", " ").replace(".example", " "))
 
@@ -291,7 +307,12 @@ def classify_v2(rule: str, text: str, sender: str, confidence: float, *, phishin
     sender_l = (sender or "").lower()
     probe = f"{sender_l}\n{text}"
     if phishing:
-        return {"area": None, "area_label": None, "hat": None, "tags": [], "security_flag": "N1",
+        # L7reg2 (a, ASTRA): fraude N1 → Por revisar + alerta (nunca se oculta). Solo conserva un área temática con
+        # evidencia explícita y fiable: dos señales fuertes distintas del MISMO tema en el texto, y tema único.
+        reliable = _reliable_topic(text)
+        return {"area": reliable, "area_label": AREAS.get(reliable) if reliable else None,
+                "hat": HATS.get(reliable) if reliable else None, "tags": _tags(reliable, text) if reliable else [],
+                "security_flag": "N1",
                 "security_tags": security_tags(text, phishing_tags=phishing_tags or ["Phishing sospechoso"]),
                 "review_reason": "Posible phishing o fraude: no interactúes; revisa."}
     if input_limit:
@@ -313,8 +334,10 @@ def classify_v2(rule: str, text: str, sender: str, confidence: float, *, phishin
         if not explicit:
             return _review("Correo ambiguo o en revisión: no se asigna un área por defecto.")
         area = next(a for a in _ORDER if scores.get(a) == best)
+        # L7reg2 (b): conserva el área Y la marca de revisión.
         return {"area": area, "area_label": AREAS[area], "hat": HATS[area], "tags": _tags(area, text),
-                "security_flag": None, "security_tags": [], "review_reason": None}
+                "security_flag": None, "security_tags": [],
+                "review_reason": "En revisión: el tema es explícito, pero el correo necesita tu confirmación."}
     if rule in _WEAK_TOPIC_RULES and not explicit:
         # Regla genérica sin tema explícito fuerte en el texto → Por revisar (nunca un área por defecto).
         return _review("Sin tema reconocible.")
@@ -326,6 +349,14 @@ def classify_v2(rule: str, text: str, sender: str, confidence: float, *, phishin
     # Factura/cobro de negocio (proveedor, nube, consultoría) → Trabajo; depósito de nómina sigue en Dinero.
     if prior == "dinero" and _WORK_INVOICE_RE.search(text) and not _PERSONAL_ROLE_RE.search(text):
         prior = "trabajo"
+    if rule in _CHARGE_RULES and prior in {"dinero", "trabajo"}:
+        # L7reg2 (c, ASTRA): un cobro se decide por CONTEXTO del propio cobro, nunca en bloque ni por el asunto suelto:
+        # operación de negocio comprobada → Trabajo; el cobro es de un pedido/compra/renovación → Compras;
+        # obligación, cargo o factura personal → Dinero.
+        work = prior == "trabajo" or scores.get("trabajo", 0) >= 3  # nómina, contrato, proyecto: operación laboral
+        area = "trabajo" if work else ("compras" if _PURCHASE_CHARGE_RE.search(text) else "dinero")
+        return {"area": area, "area_label": AREAS[area], "hat": HATS[area], "tags": _tags(area, text),
+                "security_flag": None, "security_tags": [], "review_reason": None}
     flag = None
     if rule in _SECURITY_RULES:
         strong = rule in {"security_action", "security_unverified"} or severity in {"critical", "risk", "compromise", "check"}
