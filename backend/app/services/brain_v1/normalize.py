@@ -24,6 +24,7 @@ _LEET = str.maketrans({"0": "o", "3": "e", "4": "a", "5": "s", "@": "a", "$": "s
 _ANSI_RE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
 _TOKEN_RE = re.compile(r"[a-z0-9@$]+")
 _SQUEEZE_RE = re.compile(r"([a-z])\1+")
+_SPACES_RE = re.compile(r"[ \t\u00a0]{2,}")
 
 
 def clean(text: str | None) -> str:
@@ -98,6 +99,8 @@ def _correct(token: str) -> str:
         leet = token.translate(_LEET)
         if leet in vocab:
             return leet
+        if "@" in token:
+            return token  # L7reg1 (4): una dirección (ana@correo) nunca se "corrige"; solo F@ctura → factura si es palabra clave
         token = leet if not any(c.isdigit() for c in token[:1]) else token
     s = _squeeze(token)
     if s in squeezed:
@@ -115,5 +118,5 @@ def _correct(token: str) -> str:
 
 def normalize(text: str | None) -> str:
     """Texto limpio + palabras clave corregidas. Mantiene puntuación, números y saltos de línea."""
-    base = clean(text)
+    base = _SPACES_RE.sub(" ", clean(text))  # L7reg1 (4): espacios repetidos/tabuladores → uno (no toca saltos de línea)
     return _TOKEN_RE.sub(lambda m: _correct(m[0]), base)
