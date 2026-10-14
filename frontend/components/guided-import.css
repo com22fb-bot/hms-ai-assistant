@@ -870,3 +870,18 @@
   overflow-wrap: anywhere;
   word-break: break-word;
 }
+
+/* Vista previa v2: alertas arriba, mundos con áreas, personalizado por mundo. */
+.hms-import-alerts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; }
+.hms-import-alerts div { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.05); }
+.hms-import-alerts .is-security { background: rgba(255, 176, 32, .12); }
+.hms-import-alerts strong { margin-left: auto; color: #2fe3df; }
+.hms-import-alerts small { display: none; }
+.hms-import-spheres ul { list-style: none; margin: 4px 0 0; padding: 0; font-size: .82em; }
+.hms-import-spheres li { display: flex; justify-content: space-between; gap: 6px; opacity: .85; }
+.hms-import-world { margin: 6px 0; }
+.hms-import-world-head { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.hms-import-world-head.is-off { opacity: .5; }
+.hms-import-world.is-protected { padding: 6px 8px; border-radius: 10px; background: rgba(47, 227, 223, .06); }
+.hms-import-social-list { font-size: .8em; opacity: .75; }
+@media (min-width: 640px) { .hms-import-alerts small { display: inline; opacity: .7; } }

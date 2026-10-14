@@ -52,6 +52,11 @@ type Preview = {
   sampled: number;
   categories: Record<string, number>;
   spheres: { hogar: number; ocupacion: number; personal: number };
+  worlds?: { hogar: number; ocupacion: number; personal: number };
+  areas?: Record<string, number>;
+  review?: number;
+  security?: number;
+  protected?: Record<string, number>;
   social_platforms: Record<string, number>;
   scale: number;
   history_days: number;
@@ -63,27 +68,31 @@ type Preview = {
   coverage?: number;
 };
 
-/** 13 áreas de vida con esfera; con Redes sociales, Promociones y Otros suman las 16 de lifeAreas.ts. */
-const AREAS: Array<{ id: string; label: string; sphere: "hogar" | "ocupacion" | "personal" }> = [
-  { id: "money", label: "Dinero", sphere: "personal" },
-  { id: "bills", label: "Recibos", sphere: "hogar" },
-  { id: "orders", label: "Pedidos", sphere: "personal" },
-  { id: "subscriptions", label: "Suscripciones", sphere: "personal" },
-  { id: "work", label: "Trabajo", sphere: "ocupacion" },
-  { id: "home", label: "Hogar y familia", sphere: "hogar" },
-  { id: "health", label: "Salud", sphere: "personal" },
-  { id: "travel", label: "Viajes", sphere: "personal" },
-  { id: "security", label: "Seguridad", sphere: "personal" },
-  { id: "government", label: "Trámites", sphere: "personal" },
-  { id: "insurance", label: "Seguros", sphere: "hogar" },
-  { id: "education", label: "Educación", sphere: "personal" },
-  { id: "events", label: "Eventos", sphere: "ocupacion" },
+type World = "ocupacion" | "hogar" | "personal";
+/** Taxonomía v2 (docs/TAXONOMIA_V2.md): 3 mundos · 7 áreas. Seguridad es alerta, no área; no hay "Otros". */
+const AREAS: Array<{ id: string; label: string; sphere: World }> = [
+  { id: "trabajo", label: "Trabajo y negocios", sphere: "ocupacion" },
+  { id: "hogar", label: "Hogar y familia", sphere: "hogar" },
+  { id: "dinero", label: "Dinero y facturas", sphere: "hogar" },
+  { id: "compras", label: "Compras y suscripciones", sphere: "hogar" },
+  { id: "salud", label: "Salud y seguros", sphere: "personal" },
+  { id: "viajes", label: "Viajes y eventos", sphere: "personal" },
+  { id: "promociones", label: "Promociones y social", sphere: "personal" },
 ];
-const SPHERES: Array<{ id: "hogar" | "ocupacion" | "personal"; label: string }> = [
-  { id: "hogar", label: "Hogar" },
+const SPHERES: Array<{ id: World; label: string }> = [
   { id: "ocupacion", label: "Ocupación" },
+  { id: "hogar", label: "Hogar" },
   { id: "personal", label: "Personal" },
 ];
+/** Siempre se descargan (aunque su área esté desmarcada) mientras sigan encendidas. */
+const PROTECTED: Array<{ id: string; label: string }> = [
+  { id: "seguridad", label: "Seguridad" },
+  { id: "bancos", label: "Bancos" },
+  { id: "gobierno", label: "Gobierno" },
+  { id: "facturas", label: "Facturas" },
+  { id: "salud", label: "Salud" },
+];
+const PROTECT = "proteger:";
 /** Redes que Donexto reconoce por el dominio del remitente. */
 const SOCIAL_LIST = [
   "YouTube", "Instagram", "Facebook", "TikTok", "LinkedIn", "X/Twitter", "Snapchat", "Telegram",
@@ -225,7 +234,12 @@ export function GuidedImportWizard({
 
   function countBadge(id: string) {
     if (!preview || preview.unavailable) return null;
-    const value = estimate(preview.categories[id] ?? 0, preview.scale);
+    const raw = id === "revisar"
+      ? preview.review ?? 0
+      : id.startsWith(PROTECT)
+        ? preview.protected?.[id.slice(PROTECT.length)] ?? 0
+        : preview.areas?.[id] ?? 0;
+    const value = estimate(raw, preview.scale);
     const sample = examplesFor(preview, id);
     return (
       <em
@@ -239,6 +253,19 @@ export function GuidedImportWizard({
         {preview.exact && !preview.partial ? "" : "~"}{value.toLocaleString()}
       </em>
     );
+  }
+
+  function num(value: number | undefined): string {
+    if (!preview || preview.unavailable) return previewLoading ? "…" : "—";
+    return `${preview.exact && !preview.partial ? "" : "~"}${estimate(value ?? 0, preview.scale).toLocaleString()}`;
+  }
+
+  function toggleWorld(world: World) {
+    const ids = AREAS.filter((area) => area.sphere === world).map((area) => area.id);
+    setExclude((current) => {
+      const allOff = ids.every((id) => current.includes(id));
+      return allOff ? current.filter((x) => !ids.includes(x)) : [...new Set([...current, ...ids])];
+    });
   }
 
   function toggle(id: string) {
@@ -475,20 +502,33 @@ export function GuidedImportWizard({
               {" · "}Excluidos siempre: borradores {inventory.excluded.drafts.toLocaleString()}, spam {inventory.excluded.spam.toLocaleString()}, papelera {inventory.excluded.trash.toLocaleString()}
             </p>
 
-            <section className="hms-import-spheres" aria-label="Vista previa por esferas">
+            <section className="hms-import-alerts" aria-label="Alertas">
+              <div className="is-security">
+                <ShieldCheck size={16} />
+                <span>Seguridad</span>
+                <strong>{num(preview?.security)}</strong>
+                <small>alertas en todas las áreas</small>
+              </div>
+              <div>
+                <Inbox size={16} />
+                <span>Por revisar</span>
+                <strong>{num(preview?.review)}</strong>
+                <small>sin área clara aún</small>
+              </div>
+            </section>
+
+            <section className="hms-import-spheres" aria-label="Vista previa por mundos">
               {SPHERES.map((sphere) => (
                 <article key={sphere.id}>
                   <span>{sphere.label}</span>
-                  <strong>
-                    {preview && !preview.unavailable
-                      ? `${preview.exact && !preview.partial ? "" : "~"}${estimate(preview.spheres[sphere.id], preview.scale).toLocaleString()}`
-                      : previewLoading ? "…" : "—"}
-                  </strong>
-                  <small>
-                    {AREAS.filter((area) => area.sphere === sphere.id)
-                      .map((area) => area.label)
-                      .join(" · ")}
-                  </small>
+                  <strong>{num((preview?.worlds ?? preview?.spheres)?.[sphere.id])}</strong>
+                  <ul>
+                    {AREAS.filter((area) => area.sphere === sphere.id).map((area) => (
+                      <li key={area.id}>
+                        {area.label} <b>{num(preview?.areas?.[area.id])}</b>
+                      </li>
+                    ))}
+                  </ul>
                 </article>
               ))}
             </section>
@@ -535,24 +575,33 @@ export function GuidedImportWizard({
 
             {choice === "custom" ? (
               <section className="hms-import-custom" aria-label="Categorías a importar">
-                <p>Desmarca lo que no quieres traer. Lo que quites no se descarga.</p>
+                <p>Elige mundos y áreas. Lo que desmarques no se descarga, salvo lo protegido.</p>
+                {SPHERES.map((sphere) => {
+                  const ids = AREAS.filter((area) => area.sphere === sphere.id).map((area) => area.id);
+                  const worldOff = ids.every((id) => exclude.includes(id));
+                  return (
+                    <div key={sphere.id} className="hms-import-world">
+                      <label className={`hms-import-world-head ${worldOff ? "is-off" : ""}`}>
+                        <input type="checkbox" checked={!worldOff} onChange={() => toggleWorld(sphere.id)} />
+                        <b>{sphere.label}</b>
+                      </label>
+                      <div className="hms-import-chips">
+                        {AREAS.filter((area) => area.sphere === sphere.id).map((area) => (
+                          <label key={area.id} className={exclude.includes(area.id) ? "is-off" : ""}>
+                            <input type="checkbox" checked={!exclude.includes(area.id)} onChange={() => toggle(area.id)} />
+                            {area.label}
+                            {countBadge(area.id)}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
                 <div className="hms-import-chips">
-                  {AREAS.map((area) => (
-                    <label key={area.id} className={exclude.includes(area.id) ? "is-off" : ""}>
-                      <input type="checkbox" checked={!exclude.includes(area.id)} onChange={() => toggle(area.id)} />
-                      {area.label}
-                      {countBadge(area.id)}
-                    </label>
-                  ))}
-                  <label className={exclude.includes("promos") ? "is-off" : ""}>
-                    <input type="checkbox" checked={!exclude.includes("promos")} onChange={() => toggle("promos")} />
-                    Promociones
-                    {countBadge("promos")}
-                  </label>
-                  <label className={exclude.includes("other") ? "is-off" : ""}>
-                    <input type="checkbox" checked={!exclude.includes("other")} onChange={() => toggle("other")} />
-                    Otros
-                    {countBadge("other")}
+                  <label className={exclude.includes("revisar") ? "is-off" : ""}>
+                    <input type="checkbox" checked={!exclude.includes("revisar")} onChange={() => toggle("revisar")} />
+                    Por revisar
+                    {countBadge("revisar")}
                   </label>
                 </div>
                 {focusArea && examplesFor(preview, focusArea) ? (
@@ -560,19 +609,30 @@ export function GuidedImportWizard({
                     Ejemplos: {examplesFor(preview, focusArea)}
                   </p>
                 ) : null}
-                <label className={`hms-import-social ${exclude.includes("social") ? "is-off" : ""}`}>
-                  <input type="checkbox" checked={!exclude.includes("social")} onChange={() => toggle("social")} />
-                  <span>
-                    <b>Redes sociales</b>
-                    {" "}{countBadge("social")}
-                    <small>
-                      {(Object.keys(preview?.social_platforms ?? {}).length
-                        ? Object.keys(preview?.social_platforms ?? {})
-                        : SOCIAL_LIST
-                      ).join(" · ")}
-                    </small>
+                <div className="hms-import-world is-protected">
+                  <span className="hms-import-world-head">
+                    <ShieldCheck size={14} /> <b>Protegidas</b> · se descargan siempre, aunque desmarques su área
                   </span>
-                </label>
+                  <div className="hms-import-chips">
+                    {PROTECTED.map((item) => {
+                      const key = PROTECT + item.id;
+                      return (
+                        <label key={key} className={exclude.includes(key) ? "is-off" : ""}>
+                          <input type="checkbox" checked={!exclude.includes(key)} onChange={() => toggle(key)} />
+                          {item.label}
+                          {countBadge(key)}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+                <p className="hms-import-social-list">
+                  Redes en Promociones y social:{" "}
+                  {(Object.keys(preview?.social_platforms ?? {}).length
+                    ? Object.keys(preview?.social_platforms ?? {})
+                    : SOCIAL_LIST
+                  ).join(" · ")}
+                </p>
               </section>
             ) : null}
 
@@ -596,7 +656,7 @@ export function GuidedImportWizard({
                 )}
                 {starting
                   ? "Iniciando…"
-                  : choice === "custom" && exclude.length
+                  : choice === "custom" && exclude.some((id) => !id.startsWith(PROTECT))
                     ? "Descargar lo elegido y clasificar"
                     : `Descargar y clasificar ${inventory.eligible_messages.toLocaleString()} mensajes`}
               </button>
