@@ -56,7 +56,7 @@ CATALOG: dict[str, tuple[str, ...]] = {
                     "Boletines informativos", "Boletines temáticos", "Promociones", "Cupones", "Ofertas y rebajas",
                     "Marketing comercial", "Invitaciones promocionales", "Encuestas comerciales",
                     "Programas de fidelidad", "Comunicaciones de creadores", "Comunidades de interés",
-                    "Alertas de reputación social", "Concursos y sorteos", "Ofertas de seguros"),
+                    "Alertas de reputación social", "Concursos y sorteos", "Ofertas de seguros", "Spam"),
 }
 SECURITY_TAGS = ("Inicio de sesión desconocido", "Cuenta posiblemente comprometida", "Cambio de contraseña",
                  "Recuperación de cuenta", "Código de verificación", "Suplantación de identidad", "Phishing sospechoso",
@@ -79,11 +79,11 @@ TOPIC_SIGNALS: list[tuple[str, int, re.Pattern[str]]] = [
     ("trabajo", 3, _rx(r"\bproyecto\b", r"\bsprint\b", r"\bpmo\b", r"\bdemo\b", r"\bstand-?up\b", r"reunion de (seguimiento|equipo|trabajo|proyecto)",
                        r"\bkick-?off\b", r"entregables?", r"\bcliente(s)? (nos|pide|solicita)")),
     ("trabajo", 3, _rx(r"servicios de (consultoria|asesoria|desarrollo|hosting|nube)", r"\bproveedor(a)?\b", r"cuentas por pagar",
-                       r"orden de compra", r"\bcloud\s?host", r"\bhosting\b", r"\bservidores?\b", r"\bsaas\b", r"\binvoice\b.{0,60}\b(usd|eur)\b")),
+                       r"orden de compra", r"\bcloud\s?host", r"\bhosting\b", r"\bservidores?\b", r"\bsaas\b", r"(?<!your )\binvoice\b.{0,60}\b(usd|eur)\b.{0,40}(services|servicios|consult|hosting|cloud)")),
     ("trabajo", 2, _rx(r"\b(estimados|les compartimos)\b", r"\bequipo\b", r"\bteam\b")),
     # Hogar y familia
     ("hogar", 3, _rx(r"\bcolegio\b", r"\bescuela\b", r"padres de familia", r"\bmaestr[ao]\b", r"boleta de calificaciones", r"\bguarderia",
-                     r"\bgrupo \d[a-z]\b")),
+                     r"\bgrupo \d[a-z]\b", r"\baviso escolar\b", r"\bcircular escolar\b")),
     ("hogar", 3, _rx(r"\bedificio\b", r"\bcondominio\b", r"administracion del (edificio|condominio)", r"\bcisterna\b", r"cuota de mantenimiento",
                      r"\bcasero\b", r"\barrendador")),
     ("hogar", 3, _rx(r"\bmascota", r"\bveterinari", r"\bantirrabica", r"\bdesparasit", r"\bvet\b")),
@@ -94,8 +94,11 @@ TOPIC_SIGNALS: list[tuple[str, int, re.Pattern[str]]] = [
                       r"recibo .{0,30}(periodo|total a pagar)")),
     ("dinero", 3, _rx(r"\bdeposito\b", r"\btransferencia\b", r"\bspei\b", r"clave de rastreo", r"estado de cuenta", r"pago minimo",
                       r"tarjeta de credito", r"\bsaldo\b", r"\bprestamo", r"\bhipoteca", r"\bafore\b")),
-    ("dinero", 3, _rx(r"\bsat\b", r"declaracion (anual|mensual)", r"\bimpuesto", r"\bacuse\b", r"\bcfdi\b", r"\brfc\b", r"\bmulta\b", r"\btenencia\b")),
+    ("dinero", 3, _rx(r"movimiento bancario", r"aviso fiscal", r"\bfiscal(es)?\b", r"\bsat\b", r"declaracion (anual|mensual)", r"\bimpuesto", r"\bacuse\b", r"\bcfdi\b", r"\brfc\b", r"\bmulta\b", r"\btenencia\b")),
     ("dinero", 1, _rx(r"\bbanco\b", r"\bfactura\b", r"\bpago\b", r"\bcargo\b")),
+    # L7reg1 (4): facturas y movimientos en en/fr/pt (la factura personal es Dinero; la de proveedor se mueve a Trabajo abajo).
+    ("dinero", 3, _rx(r"\b(your|tu|sua|votre) (invoice|bill|fatura|facture|factura)\b", r"\bfatura\b", r"\bfacture\b",
+                      r"\bpagamento\b", r"\bmontant\b", r"movimiento por", r"\bis due\b", r"\bvence em\b", r"\bstatement\b")),
     # Compras y suscripciones
     ("compras", 3, _rx(r"\bpedido\b", r"\border\b", r"\bpaquete\b", r"\benvio\b", r"\bshipped\b", r"\bguia \d", r"\bentregamos\b",
                        r"\bdevolucion\b", r"\breembolso\b", r"\brefund\b", r"\bgarantia\b")),
@@ -103,12 +106,13 @@ TOPIC_SIGNALS: list[tuple[str, int, re.Pattern[str]]] = [
                        r"periodo de prueba", r"\bfree trial\b", r"elige un plan")),
     # Salud y seguros
     ("salud", 3, _rx(r"cita (medica|con (el|la) (dr|dra))", r"\bdra?\.\s", r"\bclinica\b", r"\bhospital", r"\bconsultorio",
-                     r"\bpaciente", r"\blaboratorio\b", r"\bestudio de\b", r"\bdentista|\bdental\b")),
+                     r"\bpaciente", r"\blaboratorio\b", r"resultados (disponibles|de (laboratorio|tu estudio|tus estudios))", r"\bestudio de\b", r"\bdentista|\bdental\b")),
     ("salud", 3, _rx(r"\bpoliza\b", r"\baseguradora", r"\bsiniestro", r"\bajustador", r"gastos medicos", r"\bcobertura\b", r"\bdeducible")),
     ("salud", 3, _rx(r"\bfarmacia", r"\breceta\b", r"\bmedicamento", r"\btratamiento\b", r"\bvacuna\b(?!.{0,40}(toby|mascota|perro|gato|antirrabica))")),
     # Viajes y eventos
     ("viajes", 3, _rx(r"\bvuelo\b", r"\bflight\b", r"\baerolinea", r"\bitinerario", r"\bhotel\b", r"\bcheck-?in\b", r"\bboarding\b",
                       r"\bgate opens\b", r"\bequipaje\b", r"\bpasaporte", r"\bvisa\b", r"renta de auto", r"\bautobus")),
+    ("viajes", 3, _rx(r"\breservation\b", r"\breserva(cion)? (esta |fue )?confirmad", r"\bvoyage\b", r"\bviagem\b", r"\bvoo\b")),
     ("viajes", 3, _rx(r"\bboletos?\b", r"\bentradas?\b.{0,30}(concierto|evento|funcion)", r"\bconcierto", r"\bteatro\b",
                       r"\bfestival\b", r"\bpartido\b", r"\bmesa para \d", r"\brestaurante", r"\btickets?\b")),
     # Promociones y social
@@ -148,7 +152,9 @@ TAG_RULES: dict[str, list[tuple[str, re.Pattern[str]]]] = {
         ("Facturación empresarial", _rx(r"\bfactura\b", r"\binvoice\b")),
     ],
     "hogar": [
-        ("Escuela", _rx(r"colegio", r"escuela", r"padres de familia", r"maestr")),
+        # L7reg1 (5): "escuela" suelta en un pie genérico ("consulta con la familia o escuela") no es Escuela.
+        ("Escuela", _rx(r"colegio", r"(?<!familia o )(?<!familia y )\bescuela\b(?! por el canal)", r"padres de familia", r"maestr",
+                        r"\bescolar(es)?\b", r"boleta", r"colegiatura", r"guarderia", r"\bgrupo \d[a-z]\b")),
         ("Actividades familiares", _rx(r"junta de padres", r"festival escolar", r"actividad familiar")),
         ("Administración del edificio", _rx(r"edificio", r"condominio", r"administracion")),
         ("Mantenimiento", _rx(r"mantenimiento", r"fuga", r"reparacion")),
@@ -184,6 +190,9 @@ TAG_RULES: dict[str, list[tuple[str, re.Pattern[str]]]] = {
         ("Farmacia", _rx(r"farmacia", r"receta", r"medicamento")), ("Tratamiento", _rx(r"receta", r"medicamento", r"tratamiento")),
         ("Seguro médico", _rx(r"gastos medicos", r"seguro medico")), ("Cobertura y exclusiones", _rx(r"cobertura", r"exclusiones")),
         ("Seguro de auto", _rx(r"siniestro de auto", r"seguro de auto", r"\bauto\b")), ("Siniestro", _rx(r"siniestro")),
+        # L7reg1 (5): póliza o aseguradora sin tipo explícito → Prima de seguro (familia Seguro).
+        ("Prima de seguro", _rx(r"\bpoliza (vigente|vencida|no\.?|numero|#|\d)", r"\btu poliza\b", r"renovacion de (tu )?poliza",
+                                r"\bprima (de seguro|anual|mensual|pendiente)", r"\baseguradora\b")),
     ],
     "viajes": [
         ("Vuelos", _rx(r"\bvuelo\b", r"\bflight\b")), ("Itinerarios", _rx(r"codigo de reserva", r"\bsale el\b")),
@@ -197,6 +206,8 @@ TAG_RULES: dict[str, list[tuple[str, re.Pattern[str]]]] = {
         ("Boletines informativos", _rx(r"boletin", r"newsletter", r"noticias")), ("Programas de fidelidad", _rx(r"puntos", r"lealtad")),
         ("Concursos y sorteos", _rx(r"sorteo", r"concurso", r"ganaste", r"premio")),
         ("Marketing comercial", _rx(r"producto milagro", r"compra ya", r"envio gratis")),
+        ("Spam", _rx(r"no solicitad", r"unsolicited", r"\bmilagros[ao]\b", r"producto milagro", r"promesas exageradas",
+                     r"gana dinero (facil|rapido)", r"bajar de peso sin")),
     ],
 }
 SECURITY_TAG_RULES: list[tuple[str, re.Pattern[str]]] = [
@@ -242,12 +253,37 @@ def security_tags(text: str, *, phishing_tags: list[str] | None = None) -> list[
 
 
 _WORK_INVOICE_RE = _rx(r"servicios de (consultoria|asesoria|desarrollo|hosting|nube)", r"\bproveedor", r"cuentas por pagar",
-                       r"\bcloud", r"\bhosting\b", r"\bsaas\b", r"\b(usd|eur)\s?\d", r"\bestimados\b", r"\bles compartimos\b")
+                       r"\bcloud", r"\bhosting\b", r"\bsaas\b", r"\bestimados\b", r"\bles compartimos\b")
 _PERSONAL_ROLE_RE = _rx(r"deposito de nomina", r"recibiste un deposito")
 
 
+# L7reg1 (1): el remitente solo da una pista débil (peso 1, nunca decide sola). Antes el remitente entraba en el
+# texto de temas y una palabra del dominio (p. ej. "demo" → Trabajo) decidía el área de cualquier correo.
+SENDER_HINTS: list[tuple[str, re.Pattern[str]]] = [
+    ("salud", _rx(r"clinica", r"hospital", r"laboratorio", r"aseguradora", r"polizas?", r"farmacia", r"medic")),
+    ("hogar", _rx(r"escuela", r"colegio", r"condominio", r"edificio", r"veterinari")),
+    ("dinero", _rx(r"\bbanco", r"\bbank", r"facturacion", r"\bbilling", r"\bsat\b")),
+    ("viajes", _rx(r"aerolinea", r"airline", r"\bhotel", r"reservas?\b", r"booking")),
+    ("compras", _rx(r"tienda", r"\bstore\b", r"pedidos", r"\bshop\b")),
+]
+_WEAK_TOPIC_RULES = {"legacy_info", "legacy_notice", "legacy_action", "request", "bulk"}
+_NO_AREA_RULES = {"ambiguous"}
+# Triage "review" que NO es duda de área: factura identificada sin fecha límite (seguimiento) conserva su área.
+_REVIEW_KEEPS_AREA = {"bill_followup"}
+
+
+def _sender_tokens(sender_l: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", sender_l.replace(".invalid", " ").replace(".example", " "))
+
+
+def _review(reason: str, flag: str | None = None, sec_tags: list[str] | None = None) -> dict[str, Any]:
+    return {"area": None, "area_label": None, "hat": None, "tags": [], "security_flag": flag,
+            "security_tags": sec_tags or [], "review_reason": reason}
+
+
 def classify_v2(rule: str, text: str, sender: str, confidence: float, *, phishing: bool = False,
-                severity: str | None = None, phishing_tags: list[str] | None = None) -> dict[str, Any]:
+                severity: str | None = None, phishing_tags: list[str] | None = None,
+                triage: str | None = None, input_limit: str | None = None) -> dict[str, Any]:
     """Devuelve {area, area_label, hat, tags, security_flag, security_tags, review_reason}.
 
     ``text`` debe venir plegado (fold). Phishing → area None (Por revisar) + security_flag N1.
@@ -258,10 +294,37 @@ def classify_v2(rule: str, text: str, sender: str, confidence: float, *, phishin
         return {"area": None, "area_label": None, "hat": None, "tags": [], "security_flag": "N1",
                 "security_tags": security_tags(text, phishing_tags=phishing_tags or ["Phishing sospechoso"]),
                 "review_reason": "Posible phishing o fraude: no interactúes; revisa."}
-    scores = topic_scores(probe)
+    if input_limit:
+        return _review(input_limit)
+    scores = topic_scores(text)
+    best = max(scores.values(), default=0)
+    tied = [a for a, v in scores.items() if v == best]
+    if best >= 3 and len(tied) > 1:
+        # Empate de temas en el cuerpo: decide el ASUNTO si su tema es único entre los empatados.
+        subj = topic_scores(text.split("\n", 1)[0])
+        lead = [a for a in tied if subj.get(a, 0) >= 3]
+        if len(lead) == 1:
+            scores = {**scores, lead[0]: best + 1}
+            best, tied = best + 1, lead
+    explicit = best >= 3 and len(tied) == 1
+    if rule in _NO_AREA_RULES or (triage == "review" and rule not in _REVIEW_KEEPS_AREA):
+        # Revisión o ambigüedad: solo un tema EXPLÍCITO y único en el propio texto da área (sin remitente ni regla).
+        # Si no, Por revisar; nunca un área por defecto.
+        if not explicit:
+            return _review("Correo ambiguo o en revisión: no se asigna un área por defecto.")
+        area = next(a for a in _ORDER if scores.get(a) == best)
+        return {"area": area, "area_label": AREAS[area], "hat": HATS[area], "tags": _tags(area, text),
+                "security_flag": None, "security_tags": [], "review_reason": None}
+    if rule in _WEAK_TOPIC_RULES and not explicit:
+        # Regla genérica sin tema explícito fuerte en el texto → Por revisar (nunca un área por defecto).
+        return _review("Sin tema reconocible.")
+    sender_tokens = _sender_tokens(sender_l)
+    for area_key, pattern in SENDER_HINTS:
+        if pattern.search(sender_tokens) and area_key not in scores:  # pista, nunca refuerza un tema ya visto
+            scores[area_key] = 1
     prior = RULE_PRIOR.get(rule)
     # Factura/cobro de negocio (proveedor, nube, consultoría) → Trabajo; depósito de nómina sigue en Dinero.
-    if prior == "dinero" and _WORK_INVOICE_RE.search(probe) and not _PERSONAL_ROLE_RE.search(probe):
+    if prior == "dinero" and _WORK_INVOICE_RE.search(text) and not _PERSONAL_ROLE_RE.search(text):
         prior = "trabajo"
     flag = None
     if rule in _SECURITY_RULES:
@@ -274,7 +337,7 @@ def classify_v2(rule: str, text: str, sender: str, confidence: float, *, phishin
         else:
             prior = "compras"  # cuenta de un servicio digital (Suscripción digital)
     area = _pick(scores, prior)
-    tags = _tags(area, probe)
+    tags = _tags(area, text)
     if area == "compras" and flag and not tags:
         tags = ["Suscripción digital"]
     if area == "dinero" and flag and not tags:

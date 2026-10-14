@@ -37,7 +37,7 @@ NUMBERS = {"un": 1, "una": 1, "uno": 1, "dos": 2, "tres": 3, "cuatro": 4, "cinco
 
 DUE_CUE = re.compile(
     r"(venc|fecha limite|limite de pago|a mas tardar|antes del?\b|pagar? (antes|hasta)|fecha de pago|paga antes|"
-    r"\bdue\b|deadline|no later than|\bby\b|plazo|tienes hasta|tiene hasta|hasta el|envi(a|e|es|ar|en|ame|anos)\b|mand(a|e|es|ar)\b|entreg|send|submit|\bpaga(r)?\b|pague)"
+    r"\bdue\b|deadline|vence em|vencimento|echeance|date limite|a payer avant|no later than|\bby\b|plazo|tienes hasta|tiene hasta|hasta el|envi(a|e|es|ar|en|ame|anos)\b|mand(a|e|es|ar)\b|entreg|send|submit|\bpaga(r)?\b|pague)"
 )
 EVENT_CUE = re.compile(
     r"(\bcita\b|appointment|reunion|meeting|consulta|\bevento\b|\bevent\b|vuelo|flight|agendad|programad|scheduled|"
@@ -45,7 +45,9 @@ EVENT_CUE = re.compile(
     r"reprogramad|rescheduled|registro (esta )?confirmado|\bjunta\b|\bdeparts?\b|te esperamos|"
     r"entradas?|boletos?|tickets?|hospedaje|estancia|alojamiento|hotel|\bstay\b|lodging|concierto|concert|funcion|"
     # Post lote 4: reservas de restaurante o lugar ("tu mesa está reservada para el ...").
-    r"\breserva\b|\breservad[ao]s?\b|\bmesa\b|salida|departure)"
+    r"\breserva\b|\breservad[ao]s?\b|\bmesa\b|salida|departure|"
+    # L7reg1 (6): "se realizará el ...", fr/pt ("aura lieu", "confirmée pour le").
+    r"se realizara|tendra lugar|aura lieu|confirmee pour|sera realizad|\bfestival\b)"
 )
 QUOTE_HEADER_RE = re.compile(r"(\b(escribio|wrote)\s*:|^\s*>|forwarded message|mensaje reenviado|mensaje original|original message)")
 RENEWAL_CUE = re.compile(r"(renovar|renueva|renew|proximo cobro|proximo cargo|next (charge|billing))")
@@ -231,6 +233,10 @@ def _time_in(sentence: str) -> time | None:
     return time(h, mi)
 
 
+def _is_today_only(sentence: str, item: tuple[Any, int]) -> bool:
+    return bool(re.match(r"(hoy mismo|hoy|today)\b", sentence[item[1]:item[1] + 9]))
+
+
 _SPLIT = re.compile(r"(?<=[.!?;\n])\s+|\n+")
 
 
@@ -267,6 +273,9 @@ def extract_dates(subject: str | None, body: str | None, received_at: Any, *, ki
         if role == "event" and QUOTE_HEADER_RE.search(sentence):
             continue
         dates = _parse_in(sentence, anchor, english, explicit_only=(role == "event"))
+        if role == "due":
+            # L7reg1 (6): "hoy" como vencimiento sería copiar received_at en due_at → no se usa.
+            dates = [d for d in dates if not _is_today_only(sentence, d)]
         if not dates:
             continue
         evidence = sentence_raw.strip()[:240]

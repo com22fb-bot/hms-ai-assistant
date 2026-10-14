@@ -173,7 +173,7 @@ REQUEST_RE = re.compile(
     r"te pido|le pido|nos (puedes|podrias)|enviame|envianos|mandame)"
 )
 INVOICE_TERM_RE = re.compile(
-    r"(factura|cfdi|recibo|invoice|\bbill\b|estado de cuenta|statement|\bcargo\b|cobro|cobranza|adeudo|saldo|"
+    r"(factura|fatura|facture|cfdi|recibo|invoice|\bbill\b|estado de cuenta|statement|\bcargo\b|cobro|cobranza|adeudo|saldo|"
     r"aviso de pago|mensualidad|colegiatura|predial|pedido|order|orden)"
 )
 # --- Post lote 4 (dictamen ASTRA) -------------------------------------------------------------
@@ -246,7 +246,9 @@ REQUEST_EXTRA_RE = re.compile(
 EVENT_NOUN_RE = re.compile(
     r"(\breunion\b|\bjunta\b|\bmeeting\b|\bcita\b|appointment|\bvuelo\b|\bflight\b|\bdeparts?\b|check-?in|"
     r"\bhotel\b|\breservacion\b|\breserva\b|\bbooking\b|\breservation\b|\bconcierto\b|\bconcert\b|\bevento\b|"
-    r"\bevent\b|\bfuncion\b|\bboarding\b|pase de abordar|\bmesa para\b|\bte esperamos\b|\bconferencia\b|\bcongreso\b)"
+    r"\bevent\b|\bfuncion\b|\bboarding\b|pase de abordar|\bmesa para\b|\bte esperamos\b|\bconferencia\b|\bcongreso\b|"
+    # L7reg1 (6): "X se realizará el <fecha>", festival (es/fr/pt).
+    r"\bse realizara\b|\btendra lugar\b|\baura lieu\b|\bsera realizad[ao]\b|\bfestival\b)"
 )
 EVENT_TRAVEL_RE = re.compile(
     r"(\bvuelo\b|\bflight\b|\bdeparts?\b|check-?in|\bhotel\b|\bhospedaje\b|\bboarding\b|pase de abordar|"
@@ -416,6 +418,22 @@ def analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> An
     return first
 
 
+OVERLONG_CHARS = 10000
+_MALFORMED_RE = re.compile("\ufffd|[\x00-\x08\x0b\x0c\x0e-\x1f]")
+
+
+def input_limit(subject: str, body: str) -> str | None:
+    """L7reg1 (1): entradas límite → Por revisar (área None). Nunca se adivina un área para ellas."""
+    text = (body or "").strip()
+    if len(re.sub(r"\s+", "", text)) < 12:
+        return "Correo sin cuerpo útil: revisión."
+    if _MALFORMED_RE.search(f"{subject or ''}{text[:3000]}"):
+        return "Texto dañado o mal codificado: revisión."
+    if len(text) > OVERLONG_CHARS:
+        return "Correo demasiado largo para clasificarlo con seguridad: revisión."
+    return None
+
+
 def _analyze_v2(message: dict[str, Any], *, user_verified: bool | None = None) -> Analysis:
     from app.services.brain_v1.phishing_v2 import detect
     from app.services.brain_v1.taxonomy import classify_area
@@ -445,7 +463,7 @@ def _analyze_v2(message: dict[str, Any], *, user_verified: bool | None = None) -
         result.doc_key, result.amount = None, None
     result.phishing_signals = verdict.signals
     info = classify_v2(result.rule, text, sender, result.confidence, phishing=phishing, severity=result.severity,
-                       phishing_tags=verdict.tags)
+                       phishing_tags=verdict.tags, triage=result.triage, input_limit=input_limit(subject, raw_body))
     result.area, result.area_tags = info["area"], info["tags"]
     result.security_flag, result.security_tags = info["security_flag"], info["security_tags"]
     result.area_review_reason = info["review_reason"]
@@ -669,7 +687,7 @@ def _analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> A
                      protected=prot)
     # C3: factura o cobro que pide pago → accionable aunque el remitente sea desconocido.
     if demand and invoice_term and not promo_terms:
-        rule = "invoice_due" if re.search(r"(factura|cfdi|recibo|invoice|\bbill\b|estado de cuenta|statement)", text) else "charge_due"
+        rule = "invoice_due" if re.search(r"(factura|fatura|facture|cfdi|recibo|invoice|\bbill\b|estado de cuenta|statement)", text) else "charge_due"
         return _with_period(build(rule, "action_required", True, "Factura o cobro que pide un pago.",
                                   with_doc=True, protected="invoice"), subject, body, received)
     if bulk and not marketing:
