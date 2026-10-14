@@ -613,6 +613,11 @@ export function GuidedImportWizard({
                   <span className="hms-import-world-head">
                     <ShieldCheck size={14} /> <b>Protegidas</b> · se descargan siempre, aunque desmarques su área
                   </span>
+                  <p className="hms-import-protected-note">
+                    Los correos de Seguridad, Bancos, Gobierno, Facturas y Salud (solo salud médica) se descargan aunque
+                    su área o Por revisar estén desmarcados. La protección aplica solo a esos correos, no al área completa.
+                    Puedes apagar cada protección desmarcándola aquí.
+                  </p>
                   <div className="hms-import-chips">
                     {PROTECTED.map((item) => {
                       const key = PROTECT + item.id;

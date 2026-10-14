@@ -24,7 +24,7 @@ class TaxonomyV2PreviewTests(unittest.TestCase):
             ("Acme <p@acme.com>", "Propuesta proyecto Q4", "trabajo"),
             ("Escuela <a@escuela.mx>", "Colegiatura octubre", "hogar"),
             ("CFE <avisos@cfe.mx>", "Tu recibo de luz", "dinero"),
-            ("SAT <n@sat.gob.mx>", "Aviso SAT", "dinero"),
+            ("SAT <n@sat.gob.mx>", "Aviso SAT", "revisar"),
             ("Amazon <o@amazon.com.mx>", "Tu pedido fue enviado", "compras"),
             ("GNP <p@gnp.com.mx>", "Tu póliza", "salud"),
             ("Volaris <v@volaris.com>", "Tu vuelo", "viajes"),

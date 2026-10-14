@@ -79,7 +79,9 @@ REVIEW_ID = "revisar"
 LEGACY_TO_V2: dict[str, str] = {
     "work": "trabajo",
     "home": "hogar", "education": "hogar",
-    "money": "dinero", "bills": "dinero", "government": "dinero",
+    "money": "dinero", "bills": "dinero",
+    # ASTRA: Gobierno/trámites no es un área v2; va a Por revisar (sigue protegido como "gobierno").
+    "government": REVIEW_ID,
     "orders": "compras", "subscriptions": "compras",
     "health": "salud", "insurance": "salud",
     "travel": "viajes", "events": "viajes",
