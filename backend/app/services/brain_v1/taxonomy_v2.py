@@ -83,11 +83,14 @@ TOPIC_SIGNALS: list[tuple[str, int, re.Pattern[str]]] = [
     ("trabajo", 2, _rx(r"\b(estimados|les compartimos)\b", r"\bequipo\b", r"\bteam\b")),
     # Hogar y familia
     ("hogar", 3, _rx(r"\bcolegio\b", r"\bescuela\b", r"padres de familia", r"\bmaestr[ao]\b", r"boleta de calificaciones", r"\bguarderia",
-                     r"\bgrupo \d[a-z]\b", r"\baviso escolar\b", r"\bcircular escolar\b")),
+                     r"\bgrupo \d[a-z]\b", r"\baviso escolar\b", r"\bcircular escolar\b",
+                     # L8reg1 (1): junta/reunión escolar o de padres → Hogar (nunca Por revisar por la regla de cita).
+                     r"\b(reunion|junta|evento|festival) (escolar|de padres|de familias)\b", r"\bescolar(es)?\b")),
     ("hogar", 3, _rx(r"\bedificio\b", r"\bcondominio\b", r"administracion del (edificio|condominio)", r"\bcisterna\b", r"cuota de mantenimiento",
                      r"\bcasero\b", r"\barrendador")),
     ("hogar", 3, _rx(r"\bmascota", r"\bveterinari", r"\bantirrabica", r"\bdesparasit", r"\bvet\b")),
     ("hogar", 3, _rx(r"\bplomer", r"\bfuga\b", r"visita tecnica", r"\belectricista", r"\bmudanza", r"\bjardiner")),
+    ("hogar", 2, _rx(r"\bmantenimiento\b(?! (de|del|a) (servidor|sistema|plataforma|app|sitio))", r"\bfamilias\b")),
     ("hogar", 2, _rx(r"\babuela?\b", r"\bfamilia\b", r"\btios?\b", r"\bprimos?\b", r"comida (del|en casa)")),
     # Dinero y facturas
     ("dinero", 3, _rx(r"energia electrica", r"\bluz\b", r"agua potable", r"\bgas natural", r"\binternet\b", r"\btelefonia\b",
@@ -105,13 +108,13 @@ TOPIC_SIGNALS: list[tuple[str, int, re.Pattern[str]]] = [
     ("compras", 3, _rx(r"\bmembresia\b", r"\bsuscripcion\b", r"\bsubscription\b", r"se renovara", r"\bplan (premium|basico|pro)\b",
                        r"periodo de prueba", r"\bfree trial\b", r"elige un plan")),
     # Salud y seguros
-    ("salud", 3, _rx(r"cita (medica|con (el|la) (dr|dra))", r"\bdra?\.\s", r"\bclinica\b", r"\bhospital", r"\bconsultorio",
+    ("salud", 3, _rx(r"cita (medica|con (el|la) (dr|dra))", r"\bconsulta (medica|con (el|la) (dr|dra))", r"\bdra?\.\s", r"\bclinica\b", r"\bhospital", r"\bconsultorio",
                      r"\bpaciente", r"\blaboratorio\b", r"resultados (disponibles|de (laboratorio|tu estudio|tus estudios))", r"\bestudio de\b", r"\bdentista|\bdental\b")),
     ("salud", 3, _rx(r"\bpoliza\b", r"\baseguradora", r"\bsiniestro", r"\bajustador", r"gastos medicos", r"\bcobertura\b", r"\bdeducible")),
     ("salud", 3, _rx(r"\bfarmacia", r"\breceta\b", r"\bmedicamento", r"\btratamiento\b", r"\bvacuna\b(?!.{0,40}(toby|mascota|perro|gato|antirrabica))")),
     # Viajes y eventos
     ("viajes", 3, _rx(r"\bvuelo\b", r"\bflight\b", r"\baerolinea", r"\bitinerario", r"\bhotel\b", r"\bcheck-?in\b", r"\bboarding\b",
-                      r"\bgate opens\b", r"\bequipaje\b", r"\bpasaporte", r"\bvisa\b", r"renta de auto", r"\bautobus")),
+                      r"\bgate opens\b", r"\bequipaje\b", r"\bhospedaje\b", r"\bpasaporte", r"\bvisa\b", r"renta de auto", r"\bautobus")),
     ("viajes", 3, _rx(r"\breservation\b", r"\breserva(cion)? (esta |fue )?confirmad", r"\bvoyage\b", r"\bviagem\b", r"\bvoo\b")),
     ("viajes", 3, _rx(r"\bboletos?\b", r"\bentradas?\b.{0,30}(concierto|evento|funcion)", r"\bconcierto", r"\bteatro\b",
                       r"\bfestival\b", r"\bpartido\b", r"\bmesa para \d", r"\brestaurante", r"\btickets?\b")),
@@ -119,7 +122,7 @@ TOPIC_SIGNALS: list[tuple[str, int, re.Pattern[str]]] = [
     ("promociones", 3, _rx(r"\bdescuento", r"\bcupon\b", r"\boferta", r"\brebajas?\b", r"\bpromocion", r"darte de baja", r"dejar de recibir",
                            r"\bunsubscribe\b", r"\b\d{1,2}% (de descuento|off)")),
     ("promociones", 3, _rx(r"comento tu", r"\bpublicacion\b", r"\bseguidor", r"te etiqueto", r"\bmenciono\b", r"red social",
-                           r"\blikes?\b", r"le gusta tu")),
+                           r"\blikes?\b", r"le gusta tu", r"perfil social", r"redes sociales", r"interaccion en tu (perfil|publicacion|cuenta)")),
     ("promociones", 3, _rx(r"\bboletin\b", r"\bnewsletter\b", r"\bpuntos\b.{0,40}(vencer|canjea|lealtad|programa)", r"\blealtad\b",
                            r"\bsorteo\b", r"\bconcurso\b", r"\bganaste\b", r"\bfelicidades\b", r"producto milagro", r"compra ya")),
 ]
@@ -185,7 +188,7 @@ TAG_RULES: dict[str, list[tuple[str, re.Pattern[str]]]] = {
         ("Periodo de prueba", _rx(r"periodo de prueba", r"free trial")),
     ],
     "salud": [
-        ("Citas médicas", _rx(r"cita (medica|con)")), ("Médico", _rx(r"cita (medica|con)", r"\bdra?\.\s", r"consulta medica")),  # "gastos médicos" (póliza) no es Médico
+        ("Citas médicas", _rx(r"cita (medica|con)", r"consulta medica")), ("Médico", _rx(r"cita (medica|con)", r"\bdra?\.\s", r"consulta medica")),  # "gastos médicos" (póliza) no es Médico
         ("Laboratorio", _rx(r"laboratorio")), ("Documentación clínica", _rx(r"resultados", r"expediente")),
         ("Farmacia", _rx(r"farmacia", r"receta", r"medicamento")), ("Tratamiento", _rx(r"receta", r"medicamento", r"tratamiento")),
         ("Seguro médico", _rx(r"gastos medicos", r"seguro medico")), ("Cobertura y exclusiones", _rx(r"cobertura", r"exclusiones")),
@@ -202,7 +205,8 @@ TAG_RULES: dict[str, list[tuple[str, re.Pattern[str]]]] = {
     ],
     "promociones": [
         ("Promociones", _rx(r"descuento", r"promocion")), ("Cupones", _rx(r"cupon")),
-        ("Redes sociales", _rx(r"comento tu", r"publicacion", r"red social")), ("Comentarios y menciones", _rx(r"comento", r"comentario", r"mencion")),
+        ("Ofertas y rebajas", _rx(r"\bofertas?\b", r"\brebajas?\b", r"\bliquidacion\b")),
+        ("Redes sociales", _rx(r"comento tu", r"publicacion", r"red social", r"redes sociales", r"perfil social", r"interaccion en tu")), ("Comentarios y menciones", _rx(r"comento", r"comentario", r"mencion")),
         ("Boletines informativos", _rx(r"boletin", r"newsletter", r"noticias")), ("Programas de fidelidad", _rx(r"puntos", r"lealtad")),
         ("Concursos y sorteos", _rx(r"sorteo", r"concurso", r"ganaste", r"premio")),
         ("Marketing comercial", _rx(r"producto milagro", r"compra ya", r"envio gratis")),
@@ -297,9 +301,13 @@ def _review(reason: str, flag: str | None = None, sec_tags: list[str] | None = N
             "security_tags": sec_tags or [], "review_reason": reason}
 
 
+_NO_AREA_FRAUD = {"cripto_deposito", "fraude_ceo", "pide_datos_personales", "premio_pide_datos", "rendimiento_irreal"}
+
+
 def classify_v2(rule: str, text: str, sender: str, confidence: float, *, phishing: bool = False,
                 severity: str | None = None, phishing_tags: list[str] | None = None,
-                triage: str | None = None, input_limit: str | None = None) -> dict[str, Any]:
+                triage: str | None = None, input_limit: str | None = None,
+                phishing_signals: list[str] | None = None) -> dict[str, Any]:
     """Devuelve {area, area_label, hat, tags, security_flag, security_tags, review_reason}.
 
     ``text`` debe venir plegado (fold). Phishing → area None (Por revisar) + security_flag N1.
@@ -310,6 +318,8 @@ def classify_v2(rule: str, text: str, sender: str, confidence: float, *, phishin
         # L7reg2 (a, ASTRA): fraude N1 → Por revisar + alerta (nunca se oculta). Solo conserva un área temática con
         # evidencia explícita y fiable: dos señales fuertes distintas del MISMO tema en el texto, y tema único.
         reliable = _reliable_topic(text)
+        if set(phishing_signals or []) & _NO_AREA_FRAUD:
+            reliable = None  # L8reg1 (2): datos personales, cripto o transferencia confidencial → nunca Dinero ni otra área
         return {"area": reliable, "area_label": AREAS.get(reliable) if reliable else None,
                 "hat": HATS.get(reliable) if reliable else None, "tags": _tags(reliable, text) if reliable else [],
                 "security_flag": "N1",
@@ -334,6 +344,11 @@ def classify_v2(rule: str, text: str, sender: str, confidence: float, *, phishin
         if not explicit:
             return _review("Correo ambiguo o en revisión: no se asigna un área por defecto.")
         area = next(a for a in _ORDER if scores.get(a) == best)
+        if rule in _NO_AREA_RULES and triage != "review_forced" and len(scores) == 1:
+            # L8reg1 (4): tema único y explícito, sin ningún otro tema en el texto → el área basta; la marca de
+            # revisión se reserva para duda real (temas mezclados, entrada límite, seguridad).
+            return {"area": area, "area_label": AREAS[area], "hat": HATS[area], "tags": _tags(area, text),
+                    "security_flag": None, "security_tags": [], "review_reason": None, "clear_review": True}
         # L7reg2 (b): conserva el área Y la marca de revisión.
         return {"area": area, "area_label": AREAS[area], "hat": HATS[area], "tags": _tags(area, text),
                 "security_flag": None, "security_tags": [],

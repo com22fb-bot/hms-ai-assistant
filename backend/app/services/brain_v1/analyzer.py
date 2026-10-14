@@ -463,16 +463,56 @@ def _analyze_v2(message: dict[str, Any], *, user_verified: bool | None = None) -
         result.doc_key, result.amount = None, None
     result.phishing_signals = verdict.signals
     info = classify_v2(result.rule, text, sender, result.confidence, phishing=phishing, severity=result.severity,
-                       phishing_tags=verdict.tags, triage=result.triage, input_limit=input_limit(subject, raw_body))
+                       phishing_tags=verdict.tags, triage=result.triage, input_limit=input_limit(subject, raw_body),
+                       phishing_signals=verdict.signals)
     result.area, result.area_tags = info["area"], info["tags"]
     result.security_flag, result.security_tags = info["security_flag"], info["security_tags"]
     result.area_review_reason = info["review_reason"]
+    if info.get("clear_review"):
+        # L8reg1 (4): tema único y explícito → aviso con área, sin marca de revisión.
+        result.triage, result.confidence = "notice", max(result.confidence, 0.6)
+    if not phishing and not input_limit(subject, raw_body):
+        _explicit_phrase_dates(result, subject, body, message.get("received_at"))
     result.content_key = content_key(message)
     from app.services.brain_v1.documents import extract_doc_token
 
     token = None if phishing else extract_doc_token(subject, body)
     result.ref_key = f"{result.brand}:{token}" if token and result.brand else None
     return result
+
+
+# L8reg1 (5): frases de fecha explícita que antes se perdían cuando la regla no extrae fechas. Solo fecha ESCRITA
+# justo después de la frase (ISO, dd/mm/aaaa o "d de mes"); nunca se infiere una fecha ausente.
+_PHRASE_DATES = (
+    ("due", re.compile(r"\bpago pactado para (el )?")), ("due", re.compile(r"\bdoit etre reglee? avant (le )?")),
+    ("due", re.compile(r"\bantes del ")), ("due", re.compile(r"\bvence em ")), ("event", re.compile(r"\bpaquete (esta |sera )?previsto para (el )?")),
+)
+
+
+def _explicit_phrase_dates(result: Analysis, subject: str, body: str, received: Any) -> None:
+    from datetime import datetime, time
+
+    from app.services.brain_v1.dates import MX, _parse_in, received_local
+
+    text = fold(f"{subject}\n{body[:3000]}")
+    anchor = received_local(received).date()
+    for role, rx in _PHRASE_DATES:
+        if (role == "due" and result.dates.due_at) or (role == "event" and result.dates.event_at):
+            continue
+        values = set()
+        for m in rx.finditer(text):
+            snippet = text[m.end():m.end() + 40]
+            found = [d for d, pos in _parse_in(snippet, anchor, False, explicit_only=True) if pos <= 2]
+            values |= {d for d in found if not isinstance(d, str)}
+        if len(values) != 1:
+            continue  # sin fecha escrita o varias fechas: no se adivina
+        value = values.pop()
+        if role == "due":
+            result.dates.due_at = datetime.combine(value, time(23, 59), MX).isoformat()
+            result.dates.due_evidence = text[:240]
+        else:
+            result.dates.event_at = datetime.combine(value, time(0, 0), MX).isoformat()
+            result.dates.event_evidence = text[:240]
 
 
 def _analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> Analysis:

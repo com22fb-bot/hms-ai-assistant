@@ -46,15 +46,22 @@ _SHARE_SECRET_RE = re.compile(
 _HOLD_FEE_RE = re.compile(r"(retenid|liberar|held|retenu|retido)[^\n]{0,80}\b(paga|pague|pago|pay|payer|pagar|pagamento)\b"
                           r"|\b(paga|pague|pay|pagar)\b[^\n]{0,40}(para liberar|to release|liberarlo)"
                           r"|requiere pago urgente")
-_CEO_ROLE_RE = re.compile(r"\b(ceo|director general|directora general|gerente general|presidente|dueno)\b[^\n]{0,40}"
+_CEO_ROLE_RE = re.compile(r"\b(ceo|director(a)?|director general|directora general|gerente general|presidente|dueno|tu jefe)\b[^\n]{0,40}"
                           r"\b(transfiere|transferencia|deposita|deposito|wire|paga)\b")
 _CEO_SECRET_RE = re.compile(r"\btransferencia (urgente|inmediata)[^.\n]{0,30}(confidencial|discreta)"
-                            r"|fuera del proceso (habitual|normal)|outside (the )?normal process")
+                            r"|fuera del proceso (habitual|normal)|outside (the )?normal process"
+                            # L8reg1 (2): orden de transferir + secreto/confidencial.
+                            r"|\b(transfiere|transferir|transferencia|deposita|wire)\b[^\n]{0,80}\b(en secreto|confidencial|no lo comentes|discrecion)"
+                            r"|\b(en secreto|confidencial)\b[^\n]{0,80}\b(transfiere|transferir|deposita|wire)\b")
 _PERSONAL_DATA_RE = re.compile(
-    _NEG + r"\b(envia|envianos|proporciona|solicita|solicitan|comparte|confirma|send|provide)\b[^.\n]{0,30}"
-    r"\b(identificacion|datos personales|tus datos|direccion|curp|\bine\b|pasaporte|ssn|social security|fecha de nacimiento)")
+    _NEG + r"\b(envia|envianos|manda|mandanos|adjunta|proporciona|solicita|solicitan|comparte|confirma|send|provide)\b[^.\n]{0,30}"
+    r"\b(identificacion|datos personales|tus datos|direccion|domicilio|curp|\bine\b|pasaporte|ssn|social security|fecha de nacimiento)")
+# L8reg1 (2): pedir identificación/domicilio para cobrar o liberar algo (premio, pago) es N1 aunque no diga "ganaste".
+_DATA_FOR_GAIN_RE = re.compile(r"\b(premio|para cobrar|cobrar(lo)?\b|liberar|desbloquear|reclamar|recibir (el|tu) (pago|dinero|deposito))")
 _PRIZE2_RE = re.compile(r"(reclamar el premio|reclama tu premio|ganaste un (premio|sorteo)|supuesta ganancia|you won)")
 _CRYPTO_DEPOSIT_RE = re.compile(r"(deposita|invierte|envia|send|transfiere)[^.\n]{0,20}(cripto|crypto|bitcoin|btc|usdt|ether)"
+                                r"|(deposita|invierte|envia|send|transfiere)\s+\d+([.,]\d+)?\s*(btc|usdt|eth|bitcoin)\b"
+                                r"|\b(btc|usdt|eth|bitcoin|cripto)\b[^\n]{0,60}(para (desbloquear|liberar|activar)|primero)"
                                 r"|duplica tus (cripto|bitcoin|inversion)")
 
 
@@ -111,7 +118,8 @@ def detect(sender: str, text: str) -> PhishingVerdict:
         sig.append("pago_falso"); tags.append("Fraude financiero"); extra = True
     if not ceo and (_CEO_ROLE_RE.search(text) or _CEO_SECRET_RE.search(text)):
         sig.append("fraude_ceo"); tags.append("Cambio sospechoso de datos bancarios"); extra = True
-    if not prize and _PERSONAL_DATA_RE.search(text) and (_PRIZE2_RE.search(text) or _PRIZE_RE.search(text) or _CEO_PRESSURE_RE.search(text)):
+    if not prize and _PERSONAL_DATA_RE.search(text) and (_PRIZE2_RE.search(text) or _PRIZE_RE.search(text) or _CEO_PRESSURE_RE.search(text)
+                                                       or (_DATA_FOR_GAIN_RE.search(text) and not _SAFE_RE.search(text))):
         sig.append("pide_datos_personales"); tags.append("Riesgo de privacidad"); extra = True
     if "cripto_deposito" not in sig and _CRYPTO_DEPOSIT_RE.search(text):
         sig.append("cripto_deposito"); tags.append("Fraude financiero"); extra = True
