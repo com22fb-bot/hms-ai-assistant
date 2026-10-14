@@ -207,11 +207,14 @@ class GmailScanTests(unittest.TestCase):
         for cat in ic.CATEGORY_IDS:
             self.assertEqual(preview["categories"][cat], expected.get(cat, 0), cat)
         self.assertEqual(sum(preview["categories"].values()), len(sample))  # sin duplicar
-        spheres = {"hogar": 0, "ocupacion": 0, "personal": 0}
-        for cat, n in expected.items():
-            if cat in ic.AREA_SPHERE:
-                spheres[ic.AREA_SPHERE[cat]] += n
-        self.assertEqual(preview["spheres"], spheres)
+        worlds = {"hogar": 0, "ocupacion": 0, "personal": 0}
+        for sender, subject, labels, _ in sample:
+            area = ic.v2_area(sender, subject, labels)
+            if area != ic.REVIEW_ID:
+                worlds[ic.V2_AREA_WORLD[area]] += 1
+        self.assertEqual(preview["spheres"], worlds)
+        self.assertEqual(preview["worlds"], worlds)
+        self.assertEqual(sum(preview["areas"].values()) + preview["review"], len(sample))
         # Remitentes con 1 solo correo nunca salen como ejemplo.
         self.assertEqual(preview["examples"], {})
 

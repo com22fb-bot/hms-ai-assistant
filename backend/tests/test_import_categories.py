@@ -32,7 +32,8 @@ class ImportCategoryTests(unittest.TestCase):
     def test_summary(self):
         s = ic.summarize([("a@youtube.com", "v", []), ("x@cfe.mx", "recibo", []), ("p@acme.com", "proyecto Q4", [])])
         self.assertEqual(s["categories"]["social"], 1)
-        self.assertEqual(s["spheres"], {"hogar": 1, "ocupacion": 1, "personal": 0})
+        # v2: recibo -> Dinero (Hogar), proyecto -> Trabajo (Ocupación), YouTube -> Promociones y social (Personal)
+        self.assertEqual(s["spheres"], {"ocupacion": 1, "hogar": 1, "personal": 1})
         self.assertEqual(s["social_platforms"], {"YouTube": 1})
 
 
