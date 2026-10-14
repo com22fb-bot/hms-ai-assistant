@@ -266,8 +266,18 @@ class Analysis:
     reschedule: bool = False
     phishing_brand: str | None = None
     severity: str | None = None
-    area: str | None = None
+    area: str | None = None  # taxonomía v2: trabajo|hogar|dinero|compras|salud|viajes|promociones; None = Por revisar
     area_tags: list[str] = field(default_factory=list)
+    area_v1: str | None = None  # área de la taxonomía v1 (16 áreas), solo trazabilidad
+    security_flag: str | None = None  # señal transversal N1/N2; Seguridad nunca es área
+    security_tags: list[str] = field(default_factory=list)
+    phishing_signals: list[str] = field(default_factory=list)
+    area_review_reason: str | None = None
+    content_key: str | None = None
+    duplicate_of: str | None = None
+    duplicate_case_id: str | None = None
+    ref_key: str | None = None  # marca + folio/pedido: vincula correos relacionados (pedido → envío → reembolso)
+    related_to: str | None = None
 
     def signals(self) -> dict[str, Any]:
         return {
@@ -275,7 +285,11 @@ class Analysis:
             "doc_key": self.doc_key, "key_source": self.key_source if self.doc_key else None, "amount": self.amount, "confidence": self.confidence,
             "suppressed": self.suppressed, "bulk": self.bulk, "reschedule": self.reschedule,
             "phishing_brand": self.phishing_brand, "triage": self.triage, "severity": self.severity,
-            "area": self.area, "area_tags": self.area_tags,
+            "area": self.area, "area_tags": self.area_tags, "taxonomy": "v2", "area_v1": self.area_v1,
+            "security_flag": self.security_flag, "security_tags": self.security_tags,
+            "phishing_signals": self.phishing_signals or None, "area_review_reason": self.area_review_reason,
+            "content_key": self.content_key, "duplicate_of": self.duplicate_of,
+            "ref_key": self.ref_key, "related_to": self.related_to,
             "review_reason": self.reason if self.triage == "review" or self.confidence < 0.5 else None,
             **self.dates.as_metadata(),
         }
@@ -314,14 +328,86 @@ def is_bulk(headers: dict[str, str]) -> bool:
     return bool(headers.get("list-unsubscribe", "").strip() or headers.get("list-id", "").strip())
 
 
-def analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> Analysis:
-    result = _analyze(message, user_verified=user_verified)
-    from app.services.brain_v1.taxonomy import classify_area
+def _decode_body(body: str) -> str:
+    """Taxonomía v2 / L6: cuerpos que llegan como MIME sin decodificar (base64 o quoted-printable) o como HTML."""
+    import base64
+    import binascii
+    import quopri
 
+    head = body[:200].lower()
+    if "content-transfer-encoding: base64" in head:
+        payload = body.split("\n\n", 1)[-1]
+        chunk = "".join(line.strip() for line in payload.splitlines() if re.fullmatch(r"[A-Za-z0-9+/=]+", line.strip() or "!"))
+        try:
+            return base64.b64decode(chunk + "=" * (-len(chunk) % 4), validate=False).decode("utf-8", "replace")
+        except (binascii.Error, ValueError):
+            return body
+    if "content-transfer-encoding: quoted-printable" in head:
+        try:
+            return quopri.decodestring(body.split("\n\n", 1)[-1].encode("utf-8", "replace")).decode("utf-8", "replace")
+        except ValueError:
+            return body
+    if re.search(r"<(html|body|table|div|p)\b", head):
+        from app.utils.html_text import html_to_text
+
+        return html_to_text(body) or body
+    return body
+
+
+def content_key(message: dict[str, Any]) -> str | None:
+    """Huella de duplicado: remitente + asunto normalizado + cuerpo normalizado (sin firma de móvil ni espacios)."""
+    import hashlib
+
+    from app.services.case_engine import normalize_subject
+
+    body = fold(_decode_body(str(message.get("body_text") or message.get("snippet") or "")))
+    body = re.sub(r"(enviado desde mi \w+|sent from my \w+)", " ", body)
+    body = re.sub(r"\s+", " ", body).strip()[:2000]
+    if len(body) < 12:
+        return None  # sin cuerpo útil no se afirma que sea duplicado
+    sender = str(message.get("sender") or "").lower().strip()
+    subject = normalize_subject(str(message.get("subject") or ""))
+    return hashlib.sha256(f"{sender}|{subject}|{body}".encode()).hexdigest()[:32]
+
+
+def analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> Analysis:
+    from app.services.brain_v1.phishing_v2 import detect
+    from app.services.brain_v1.taxonomy import classify_area
+    from app.services.brain_v1.taxonomy_v2 import classify_v2
+
+    raw_body = str(message.get("body_text") or message.get("snippet") or "")
+    body = _decode_body(raw_body)
+    if body is not raw_body:
+        message = {**message, "body_text": body}
+    result = _analyze(message, user_verified=user_verified)
     subject = str(message.get("subject") or "")
-    body = str(message.get("body_text") or message.get("snippet") or "")
-    info = classify_area(result.rule, fold(f"{subject}\n{body[:3000]}"), str(message.get("sender") or ""), result.confidence)
+    sender = str(message.get("sender") or "")
+    text = fold(f"{subject}\n{body[:3000]}")
+    legacy = classify_area(result.rule, text, sender, result.confidence)
+    result.area_v1 = legacy["area"]
+    verdict = detect(sender, text)
+    phishing = result.rule == "phishing_suspect" or verdict.is_phishing
+    # security_unverified ya es un caso visible en revisión (política de seguridad): se conserva; solo cambia el área.
+    if verdict.is_phishing and result.rule not in {"phishing_suspect", "security_unverified"}:
+        # Marca desconocida: se pasa a revisión; nunca cobro, cita ni área temática.
+        result.rule, result.triage, result.actionable = "phishing_suspect", "review", False
+        result.confidence = RULE_CONFIDENCE["phishing_suspect"]
+        result.reason = "Posible phishing o fraude (" + ", ".join(verdict.signals) + "). No hagas clic ni respondas; revisa."
+        result.protected = "security"
+        result.severity = "review"
+        result.dates = DateResult()
+        result.doc_key, result.amount = None, None
+    result.phishing_signals = verdict.signals
+    info = classify_v2(result.rule, text, sender, result.confidence, phishing=phishing, severity=result.severity,
+                       phishing_tags=verdict.tags)
     result.area, result.area_tags = info["area"], info["tags"]
+    result.security_flag, result.security_tags = info["security_flag"], info["security_tags"]
+    result.area_review_reason = info["review_reason"]
+    result.content_key = content_key(message)
+    from app.services.brain_v1.documents import extract_doc_token
+
+    token = None if phishing else extract_doc_token(subject, body)
+    result.ref_key = f"{result.brand}:{token}" if token and result.brand else None
     return result
 
 

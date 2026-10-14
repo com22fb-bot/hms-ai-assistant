@@ -71,6 +71,12 @@ def _meta(case: dict[str, Any]) -> dict[str, Any]:
 def find_case_v1(client: Any, *, workspace_id: str, account_id: str, message: dict[str, Any],
                  analysis: Analysis, normalized_subject: str) -> dict[str, Any] | None:
     key = analysis.doc_key
+    if getattr(analysis, "duplicate_case_id", None):
+        from app.services.case_engine import _rows
+
+        rows = _rows(client.table("intelligent_cases").select("*").eq("id", analysis.duplicate_case_id).limit(1).execute())
+        if rows:
+            return rows[0]  # duplicado exacto: se une al caso del original
     if key:
         rows = _open_cases(client, workspace_id, metadata__doc_key=key)
         if rows:
@@ -120,10 +126,48 @@ def find_case_v1(client: Any, *, workspace_id: str, account_id: str, message: di
             if _meta(row).get("doc_key") in (None, key):
                 return row
     if normalized_subject and not key and analysis.rule not in {"payment_confirmation", "partial_payment"}:
-        for row in _open_cases(client, workspace_id, normalized_subject=normalized_subject):
-            if not _meta(row).get("doc_key"):
-                return row
+        # L6 (taxonomía v2): el asunto idéntico solo une si el correo es respuesta/reenvío (Re:/Fwd:) del mismo
+        # remitente. Antes, correos distintos con el mismo asunto (p. ej. 63 "Cargo no reconocido") caían en un caso.
+        from app.services.case_engine import _sender_parts
+
+        raw_subject = str(message.get("subject") or "")
+        sender_email = (_sender_parts(message.get("sender"))[1] or "").lower()
+        if _REPLY_RE.match(raw_subject) and sender_email:
+            for row in _open_cases(client, workspace_id, normalized_subject=normalized_subject):
+                if not _meta(row).get("doc_key") and str(row.get("requester_email") or "").lower() == sender_email:
+                    return row
     return None
+
+
+_REPLY_RE = re.compile(r"^\s*((re|fw|fwd|rv|tr|aw)\s*:\s*)+", re.I)
+
+
+def _related_to(client: Any, account_id: str, analysis: Analysis, message_id: str) -> str | None:
+    """Correo relacionado (misma marca + mismo folio/pedido) ya recibido: se registra el vínculo, sin fusionar casos."""
+    from app.services.case_engine import _rows
+
+    if not analysis.ref_key:
+        return None
+    rows = _rows(client.table("communication_messages").select("id,received_at").eq("account_id", account_id)
+                 .eq("brain_signals->>ref_key", analysis.ref_key).limit(20).execute())
+    rows = sorted((r for r in rows if str(r.get("id")) != message_id), key=lambda r: str(r.get("received_at") or ""))
+    return str(rows[0]["id"]) if rows else None
+
+
+def _duplicate_of(client: Any, account_id: str, analysis: Analysis, message_id: str) -> tuple[str | None, str | None]:
+    """Duplicado exacto (misma huella content_key): devuelve (id del primer mensaje, caso de ese mensaje)."""
+    from app.services.case_engine import _rows
+
+    if not analysis.content_key:
+        return None, None
+    rows = _rows(client.table("communication_messages").select("id,received_at").eq("account_id", account_id)
+                 .eq("brain_signals->>content_key", analysis.content_key).limit(20).execute())
+    rows = sorted((r for r in rows if str(r.get("id")) != message_id), key=lambda r: str(r.get("received_at") or ""))
+    if not rows:
+        return None, None
+    first = str(rows[0]["id"])
+    link = _rows(client.table("case_messages").select("case_id").eq("message_id", first).limit(1).execute())
+    return first, (str(link[0]["case_id"]) if link else None)
 
 
 def _cross_sender_payment_case(client: Any, workspace_id: str, analysis: Analysis, text: str) -> dict[str, Any] | None:
@@ -477,8 +521,15 @@ def classify_pending_messages_v1(*, client: Any, account_id: str, workspace_id: 
         now = _now()
         try:
             analysis = analyze(message, user_verified=user_verified)
+            analysis.duplicate_of, analysis.duplicate_case_id = _duplicate_of(client, account_id, analysis, str(message["id"]))
+            if not analysis.duplicate_of:
+                analysis.related_to = _related_to(client, account_id, analysis, str(message["id"]))
             case_id, outcome = (None, "no_case")
             if analysis.actionable:
+                case_id, outcome = process_message_v1(client=client, workspace_id=workspace_id, account_id=account_id,
+                                                      message=message, analysis=analysis)
+            elif analysis.duplicate_case_id and analysis.rule != "phishing_suspect":
+                # Duplicado exacto de un correo que ya tiene caso: se une como evidencia (no abre otro).
                 case_id, outcome = process_message_v1(client=client, workspace_id=workspace_id, account_id=account_id,
                                                       message=message, analysis=analysis)
             elif message.get("thread_id") and analysis.rule in {"outbound", "legacy_info", "ambiguous"}:
