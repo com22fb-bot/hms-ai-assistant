@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import base64
 import logging
 from typing import Any
@@ -245,7 +247,7 @@ def exchange_yahoo_code(code: str) -> dict[str, Any]:
         ) from error
 
     if response.status_code >= 400:
-        logger.warning("Yahoo token error %s: %s", response.status_code, response.text[:300])
+        logger.warning("Yahoo token error status=%s code=%s", response.status_code, _safe_oauth_error_code(response))
         raise YahooOAuthError(
             "Yahoo no entregó el token. Vuelve a firmar en el sitio de Yahoo."
         )
@@ -290,3 +292,12 @@ def granted_mail_read(token_payload: dict[str, Any]) -> bool:
     scope = str(token_payload.get("scope") or "").lower()
     parts = {part for part in scope.replace(",", " ").split() if part}
     return bool(parts & {"mail-r", "mail-w", "mail"})
+
+
+def _safe_oauth_error_code(response: Any) -> str:
+    """Solo el código de error estándar OAuth (p. ej. invalid_grant); nunca el cuerpo."""
+    try:
+        code = str((response.json() or {}).get("error") or "")
+    except Exception:
+        return "unparseable"
+    return code if re.fullmatch(r"[a-z_]{1,40}", code) else "unknown"
