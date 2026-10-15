@@ -160,7 +160,7 @@ def exchange_microsoft_code(
 
     if response.status_code >= 400:
         logger.warning(
-            "Microsoft token error status=%s code=%s",
+            "Microsoft OAuth exchange failed status=%s code=%s",
             response.status_code,
             _safe_oauth_error_code(response),
         )
