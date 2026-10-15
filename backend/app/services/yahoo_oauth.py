@@ -247,7 +247,7 @@ def exchange_yahoo_code(code: str) -> dict[str, Any]:
         ) from error
 
     if response.status_code >= 400:
-        logger.warning("Yahoo token error status=%s code=%s", response.status_code, _safe_oauth_error_code(response))
+        logger.warning("Yahoo OAuth exchange failed status=%s code=%s", response.status_code, _safe_oauth_error_code(response))
         raise YahooOAuthError(
             "Yahoo no entregó el token. Vuelve a firmar en el sitio de Yahoo."
         )
