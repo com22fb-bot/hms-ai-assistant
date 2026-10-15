@@ -266,6 +266,10 @@ function Dashboard({
   onLogout: () => void;
 }) {
   const { language: shellLanguage } = useLanguage();
+  const shellLanguageRef = useRef(shellLanguage);
+  useEffect(() => {
+    shellLanguageRef.current = shellLanguage;
+  }, [shellLanguage]);
   const {
     connection,
     loadingConnection,
@@ -430,7 +434,7 @@ function Dashboard({
           setNotice(
             requestError instanceof Error
               ? requestError.message
-              : shellText(shellLanguage, "errPrepareImport"),
+              : shellText(shellLanguageRef.current, "errPrepareImport"),
           );
           setInitialFlowOpened(true);
         }

@@ -64,7 +64,7 @@ export function AdminLogin({
     <div className="dx-admin dx-admin-gate" data-testid="admin-login">
       <section className="dx-admin-gate__card" aria-labelledby="admin-login-title">
         <p className="dx-admin__eyebrow"><Shield size={14} aria-hidden /> Donexto · Operaciones</p>
-        <h1 id="admin-login-title">Admin Donexto</h1>
+        <h1 id="admin-login-title">Administración Donexto</h1>
         <p className="dx-admin-gate__lead">
           Panel del propietario. Solo entran los correos autorizados. Esto no conecta tu Gmail ni lee tu correo.
         </p>

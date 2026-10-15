@@ -1,5 +1,6 @@
 "use client";
 
+import { adminLabel } from "@/lib/i18n/adminLabels";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -286,7 +287,7 @@ export function ContactInbox({
                   <span className="dx-admin__inbox-item-top">
                     <strong>{item.name || item.email || "Sin nombre"}</strong>
                     <span className={statusClass(item.status)}>
-                      {item.status || "nuevo"}
+                      {item.status ? adminLabel(item.status) : "nuevo"}
                     </span>
                   </span>
                   <span className="dx-admin__inbox-preview">
@@ -315,7 +316,7 @@ export function ContactInbox({
                 <p className="dx-admin__inbox-meta">
                   {formatWhen(selected.created_at)} ·{" "}
                   <span className={statusClass(selected.status)}>
-                    {selected.status}
+                    {adminLabel(selected.status)}
                   </span>
                 </p>
               </header>

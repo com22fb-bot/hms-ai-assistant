@@ -185,6 +185,11 @@ export function GuidedImportWizard({
 }) {
   const { language, locale } = useLanguage();
   const T = (key: ImportKey, vars?: Record<string, string | number>) => importText(language, key, vars);
+  // Los efectos de carga/sondeo leen el idioma vigente sin reiniciarse al cambiarlo.
+  const languageRef = useRef(language);
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
   const [status, setStatus] = useState<ImportStatus | null>(null);
   const [inventory, setInventory] = useState<Inventory | null>(null);
   const [loading, setLoading] = useState(true);
@@ -282,7 +287,7 @@ export function GuidedImportWizard({
           setError(
             readableError(
               reason,
-              T("errPrepare"),
+              importText(languageRef.current, "errPrepare"),
             ),
           );
         }
@@ -324,7 +329,7 @@ export function GuidedImportWizard({
             setError(
               readableError(
                 reason,
-                T("errProgress"),
+                importText(languageRef.current, "errProgress"),
               ),
             );
           }
