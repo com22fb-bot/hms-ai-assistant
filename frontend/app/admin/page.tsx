@@ -1,5 +1,6 @@
 "use client";
 
+import { adminLabel } from "@/lib/i18n/adminLabels";
 import {
   Activity,
   ArrowLeft,
@@ -151,7 +152,7 @@ const TABS: Array<{ id: AdminTab; label: string; icon: typeof Activity }> = [
   { id: "users", label: "Usuarios", icon: Users },
   { id: "billing", label: "Cobros", icon: CreditCard },
   { id: "expenses", label: "Mis gastos", icon: Wallet },
-  { id: "info", label: "Info", icon: Info },
+  { id: "info", label: "Información", icon: Info },
   { id: "messages", label: "Mensajes", icon: Inbox },
   { id: "feedback", label: "Quejas e ideas", icon: MessageSquareWarning },
   { id: "promotions", label: "Promociones", icon: Tag },
@@ -458,7 +459,7 @@ function AdminPage() {
       setError(
         err instanceof HmsApiError
           ? err.message
-          : "No se pudo registrar el feedback.",
+          : "No se pudo registrar la queja o idea.",
       );
     } finally {
       setSaving(false);
@@ -650,7 +651,7 @@ function AdminPage() {
                 <strong>{overview.counts.mailbox_connected}</strong>
               </article>
               <article>
-                <span>Feedback abierto</span>
+                <span>Quejas e ideas abiertas</span>
                 <strong>{overview.counts.feedback_open}</strong>
               </article>
               <article>
@@ -719,9 +720,9 @@ function AdminPage() {
                         )}
                       </td>
                       <td>
-                        {user.plan_code || "—"}{" "}
+                        {adminLabel(user.plan_code)}{" "}
                         {user.subscription_status
-                          ? `(${user.subscription_status})`
+                          ? `(${adminLabel(user.subscription_status)})`
                           : ""}
                       </td>
                       <td>{user.country_code || "—"}</td>
@@ -831,7 +832,7 @@ function AdminPage() {
                 >
                   <option value="suggestion">Sugerencia</option>
                   <option value="complaint">Queja</option>
-                  <option value="bug">Bug</option>
+                  <option value="bug">Falla</option>
                   <option value="other">Otro</option>
                 </select>
               </label>
@@ -885,13 +886,13 @@ function AdminPage() {
                 <tbody>
                   {(feedback?.feedback || []).length === 0 && (
                     <tr>
-                      <td colSpan={5}>Sin feedback todavía.</td>
+                      <td colSpan={5}>Sin quejas ni ideas todavía.</td>
                     </tr>
                   )}
                   {(feedback?.feedback || []).map((row) => (
                     <tr key={row.id}>
-                      <td>{row.kind}</td>
-                      <td>{row.status}</td>
+                      <td>{adminLabel(row.kind)}</td>
+                      <td>{adminLabel(row.status)}</td>
                       <td title={row.body}>
                         {row.subject || row.body.slice(0, 80)}
                       </td>
@@ -1039,7 +1040,7 @@ function AdminPage() {
             <div className="dx-admin__kpis">
               <article>
                 <span>Estado</span>
-                <strong>{health.status}</strong>
+                <strong>{adminLabel(health.status)}</strong>
               </article>
               <article>
                 <span>Versión</span>
