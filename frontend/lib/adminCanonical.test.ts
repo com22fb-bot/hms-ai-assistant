@@ -123,7 +123,7 @@ describe("Owner login on /admin", () => {
   it("asks the backend for a one-time link back to /admin, with no Google OAuth", () => {
     assert.match(gate, /postPublicHms\("\/admin\/login-link"/);
     assert.match(gate, /return_to: authReturnUrl\(window\.location\)/);
-    assert.match(gate, /Admin Donexto/);
+    assert.match(gate, /Administración Donexto/);
     assert.doesNotMatch(gate, /auth\/google|gmail\.readonly|signInWithOAuth/);
   });
 });
