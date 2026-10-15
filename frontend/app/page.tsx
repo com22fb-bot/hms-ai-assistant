@@ -18,7 +18,8 @@ import "@/components/hms-mobile-shell.css";
 import "@/components/guided-import.css";
 import { MailInbox, type MailAppearance } from "@/components/MailInbox";
 import { NucleoApp, type MailSyncState } from "@/components/nucleo/NucleoApp";
-import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
+import { LanguageProvider, useLanguage } from "@/lib/i18n/LanguageProvider";
+import { shellText, type ShellKey } from "@/lib/i18n/appShell";
 import "@/components/mail-inbox.css";
 import { useCases } from "@/hooks/useCases";
 import { useGoogleStatus } from "@/hooks/useGoogleStatus";
@@ -66,13 +67,18 @@ type ImportFlowStatus = {
 
 const THEMES: Array<{
   id: ThemeId;
-  label: string;
+  label: ShellKey;
 }> = [
-  { id: "accessible", label: "Confianza · slate & teal" },
-  { id: "aurora", label: "Colaboración · cielo" },
-  { id: "graphite", label: "Institucional · grafito" },
-  { id: "midnight", label: "Noche · indigo" },
+  { id: "accessible", label: "themeAccessible" },
+  { id: "aurora", label: "themeAurora" },
+  { id: "graphite", label: "themeGraphite" },
+  { id: "midnight", label: "themeMidnight" },
 ];
+
+function CheckingSessionLabel() {
+  const { language } = useLanguage();
+  return <span>{shellText(language, "checkingSession")}</span>;
+}
 
 function PasswordRecoveryScreen({
   theme,
@@ -85,6 +91,8 @@ function PasswordRecoveryScreen({
   onUpdatePassword: (password: string) => Promise<void>;
   onCancel: () => Promise<void>;
 }) {
+  const { language } = useLanguage();
+  const S = (key: ShellKey) => shellText(language, key);
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -96,12 +104,12 @@ function PasswordRecoveryScreen({
     setError(null);
 
     if (password.length < 8) {
-      setError("La nueva contraseña Donexto debe tener al menos 8 caracteres.");
+      setError(S("errShort"));
       return;
     }
 
     if (password !== confirmation) {
-      setError("Las dos contraseñas no coinciden.");
+      setError(S("errMismatch"));
       return;
     }
 
@@ -113,7 +121,7 @@ function PasswordRecoveryScreen({
       setError(
         requestError instanceof Error
           ? requestError.message
-          : "No fue posible actualizar la contraseña Donexto.",
+          : S("errUpdate"),
       );
     } finally {
       setBusy(false);
@@ -130,12 +138,12 @@ function PasswordRecoveryScreen({
             <DonextoMark className="auth-logo" size={72} />
             <div>
               <strong>Donexto</strong>
-              <small>Recuperación segura</small>
+              <small>{S("recoveryKicker")}</small>
             </div>
           </div>
 
           <label className="auth-theme">
-            <span>Tema</span>
+            <span>{S("theme")}</span>
             <select
               value={theme}
               onChange={(event) =>
@@ -144,7 +152,7 @@ function PasswordRecoveryScreen({
             >
               {THEMES.map((item) => (
                 <option key={item.id} value={item.id}>
-                  {item.label}
+                  {S(item.label)}
                 </option>
               ))}
             </select>
@@ -153,17 +161,16 @@ function PasswordRecoveryScreen({
 
         <section className="auth-card auth-recovery-card">
           <div className="auth-card-heading">
-            <span>NUEVA CONTRASEÑA DONEXTO</span>
-            <h2>Protege tu cuenta</h2>
+            <span>{S("newPwdKicker")}</span>
+            <h2>{S("protectTitle")}</h2>
             <p>
-              Esta contraseña pertenece a Donexto. No modifica la contraseña
-              de Yahoo, Gmail, Outlook ni de tu proveedor de correo.
+{S("protectBody")}
             </p>
           </div>
 
           <form onSubmit={submit}>
             <label className="auth-field">
-              <span>Nueva contraseña Donexto</span>
+              <span>{S("newPwd")}</span>
               <div>
                 <KeyRound size={18} />
                 <input
@@ -173,7 +180,7 @@ function PasswordRecoveryScreen({
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
-                  placeholder="Mínimo 8 caracteres"
+                  placeholder={S("minChars")}
                   onChange={(event) =>
                     setPassword(event.target.value)
                   }
@@ -182,8 +189,8 @@ function PasswordRecoveryScreen({
                   type="button"
                   aria-label={
                     showPassword
-                      ? "Ocultar contraseña"
-                      : "Mostrar contraseña"
+                      ? S("hidePwd")
+                      : S("showPwd")
                   }
                   onClick={() =>
                     setShowPassword((current) => !current)
@@ -199,7 +206,7 @@ function PasswordRecoveryScreen({
             </label>
 
             <label className="auth-field">
-              <span>Confirmar nueva contraseña</span>
+              <span>{S("confirmPwd")}</span>
               <div>
                 <ShieldCheck size={18} />
                 <input
@@ -209,7 +216,7 @@ function PasswordRecoveryScreen({
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
-                  placeholder="Escríbela nuevamente"
+                  placeholder={S("typeAgain")}
                   onChange={(event) =>
                     setConfirmation(event.target.value)
                   }
@@ -230,8 +237,8 @@ function PasswordRecoveryScreen({
               disabled={busy}
             >
               {busy
-                ? "Actualizando..."
-                : "Guardar contraseña Donexto"}
+                ? S("updating")
+                : S("savePwd")}
             </button>
 
             <button
@@ -242,7 +249,7 @@ function PasswordRecoveryScreen({
                 void onCancel();
               }}
             >
-              Cancelar y volver al acceso
+{S("cancelRecovery")}
             </button>
           </form>
         </section>
@@ -258,6 +265,7 @@ function Dashboard({
   session: AppSession;
   onLogout: () => void;
 }) {
+  const { language: shellLanguage } = useLanguage();
   const {
     connection,
     loadingConnection,
@@ -422,7 +430,7 @@ function Dashboard({
           setNotice(
             requestError instanceof Error
               ? requestError.message
-              : "No fue posible preparar la descarga inicial.",
+              : shellText(shellLanguage, "errPrepareImport"),
           );
           setInitialFlowOpened(true);
         }
@@ -592,7 +600,7 @@ function Dashboard({
             }}
             onConnectGoogle={async () => {
               setNotice(
-                `Te llevamos a Google para autorizar la lectura de ${session.email}…`,
+                shellText(shellLanguage, "toGoogle", { email: session.email }),
               );
               try {
                 await startGoogleConnection();
@@ -600,7 +608,7 @@ function Dashboard({
                 const message =
                   requestError instanceof Error
                     ? requestError.message
-                    : "No fue posible iniciar la conexión con Google.";
+                    : shellText(shellLanguage, "errGoogle");
                 setNotice(message);
                 throw requestError instanceof Error
                   ? requestError
@@ -618,7 +626,7 @@ function Dashboard({
               setNotice(null);
             }}
             onConnectMicrosoft={async () => {
-              setNotice("Te llevamos a Microsoft para firmar ahí…");
+              setNotice(shellText(shellLanguage, "toMicrosoft"));
               try {
                 await startMicrosoftConnection({
                   intent: microsoftIdentityReady ? "mailbox" : "login",
@@ -628,7 +636,7 @@ function Dashboard({
                 const message =
                   requestError instanceof Error
                     ? requestError.message
-                    : "No fue posible abrir Microsoft.";
+                    : shellText(shellLanguage, "errMicrosoft");
                 setNotice(message);
                 throw requestError instanceof Error
                   ? requestError
@@ -713,7 +721,7 @@ export default function HomePage() {
       {loading ? (
         <div className="app-loading-screen">
           <DonextoMark className="app-loading-mark" size={96} alt="Donexto — Do Next To…" />
-          <span>Verificando sesión segura...</span>
+          <CheckingSessionLabel />
         </div>
       ) : passwordRecovery ? (
         <PasswordRecoveryScreen

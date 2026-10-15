@@ -18,6 +18,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { hmsJson } from "@/lib/hmsApi";
 import { shouldSurfacePollError } from "@/lib/networkRetry";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { importCategoryLabel, importText, type ImportKey } from "@/lib/i18n/importWizard";
 
 
 type Breakdown = {
@@ -100,14 +102,15 @@ const SOCIAL_LIST = [
   "Quora", "Bluesky", "LINE", "Weibo",
 ];
 
-function planLabel(plan: PlanStatus | undefined): string {
+function planLabel(plan: PlanStatus | undefined, T: (key: ImportKey, vars?: Record<string, string | number>) => string): string {
   if (!plan) return "…";
   if (plan.state === "trial") {
-    return plan.days_left === null ? "Prueba gratis" : `Prueba: ${plan.days_left} ${plan.days_left === 1 ? "día" : "días"}`;
+    if (plan.days_left === null) return T("planTrial");
+    return plan.days_left === 1 ? T("planTrialDay") : T("planTrialDays", { n: plan.days_left });
   }
-  if (plan.state === "active") return plan.plan_code === "annual" ? "Plan anual" : "Plan mensual";
-  if (plan.state === "owner") return "Cuenta del equipo";
-  return "Sin plan";
+  if (plan.state === "active") return plan.plan_code === "annual" ? T("planAnnual") : T("planMonthly");
+  if (plan.state === "owner") return T("planOwner");
+  return T("planNone");
 }
 
 function examplesFor(preview: Preview | null, id: string): string {
@@ -159,29 +162,13 @@ type ImportStatus = {
 
 const API = "/api/hms/gmail/import";
 
-const LABELS: Record<string, string> = {
-  received: "Recibidos",
-  sent: "Enviados",
-  unread: "No leídos",
-  important: "Importantes",
-  updates: "Actualizaciones",
-  promotions: "Promociones",
-  social: "Social",
-  forums: "Foros",
-  action_required: "Requieren atención",
-  critical_action: "Críticos",
-  case_followup: "Seguimientos de casos",
-  informational: "Informativos",
-  automated: "Automatizados",
-  promotional: "Promocionales",
-};
 
 function readableError(reason: unknown, fallback: string): string {
   return reason instanceof Error ? reason.message : fallback;
 }
 
-function formatLocalDate(value: string): string {
-  return new Intl.DateTimeFormat("es-MX", {
+function formatLocalDate(value: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
   }).format(new Date(value));
 }
@@ -196,6 +183,8 @@ export function GuidedImportWizard({
   /** Opens the mailbox picker so an expired/revoked permission can be renewed. */
   onReconnect?: () => void;
 }) {
+  const { language, locale } = useLanguage();
+  const T = (key: ImportKey, vars?: Record<string, string | number>) => importText(language, key, vars);
   const [status, setStatus] = useState<ImportStatus | null>(null);
   const [inventory, setInventory] = useState<Inventory | null>(null);
   const [loading, setLoading] = useState(true);
@@ -243,7 +232,7 @@ export function GuidedImportWizard({
     const sample = examplesFor(preview, id);
     return (
       <em
-        title={sample ? `Ej.: ${sample}` : undefined}
+        title={sample ? T("examplesShort", { x: sample }) : undefined}
         onClick={(event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -293,7 +282,7 @@ export function GuidedImportWizard({
           setError(
             readableError(
               reason,
-              "No fue posible preparar la importación inicial.",
+              T("errPrepare"),
             ),
           );
         }
@@ -335,7 +324,7 @@ export function GuidedImportWizard({
             setError(
               readableError(
                 reason,
-                "No fue posible actualizar el progreso.",
+                T("errProgress"),
               ),
             );
           }
@@ -396,7 +385,7 @@ export function GuidedImportWizard({
       setError(
         readableError(
           reason,
-          "No fue posible iniciar la descarga.",
+          T("errStart"),
         ),
       );
     } finally {
@@ -418,7 +407,7 @@ export function GuidedImportWizard({
           className="hms-import-close"
           type="button"
           onClick={onClose}
-          aria-label="Cerrar"
+          aria-label={T("close")}
         >
           <X size={22} />
         </button>
@@ -426,10 +415,9 @@ export function GuidedImportWizard({
         {loading ? (
           <div className="hms-logistics-loading">
             <LoaderCircle className="app-spin" size={38} />
-            <h2>Preparando tu correo</h2>
+            <h2>{T("loadingTitle")}</h2>
             <p>
-              Donexto está verificando el estado de la cuenta y contando
-              el historial disponible.
+{T("loadingBody")}
             </p>
           </div>
         ) : null}
@@ -449,7 +437,7 @@ export function GuidedImportWizard({
             <div className="hms-import-hero">
               <Image
                 src="/hms-import-robot.png"
-                alt="Robot Donexto organizando correo hacia una laptop"
+                alt={T("robotAlt")}
                 width={1536}
                 height={1024}
                 priority
@@ -459,11 +447,10 @@ export function GuidedImportWizard({
               <div>
                 <span className="hms-import-kicker">Donexto · Do Next To…</span>
                 <h2 id="hms-import-title">
-                  Tu historial de correo está listo.
+{T("heroTitle")}
                 </h2>
                 <p>
-                  Elige si traemos todo o solo lo que te importa. Después
-                  Donexto lo clasifica en tus 3 esferas y 16 áreas.
+{T("heroBody")}
                 </p>
               </div>
             </div>
@@ -471,61 +458,61 @@ export function GuidedImportWizard({
             <section className="hms-import-summary is-compact">
               <div>
                 <Mail size={18} />
-                <span>Cuenta conectada</span>
+                <span>{T("account")}</span>
                 <strong>{inventory.email}</strong>
               </div>
               <div>
                 <Clock3 size={18} />
-                <span>Periodo</span>
+                <span>{T("period")}</span>
                 <strong>
-                  {formatLocalDate(inventory.period_start_local)}
+                  {formatLocalDate(inventory.period_start_local, locale)}
                   {" – "}
-                  {formatLocalDate(inventory.period_end_local)}
+                  {formatLocalDate(inventory.period_end_local, locale)}
                 </strong>
               </div>
               <div className="is-primary">
                 <Inbox size={18} />
-                <span>Mensajes elegibles</span>
+                <span>{T("eligible")}</span>
                 <strong>
                   {inventory.eligible_messages.toLocaleString()}
                 </strong>
               </div>
               <div>
                 <BadgeCheck size={18} />
-                <span>Tu plan</span>
-                <strong>{planLabel(preview?.plan)}</strong>
+                <span>{T("plan")}</span>
+                <strong>{planLabel(preview?.plan, T)}</strong>
               </div>
             </section>
 
             <p className="hms-import-line">
-              {inventory.breakdown.map((item) => `${LABELS[item.key] ?? item.key} ${item.count.toLocaleString()}`).join(" · ")}
-              {" · "}Excluidos siempre: borradores {inventory.excluded.drafts.toLocaleString()}, spam {inventory.excluded.spam.toLocaleString()}, papelera {inventory.excluded.trash.toLocaleString()}
+              {inventory.breakdown.map((item) => `${importCategoryLabel(language, item.key)} ${item.count.toLocaleString()}`).join(" · ")}
+              {" · "}{T("excluded", { d: inventory.excluded.drafts.toLocaleString(), s: inventory.excluded.spam.toLocaleString(), t: inventory.excluded.trash.toLocaleString() })}
             </p>
 
-            <section className="hms-import-alerts" aria-label="Alertas">
+            <section className="hms-import-alerts" aria-label={T("alerts")}>
               <div className="is-security">
                 <ShieldCheck size={16} />
-                <span>Seguridad</span>
+                <span>{T("security")}</span>
                 <strong>{num(preview?.security)}</strong>
-                <small>alertas en todas las áreas</small>
+                <small>{T("securityHint")}</small>
               </div>
               <div>
                 <Inbox size={16} />
-                <span>Por revisar</span>
+                <span>{T("review")}</span>
                 <strong>{num(preview?.review)}</strong>
-                <small>sin área clara aún</small>
+                <small>{T("reviewHint")}</small>
               </div>
             </section>
 
-            <section className="hms-import-spheres" aria-label="Vista previa por mundos">
+            <section className="hms-import-spheres" aria-label={T("worldsPreview")}>
               {SPHERES.map((sphere) => (
                 <article key={sphere.id}>
-                  <span>{sphere.label}</span>
+                  <span>{T(`w_${sphere.id}` as ImportKey)}</span>
                   <strong>{num((preview?.worlds ?? preview?.spheres)?.[sphere.id])}</strong>
                   <ul>
                     {AREAS.filter((area) => area.sphere === sphere.id).map((area) => (
                       <li key={area.id}>
-                        {area.label} <b>{num(preview?.areas?.[area.id])}</b>
+                        {T(`a_${area.id}` as ImportKey)} <b>{num(preview?.areas?.[area.id])}</b>
                       </li>
                     ))}
                   </ul>
@@ -535,21 +522,21 @@ export function GuidedImportWizard({
 
             {previewLoading ? (
               <p className="hms-import-scan" role="status">
-                <span aria-hidden="true" /> Analizando solo remitentes y asuntos (nunca el contenido). Puede tardar hasta 2 minutos…
+                <span aria-hidden="true" /> {T("scanning")}
               </p>
             ) : preview?.unavailable ? (
-              <p className="hms-import-scan is-warn" role="status">No pudimos calcular la vista previa ahora. Puedes importar igual; todo se clasifica al llegar.</p>
+              <p className="hms-import-scan is-warn" role="status">{T("previewUnavailable")}</p>
             ) : preview ? (
               <p className="hms-import-scan is-done">
                 {preview.partial
-                  ? `Resultado parcial: analizamos ${preview.sampled.toLocaleString()} mensajes; los números son aproximados.`
+                  ? T("previewPartial", { n: preview.sampled.toLocaleString() })
                   : preview.exact
-                    ? `Revisamos los ${preview.sampled.toLocaleString()} mensajes (solo remitente y asunto).`
-                    : `Estimado con una muestra de ${preview.sampled.toLocaleString()} mensajes (${Math.round((preview.coverage ?? 0) * 100)}% del total), solo remitente y asunto.`}
+                    ? T("previewExact", { n: preview.sampled.toLocaleString() })
+                    : T("previewSample", { n: preview.sampled.toLocaleString(), p: Math.round((preview.coverage ?? 0) * 100) })}
               </p>
             ) : null}
 
-            <div className="hms-import-choice" role="radiogroup" aria-label="Qué descargar">
+            <div className="hms-import-choice" role="radiogroup" aria-label={T("whatToDownload")}>
               <button
                 type="button"
                 role="radio"
@@ -557,7 +544,7 @@ export function GuidedImportWizard({
                 className={choice === "all" ? "is-on" : ""}
                 onClick={() => setChoice("all")}
               >
-                Bajar todo
+                {T("all")}
               </button>
               <button
                 type="button"
@@ -566,16 +553,16 @@ export function GuidedImportWizard({
                 className={choice === "custom" ? "is-on" : ""}
                 onClick={() => setChoice("custom")}
               >
-                Personalizado
+                {T("custom")}
               </button>
               <small>
-                <ShieldCheck size={14} /> Solo lectura: Donexto no borra, archiva, marca ni mueve nada en tu correo.
+                <ShieldCheck size={14} /> {T("readOnly")}
               </small>
             </div>
 
             {choice === "custom" ? (
-              <section className="hms-import-custom" aria-label="Categorías a importar">
-                <p>Elige mundos y áreas. Lo que desmarques no se descarga, salvo lo protegido.</p>
+              <section className="hms-import-custom" aria-label={T("categoriesToImport")}>
+                <p>{T("customHelp")}</p>
                 {SPHERES.map((sphere) => {
                   const ids = AREAS.filter((area) => area.sphere === sphere.id).map((area) => area.id);
                   const worldOff = ids.every((id) => exclude.includes(id));
@@ -583,13 +570,13 @@ export function GuidedImportWizard({
                     <div key={sphere.id} className="hms-import-world">
                       <label className={`hms-import-world-head ${worldOff ? "is-off" : ""}`}>
                         <input type="checkbox" checked={!worldOff} onChange={() => toggleWorld(sphere.id)} />
-                        <b>{sphere.label}</b>
+                        <b>{T(`w_${sphere.id}` as ImportKey)}</b>
                       </label>
                       <div className="hms-import-chips">
                         {AREAS.filter((area) => area.sphere === sphere.id).map((area) => (
                           <label key={area.id} className={exclude.includes(area.id) ? "is-off" : ""}>
                             <input type="checkbox" checked={!exclude.includes(area.id)} onChange={() => toggle(area.id)} />
-                            {area.label}
+                            {T(`a_${area.id}` as ImportKey)}
                             {countBadge(area.id)}
                           </label>
                         ))}
@@ -600,23 +587,21 @@ export function GuidedImportWizard({
                 <div className="hms-import-chips">
                   <label className={exclude.includes("revisar") ? "is-off" : ""}>
                     <input type="checkbox" checked={!exclude.includes("revisar")} onChange={() => toggle("revisar")} />
-                    Por revisar
+                    {T("review")}
                     {countBadge("revisar")}
                   </label>
                 </div>
                 {focusArea && examplesFor(preview, focusArea) ? (
                   <p className="hms-import-examples" role="status">
-                    Ejemplos: {examplesFor(preview, focusArea)}
+                    {T("examples", { x: examplesFor(preview, focusArea) })}
                   </p>
                 ) : null}
                 <div className="hms-import-world is-protected">
                   <span className="hms-import-world-head">
-                    <ShieldCheck size={14} /> <b>Protegidas</b> · se descargan siempre, aunque desmarques su área
+                    <ShieldCheck size={14} /> <b>{T("protectedTitle")}</b> · {T("protectedSub")}
                   </span>
                   <p className="hms-import-protected-note">
-                    Los correos de Seguridad, Bancos, Gobierno, Facturas y Salud (solo salud médica) se descargan aunque
-                    su área o Por revisar estén desmarcados. La protección aplica solo a esos correos, no al área completa.
-                    Puedes apagar cada protección desmarcándola aquí.
+{T("protectedNote")}
                   </p>
                   <div className="hms-import-chips">
                     {PROTECTED.map((item) => {
@@ -624,7 +609,7 @@ export function GuidedImportWizard({
                       return (
                         <label key={key} className={exclude.includes(key) ? "is-off" : ""}>
                           <input type="checkbox" checked={!exclude.includes(key)} onChange={() => toggle(key)} />
-                          {item.label}
+                          {T(`p_${item.id}` as ImportKey)}
                           {countBadge(key)}
                         </label>
                       );
@@ -632,7 +617,7 @@ export function GuidedImportWizard({
                   </div>
                 </div>
                 <p className="hms-import-social-list">
-                  Redes en Promociones y social:{" "}
+                  {T("socialList")}{" "}
                   {(Object.keys(preview?.social_platforms ?? {}).length
                     ? Object.keys(preview?.social_platforms ?? {})
                     : SOCIAL_LIST
@@ -647,7 +632,7 @@ export function GuidedImportWizard({
                 className="secondary"
                 onClick={onClose}
               >
-                Cancelar por ahora
+{T("cancel")}
               </button>
               <button
                 type="button"
@@ -660,10 +645,10 @@ export function GuidedImportWizard({
                   <Sparkles size={20} />
                 )}
                 {starting
-                  ? "Iniciando…"
+                  ? T("starting")
                   : choice === "custom" && exclude.some((id) => !id.startsWith(PROTECT))
-                    ? "Descargar lo elegido y clasificar"
-                    : `Descargar y clasificar ${inventory.eligible_messages.toLocaleString()} mensajes`}
+                    ? T("startChosen")
+                    : T("startAll", { n: inventory.eligible_messages.toLocaleString() })}
               </button>
             </div>
           </>
@@ -675,12 +660,11 @@ export function GuidedImportWizard({
               <span className="hms-import-kicker">Donexto · Do Next To…</span>
               <h2 id="hms-import-title">
                 {status.phase === "classifying"
-                  ? "Organizando tus pendientes"
-                  : "Descargando tu correo"}
+                  ? T("organizing")
+                  : T("downloadingMail")}
               </h2>
               <p>
-                El proceso continúa aunque cierres esta pantalla.
-                No vuelvas a iniciar otra descarga.
+{T("keepsRunning")}
               </p>
             </header>
 
@@ -697,10 +681,10 @@ export function GuidedImportWizard({
 
             <div className="hms-progress-block">
               <div className="hms-progress-heading">
-                <span>Descarga</span>
+                <span>{T("download")}</span>
                 <strong>
                   {progress.downloaded.toLocaleString()}
-                  {" de "}
+                  {` ${T("of")} `}
                   {progress.expected
                     ? progress.expected.toLocaleString()
                     : "…"}
@@ -713,15 +697,15 @@ export function GuidedImportWizard({
                   }}
                 />
               </div>
-              <small>{progress.download_percent}% completado</small>
+              <small>{T("completed", { p: progress.download_percent })}</small>
             </div>
 
             <div className="hms-progress-block">
               <div className="hms-progress-heading">
-                <span>Clasificación</span>
+                <span>{T("classification")}</span>
                 <strong>
                   {progress.classified.toLocaleString()}
-                  {" analizados"}
+                  {` ${T("analyzed")}`}
                 </strong>
               </div>
               <div className="hms-progress-track is-classification">
@@ -732,9 +716,9 @@ export function GuidedImportWizard({
                 />
               </div>
               <small>
-                {progress.created_cases.toLocaleString()} casos nuevos
+                {progress.created_cases.toLocaleString()} {T("newCases")}
                 {" · "}
-                {progress.without_case.toLocaleString()} sin caso
+                {progress.without_case.toLocaleString()} {T("withoutCase")}
               </small>
             </div>
 
@@ -742,7 +726,7 @@ export function GuidedImportWizard({
               {Object.entries(progress.categories).map(
                 ([key, value]) => (
                   <article key={key}>
-                    <span>{LABELS[key] ?? key}</span>
+                    <span>{importCategoryLabel(language, key)}</span>
                     <strong>{value.toLocaleString()}</strong>
                   </article>
                 ),
@@ -753,8 +737,7 @@ export function GuidedImportWizard({
               <div className="hms-import-error">
                 <AlertTriangle size={20} />
                 <span>
-                  Se registraron {progress.errors} incidencias.
-                  Donexto continuará con los mensajes restantes.
+{T("incidents", { n: progress.errors })}
                 </span>
               </div>
             ) : null}
@@ -767,36 +750,35 @@ export function GuidedImportWizard({
         && status.phase === "ready" ? (
           <section className="hms-import-ready">
             <CheckCircle2 size={48} />
-            <span className="hms-import-kicker">Donexto · Correo preparado</span>
+            <span className="hms-import-kicker">{T("readyKicker")}</span>
             <h2 id="hms-import-title">
-              Tu primera descarga ya está completa.
+{T("readyTitle")}
             </h2>
             <p>
-              A partir de ahora Donexto descargará únicamente mensajes
-              nuevos y volverá al dashboard al terminar.
+{T("readyBody")}
             </p>
 
             <div className="hms-ready-stats">
               <article>
-                <span>Descargados</span>
+                <span>{T("downloaded")}</span>
                 <strong>
                   {status.progress.downloaded.toLocaleString()}
                 </strong>
               </article>
               <article>
-                <span>Clasificados</span>
+                <span>{T("classified")}</span>
                 <strong>
                   {status.progress.classified.toLocaleString()}
                 </strong>
               </article>
               <article>
-                <span>Casos nuevos</span>
+                <span>{T("newCasesTitle")}</span>
                 <strong>
                   {status.progress.created_cases.toLocaleString()}
                 </strong>
               </article>
               <article>
-                <span>Sin caso</span>
+                <span>{T("withoutCaseTitle")}</span>
                 <strong>
                   {status.progress.without_case.toLocaleString()}
                 </strong>
@@ -809,7 +791,7 @@ export function GuidedImportWizard({
                 className="secondary"
                 onClick={onClose}
               >
-                Volver al dashboard
+{T("backToDashboard")}
               </button>
               <button
                 type="button"
@@ -822,8 +804,8 @@ export function GuidedImportWizard({
                   <RefreshCw size={20} />
                 )}
                 {starting
-                  ? "Buscando correo nuevo…"
-                  : "Descargar correos nuevos"}
+                  ? T("searchingNew")
+                  : T("downloadNew")}
               </button>
             </div>
           </section>
@@ -832,15 +814,15 @@ export function GuidedImportWizard({
         {!loading && status?.phase === "failed" ? (
           <section className="hms-import-ready is-failed">
             <AlertTriangle size={48} />
-            <span>REVISIÓN NECESARIA</span>
+            <span>{T("reviewNeeded")}</span>
             <h2 id="hms-import-title">
               {status.failure?.reconnect_required
-                ? "Tu correo necesita reconectarse."
-                : "La descarga no pudo concluir."}
+                ? T("reconnectTitle")
+                : T("failedTitle")}
             </h2>
             <p>
               {status.failure?.message
-                || "El avance quedó guardado. Toca Reintentar para continuar con el correo nuevo."}
+                || T("failedBody")}
             </p>
             <div className="hms-import-actions">
               {status.failure?.reconnect_required && onReconnect ? (
@@ -849,7 +831,7 @@ export function GuidedImportWizard({
                   className="secondary"
                   onClick={onReconnect}
                 >
-                  Reconectar correo
+{T("reconnect")}
                 </button>
               ) : null}
               <button
@@ -864,7 +846,7 @@ export function GuidedImportWizard({
                 ) : (
                   <RefreshCw size={20} />
                 )}
-                {starting ? "Reintentando…" : "Reintentar"}
+                {starting ? T("retrying") : T("retry")}
               </button>
             </div>
           </section>
