@@ -301,6 +301,10 @@ export function MailInbox({
 }) {
   const { language, locale } = useLanguage();
   const T = (key: MailKey, vars?: Record<string, string | number>) => mailText(language, key, vars);
+  const languageRef = useRef(language);
+  useEffect(() => {
+    languageRef.current = language;
+  }, [language]);
   const fontScale = appearance?.fontScale ?? 1;
   const initialFilter = FILTERS.find(
     (item) => item.category === initialCategory,
@@ -349,7 +353,7 @@ export function MailInbox({
       setRows(data.conversations);
       setTotal(data.total);
     } catch (reason) {
-      setError(readableError(reason, T("loadError")));
+      setError(readableError(reason, mailText(languageRef.current, "loadError")));
     } finally {
       setLoading(false);
     }
@@ -377,7 +381,7 @@ export function MailInbox({
         ),
       );
     } catch (reason) {
-      setError(readableError(reason, T("loadError")));
+      setError(readableError(reason, mailText(languageRef.current, "loadError")));
     } finally {
       setLoadingDetail(false);
     }
@@ -410,7 +414,7 @@ export function MailInbox({
       await loadThreads();
       window.dispatchEvent(new Event("hms:data-changed"));
     } catch (reason) {
-      setError(readableError(reason, T("loadError")));
+      setError(readableError(reason, mailText(languageRef.current, "loadError")));
     } finally {
       setSaving(false);
     }
@@ -451,7 +455,7 @@ export function MailInbox({
         }
       }
     } catch (reason) {
-      setError(readableError(reason, T("loadError")));
+      setError(readableError(reason, mailText(languageRef.current, "loadError")));
     } finally {
       setSaving(false);
     }
