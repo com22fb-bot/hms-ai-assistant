@@ -76,7 +76,7 @@ def build_prompt(sender: str, subject: str, body: str) -> tuple[str, str]:
 
 def _post(url: str, payload: dict, headers: dict, timeout: float) -> dict:
     req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers={"Content-Type": "application/json", **headers})
-    with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310 (URL fija del proveedor)
+    with urllib.request.urlopen(req, timeout=timeout) as r:  # noqa: S310  # nosec B310
         return json.loads(r.read().decode())
 
 

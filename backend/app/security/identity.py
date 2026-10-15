@@ -138,7 +138,9 @@ def authenticate_request(request: Request) -> AuthenticatedUser:
             try:
                 import jwt as _jwt
 
-                claims = _jwt.decode(access_token, options={"verify_signature": False})
+                # Justificación (CASA): el token YA fue validado arriba por Supabase Auth (_authenticate_remote).
+                # Aquí solo se leen sub/exp para la caché; no se usa para autorizar.
+                claims = _jwt.decode(access_token, options={"verify_signature": False})  # nosemgrep: python.jwt.security.unverified-jwt-decode.unverified-jwt-decode
             except Exception:
                 claims = None
         if claims is None or str(claims.get("sub") or "") == user.id:

@@ -5,6 +5,8 @@ El usuario firma en login.microsoftonline.com. Donexto no pide la clave.
 
 from __future__ import annotations
 
+import re
+
 import logging
 from typing import Any
 from urllib.parse import urlencode
@@ -158,9 +160,9 @@ def exchange_microsoft_code(
 
     if response.status_code >= 400:
         logger.warning(
-            "Microsoft token error %s: %s",
+            "Microsoft OAuth exchange failed status=%s code=%s",
             response.status_code,
-            response.text[:300],
+            _safe_oauth_error_code(response),
         )
         raise MicrosoftOAuthError(
             "Microsoft no entregó el token. Vuelve a firmar en el sitio de Microsoft."
@@ -271,3 +273,12 @@ def graph_get(
     if not isinstance(payload, dict):
         raise MicrosoftOAuthError("Microsoft Graph devolvió un cuerpo inválido.")
     return payload
+
+
+def _safe_oauth_error_code(response: Any) -> str:
+    """Solo el código de error estándar OAuth (p. ej. invalid_grant); nunca el cuerpo."""
+    try:
+        code = str((response.json() or {}).get("error") or "")
+    except Exception:
+        return "unparseable"
+    return code if re.fullmatch(r"[a-z_]{1,40}", code) else "unknown"

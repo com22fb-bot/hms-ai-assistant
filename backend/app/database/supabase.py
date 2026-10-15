@@ -79,7 +79,8 @@ def reject_non_admin_supabase_key(secret_key: str) -> None:
     reason = admin_key_block_reason(secret_key)
     if reason is None:
         return
-    logger.error("supabase_secret_key_cannot_admin reason=%s", reason)
+    # El motivo es un texto fijo de admin_key_block_reason, nunca el valor de la clave.
+    logger.error("supabase_secret_key_cannot_admin reason=%s", reason)  # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
     raise HTTPException(
         status_code=500,
         detail={
