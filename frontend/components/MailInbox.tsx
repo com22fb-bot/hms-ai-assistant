@@ -32,6 +32,7 @@ import {
 import { hmsJson } from "@/lib/hmsApi";
 import { INITIAL_MAIL_FRAME, nextMailFrameHeight, withoutViewportUnits, type MailFrameState } from "@/lib/mailFrame";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
+import { mailCategoryLabel, mailFilterLabel, mailPriorityLabel, mailText, type MailKey } from "@/lib/i18n/mailInbox";
 import { cleanDisplayText, stripCssNoise } from "@/lib/nucleo/cleanText";
 import { nx } from "@/lib/nucleo/copy";
 import { insightExcerpts, insightLine, type MailInsight } from "@/lib/nucleo/insights";
@@ -142,36 +143,16 @@ const FILTERS: FilterOption[] = [
   { key: "favorites", label: "Favoritos", favorites: true },
 ];
 
-const CATEGORY_LABELS: Record<string, string> = {
-  action_required: "Requiere atención",
-  waiting_external: "Esperando respuesta",
-  review: "Revisión humana",
-  notice: "Aviso importante",
-  social: "Social",
-  promotional: "Publicidad",
-  automated: "Automatizado",
-  informational: "Informativo",
-  unreviewed: "Por clasificar",
-};
-
 const RULE_CATEGORIES = [
-  ["action_required", "Requiere atención"],
-  ["review", "Revisión humana"],
-  ["notice", "Aviso importante"],
-  ["social", "Social"],
-  ["promotional", "Publicidad"],
-  ["automated", "Automatizado"],
-  ["informational", "Informativo"],
+  "action_required", "review", "notice", "social", "promotional", "automated", "informational",
 ] as const;
 
-function readableError(reason: unknown): string {
-  return reason instanceof Error
-    ? reason.message
-    : "No fue posible consultar los correos descargados.";
+function readableError(reason: unknown, fallback: string): string {
+  return reason instanceof Error ? reason.message : fallback;
 }
 
-function formatDate(value: string): string {
-  return new Intl.DateTimeFormat("es-MX", {
+function formatDate(value: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
@@ -318,7 +299,8 @@ export function MailInbox({
   appearance?: MailAppearance;
   onClose: () => void;
 }) {
-  const { language } = useLanguage();
+  const { language, locale } = useLanguage();
+  const T = (key: MailKey, vars?: Record<string, string | number>) => mailText(language, key, vars);
   const fontScale = appearance?.fontScale ?? 1;
   const initialFilter = FILTERS.find(
     (item) => item.category === initialCategory,
@@ -367,7 +349,7 @@ export function MailInbox({
       setRows(data.conversations);
       setTotal(data.total);
     } catch (reason) {
-      setError(readableError(reason));
+      setError(readableError(reason, T("loadError")));
     } finally {
       setLoading(false);
     }
@@ -395,7 +377,7 @@ export function MailInbox({
         ),
       );
     } catch (reason) {
-      setError(readableError(reason));
+      setError(readableError(reason, T("loadError")));
     } finally {
       setLoadingDetail(false);
     }
@@ -428,7 +410,7 @@ export function MailInbox({
       await loadThreads();
       window.dispatchEvent(new Event("hms:data-changed"));
     } catch (reason) {
-      setError(readableError(reason));
+      setError(readableError(reason, T("loadError")));
     } finally {
       setSaving(false);
     }
@@ -444,7 +426,7 @@ export function MailInbox({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           source_message_id: ruleTarget.id,
-          name: `Regla: ${ruleTarget.subject || ruleTarget.sender || "correo"}`,
+          name: T("ruleName", { s: ruleTarget.subject || ruleTarget.sender || T("mail") }),
           match_type: ruleMatchType,
           target_category: ruleCategory,
           match_value: ruleValue.trim() || null,
@@ -469,7 +451,7 @@ export function MailInbox({
         }
       }
     } catch (reason) {
-      setError(readableError(reason));
+      setError(readableError(reason, T("loadError")));
     } finally {
       setSaving(false);
     }
@@ -483,7 +465,7 @@ export function MailInbox({
       className={detail ? "hms-mailbox-overlay is-reading" : "hms-mailbox-overlay"}
       role="dialog"
       aria-modal="true"
-      aria-label={detail?.subject || "Correos"}
+      aria-label={detail?.subject || T("mails")}
       data-appearance={appearance?.theme ?? "dark"}
       data-contrast={appearance?.highContrast ? "high" : undefined}
       data-motion={appearance?.reducedMotion ? "reduce" : undefined}
@@ -492,11 +474,11 @@ export function MailInbox({
       <section className="hms-mailbox-shell" inert={detail ? true : undefined} aria-hidden={detail ? true : undefined}>
         <header className="hms-mailbox-header">
           <div>
-            <span>BANDEJA INTELIGENTE</span>
-            <h2>Correos</h2>
-            <p>Todos los mensajes agrupados por tema y ordenados del más reciente al más antiguo.</p>
+            <span>{T("kicker")}</span>
+            <h2>{T("mails")}</h2>
+            <p>{T("intro")}</p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar Correos">
+          <button type="button" onClick={onClose} aria-label={T("closeMails")}>
             <X size={23} />
           </button>
         </header>
@@ -507,7 +489,7 @@ export function MailInbox({
             <input
               type="search"
               value={searchInput}
-              placeholder="Buscar cualquier palabra en remitente, destinatarios, asunto o contenido..."
+              placeholder={T("searchPh")}
               onChange={(event) => setSearchInput(event.target.value)}
             />
             {search ? (
@@ -520,10 +502,10 @@ export function MailInbox({
                   setOffset(0);
                 }}
               >
-                Limpiar
+                {T("clear")}
               </button>
             ) : null}
-            <button type="submit">Buscar</button>
+            <button type="submit">{T("search")}</button>
           </form>
           <button
             type="button"
@@ -532,11 +514,11 @@ export function MailInbox({
             disabled={loading}
           >
             <RefreshCw className={loading ? "app-spin" : undefined} size={19} />
-            Actualizar
+            {T("refresh")}
           </button>
         </div>
 
-        <nav className="hms-mailbox-filters" aria-label="Filtros de correos">
+        <nav className="hms-mailbox-filters" aria-label={T("filtersAria")}>
           {FILTERS.map((filter) => (
             <button
               key={filter.key}
@@ -548,7 +530,7 @@ export function MailInbox({
               }}
             >
               {filter.key === "favorites" ? <Heart size={15} /> : null}
-              {filter.label}
+              {mailFilterLabel(language, filter.key)}
             </button>
           ))}
         </nav>
@@ -558,19 +540,19 @@ export function MailInbox({
         <div className="hms-mailbox-count">
           <Inbox size={18} />
           <strong>{total.toLocaleString()}</strong>
-          <span>{search ? `conversaciones que contienen “${search}”` : "conversaciones"}</span>
+          <span>{search ? T("convWith", { q: search }) : T("convs")}</span>
         </div>
 
         <div className="hms-mailbox-list">
           {loading ? (
             <div className="hms-mailbox-empty">
               <LoaderCircle className="app-spin" size={30} />
-              Buscando en todo el contenido...
+              {T("searching")}
             </div>
           ) : rows.length === 0 ? (
             <div className="hms-mailbox-empty">
               <Mail size={30} />
-              {search ? `No se encontró “${search}” en los correos descargados.` : "No hay correos en esta vista."}
+              {search ? T("notFound", { q: search }) : T("emptyView")}
             </div>
           ) : (
             rows.map((row) => (
@@ -585,23 +567,23 @@ export function MailInbox({
                   </span>
                   <span className="hms-mail-row-copy">
                     <span className="hms-mail-row-top">
-                      <strong>{row.sender || "Sin remitente"}</strong>
-                      <time>{formatDate(row.latest_received_at)}</time>
+                      <strong>{row.sender || T("noSender")}</strong>
+                      <time>{formatDate(row.latest_received_at, locale)}</time>
                     </span>
-                    <b>{cleanDisplayText(row.subject, "Sin asunto")}</b>
+                    <b>{cleanDisplayText(row.subject, T("noSubject"))}</b>
                     <small>{stripCssNoise(row.summary)}</small>
                     <span className="hms-mail-row-meta">
-                      <em>{CATEGORY_LABELS[row.triage_category] || row.triage_category}</em>
-                      <span><MessageSquareText size={13} /> {row.message_count} mensajes</span>
-                      {row.unread_count > 0 ? <span>{row.unread_count} sin leer</span> : null}
-                      {row.has_attachments ? <span><Paperclip size={13} /> Adjuntos</span> : null}
+                      <em>{mailCategoryLabel(language, row.triage_category)}</em>
+                      <span><MessageSquareText size={13} /> {T("messages", { n: row.message_count })}</span>
+                      {row.unread_count > 0 ? <span>{T("unread", { n: row.unread_count })}</span> : null}
+                      {row.has_attachments ? <span><Paperclip size={13} /> {T("attachments")}</span> : null}
                     </span>
                   </span>
                 </button>
                 <button
                   type="button"
                   className={row.favorite ? "hms-mail-favorite is-active" : "hms-mail-favorite"}
-                  aria-label={row.favorite ? "Editar favorito" : "Marcar como favorito"}
+                  aria-label={row.favorite ? T("editFav") : T("markFav")}
                   onClick={() => setFavoriteTarget(row)}
                 >
                   <Heart size={21} fill={row.favorite ? "currentColor" : "none"} />
@@ -613,39 +595,39 @@ export function MailInbox({
 
         <footer className="hms-mailbox-pagination">
           <button type="button" disabled={offset === 0} onClick={() => setOffset(Math.max(offset - PAGE_SIZE, 0))}>
-            <ChevronLeft size={18} /> Anterior
+            <ChevronLeft size={18} /> {T("prev")}
           </button>
-          <span>Página {page} de {pageCount}</span>
+          <span>{T("pageOf", { p: page, c: pageCount })}</span>
           <button type="button" disabled={offset + PAGE_SIZE >= total} onClick={() => setOffset(offset + PAGE_SIZE)}>
-            Siguiente <ChevronRight size={18} />
+            {T("next")} <ChevronRight size={18} />
           </button>
         </footer>
       </section>
 
       {loadingDetail ? (
-        <div className="hms-mail-detail-loading"><LoaderCircle className="app-spin" size={34} /> Abriendo conversación...</div>
+        <div className="hms-mail-detail-loading"><LoaderCircle className="app-spin" size={34} /> {T("opening")}</div>
       ) : null}
 
       {detail ? (
         <section className="hms-mail-detail" aria-labelledby="hms-mail-detail-title">
           <header>
-            <button type="button" onClick={() => setDetail(null)}><ArrowLeft size={19} /> Volver</button>
+            <button type="button" onClick={() => setDetail(null)}><ArrowLeft size={19} /> {T("back")}</button>
             <div>
-              <span>{detail.message_count} mensajes</span>
-              <strong id="hms-mail-detail-title">{cleanDisplayText(detail.subject, "Sin asunto")}</strong>
+              <span>{T("messages", { n: detail.message_count })}</span>
+              <strong id="hms-mail-detail-title">{cleanDisplayText(detail.subject, T("noSubject"))}</strong>
             </div>
             <div className="hms-mail-detail-actions">
               <button type="button" onClick={() => setRuleTarget(detail.messages[detail.messages.length - 1] || null)}>
-                <Settings2 size={18} /> Crear regla
+                <Settings2 size={18} /> {T("createRule")}
               </button>
             </div>
           </header>
 
-          <div className="hms-mail-reading" tabIndex={0} aria-label={cleanDisplayText(detail.subject, "Sin asunto")}>
+          <div className="hms-mail-reading" tabIndex={0} aria-label={cleanDisplayText(detail.subject, T("noSubject"))}>
             <section className="hms-mail-ai-summary">
               <ShieldCheck size={21} />
               <div>
-                <strong>Resumen de la conversación</strong>
+                <strong>{T("convSummary")}</strong>
                 <p>{insightLine(detail.insight, language) || stripCssNoise(detail.summary)}</p>
                 {insightExcerpts(detail.insight).length ? (
                   <div className="hms-mail-quotes" data-testid="mail-quotes">
@@ -670,26 +652,26 @@ export function MailInbox({
               {detail.messages.map((message, index) => (
                 <details key={message.id} open={index === detail.messages.length - 1}>
                   <summary>
-                    <span><strong>{message.sender || "Sin remitente"}</strong><small>{message.subject || "Sin asunto"}</small></span>
-                    <time>{formatDate(message.received_at)}</time>
+                    <span><strong>{message.sender || T("noSender")}</strong><small>{message.subject || T("noSubject")}</small></span>
+                    <time>{formatDate(message.received_at, locale)}</time>
                   </summary>
                   <div className="hms-message-metadata">
-                    <span>Para: {textList(message.recipients)}</span>
+                    <span>{T("to")} {textList(message.recipients)}</span>
                     {textList(message.cc) !== "—" ? <span>CC: {textList(message.cc)}</span> : null}
-                    <em>{CATEGORY_LABELS[message.triage_category] || message.triage_category}</em>
+                    <em>{mailCategoryLabel(language, message.triage_category)}</em>
                   </div>
-                  <section className="hms-message-summary"><ShieldCheck size={18} /><div><strong>Resumen Donexto</strong><p>{stripCssNoise(message.summary)}</p><small>{message.triage_reason || "Sin explicación adicional."}</small></div></section>
+                  <section className="hms-message-summary"><ShieldCheck size={18} /><div><strong>{T("donextoSummary")}</strong><p>{stripCssNoise(message.summary)}</p><small>{message.triage_reason || T("noReason")}</small></div></section>
                   {message.related_cases?.length ? (
                     <div className="hms-mail-related-case">
-                      <strong>Caso relacionado</strong>
-                      {message.related_cases.map((item) => <span key={item.id}>{item.title} · {item.priority}</span>)}
+                      <strong>{T("relatedCase")}</strong>
+                      {message.related_cases.map((item) => <span key={item.id}>{item.title} · {mailPriorityLabel(language, String(item.priority ?? ""))}</span>)}
                     </div>
                   ) : null}
                   <div className="hms-mail-content">
                     {message.body_html ? (
-                      <MailBody html={message.body_html} title={`Contenido de ${message.subject || "correo"}`} fontScale={fontScale} />
+                      <MailBody html={message.body_html} title={T("contentOf", { s: message.subject || T("mail") })} fontScale={fontScale} />
                     ) : (
-                      <pre>{message.body_text || "Este mensaje no contiene cuerpo disponible."}</pre>
+                      <pre>{message.body_text || T("noBody")}</pre>
                     )}
                   </div>
                 </details>
@@ -703,13 +685,13 @@ export function MailInbox({
         <div className="hms-favorite-dialog-backdrop">
           <section className="hms-favorite-dialog">
             <Heart size={30} />
-            <h3>{favoriteTarget.favorite ? "Editar favorito" : "Seguir este correo"}</h3>
-            <p>Donexto te avisará únicamente por las coincidencias que elijas.</p>
-            <button disabled={saving} type="button" onClick={() => void saveFavorite(favoriteTarget, true, "sender")}>Avisar por este remitente</button>
-            <button disabled={saving} type="button" onClick={() => void saveFavorite(favoriteTarget, true, "subject")}>Avisar por este tema</button>
-            <button disabled={saving} type="button" onClick={() => void saveFavorite(favoriteTarget, true, "sender_subject")}>Remitente y tema</button>
-            {favoriteTarget.favorite ? <button disabled={saving} className="danger" type="button" onClick={() => void saveFavorite(favoriteTarget, false, "sender")}>Quitar favorito</button> : null}
-            <button className="secondary" type="button" onClick={() => setFavoriteTarget(null)}>Cancelar</button>
+            <h3>{favoriteTarget.favorite ? T("editFav") : T("followMail")}</h3>
+            <p>{T("favHelp")}</p>
+            <button disabled={saving} type="button" onClick={() => void saveFavorite(favoriteTarget, true, "sender")}>{T("bySender")}</button>
+            <button disabled={saving} type="button" onClick={() => void saveFavorite(favoriteTarget, true, "subject")}>{T("byTopic")}</button>
+            <button disabled={saving} type="button" onClick={() => void saveFavorite(favoriteTarget, true, "sender_subject")}>{T("senderTopic")}</button>
+            {favoriteTarget.favorite ? <button disabled={saving} className="danger" type="button" onClick={() => void saveFavorite(favoriteTarget, false, "sender")}>{T("removeFav")}</button> : null}
+            <button className="secondary" type="button" onClick={() => setFavoriteTarget(null)}>{T("cancel")}</button>
           </section>
         </div>
       ) : null}
@@ -718,29 +700,29 @@ export function MailInbox({
         <div className="hms-favorite-dialog-backdrop">
           <section className="hms-rule-dialog">
             <Settings2 size={30} />
-            <h3>Crear regla automática</h3>
-            <p>Esta regla se aplicará a los correos nuevos. El historial solo se modifica si lo autorizas.</p>
-            <label>Coincidencia
+            <h3>{T("ruleTitle")}</h3>
+            <p>{T("ruleHelp")}</p>
+            <label>{T("match")}
               <select value={ruleMatchType} onChange={(event) => setRuleMatchType(event.target.value)}>
-                <option value="sender">Mismo remitente</option>
-                <option value="sender_domain">Mismo dominio</option>
-                <option value="subject_contains">Tema contiene</option>
-                <option value="body_contains">Contenido contiene</option>
-                <option value="sender_subject">Remitente y tema</option>
+                <option value="sender">{T("sameSender")}</option>
+                <option value="sender_domain">{T("sameDomain")}</option>
+                <option value="subject_contains">{T("subjectContains")}</option>
+                <option value="body_contains">{T("bodyContains")}</option>
+                <option value="sender_subject">{T("senderTopic")}</option>
               </select>
             </label>
             {(ruleMatchType === "body_contains" || ruleMatchType === "subject_contains") ? (
-              <label>Texto de la regla<input value={ruleValue} onChange={(event) => setRuleValue(event.target.value)} placeholder="Ejemplo: factura vencida" /></label>
+              <label>{T("ruleText")}<input value={ruleValue} onChange={(event) => setRuleValue(event.target.value)} placeholder={T("rulePh")} /></label>
             ) : null}
-            <label>Categoría
+            <label>{T("category")}
               <select value={ruleCategory} onChange={(event) => setRuleCategory(event.target.value)}>
-                {RULE_CATEGORIES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                {RULE_CATEGORIES.map((value) => <option key={value} value={value}>{mailCategoryLabel(language, value)}</option>)}
               </select>
             </label>
-            <label className="check"><input type="checkbox" checked={applyExisting} onChange={(event) => setApplyExisting(event.target.checked)} /> Aplicar únicamente a correos existentes que coincidan</label>
-            <label className="check"><input type="checkbox" checked={rulePush} onChange={(event) => setRulePush(event.target.checked)} /> Enviar aviso push cuando coincida</label>
-            <button disabled={saving} type="button" onClick={() => void saveRule()}>{saving ? <LoaderCircle className="app-spin" size={18} /> : <Bell size={18} />} Guardar regla</button>
-            <button className="secondary" type="button" onClick={() => setRuleTarget(null)}>Cancelar</button>
+            <label className="check"><input type="checkbox" checked={applyExisting} onChange={(event) => setApplyExisting(event.target.checked)} /> {T("applyExisting")}</label>
+            <label className="check"><input type="checkbox" checked={rulePush} onChange={(event) => setRulePush(event.target.checked)} /> {T("pushOnMatch")}</label>
+            <button disabled={saving} type="button" onClick={() => void saveRule()}>{saving ? <LoaderCircle className="app-spin" size={18} /> : <Bell size={18} />} {T("saveRule")}</button>
+            <button className="secondary" type="button" onClick={() => setRuleTarget(null)}>{T("cancel")}</button>
           </section>
         </div>
       ) : null}
