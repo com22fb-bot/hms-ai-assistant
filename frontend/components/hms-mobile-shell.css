@@ -182,3 +182,12 @@
   }
 }
 
+
+/* Aviso al volver de un fallo de Google OAuth (nunca JSON crudo). */
+.dx-oauth-return { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; padding: 20px; background: rgba(8, 12, 20, 0.62); }
+.dx-oauth-return section { position: relative; width: min(440px, 100%); padding: 28px 24px 22px; border-radius: 18px; background: #fff; color: #142033; text-align: center; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3); }
+.dx-oauth-return section > svg { color: #d97706; }
+.dx-oauth-return h2 { margin: 10px 0 8px; font-size: 1.2rem; }
+.dx-oauth-return p { margin: 0 0 18px; line-height: 1.5; }
+.dx-oauth-return__retry { display: inline-flex; gap: 8px; align-items: center; justify-content: center; width: 100%; min-height: 46px; border: 0; border-radius: 12px; background: #0f766e; color: #fff; font-weight: 700; font-size: 1rem; cursor: pointer; }
+.dx-oauth-return__close { position: absolute; top: 10px; right: 10px; border: 0; background: transparent; color: inherit; padding: 6px; cursor: pointer; }
