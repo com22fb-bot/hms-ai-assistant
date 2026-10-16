@@ -13,6 +13,7 @@ import { DonextoMark } from "@/components/brand/DonextoMark";
 import { GuidedImportWizard } from "@/components/GuidedImportWizard";
 import { ConfirmEmailGate } from "@/components/auth/ConfirmEmailGate";
 import { LoginScreen } from "@/components/auth/LoginScreen";
+import { OAuthReturnNotice } from "@/components/auth/OAuthReturnNotice";
 import { MailboxConnectModal } from "@/components/MailboxConnectModal";
 import "@/components/hms-mobile-shell.css";
 import "@/components/guided-import.css";
@@ -478,6 +479,15 @@ function Dashboard({
     setNotice(null);
   }
 
+  useEffect(() => {
+    const retry = () => {
+      setMailboxPickerOpen(true);
+      setNotice(null);
+    };
+    window.addEventListener("donexto:oauth-retry", retry);
+    return () => window.removeEventListener("donexto:oauth-retry", retry);
+  }, []);
+
   function stayOnYahooPending() {
     setGuidedImportOpen(false);
     setMailboxPickerOpen(true);
@@ -722,6 +732,12 @@ export default function HomePage() {
 
   return (
     <LanguageProvider userId={session?.id ?? null}>
+      <OAuthReturnNotice
+        onRetry={() => {
+          // Con sesión: abre el selector de buzón. Sin sesión: el botón de Google queda a la vista.
+          window.dispatchEvent(new Event("donexto:oauth-retry"));
+        }}
+      />
       {loading ? (
         <div className="app-loading-screen">
           <DonextoMark className="app-loading-mark" size={96} alt="Donexto — Do Next To…" />

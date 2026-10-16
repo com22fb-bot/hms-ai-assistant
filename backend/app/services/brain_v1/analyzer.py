@@ -470,7 +470,7 @@ def _analyze_v2(message: dict[str, Any], *, user_verified: bool | None = None) -
         # Marca desconocida: se pasa a revisión; nunca cobro, cita ni área temática.
         result.rule, result.triage, result.actionable = "phishing_suspect", "review", False
         result.confidence = RULE_CONFIDENCE["phishing_suspect"]
-        result.reason = "Posible phishing o fraude (" + ", ".join(verdict.signals) + "). No hagas clic ni respondas; revisa."
+        result.reason = "Posible phishing o fraude (" + ", ".join(verdict.signals) + "). No des Click ni respondas; revisa."
         result.protected = "security"
         result.severity = "review"
         result.dates = DateResult()
@@ -572,7 +572,7 @@ def _analyze(message: dict[str, Any], *, user_verified: bool | None = None) -> A
     cred_text = NEGATED_SHARE_RE.sub(" ", text)
     if LINK_RE.search(cred_text) and CRED_ENTRY_RE.search(cred_text):
         result = build("phishing_suspect", "review", False,
-                       "Posible phishing: pide abrir un enlace y escribir contraseña o código. Revisa sin hacer clic.",
+                       "Posible phishing: pide abrir un enlace y escribir contraseña o código. Revisa sin dar Click.",
                        protected="security")
         result.severity = "review"
         return result
