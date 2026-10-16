@@ -58,12 +58,12 @@ export const ACCOUNT_VS_MAILBOX = {
     "Elige el correo que vas a monitorear: será el mismo de tu cuenta Donexto. Te llevamos al inicio de sesión de ese proveedor.",
   authSecurityTitle: "Seguridad y responsabilidad",
   authSecurityBody:
-    "Donexto nunca te pide la contraseña de Gmail aquí. Si te das de alta con Gmail, te escribimos a ese mismo correo. Sin clic en ese mail no entras ni leemos el buzón. Las pantallas de Google son de Google; la confirmación de Donexto es el correo que nosotros enviamos.",
+    "Donexto nunca te pide la contraseña de Gmail aquí. Si te das de alta con Gmail, te escribimos a ese mismo correo. Si no das Click en ese mail no entras ni leemos el buzón. Las pantallas de Google son de Google; la confirmación de Donexto es el correo que nosotros enviamos.",
   confirmGateTitle: "Revisa tu correo",
   confirmGateBody:
-    "Te escribimos a ese mismo correo. Sin el clic en ese mail no entras a Donexto.",
+    "Te escribimos a ese mismo correo. Si no das Click en ese mail no entras a Donexto.",
   confirmGateResend: "Reenviar correo de confirmación",
-  confirmGateRefresh: "Ya hice clic — continuar",
+  confirmGateRefresh: "Ya di Click — continuar",
   confirmGateSignOut: "Cerrar sesión",
   signupHaveAccount: "Ya tengo cuenta — Entrar",
   signupYahooTitle: "Yahoo",
@@ -201,7 +201,7 @@ export function confirmGateBodyFor(email: string): string {
   return (
     `Te escribimos a ese mismo ${label}. Donexto nunca te pidió la ${password}: ` +
     "este correo confirma que autorizas a Donexto a, después, leer ese buzón. " +
-    "Sin el clic no entras."
+    "Si no das Click, no entras."
   );
 }
 
@@ -214,19 +214,19 @@ export function authSecurityBodyFor(email?: string): string {
   if (!email || provider === "other") {
     return (
       "Donexto nunca te pide aquí la contraseña de tu buzón. Te escribimos " +
-      "a ese mismo correo. Sin clic en ese mail no entras ni leemos el buzón. " +
+      "a ese mismo correo. Si no das Click en ese mail no entras ni leemos el buzón. " +
       "La confirmación de Donexto es el correo que nosotros enviamos."
     );
   }
   if (provider === "yahoo") {
     return (
       "Donexto nunca te pide la clave de Yahoo aquí. Firmas en el sitio de " +
-      "Yahoo y después te escribimos a ese mismo correo. Sin el clic no entras."
+      "Yahoo y después te escribimos a ese mismo correo. Si no das Click, no entras."
     );
   }
   return (
     `Donexto nunca te pide la ${password} aquí. Si te das de alta con ${label}, ` +
-    "te escribimos a ese mismo correo. Sin clic en ese mail no entras ni leemos " +
+    "te escribimos a ese mismo correo. Si no das Click en ese mail no entras ni leemos " +
     "el buzón. Las pantallas del proveedor son suyas; la confirmación de " +
     "Donexto es el correo que nosotros enviamos."
   );

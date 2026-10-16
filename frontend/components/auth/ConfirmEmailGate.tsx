@@ -19,7 +19,7 @@ type ConfirmEmailGateProps = {
 };
 
 /**
- * Bloquea el dashboard hasta el clic en Verificar del correo.
+ * Bloquea el dashboard hasta dar Click en Verificar del correo.
  * OAuth no sustituye ese paso. "Ya abrí el enlace" solo revisa un token
  * pendiente o una confirmación que ya hizo otra pestaña.
  */

@@ -136,6 +136,10 @@ export function LoginScreen({
     if (!flag) {
       return;
     }
+    // Los fallos de Google los muestra OAuthReturnNotice con texto traducido.
+    if (flag === "oauth_error" && params.get("provider") === "google") {
+      return;
+    }
     const hinted = (params.get("email") || "").trim().toLowerCase();
     const reason = params.get("reason");
     const url = new URL(window.location.href);
