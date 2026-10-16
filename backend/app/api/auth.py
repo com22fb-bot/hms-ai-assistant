@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from html import escape
+import logging
 from typing import Any
 from urllib.parse import urlparse
 
@@ -30,6 +30,8 @@ router = APIRouter(prefix="/auth/google", tags=["Google OAuth"])
 
 GOOGLE_PROVIDER = "google"
 DEFAULT_TOKEN_URI = "https://oauth2.googleapis.com/token"
+
+logger = logging.getLogger(__name__)
 
 
 class GoogleStartRequest(BaseModel):
@@ -779,76 +781,105 @@ def _public_request_url(request: Request) -> str:
     )
 
 
+GMAIL_READ_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
+
+
+class GoogleCallbackFailure(Exception):
+    """Fallo del callback que se convierte en redirect amable, nunca en JSON."""
+
+    def __init__(self, reason: str, technical_detail: str = "") -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.technical_detail = technical_detail
+
+
+def google_callback_failure_url(reason: str, return_to: str | None = None) -> str:
+    """``https://app.donexto.com/?donexto=oauth_error&provider=google&reason=…``."""
+    from urllib.parse import urlencode
+
+    target = google_token_redirect_target(return_to).rstrip("/")
+    query = urlencode(
+        {"donexto": "oauth_error", "provider": "google", "reason": reason}
+    )
+    return f"{target}/?{query}" if not urlparse(target).path.strip("/") else f"{target}?{query}"
+
+
+def _granted_scope_param(request: Request) -> set[str]:
+    return {item for item in request.query_params.get("scope", "").split() if item}
+
+
 @router.get("/callback", response_model=None)
 def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
+    """Nunca devuelve JSON al navegador: cualquier fallo vuelve a Donexto con un aviso."""
+    holder: dict[str, str] = {}
+    try:
+        return _google_callback(request, holder)
+    except GoogleCallbackFailure as failure:
+        reason, detail = failure.reason, failure.technical_detail
+    except HTTPException as error:
+        detail_obj = error.detail if isinstance(error.detail, dict) else {}
+        reason = str(detail_obj.get("reason") or "connection_failed")
+        detail = str(detail_obj.get("technical_detail") or detail_obj.get("message") or "")
+    except Exception as error:  # noqa: BLE001 - el usuario nunca debe ver un 500 crudo
+        reason, detail = "connection_failed", repr(error)
+    logger.warning("google_callback_failed reason=%s detail=%s", reason, detail[:300])
+    return RedirectResponse(
+        url=google_callback_failure_url(reason, holder.get("return_to")),
+        status_code=302,
+    )
+
+
+def _google_callback(request: Request, holder: dict[str, str]) -> HTMLResponse | RedirectResponse:
     oauth_error = request.query_params.get("error")
 
     if oauth_error:
-        error_description = request.query_params.get(
-            "error_description",
-            "Google rechazó la autorización.",
-        )
-        return HTMLResponse(
-            status_code=400,
-            content=f"""
-            <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Error de conexión</title></head><body>
-            <h1>No fue posible conectar Google</h1>
-            <p>{escape(error_description)}</p>
-            <p>Regresa a Donexto e inténtalo nuevamente.</p>
-            </body></html>
-            """,
+        raise GoogleCallbackFailure(
+            "access_denied" if oauth_error == "access_denied" else "google_rejected",
+            str(request.query_params.get("error_description") or oauth_error),
         )
 
     state = request.query_params.get("state")
     if not state:
-        raise HTTPException(
-            status_code=400,
-            detail={"status": "error", "message": "El estado OAuth está vacío."},
-        )
+        raise GoogleCallbackFailure("state_invalid", "El estado OAuth está vacío.")
 
+    # Se lee sin borrar: un fallo transitorio o un callback duplicado no lo quema
+    # antes del canje del código. Se borra justo después del canje (uso único).
     try:
-        state_context = oauth_storage.consume_oauth_state(
+        state_context = oauth_storage.load_oauth_state(
             state,
             GOOGLE_PROVIDER,
         )
     except OAuthStateError as error:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "error",
-                "message": "El estado OAuth es inválido, expiró o ya fue utilizado.",
-                "technical_detail": str(error),
-            },
-        ) from error
+        raise GoogleCallbackFailure("state_invalid", str(error)) from error
     except OAuthStorageError as error:
-        raise HTTPException(
-            status_code=500,
-            detail={
-                "status": "error",
-                "message": "No fue posible validar el estado OAuth en Supabase.",
-                "technical_detail": str(error),
-            },
-        ) from error
+        raise GoogleCallbackFailure("connection_failed", str(error)) from error
 
+    holder["return_to"] = str(state_context.get("return_to") or "")
     profile_id = str(state_context.get("profile_id") or "").strip()
     workspace_id = str(state_context.get("workspace_id") or "").strip()
     public_login = not profile_id or not workspace_id
+
+    granted = _granted_scope_param(request)
+    if granted and GMAIL_READ_SCOPE in settings.google_scopes and GMAIL_READ_SCOPE not in granted:
+        # Consentimiento granular: el usuario no marcó "Ver tus correos".
+        oauth_storage.delete_oauth_state(state)
+        raise GoogleCallbackFailure(
+            "gmail_permission_missing",
+            f"scopes concedidos: {sorted(granted)}",
+        )
 
     flow = create_google_flow(state=state)
 
     try:
         flow.fetch_token(authorization_response=_public_request_url(request))
     except Exception as error:
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "status": "error",
-                "message": "No fue posible obtener el token de Google.",
-                "technical_detail": str(error),
-            },
-        ) from error
+        raise GoogleCallbackFailure("token_failed", str(error)) from error
+    finally:
+        # El código de Google es de un solo uso: el estado ya no sirve después del canje.
+        try:
+            oauth_storage.delete_oauth_state(state)
+        except Exception:  # noqa: BLE001
+            logger.warning("google_callback_state_delete_failed")
 
     credentials: Credentials = flow.credentials
 
@@ -903,6 +934,7 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
             query = urlencode(
                 {
                     "donexto": "oauth_error",
+                    "provider": "google",
                     "reason": "gmail_mismatch",
                 }
             )
@@ -929,18 +961,9 @@ def google_callback(request: Request) -> HTMLResponse | RedirectResponse:
 
     expected_email = "" if public_login else _donexto_profile_email(profile_id)
     if expected_email and authorized_email and authorized_email != expected_email:
-        return HTMLResponse(
-            status_code=400,
-            content=f"""
-            <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Gmail distinto</title></head><body>
-            <h1>Debes autorizar el mismo Gmail</h1>
-            <p>Tu cuenta Donexto es <strong>{escape(expected_email)}</strong>.</p>
-            <p>Google autorizó <strong>{escape(authorized_email)}</strong>, que no coincide.</p>
-            <p>Regresa a Donexto y autoriza la lectura de ese mismo Gmail.</p>
-            </body></html>
-            """,
+        raise GoogleCallbackFailure(
+            "gmail_mismatch",
+            "El Gmail autorizado no coincide con la cuenta Donexto.",
         )
 
     try:
