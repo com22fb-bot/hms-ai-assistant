@@ -28,6 +28,8 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 from app.security.identity import require_google_account
+from app.services.brain_v1 import brain_v1_enabled
+from app.services.brain_v1.headers import gmail_mail_headers
 from app.services.oauth_storage import OAuthStorage
 from app.utils.mail_clean import import_body
 
@@ -661,6 +663,9 @@ def sync_gmail_messages(
                     "snippet": snippet,
                     "ai_processed": False,
                 }
+
+                if brain_v1_enabled():
+                    message_payload["mail_headers"] = gmail_mail_headers(headers, labels)
 
                 insert_response = (
                     client.table("communication_messages")
