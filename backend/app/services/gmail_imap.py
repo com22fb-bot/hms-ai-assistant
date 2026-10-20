@@ -13,6 +13,7 @@ from __future__ import annotations
 import imaplib
 import re
 import socket
+import unicodedata
 from typing import Any
 
 from app.services.imap_mail import (
@@ -34,12 +35,16 @@ class GmailImapError(IcloudImapError):
     (importación guiada, sync) lo trate igual que iCloud.
     """
 
+    #: Respuesta del servidor IMAP ya sin el secreto (solo para logs).
+    server_text: str = ""
+
 
 _APP_PASSWORD = re.compile(r"^[A-Za-z]{16}$")
 
 _MSG_WRONG = (
-    "Gmail no aceptó esa contraseña de aplicación. "
-    "Revísala o crea otra en myaccount.google.com/apppasswords."
+    "Gmail no aceptó esa contraseña de aplicación para este correo. "
+    "Créala con la sesión de Google de este mismo correo en "
+    "myaccount.google.com/apppasswords."
 )
 _MSG_APP = (
     "Gmail no acepta tu contraseña normal de Google. Usa una contraseña de "
@@ -50,6 +55,12 @@ _MSG_IMAP_OFF = (
     "Gmail tiene el acceso IMAP desactivado para esta cuenta. "
     "Si es de trabajo o escuela, pide al administrador que lo active."
 )
+_MSG_WEB_LOGIN = (
+    "Google pide confirmar el acceso en el navegador. Entra a tu cuenta de "
+    "Google, revisa el aviso de seguridad y vuelve a intentar."
+)
+_MSG_THROTTLED = "Gmail bloqueó temporalmente los intentos. Espera unos minutos."
+_MSG_CHARS = "La contraseña de aplicación solo lleva letras. Cópiala otra vez desde Google."
 _MSG_ADDRESS = "Indica el correo completo de Gmail."
 _MSG_NETWORK = (
     "No hubo respuesta de Gmail (imap.gmail.com:993). "
@@ -61,23 +72,49 @@ def normalize_gmail_address(address: str) -> str:
     return normalize_imap_address(address)
 
 
+def _strip_invisible(raw: str) -> str:
+    """Quita todo espacio (incluido Unicode: NBSP, finos, ideográficos) y los
+    caracteres invisibles de formato (zero-width, BOM, marcas de dirección)
+    que llegan al copiar y pegar. NFKC convierte letras de ancho completo."""
+    text = unicodedata.normalize("NFKC", raw or "")
+    return "".join(
+        ch for ch in text
+        if not ch.isspace() and unicodedata.category(ch) not in {"Cf", "Zs", "Zl", "Zp", "Cc"}
+    )
+
+
 def normalize_gmail_app_password(raw: str) -> str:
-    """Acepta ``abcd efgh ijkl mnop`` (como lo muestra Google) o las 16 letras seguidas."""
-    cleaned = (raw or "").strip().replace("\u00a0", "")
-    compact = re.sub(r"[\s-]+", "", cleaned)
-    if _APP_PASSWORD.fullmatch(compact):
-        return compact
-    return cleaned
+    """Google muestra ``abcd efgh ijkl mnop``; Gmail espera las 16 letras sin espacios.
+
+    La contraseña de aplicación nunca lleva espacios, así que se quitan siempre
+    (antes solo se quitaban si el resultado eran 16 letras exactas; si no, se
+    enviaba el texto con espacios). No se cambia mayúsculas/minúsculas.
+    """
+    compact = _strip_invisible(raw)
+    without_hyphens = compact.replace("-", "")
+    if _APP_PASSWORD.fullmatch(without_hyphens):
+        return without_hyphens
+    return compact
 
 
 def looks_like_google_app_password(raw: str) -> bool:
-    return bool(_APP_PASSWORD.fullmatch(re.sub(r"[\s-]+", "", (raw or "").strip())))
+    return bool(_APP_PASSWORD.fullmatch(_strip_invisible(raw).replace("-", "")))
 
 
 def classify_gmail_auth_error(error_text: str, submitted: str) -> GmailImapError:
-    text = scrub_secret(error_text or "", submitted).lower()
-    if "application-specific password" in text or "app password" in text or "webloginrequired" in text:
+    server = scrub_secret(error_text or "", submitted)
+    error = _classify(server.lower(), submitted)
+    error.server_text = server[:300]
+    return error
+
+
+def _classify(text: str, submitted: str) -> GmailImapError:
+    if "application-specific password" in text or "app password" in text:
         return GmailImapError(_MSG_APP, code="app_password_required")
+    if "webloginrequired" in text or "web browser" in text or "web login" in text:
+        return GmailImapError(_MSG_WEB_LOGIN, code="web_login_required")
+    if "too many" in text or ("rate" in text and "limit" in text):
+        return GmailImapError(_MSG_THROTTLED, code="rate_limited")
     if "imap access is disabled" in text or "imap is disabled" in text or "not enabled for imap" in text:
         return GmailImapError(_MSG_IMAP_OFF, code="imap_disabled")
     if any(t in text for t in ("invalid credentials", "authenticationfailed", "authentication failed", "login failed", "credentials")):
@@ -85,7 +122,7 @@ def classify_gmail_auth_error(error_text: str, submitted: str) -> GmailImapError
             return GmailImapError(_MSG_WRONG, code="wrong_password")
         return GmailImapError(_MSG_APP, code="app_password_required")
     return GmailImapError(
-        scrub_secret(f"Gmail IMAP no pudo autenticar. {error_text}".strip(), submitted),
+        scrub_secret("Gmail IMAP no pudo autenticar.", submitted),
         code="imap_failed",
     )
 
@@ -97,6 +134,9 @@ def _validate_pair(address: str, app_password: str) -> tuple[str, str]:
         raise GmailImapError(_MSG_ADDRESS, code="invalid_address")
     if len(app_password) < 8:
         raise GmailImapError(_MSG_APP, code="app_password_required")
+    if not app_password.isascii():
+        # imaplib solo envía ASCII; un carácter raro rompería el LOGIN.
+        raise GmailImapError(_MSG_CHARS, code="invalid_characters")
     return address, app_password
 
 

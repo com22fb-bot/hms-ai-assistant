@@ -188,6 +188,13 @@ def gmail_imap_connect(
     try:
         verified = verify_gmail_imap_login(address, payload.app_password)
     except GmailImapError as error:
+        # Solo el código y la respuesta del servidor ya sin secreto; nunca la contraseña.
+        logger.warning(
+            "Gmail IMAP rechazó el acceso de %s: code=%s server=%r",
+            address,
+            error.code,
+            getattr(error, "server_text", "") or "",
+        )
         raise _http_from_imap(error) from error
 
     access_token = None
