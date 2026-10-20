@@ -90,6 +90,38 @@ def create_gmail_router(
                 messages=messages,
             )
 
+        if provider == "gmail_imap":
+            from app.services.gmail_imap import GmailImapError, list_gmail_imap_messages
+
+            credentials = oauth_storage.get_credentials(str(account["id"]))
+            address = str(account.get("email") or "").strip()
+            secret = str((credentials or {}).get("access_token") or "")
+            if not address or not secret or not stored_icloud_uses_app_password(credentials):
+                raise HTTPException(
+                    status_code=401,
+                    detail={
+                        "status": "gmail_imap_credentials_missing",
+                        "code": "gmail_imap_credentials_missing",
+                        "message": (
+                            "Vuelve a conectar Gmail. Donexto ya no tiene "
+                            "la contraseña de aplicación."
+                        ),
+                    },
+                )
+            try:
+                raw_messages = list_gmail_imap_messages(address, secret, max_results=limit)
+            except GmailImapError as error:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "status": "gmail_imap_read_failed",
+                        "code": error.code,
+                        "message": str(error),
+                    },
+                ) from error
+            messages = [GmailMessage.model_validate(item) for item in raw_messages]
+            return GmailMessagesResponse(total=len(messages), messages=messages)
+
         if provider in ("yahoo", "imap"):
             credentials = oauth_storage.get_credentials(str(account["id"]))
             try:

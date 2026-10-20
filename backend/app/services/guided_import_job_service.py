@@ -19,6 +19,7 @@ from app.services.gmail_import_inventory import initial_import_snapshot
 from app.services.oauth_storage import OAuthStorage
 from app.database.supabase import get_supabase_client
 from app.services.account_lifecycle import history_days_for_workspace
+from app.services.imap_provider import APP_PASSWORD_IMAP_PROVIDERS
 from app.services.icloud_imap import (
     IcloudImapError,
     stored_icloud_uses_app_password,
@@ -91,7 +92,12 @@ def _storage() -> OAuthStorage:
 
 def is_icloud_provider(account: dict[str, Any] | None) -> bool:
     provider = str((account or {}).get("provider") or "").strip().lower()
-    return provider == "icloud"
+    return provider in APP_PASSWORD_IMAP_PROVIDERS
+
+
+def _app_password_provider(account: dict[str, Any]) -> str:
+    provider = str((account or {}).get("provider") or "").strip().lower()
+    return provider if provider in APP_PASSWORD_IMAP_PROVIDERS else "icloud"
 
 
 def _icloud_secret(account: dict[str, Any]) -> tuple[str, str]:
@@ -99,8 +105,9 @@ def _icloud_secret(account: dict[str, Any]) -> tuple[str, str]:
     stored = _storage().get_credentials(str(account["id"])) or {}
     secret = str(stored.get("access_token") or "")
     if not email or not secret or not stored_icloud_uses_app_password(stored):
+        label = "Gmail" if _app_password_provider(account) == "gmail_imap" else "iCloud"
         raise IcloudImapError(
-            "Vuelve a conectar iCloud. Donexto ya no tiene la contraseña de app.",
+            f"Vuelve a conectar {label}. Donexto ya no tiene la contraseña de app.",
             code="icloud_credentials_missing",
         )
     return email, secret
@@ -276,7 +283,7 @@ def _run_job(job_id: str) -> None:
                     offset=offset,
                     batch_size=int(job.get("batch_size") or YAHOO_PAGE_SIZE),
                     oauth=False,
-                    mailbox_provider="icloud",
+                    mailbox_provider=_app_password_provider(account),
                     exclude=list((job.get("metadata") or {}).get("exclude") or []),
                 )
             elif is_yahoo_provider(account):
@@ -606,7 +613,7 @@ def start_guided_import(
                 app_password,
                 cutoff_at=now,
                 oauth=False,
-                mailbox_provider="icloud",
+                mailbox_provider=_app_password_provider(account),
                 history_days=plan_history_days,
             )
             query = str(snapshot["query"])
@@ -719,9 +726,9 @@ def start_guided_import(
                 app_password,
                 since=since,
                 oauth=False,
-                mailbox_provider="icloud",
+                mailbox_provider=_app_password_provider(account),
             )
-            query = f"icloud:since:{since.date().isoformat()}"
+            query = f"{_app_password_provider(account)}:since:{since.date().isoformat()}"
             expected = len(refs)
             job_mode = "incremental"
             metadata = {

@@ -14,6 +14,7 @@ from app.services.gmail_import_inventory import (
 from app.services.guided_import_job_service import (
     get_guided_import_status,
     is_icloud_provider,
+    _app_password_provider,
     start_guided_import,
 )
 from app.services.oauth_storage import oauth_storage
@@ -77,8 +78,8 @@ def _icloud_secret(account: dict[str, Any]) -> tuple[str, str]:
                 "status": "icloud_required",
                 "code": "icloud_credentials_missing",
                 "message": (
-                    "Vuelve a conectar iCloud. Donexto ya no tiene "
-                    "la contraseña de app."
+                    f"Vuelve a conectar {'Gmail' if _app_password_provider(account) == 'gmail_imap' else 'iCloud'}. "
+                    "Donexto ya no tiene la contraseña de app."
                 ),
             },
         )
@@ -106,7 +107,7 @@ def import_inventory() -> dict[str, Any]:
                 email,
                 app_password,
                 oauth=False,
-                mailbox_provider="icloud",
+                mailbox_provider=_app_password_provider(account),
                 history_days=days,
             )
         except IcloudImapError as error:
@@ -178,7 +179,7 @@ def import_preview() -> dict[str, Any]:
     try:
         if is_icloud_provider(account):
             email, app_password = _icloud_secret(account)
-            headers = imap_headers(email, app_password, oauth=False, mailbox_provider="icloud", days=days)
+            headers = imap_headers(email, app_password, oauth=False, mailbox_provider=_app_password_provider(account), days=days)
         elif is_yahoo_provider(account):
             email, app_password, oauth = _yahoo_secret(account)
             headers = imap_headers(email, app_password, oauth=oauth, mailbox_provider="yahoo", days=days)

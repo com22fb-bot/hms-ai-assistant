@@ -54,6 +54,10 @@ def _prepare_imap_secret(
         from app.services.icloud_imap import normalize_icloud_app_password
 
         return clean, normalize_icloud_app_password(secret)
+    if mailbox_provider == "gmail_imap":
+        from app.services.gmail_imap import normalize_gmail_app_password
+
+        return clean, normalize_gmail_app_password(secret)
     if not oauth:
         return clean, normalize_yahoo_app_password(secret)
     return clean, secret
@@ -71,6 +75,10 @@ def _open_mailbox_client(
         from app.services.icloud_imap import open_icloud_client
 
         return open_icloud_client(address, secret, timeout=timeout)
+    if mailbox_provider == "gmail_imap":
+        from app.services.gmail_imap import open_gmail_imap_client
+
+        return open_gmail_imap_client(address, secret, timeout=timeout)
     return _open_yahoo_client(address, secret, timeout=timeout, oauth=oauth)
 
 
@@ -100,11 +108,19 @@ def _provider_read_error(mailbox_provider: str, message: str) -> Exception:
         from app.services.icloud_imap import IcloudImapError
 
         return IcloudImapError(message, code="imap_failed")
+    if mailbox_provider == "gmail_imap":
+        from app.services.gmail_imap import GmailImapError
+
+        return GmailImapError(message, code="imap_failed")
     return YahooImapError(message, code="imap_failed")
 
 
 def _provider_label(mailbox_provider: str) -> str:
-    return "iCloud" if mailbox_provider == "icloud" else "Yahoo"
+    if mailbox_provider == "icloud":
+        return "iCloud"
+    if mailbox_provider == "gmail_imap":
+        return "Gmail"
+    return "Yahoo"
 
 
 def _list_folders(client: Any) -> list[tuple[str, str]]:
@@ -284,7 +300,7 @@ def yahoo_inventory(
         "mode": "initial_six_month_inventory",
         "email": normalize_yahoo_address(address),
         "provider": mailbox_provider,
-        "provider_label": "iCloud" if mailbox_provider == "icloud" else "Yahoo",
+        "provider_label": _provider_label(mailbox_provider),
         "profile_messages_total": (
             snapshot["eligible_messages"]
             + excluded["drafts"]
