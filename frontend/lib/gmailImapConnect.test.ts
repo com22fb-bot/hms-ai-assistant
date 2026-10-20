@@ -34,3 +34,12 @@ test("unknown codes never show raw backend text", () => {
   assert.equal(gmailImapFailureText("es", "something_raw"), gmailImapText("es", "imap_failed"));
   assert.equal(gmailImapFailureText("en", "wrong_password"), gmailImapText("en", "wrong_password"));
 });
+
+test("new error codes are translated in every language", () => {
+  for (const language of APP_LANGUAGES) {
+    for (const code of ["web_login_required", "invalid_characters", "wrong_password"]) {
+      assert.equal(gmailImapFailureText(language, code), gmailImapText(language, code as "wrong_password"));
+      assert.notEqual(gmailImapFailureText(language, code), gmailImapText(language, "imap_failed"));
+    }
+  }
+});

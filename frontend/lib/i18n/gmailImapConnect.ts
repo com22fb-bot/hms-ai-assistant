@@ -25,6 +25,8 @@ export type GmailImapCopyKey =
   | "wrong_password"
   | "app_password_required"
   | "imap_disabled"
+  | "web_login_required"
+  | "invalid_characters"
   | "invalid_address"
   | "network"
   | "email_mismatch"
@@ -53,7 +55,9 @@ const es: Record<GmailImapCopyKey, string> = {
   useOauth: "Conectar con Google (OAuth)",
   useOauthHint: "Opción alternativa. Google puede mostrar un aviso de app no verificada.",
   back: "Volver",
-  wrong_password: "Gmail no aceptó esa contraseña de aplicación. Revísala o crea otra.",
+  wrong_password: "Gmail no aceptó esa contraseña de aplicación para este correo. Créala con la sesión de Google de este mismo correo.",
+  web_login_required: "Google pide confirmar el acceso. Entra a tu cuenta de Google, revisa el aviso de seguridad y vuelve a intentar.",
+  invalid_characters: "La contraseña de aplicación solo lleva letras. Cópiala otra vez desde Google.",
   app_password_required: "Usa una contraseña de aplicación de 16 letras, no tu contraseña de Google.",
   imap_disabled: "IMAP está desactivado en esta cuenta. Si es de trabajo o escuela, pide al administrador que lo active.",
   invalid_address: "Escribe el correo completo de Gmail.",
@@ -85,7 +89,9 @@ const en: Record<GmailImapCopyKey, string> = {
   useOauth: "Connect with Google (OAuth)",
   useOauthHint: "Alternative option. Google may show an unverified app warning.",
   back: "Back",
-  wrong_password: "Gmail did not accept that app password. Check it or create a new one.",
+  wrong_password: "Gmail did not accept that app password for this address. Create it while signed in to Google with this same address.",
+  web_login_required: "Google wants you to confirm access. Open your Google Account, check the security alert and try again.",
+  invalid_characters: "App passwords only have letters. Copy it again from Google.",
   app_password_required: "Use a 16-letter app password, not your Google password.",
   imap_disabled: "IMAP is turned off for this account. For work or school accounts, ask your admin to turn it on.",
   invalid_address: "Enter your full Gmail address.",
@@ -117,7 +123,9 @@ const fr: Record<GmailImapCopyKey, string> = {
   useOauth: "Se connecter avec Google (OAuth)",
   useOauthHint: "Option alternative. Google peut afficher un avertissement d'application non validée.",
   back: "Retour",
-  wrong_password: "Gmail a refusé ce mot de passe d'application. Vérifiez-le ou créez-en un autre.",
+  wrong_password: "Gmail a refusé ce mot de passe d'application pour cette adresse. Créez-le en étant connecté à Google avec cette même adresse.",
+  web_login_required: "Google demande de confirmer l'accès. Ouvrez votre compte Google, vérifiez l'alerte de sécurité et réessayez.",
+  invalid_characters: "Le mot de passe d'application ne contient que des lettres. Copiez-le à nouveau depuis Google.",
   app_password_required: "Utilisez un mot de passe d'application de 16 lettres, pas votre mot de passe Google.",
   imap_disabled: "IMAP est désactivé pour ce compte. Pour un compte professionnel ou scolaire, demandez à l'administrateur de l'activer.",
   invalid_address: "Saisissez l'adresse Gmail complète.",
@@ -149,7 +157,9 @@ const it: Record<GmailImapCopyKey, string> = {
   useOauth: "Collega con Google (OAuth)",
   useOauthHint: "Opzione alternativa. Google può mostrare un avviso di app non verificata.",
   back: "Indietro",
-  wrong_password: "Gmail non ha accettato questa password per le app. Controllala o creane un'altra.",
+  wrong_password: "Gmail non ha accettato questa password per le app per questo indirizzo. Creala con l'accesso a Google di questo stesso indirizzo.",
+  web_login_required: "Google chiede di confermare l'accesso. Apri il tuo account Google, controlla l'avviso di sicurezza e riprova.",
+  invalid_characters: "La password per le app contiene solo lettere. Copiala di nuovo da Google.",
   app_password_required: "Usa una password per le app di 16 lettere, non la password di Google.",
   imap_disabled: "IMAP è disattivato per questo account. Se è di lavoro o scuola, chiedi all'amministratore di attivarlo.",
   invalid_address: "Inserisci l'indirizzo Gmail completo.",
@@ -181,7 +191,9 @@ const pt: Record<GmailImapCopyKey, string> = {
   useOauth: "Conectar com o Google (OAuth)",
   useOauthHint: "Opção alternativa. O Google pode mostrar um aviso de app não verificado.",
   back: "Voltar",
-  wrong_password: "O Gmail não aceitou essa senha de app. Confira ou crie outra.",
+  wrong_password: "O Gmail não aceitou essa senha de app para este e-mail. Crie-a com a sessão do Google deste mesmo e-mail.",
+  web_login_required: "O Google pede para confirmar o acesso. Abra sua Conta do Google, veja o alerta de segurança e tente de novo.",
+  invalid_characters: "A senha de app só tem letras. Copie de novo no Google.",
   app_password_required: "Use uma senha de app de 16 letras, não a sua senha do Google.",
   imap_disabled: "O IMAP está desativado nesta conta. Se for de trabalho ou escola, peça ao administrador para ativar.",
   invalid_address: "Digite o e-mail completo do Gmail.",
@@ -205,6 +217,8 @@ const FAILURE_KEYS = new Set<GmailImapCopyKey>([
   "wrong_password",
   "app_password_required",
   "imap_disabled",
+  "web_login_required",
+  "invalid_characters",
   "invalid_address",
   "network",
   "email_mismatch",
