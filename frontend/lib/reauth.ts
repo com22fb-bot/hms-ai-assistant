@@ -12,6 +12,7 @@ const PROVIDER_NAMES: Record<string, string> = {
   yahoo: "Yahoo",
   imap: "Yahoo",
   icloud: "iCloud",
+  gmail_imap: "Gmail",
 };
 
 export function reauthPrompt(status: ReauthStatus): { title: string; detail: string } | null {

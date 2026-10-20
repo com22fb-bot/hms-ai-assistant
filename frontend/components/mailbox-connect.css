@@ -274,3 +274,21 @@ a.dx-connect-btn.dx-mail-open:hover {
   border-color: #0c8a80;
   color: #0a6f67;
 }
+
+/* Gmail con contraseña de aplicación: pasos guiados. */
+.dx-gmail-imap__step {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+}
+.dx-gmail-imap__step > strong {
+  font-size: 0.95rem;
+}
+.dx-gmail-imap__step p {
+  margin: 0;
+}
+.dx-gmail-imap .dx-login__control {
+  display: flex;
+}

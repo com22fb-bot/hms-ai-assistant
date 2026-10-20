@@ -40,6 +40,7 @@ _PROTECTED_PREFIXES = (
     "/auth/yahoo",
     "/auth/microsoft",
     "/auth/icloud",
+    "/auth/gmail-imap",
 )
 
 _PUBLIC_PATHS = {
@@ -57,6 +58,8 @@ _PUBLIC_PATHS = {
     # Primer acceso iCloud: el IMAP de la contraseña de app es la prueba.
     # Con sesión, el handler exige que el correo coincida.
     "/auth/icloud/connect",
+    # Gmail por IMAP: el LOGIN con contraseña de aplicación es la prueba.
+    "/auth/gmail-imap/connect",
     # Email click may open a browser with no OAuth session. The token_hash
     # is the proof; the handler rejects calls that do not carry it.
     "/identity/confirm-donexto",

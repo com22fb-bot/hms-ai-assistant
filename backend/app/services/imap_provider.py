@@ -39,6 +39,19 @@ ICLOUD_IMAP = ImapProviderConfig(
     auth_mode="password",
 )
 
+GMAIL_IMAP = ImapProviderConfig(
+    provider_id="gmail_imap",
+    label="Gmail",
+    host="imap.gmail.com",
+    port=993,
+    # Gmail y Google Workspace (dominio propio): no se restringe por dominio.
+    domains=(),
+    auth_mode="password",
+)
+
+# Proveedores IMAP con contraseña de aplicación que comparten el pipeline de iCloud.
+APP_PASSWORD_IMAP_PROVIDERS = ("icloud", "gmail_imap")
+
 
 # Lectura que no marca el mensaje como leído.
 PEEK_HEADER_SPEC = "(FLAGS BODY.PEEK[HEADER])"
