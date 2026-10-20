@@ -45,7 +45,7 @@ _current_context: ContextVar[WorkspaceContext | None] = ContextVar(
 )
 
 # Gmail, Yahoo IMAP, iCloud IMAP y Outlook/Microsoft 365.
-MAILBOX_PROVIDERS = ["google", "yahoo", "imap", "microsoft", "icloud"]
+MAILBOX_PROVIDERS = ["google", "yahoo", "imap", "microsoft", "icloud", "gmail_imap"]
 
 
 def _first_row(response: Any) -> dict[str, Any] | None:

@@ -46,6 +46,7 @@ SUPPORTED_PROVIDERS = {
     "imap",
     "yahoo",
     "icloud",
+    "gmail_imap",
 }
 
 ACTIVE_ACCOUNT_STATUSES = {
