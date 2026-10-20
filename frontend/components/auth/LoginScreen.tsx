@@ -9,6 +9,7 @@ import {
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { GmailConnectNotice } from "@/components/auth/GmailConnectNotice";
+import { GmailAppPasswordGuide } from "@/components/auth/GmailAppPasswordGuide";
 import { GmailImapConnectForm } from "@/components/auth/GmailImapConnectForm";
 import { gmailImapFailureText, gmailImapText } from "@/lib/i18n/gmailImapConnect";
 import { IcloudConnectForm } from "@/components/auth/IcloudConnectForm";
@@ -732,35 +733,41 @@ export function LoginScreen({
   return (
     <main
       className={
-        confirming || waiting ? "dx-login dx-login--confirm" : "dx-login"
+        confirming || waiting
+          ? "dx-login dx-login--confirm"
+          : showGmailImap
+            ? "dx-login dx-login--gmail-guide"
+            : "dx-login"
       }
     >
-      <aside className="dx-login__hero dx-login__hero--studio" aria-label="Donexto">
-        <div className="dx-login__hero-media" aria-hidden="true">
-          <picture>
-            <source
-              type="image/webp"
-              srcSet="/brand/donexto-login-hero-studio-1280.webp 1280w, /brand/donexto-login-hero-studio-1920.webp 1920w, /brand/donexto-login-hero-studio-2560.webp 2560w"
-              sizes="(min-width: 1264px) 672px, (min-width: 900px) 54vw, (min-width: 600px) 540px, 100vw"
-            />
-            <img
-              src="/brand/donexto-login-hero-studio.jpg"
-              srcSet="/brand/donexto-login-hero-studio-1280.jpg 1280w, /brand/donexto-login-hero-studio.jpg 1920w, /brand/donexto-login-hero-studio-2560.jpg 2560w"
-              sizes="(min-width: 1264px) 672px, (min-width: 900px) 54vw, (min-width: 600px) 540px, 100vw"
-              width={2560}
-              height={1428}
-              alt=""
-              decoding="async"
-              fetchPriority="high"
-            />
-          </picture>
-        </div>
-        <div className="dx-login__hero-inner">
-          <h1 className="dx-login__sr">Donexto</h1>
-          <p className="dx-login__hero-headline">{L("heroHeadline")}</p>
-          <p className="dx-login__hero-subline">{L("heroSubline")}</p>
-        </div>
-      </aside>
+      {showGmailImap ? null : (
+        <aside className="dx-login__hero dx-login__hero--studio" aria-label="Donexto">
+          <div className="dx-login__hero-media" aria-hidden="true">
+            <picture>
+              <source
+                type="image/webp"
+                srcSet="/brand/donexto-login-hero-studio-1280.webp 1280w, /brand/donexto-login-hero-studio-1920.webp 1920w, /brand/donexto-login-hero-studio-2560.webp 2560w"
+                sizes="(min-width: 1264px) 672px, (min-width: 900px) 54vw, (min-width: 600px) 540px, 100vw"
+              />
+              <img
+                src="/brand/donexto-login-hero-studio.jpg"
+                srcSet="/brand/donexto-login-hero-studio-1280.jpg 1280w, /brand/donexto-login-hero-studio.jpg 1920w, /brand/donexto-login-hero-studio-2560.jpg 2560w"
+                sizes="(min-width: 1264px) 672px, (min-width: 900px) 54vw, (min-width: 600px) 540px, 100vw"
+                width={2560}
+                height={1428}
+                alt=""
+                decoding="async"
+                fetchPriority="high"
+              />
+            </picture>
+          </div>
+          <div className="dx-login__hero-inner">
+            <h1 className="dx-login__sr">Donexto</h1>
+            <p className="dx-login__hero-headline">{L("heroHeadline")}</p>
+            <p className="dx-login__hero-subline">{L("heroSubline")}</p>
+          </div>
+        </aside>
+      )}
 
       <section className="dx-login__panel">
         <div className="dx-login__card" aria-labelledby="dx-login-title">
@@ -1043,6 +1050,7 @@ export function LoginScreen({
           </p>
         </footer>
       </section>
+      {showGmailImap ? <GmailAppPasswordGuide email={email.trim().toLowerCase()} /> : null}
     </main>
   );
 }
