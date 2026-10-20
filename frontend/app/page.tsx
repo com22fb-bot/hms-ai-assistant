@@ -19,6 +19,11 @@ import "@/components/hms-mobile-shell.css";
 import "@/components/guided-import.css";
 import { MailInbox, type MailAppearance } from "@/components/MailInbox";
 import { NucleoApp, type MailSyncState } from "@/components/nucleo/NucleoApp";
+import {
+  canOpenInitialImport,
+  ONBOARDING_DECISION_TIMEOUT_MS,
+  type PushOnboardingState,
+} from "@/lib/nucleo/onboardingGate";
 import { LanguageProvider, useLanguage } from "@/lib/i18n/LanguageProvider";
 import { shellText, type ShellKey } from "@/lib/i18n/appShell";
 import "@/components/mail-inbox.css";
@@ -334,6 +339,24 @@ function Dashboard({
   const [importFlowStatus, setImportFlowStatus] =
     useState<ImportFlowStatus | null>(null);
   const [initialFlowOpened, setInitialFlowOpened] = useState(false);
+  // La importación inicial espera a que el paso de notificaciones termine o se omita.
+  const [wantsInitialImport, setWantsInitialImport] = useState(false);
+  const [pushOnboarding, setPushOnboarding] = useState<PushOnboardingState>("pending");
+  useEffect(() => {
+    if (pushOnboarding !== "pending") return;
+    const timer = window.setTimeout(() => {
+      setPushOnboarding((current) => (current === "pending" ? "done" : current));
+    }, ONBOARDING_DECISION_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [pushOnboarding]);
+  useEffect(() => {
+    if (!canOpenInitialImport(wantsInitialImport, pushOnboarding)) return;
+    const timer = window.setTimeout(() => {
+      setWantsInitialImport(false);
+      setGuidedImportOpen(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [wantsInitialImport, pushOnboarding]);
   const [billingBusy, setBillingBusy] = useState(false);
   const [planNotice, setPlanNotice] = useState<string | null>(null);
   const [mailSync, setMailSync] = useState<MailSyncState>({ phase: "idle" });
@@ -374,7 +397,7 @@ function Dashboard({
         window.dispatchEvent(new Event("hms:data-changed"));
       } else if (result.reason === "initial") {
         setMailSync({ phase: "idle" });
-        setGuidedImportOpen(true);
+        setWantsInitialImport(true);
       } else {
         setMailSync({ phase: "error", reason: result.reason, message: result.message });
       }
@@ -430,7 +453,7 @@ function Dashboard({
           current.needs_initial_import
           || Boolean(current.active)
         ) {
-          setGuidedImportOpen(true);
+          setWantsInitialImport(true);
         }
 
         setInitialFlowOpened(true);
@@ -582,6 +605,7 @@ function Dashboard({
         mailSync={mailSync}
         onMailSyncDismiss={() => setMailSync({ phase: "idle" })}
         overlayOpen={guidedImportOpen || mailboxPickerOpen || mailOpen}
+        onPushOnboardingState={setPushOnboarding}
         onOpenInbox={openMailView}
         onOpenImport={() => setGuidedImportOpen(true)}
         onPlan={() => {
