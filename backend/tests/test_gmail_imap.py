@@ -282,5 +282,79 @@ class GmailImapTests(unittest.TestCase):
         self.assertNotIn("MiClave123", str(error))
 
 
+    def test_normalize_strips_unicode_and_invisible(self) -> None:
+        pasted = "\u200babcd\u00a0efgh\u2009ijkl\u3000mnop\ufeff\n"
+        self.assertEqual(normalize_gmail_app_password(pasted), APP_PASSWORD_COMPACT)
+        self.assertEqual(normalize_gmail_app_password(" abcd\tefgh\u202fijkl\u2060mnop "), APP_PASSWORD_COMPACT)
+        # Ancho completo (teclados asiáticos) → ASCII.
+        self.assertEqual(normalize_gmail_app_password("ａｂｃｄ efgh ijkl mnop"), APP_PASSWORD_COMPACT)
+        # Aunque no sean 16 letras, nunca se envían espacios.
+        self.assertEqual(normalize_gmail_app_password("abcd efgh ijkl mno"), "abcdefghijklmno")
+
+    def test_case_is_preserved(self) -> None:
+        self.assertEqual(normalize_gmail_app_password("ABCD efgh IJKL mnop"), "ABCDefghIJKLmnop")
+
+    def test_login_sends_full_address_and_compact_secret(self) -> None:
+        fake_imap = _Imap()
+        with patch("app.services.imap_mail.imaplib.IMAP4_SSL", return_value=fake_imap):
+            from app.services.gmail_imap import verify_gmail_imap_login
+
+            verify_gmail_imap_login(" Hector@Gmail.com ", "\u200babcd\u00a0efgh ijkl mnop")
+        self.assertEqual(fake_imap.user, "hector@gmail.com")
+        self.assertEqual(fake_imap.password, APP_PASSWORD_COMPACT)
+
+    def test_non_ascii_secret_is_rejected_before_login(self) -> None:
+        from app.services.gmail_imap import verify_gmail_imap_login
+
+        fake_imap = _Imap()
+        with patch("app.services.imap_mail.imaplib.IMAP4_SSL", return_value=fake_imap):
+            with self.assertRaises(GmailImapError) as caught:
+                verify_gmail_imap_login(ADDRESS, "abcdéfghijklmnop")
+        self.assertEqual(caught.exception.code, "invalid_characters")
+        self.assertIsNone(fake_imap.password)
+
+    def test_error_mapping_is_precise(self) -> None:
+        cases = {
+            "[AUTHENTICATIONFAILED] Invalid credentials (Failure)": "wrong_password",
+            "[ALERT] Application-specific password required: https://support.google.com/accounts/answer/185833 (Failure)": "app_password_required",
+            "[ALERT] Please log in via your web browser: https://support.google.com/mail/accounts/answer/78754 (Failure)": "web_login_required",
+            "[WEBLOGINREQUIRED] Web login required": "web_login_required",
+            "[ALERT] Your account is not enabled for IMAP use.": "imap_disabled",
+            "[ALERT] Too many simultaneous connections. (Failure)": "rate_limited",
+            "something else": "imap_failed",
+        }
+        for server, code in cases.items():
+            error = classify_gmail_auth_error(f"b'{server}'", APP_PASSWORD_COMPACT)
+            self.assertEqual(error.code, code, server)
+            self.assertNotIn(APP_PASSWORD_COMPACT, str(error))
+
+    def test_failure_log_has_server_text_but_no_secret(self) -> None:
+        fake_imap = _Imap(login_error=f"[AUTHENTICATIONFAILED] Invalid credentials {APP_PASSWORD_COMPACT}".encode())
+        records: list[str] = []
+
+        class _Capture(logging.Handler):
+            def emit(self, record: logging.LogRecord) -> None:
+                records.append(record.getMessage())
+
+        handler = _Capture()
+        logging.getLogger().addHandler(handler)
+        try:
+            with (
+                patch("app.services.imap_mail.imaplib.IMAP4_SSL", return_value=fake_imap),
+                patch("app.api.gmail_imap_mail.allow_request", return_value=True),
+            ):
+                with self.assertRaises(HTTPException):
+                    gmail_imap_connect(
+                        GmailImapConnectRequest(email=ADDRESS, app_password=APP_PASSWORD),
+                        _Request(),  # type: ignore[arg-type]
+                    )
+        finally:
+            logging.getLogger().removeHandler(handler)
+        blob = "\n".join(records)
+        self.assertIn("AUTHENTICATIONFAILED", blob)
+        self.assertIn("code=wrong_password", blob)
+        self.assertNotIn(APP_PASSWORD_COMPACT, blob)
+
+
 if __name__ == "__main__":
     unittest.main()
