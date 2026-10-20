@@ -96,6 +96,7 @@ import { rankTopTen, shouldShowTopTen, type TopItem } from "@/lib/nucleo/topTen"
 import { helpForKey, matchHelp, type HelpMatch, type HelpTarget } from "@/lib/nucleo/helpKb";
 import { cleanDisplayText, stripCssNoise } from "@/lib/nucleo/cleanText";
 import { Onboarding } from "@/components/nucleo/Onboarding";
+import type { PushOnboardingState } from "@/lib/nucleo/onboardingGate";
 import { SettingsView, type SettingsTab } from "@/components/nucleo/SettingsView";
 
 import "./nucleo.css";
@@ -140,6 +141,8 @@ export type NucleoAppProps = {
   onMailSyncDismiss?: () => void;
   /** Another modal (import wizard, mailbox picker, inbox) is open. */
   overlayOpen?: boolean;
+  /** Avisa si el paso de notificaciones está por decidirse, abierto o terminado. */
+  onPushOnboardingState?: (state: PushOnboardingState) => void;
   preview?: boolean;
   previewScreen?: "today" | "settings" | "onboarding";
   previewTheme?: NucleoTheme;
@@ -355,6 +358,14 @@ export function NucleoApp(props: NucleoAppProps) {
     return () => window.clearTimeout(timer);
   }, [refreshPush]);
 
+  const [onboardDecided, setOnboardDecided] = useState(
+    Boolean(props.preview || prefs.pushOnboardingCompletedAt),
+  );
+  const onPushOnboardingState = props.onPushOnboardingState;
+  useEffect(() => {
+    onPushOnboardingState?.(onboard ? "open" : onboardDecided ? "done" : "pending");
+  }, [onboard, onboardDecided, onPushOnboardingState]);
+
   useEffect(() => {
     if (props.preview || prefs.pushOnboardingCompletedAt) return;
     let cancelled = false;
@@ -362,10 +373,14 @@ export function NucleoApp(props: NucleoAppProps) {
       if (cancelled) return;
       const created = data.user?.created_at;
       const done = data.user?.user_metadata?.nucleo_push_onboarding;
-      if (done || !created) return;
-      const age = Date.now() - new Date(created).getTime();
-      if (age >= 0 && age < 1000 * 60 * 60 * 72) setOnboard(true);
-    }).catch(() => undefined);
+      if (!done && created) {
+        const age = Date.now() - new Date(created).getTime();
+        if (age >= 0 && age < 1000 * 60 * 60 * 72) setOnboard(true);
+      }
+      setOnboardDecided(true);
+    }).catch(() => {
+      if (!cancelled) setOnboardDecided(true);
+    });
     return () => {
       cancelled = true;
     };
