@@ -278,12 +278,14 @@ function Dashboard({
     connectingMicrosoft,
     connectingIcloud,
     connectingYahooImap,
+    connectingGmailImap,
     loadGoogleStatus,
     startGoogleConnection,
     startYahooConnection,
     startMicrosoftConnection,
     connectIcloud,
     connectYahooImap,
+    connectGmailImap,
   } = useGoogleStatus();
 
   const isGoogleMailbox =
@@ -293,6 +295,8 @@ function Dashboard({
     connection?.connected && connection.provider === "yahoo";
   const isMicrosoftMailbox =
     connection?.connected && connection.provider === "microsoft";
+  const isGmailImapMailbox =
+    connection?.connected && connection.provider === "gmail_imap";
   const yahooIdentityReady =
     connection?.provider === "yahoo" && Boolean(connection.has_access_token);
   const microsoftIdentityReady =
@@ -305,6 +309,7 @@ function Dashboard({
     Boolean(session.email) &&
     mailboxConnectModeFromEmail(session.email) === "gmail" &&
     !isGoogleMailbox &&
+    !isGmailImapMailbox &&
     !isMicrosoftMailbox;
   const yahooIdentityWithoutRead =
     mailboxConnectModeFromEmail(session.email) === "yahoo" &&
@@ -313,7 +318,7 @@ function Dashboard({
   const isIcloudMailbox =
     connection?.connected && connection.provider === "icloud";
   const usesGuidedImport = Boolean(
-    isGoogleMailbox || isYahooMailbox || isMicrosoftMailbox || isIcloudMailbox,
+    isGoogleMailbox || isYahooMailbox || isMicrosoftMailbox || isIcloudMailbox || isGmailImapMailbox,
   );
 
   const { syncing, syncAllMessages, loadDashboard } = useCases(
@@ -603,6 +608,7 @@ function Dashboard({
             connectingMicrosoft={connectingMicrosoft}
             connectingIcloud={connectingIcloud}
             connectingYahooImap={connectingYahooImap}
+            connectingGmailImap={connectingGmailImap}
             required={!connection?.connected && !yahooIdentityReady && !microsoftIdentityReady}
             accountEmail={session.email}
             mode={mailboxConnectModeFromEmail(session.email)}
@@ -631,6 +637,11 @@ function Dashboard({
             }}
             onConnectIcloud={async (email, appPassword) => {
               await connectIcloud(email, appPassword);
+              setMailboxPickerOpen(false);
+              setNotice(null);
+            }}
+            onConnectGmailImap={async (email, appPassword) => {
+              await connectGmailImap(email, appPassword);
               setMailboxPickerOpen(false);
               setNotice(null);
             }}

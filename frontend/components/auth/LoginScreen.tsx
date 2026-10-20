@@ -9,6 +9,8 @@ import {
 import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { GmailConnectNotice } from "@/components/auth/GmailConnectNotice";
+import { GmailImapConnectForm } from "@/components/auth/GmailImapConnectForm";
+import { gmailImapFailureText, gmailImapText } from "@/lib/i18n/gmailImapConnect";
 import { IcloudConnectForm } from "@/components/auth/IcloudConnectForm";
 import { YahooConnectForm } from "@/components/auth/YahooConnectForm";
 import { LanguageStrip } from "@/components/UserSettingsPanel";
@@ -121,6 +123,11 @@ export function LoginScreen({
   const [error, setError] = useState<string | null>(null);
   const [oauthBusy, setOauthBusy] = useState<AuthOAuthProvider | null>(null);
   const [step, setStep] = useState<GateStep>("email");
+  // Gmail: contraseña de aplicación primero; OAuth solo si el usuario lo elige.
+  const [gmailUseOauth, setGmailUseOauth] = useState(false);
+  if (step !== "gmail" && gmailUseOauth) {
+    setGmailUseOauth(false);
+  }
   const [suggestedEmail, setSuggestedEmail] = useState<string | null>(null);
   const [waitlistProvider, setWaitlistProvider] = useState("Gmail");
   const [waitlistKind, setWaitlistKind] = useState<"coming_soon" | "company">(
@@ -555,6 +562,43 @@ export function LoginScreen({
     }
   }
 
+  async function submitGmailImap(address: string, appPassword: string) {
+    setBusy(true);
+    resetAlerts();
+    const resolved = await postPublicHms("/auth/gmail-imap/connect", {
+      email: address,
+      app_password: appPassword,
+    }).catch(() => null);
+    if (!resolved) {
+      const message = L("networkFailed");
+      setError(message);
+      setBusy(false);
+      throw new Error(message);
+    }
+    const payload = resolved.payload as { access_token?: string; refresh_token?: string };
+    if (!resolved.ok) {
+      const message = gmailImapFailureText(language, icloudErrorCode(resolved.payload));
+      setError(message);
+      setBusy(false);
+      throw new Error(message);
+    }
+    const access = payload.access_token || "";
+    const refresh = payload.refresh_token || "";
+    if (!access || !refresh || !onIcloudSession) {
+      const message = gmailImapText(language, "imap_failed");
+      setError(message);
+      setBusy(false);
+      throw new Error(message);
+    }
+    try {
+      await onIcloudSession(access, refresh);
+    } catch (requestError) {
+      setError(friendlyError(requestError, L("networkFailed")));
+      setBusy(false);
+      throw requestError instanceof Error ? requestError : new Error(L("networkFailed"));
+    }
+  }
+
   async function submitYahoo(address: string, appPassword: string) {
     setBusy(true);
     resetAlerts();
@@ -675,6 +719,7 @@ export function LoginScreen({
   const connectingIcloud = step === "icloud";
   const connectingYahoo = step === "yahoo";
   const connectingGmail = step === "gmail";
+  const showGmailImap = connectingGmail && !gmailUseOauth;
   const connectingMailbox = connectingIcloud || connectingYahoo || connectingGmail;
   const displayEmail = email.trim().toLowerCase();
   const waitlistBody =
@@ -730,6 +775,8 @@ export function LoginScreen({
                 ? icloudText(language, "title")
                 : connectingYahoo
                   ? mailboxNoticeText(language, "yahooTitle")
+                  : showGmailImap
+                    ? gmailImapText(language, "title")
                   : connectingGmail
                     ? mailboxNoticeText(language, "gmailTitle")
                 : waiting
@@ -738,7 +785,7 @@ export function LoginScreen({
                     ? L("confirmTitle")
                     : L("title")}
             </h2>
-            {connectingIcloud || connectingYahoo || connectingGmail ? (
+            {showGmailImap ? null : connectingIcloud || connectingYahoo || connectingGmail ? (
               <p className="dx-login__slogan">
                 {connectingIcloud
                   ? icloudText(language, "intro")
@@ -818,7 +865,27 @@ export function LoginScreen({
             />
           ) : null}
 
-          {connectingGmail ? (
+          {showGmailImap ? (
+            <GmailImapConnectForm
+              email={email.trim().toLowerCase()}
+              emailLocked
+              busy={busy}
+              error={error}
+              variant="login"
+              onSubmit={submitGmailImap}
+              onUseOauth={() => {
+                resetAlerts();
+                setGmailUseOauth(true);
+              }}
+              onBack={() => {
+                setStep("email");
+                resetAlerts();
+                focusEmail();
+              }}
+            />
+          ) : null}
+
+          {connectingGmail && !showGmailImap ? (
             <GmailConnectNotice
               email={email.trim().toLowerCase()}
               busy={busy}
@@ -826,9 +893,8 @@ export function LoginScreen({
               variant="login"
               onContinue={submitGmail}
               onBack={() => {
-                setStep("email");
+                setGmailUseOauth(false);
                 resetAlerts();
-                focusEmail();
               }}
             />
           ) : null}

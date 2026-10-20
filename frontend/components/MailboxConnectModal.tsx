@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { AccountVsMailboxHint } from "@/components/auth/AccountVsMailboxHint";
 import { GmailConnectNotice } from "@/components/auth/GmailConnectNotice";
+import { GmailImapConnectForm } from "@/components/auth/GmailImapConnectForm";
+import { gmailImapText } from "@/lib/i18n/gmailImapConnect";
 import { IcloudConnectForm } from "@/components/auth/IcloudConnectForm";
 import { YahooConnectForm } from "@/components/auth/YahooConnectForm";
 import { icloudText } from "@/lib/i18n/icloudConnect";
@@ -17,7 +19,7 @@ import type { MailboxConnectMode } from "@/lib/mailboxSignup";
 
 import "./mailbox-connect.css";
 
-type ProviderChoice = "choose" | "yahoo" | "microsoft" | "gmail";
+type ProviderChoice = "choose" | "yahoo" | "microsoft" | "gmail" | "gmail_oauth";
 
 function stepForMode(mode: MailboxConnectMode): ProviderChoice {
   if (mode === "yahoo") return "yahoo";
@@ -32,6 +34,7 @@ type MailboxConnectModalProps = {
   connectingMicrosoft?: boolean;
   connectingIcloud?: boolean;
   connectingYahooImap?: boolean;
+  connectingGmailImap?: boolean;
   required?: boolean;
   accountEmail: string;
   mode?: MailboxConnectMode;
@@ -40,6 +43,7 @@ type MailboxConnectModalProps = {
   onConnectMicrosoft?: () => Promise<void>;
   onConnectIcloud?: (email: string, appPassword: string) => Promise<void>;
   onConnectYahooImap?: (email: string, appPassword: string) => Promise<void>;
+  onConnectGmailImap?: (email: string, appPassword: string) => Promise<void>;
   onSignOut?: () => void;
 };
 
@@ -49,6 +53,7 @@ export function MailboxConnectModal({
   connectingMicrosoft = false,
   connectingIcloud = false,
   connectingYahooImap = false,
+  connectingGmailImap = false,
   required = false,
   accountEmail,
   mode = "choose",
@@ -57,6 +62,7 @@ export function MailboxConnectModal({
   onConnectMicrosoft,
   onConnectIcloud,
   onConnectYahooImap,
+  onConnectGmailImap,
   onSignOut,
 }: MailboxConnectModalProps) {
   const { language } = useLanguage();
@@ -76,7 +82,10 @@ export function MailboxConnectModal({
 
   const showChooser = mode === "choose" && step === "choose";
   const showYahooForm = mode === "yahoo" || step === "yahoo";
-  const showGmailNotice = mode === "gmail" || step === "gmail";
+  const gmailFlow = mode === "gmail" || step === "gmail" || step === "gmail_oauth";
+  // Contraseña de aplicación primero; Google OAuth queda como opción secundaria.
+  const showGmailImapForm = gmailFlow && step !== "gmail_oauth" && Boolean(onConnectGmailImap);
+  const showGmailNotice = gmailFlow && !showGmailImapForm;
   const showMicrosoftForm = mode === "microsoft" || step === "microsoft";
   const showIcloudForm = mode === "icloud";
   const canDismiss = !required;
@@ -120,6 +129,8 @@ export function MailboxConnectModal({
   const title =
     showIcloudForm
       ? icloudText(language, "title")
+      : showGmailImapForm
+      ? gmailImapText(language, "title")
       : mode === "gmail"
       ? authorizeMailboxTitle(accountEmail)
       : showMicrosoftForm && !showChooser
@@ -131,6 +142,8 @@ export function MailboxConnectModal({
   const body =
     showIcloudForm
       ? icloudText(language, "intro")
+      : showGmailImapForm
+      ? ""
       : mode === "gmail"
       ? ACCOUNT_VS_MAILBOX.connectGmailBody
       : showMicrosoftForm && !showChooser
@@ -145,7 +158,7 @@ export function MailboxConnectModal({
         <header className="dx-connect-header">
           <div>
             <strong>{title}</strong>
-            <p>{body}</p>
+            {body ? <p>{body}</p> : null}
           </div>
           {canDismiss ? (
             <button
@@ -201,8 +214,38 @@ export function MailboxConnectModal({
             />
           ) : null}
 
-          {mode === "gmail" || showChooser ? (
+          {(mode === "gmail" && !showGmailImapForm) || showChooser ? (
             <AccountVsMailboxHint variant="connect" email={accountEmail} />
+          ) : null}
+
+          {showGmailImapForm && !showIcloudForm ? (
+            <GmailImapConnectForm
+              email={accountEmail}
+              emailLocked
+              busy={connectingGmailImap}
+              error={localError}
+              variant="modal"
+              onSubmit={async (email, appPassword) => {
+                setLocalError(null);
+                if (!onConnectGmailImap) return;
+                try {
+                  await onConnectGmailImap(email, appPassword);
+                } catch (error) {
+                  setLocalError(
+                    error instanceof Error ? error.message : gmailImapText(language, "imap_failed"),
+                  );
+                  throw error;
+                }
+              }}
+              onUseOauth={() => {
+                setLocalError(null);
+                setStep("gmail_oauth");
+              }}
+              onBack={mode === "choose" ? () => {
+                setStep("choose");
+                setLocalError(null);
+              } : undefined}
+            />
           ) : null}
 
           {showGmailNotice && !showIcloudForm ? (
@@ -214,7 +257,10 @@ export function MailboxConnectModal({
               onContinue={async () => {
                 await handleGoogleClick();
               }}
-              onBack={mode === "choose" ? () => {
+              onBack={onConnectGmailImap ? () => {
+                setStep("gmail");
+                setLocalError(null);
+              } : mode === "choose" ? () => {
                 setStep("choose");
                 setLocalError(null);
               } : undefined}
@@ -250,7 +296,7 @@ export function MailboxConnectModal({
             />
           ) : null}
 
-          {showIcloudForm || showGmailNotice || showYahooForm ? null : showChooser ? (
+          {showIcloudForm || showGmailNotice || showGmailImapForm || showYahooForm ? null : showChooser ? (
             <>
               {localError ? (
                 <div className="dx-connect-error" role="alert">
