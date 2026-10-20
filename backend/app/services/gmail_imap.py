@@ -42,9 +42,8 @@ class GmailImapError(IcloudImapError):
 _APP_PASSWORD = re.compile(r"^[A-Za-z]{16}$")
 
 _MSG_WRONG = (
-    "Gmail no aceptó esa contraseña de aplicación para este correo. "
-    "Créala con la sesión de Google de este mismo correo en "
-    "myaccount.google.com/apppasswords."
+    "Gmail no aceptó esa contraseña de aplicación. "
+    "Crea la contraseña en la misma cuenta de Google que escribes aquí."
 )
 _MSG_APP = (
     "Gmail no acepta tu contraseña normal de Google. Usa una contraseña de "
