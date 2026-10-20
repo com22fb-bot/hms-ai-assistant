@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { AccountVsMailboxHint } from "@/components/auth/AccountVsMailboxHint";
 import { GmailConnectNotice } from "@/components/auth/GmailConnectNotice";
+import { GmailAppPasswordGuide } from "@/components/auth/GmailAppPasswordGuide";
 import { GmailImapConnectForm } from "@/components/auth/GmailImapConnectForm";
 import { gmailImapText } from "@/lib/i18n/gmailImapConnect";
 import { IcloudConnectForm } from "@/components/auth/IcloudConnectForm";
@@ -154,7 +155,7 @@ export function MailboxConnectModal({
 
   return (
     <div className="dx-connect-overlay" role="dialog" aria-modal="true">
-      <section className="dx-connect-card">
+      <section className={showGmailImapForm && !showIcloudForm ? "dx-connect-card dx-connect-card--guide" : "dx-connect-card"}>
         <header className="dx-connect-header">
           <div>
             <strong>{title}</strong>
@@ -219,6 +220,7 @@ export function MailboxConnectModal({
           ) : null}
 
           {showGmailImapForm && !showIcloudForm ? (
+            <div className="dx-connect-guide-grid">
             <GmailImapConnectForm
               email={accountEmail}
               emailLocked
@@ -246,6 +248,8 @@ export function MailboxConnectModal({
                 setLocalError(null);
               } : undefined}
             />
+            <GmailAppPasswordGuide email={accountEmail} />
+            </div>
           ) : null}
 
           {showGmailNotice && !showIcloudForm ? (
