@@ -53,17 +53,18 @@ jobs:
             pg_dump "$SUPABASE_DB_URL" -Fc -n auth --data-only -f "$W/auth_data.dump"
             pg_dumpall -d "$SUPABASE_DB_URL" --roles-only --no-role-passwords -f "$W/roles.sql" || echo "roles: no disponible" > "$W/roles.sql"
             CF="https://api.cloudflare.com/client/v4"; H="Authorization: Bearer $CLOUDFLARE_API_TOKEN"
-            curl -fsS -H "$H" "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/donexto-app/content" -o "$W/worker.multipart" || echo "WARN worker.multipart no disponible"
+            curl -fsS -H "$H" "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/donexto-app/content/v2" -o "$W/worker.multipart" || echo "WARN worker.multipart no disponible"
             curl -fsS -H "$H" "$CF/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/donexto-app/settings" -o "$W/worker_settings.json" || echo "WARN worker_settings.json no disponible"
             curl -fsS -H "$H" "$CF/zones/$CLOUDFLARE_ZONE_ID/rulesets" -o "$W/rulesets.json" || echo "WARN rulesets.json no disponible"
             curl -fsS -H "$H" "$CF/zones/$CLOUDFLARE_ZONE_ID/settings" -o "$W/zone_settings.json" || echo "WARN zone_settings.json no disponible"
             curl -fsS -H "$H" "$CF/zones/$CLOUDFLARE_ZONE_ID/dns_records/export" -o "$W/dns.bind" || echo "WARN dns.bind no disponible"
             echo "secrets: GitHub Actions (Doppler sync donexto/prd)" > "$W/env_names_inventory.txt"
+            test -s "$W/worker.multipart" || { echo "FALTA worker.multipart"; exit 1; }
             (cd "$W" && sha256sum * > SHA256SUMS)
             tar -C "$RUNNER_TEMP/b" -cf - "$TS" | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 --symmetric --cipher-algo AES256 -o "$RUNNER_TEMP/donexto-weekly-$TS.tar.gpg" 3<<<"$BACKUP_PASSPHRASE"
             F="$RUNNER_TEMP/donexto-weekly-$TS.tar.gpg"; SHA=$(sha256sum "$F" | cut -d" " -f1)
             EP="https://$CLOUDFLARE_ACCOUNT_ID.r2.cloudflarestorage.com"
-            AWS_ACCESS_KEY_ID=$R2_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$R2_SECRET_ACCESS_KEY aws s3 cp "$F" "s3://$R2_BUCKET/weekly/$(basename $F)" --endpoint-url "$EP" --metadata sha256=$SHA --only-show-errors
+            for i in 1 2 3 4 5; do AWS_ACCESS_KEY_ID=$R2_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$R2_SECRET_ACCESS_KEY aws s3 cp "$F" "s3://$R2_BUCKET/weekly/$(basename $F)" --endpoint-url "$EP" --metadata sha256=$SHA --only-show-errors && break; [ $i = 5 ] && exit 1; echo "subida falló, reintento $i"; sleep $((i*20)); done
             # verificación: descarga, sha256 y descifrado de prueba (lista del tar)
             AWS_ACCESS_KEY_ID=$R2_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY=$R2_SECRET_ACCESS_KEY aws s3 cp "s3://$R2_BUCKET/weekly/$(basename $F)" "$F.chk" --endpoint-url "$EP" --only-show-errors
             echo "$SHA  $F.chk" | sha256sum -c --quiet
