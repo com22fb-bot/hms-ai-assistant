@@ -13,7 +13,9 @@ jobs:
         run: |
           FAIL=""
           for u in https://www.donexto.com https://app.donexto.com https://api.donexto.com/health; do
-            c=$(curl -s -o /dev/null -w '%{http_code}' -m 20 --retry 2 --retry-delay 10 "$u" || echo 000)
+            c=$(curl -s -o /dev/null -D "$RUNNER_TEMP/h" -A "Mozilla/5.0 DonextoUptime" -w '%{http_code}' -m 20 --retry 2 --retry-delay 10 "$u" || echo 000)
+            # Cloudflare puede desafiar IPs de GitHub (403 servido por Cloudflare): el borde responde, no es caída.
+            if [ "$c" = 403 ] && grep -qi '^server: *cloudflare' "$RUNNER_TEMP/h"; then echo "$u 403 (bloqueo/desafío Cloudflare a IP de GitHub; borde en línea)"; continue; fi
             echo "$u $c"; [ "$c" = 200 ] || FAIL="$FAIL $u=$c"
           done
           if [ -n "$FAIL" ]; then
