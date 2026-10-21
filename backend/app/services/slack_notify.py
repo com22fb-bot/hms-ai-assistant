@@ -27,7 +27,7 @@ def _post(channel: str, text: str) -> bool:
         response = httpx.post(
             "https://slack.com/api/chat.postMessage",
             headers={"Authorization": f"Bearer {token}"},
-            json={"channel": channel, "text": text[:3500]},
+            json={"channel": channel, "text": ("<!channel> " + text)[:3500]},
             timeout=8,
         )
         ok = bool(response.json().get("ok"))
