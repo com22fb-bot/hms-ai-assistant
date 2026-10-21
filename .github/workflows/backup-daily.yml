@@ -1,0 +1,33 @@
+name: Donexto backup daily
+on:
+  schedule: [{cron: "0 9 * * *"}]
+  workflow_dispatch:
+permissions: {contents: read}
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: PG17 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
+      - name: Dump + encrypt + upload + verify
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: |
+          set -euo pipefail
+          F="donexto-db-$(date -u +%Y%m%dT%H%MZ).dump.gpg"
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" -Fc --no-owner --no-privileges \
+            | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 --symmetric --cipher-algo AES256 -o "$RUNNER_TEMP/$F" 3<<<"$BACKUP_PASSPHRASE"
+          SHA=$(sha256sum "$RUNNER_TEMP/$F" | cut -d' ' -f1)
+          aws s3 cp "$RUNNER_TEMP/$F" "s3://donexto-backups/db/$F" --endpoint-url "$R2_ENDPOINT" --metadata sha256=$SHA --only-show-errors
+          aws s3api head-object --bucket donexto-backups --key "db/$F" --endpoint-url "$R2_ENDPOINT" --query '{size:ContentLength,sha256:Metadata.sha256}'
+          echo "local sha256 $SHA size $(stat -c%s "$RUNNER_TEMP/$F")"
+          rm -f "$RUNNER_TEMP/$F"
