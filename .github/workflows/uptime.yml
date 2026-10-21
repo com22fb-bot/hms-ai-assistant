@@ -2,12 +2,26 @@ name: Donexto uptime
 on:
   schedule: [{cron: "*/15 * * * *"}]
   workflow_dispatch:
-permissions: {contents: read}
+    inputs:
+      test_slack:
+        description: "Enviar mensaje de prueba a Slack #alertas"
+        type: boolean
+        default: false
+permissions: {contents: read, actions: read}
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      - name: Prueba Slack
+        if: ${{ inputs.test_slack }}
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        run: |
+          P=$(python3 -c 'import json,sys;print(json.dumps({"channel":"#alertas","text":sys.argv[1]}))' "<!channel> :white_check_mark: Prueba de alertas Donexto: el monitor ya puede escribir en #alertas. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID")
+          R=$(curl -s -m 15 -X POST https://slack.com/api/chat.postMessage -H "Authorization: Bearer $SLACK_BOT_TOKEN" -H 'Content-Type: application/json; charset=utf-8' -d "$P")
+          python3 -c 'import json,sys;d=json.loads(sys.argv[1]);print("slack ok:",d.get("ok"),d.get("error",""))' "$R"
       - name: Check
+        id: check
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: |
@@ -18,8 +32,29 @@ jobs:
             if [ "$c" = 403 ] && grep -qi '^server: *cloudflare' "$RUNNER_TEMP/h"; then echo "$u 403 (bloqueo/desafío Cloudflare a IP de GitHub; borde en línea)"; continue; fi
             echo "$u $c"; [ "$c" = 200 ] || FAIL="$FAIL $u=$c"
           done
+          echo "fail=$FAIL" >> "$GITHUB_OUTPUT"
           if [ -n "$FAIL" ]; then
             curl -s -X POST https://api.resend.com/emails -H "Authorization: Bearer $RESEND_API_KEY" -H 'Content-Type: application/json' \
               -d "{\"from\":\"Donexto Monitor <support@donexto.com>\",\"to\":[\"hmcelinfo@gmail.com\"],\"subject\":\"Donexto caído:$FAIL\",\"text\":\"Falló:$FAIL ($(date -u)). Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\"}" >/dev/null
             exit 1
           fi
+      - name: Slack #alertas (caída o recuperación)
+        if: always()
+        continue-on-error: true
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          FAIL: ${{ steps.check.outputs.fail }}
+          OUTCOME: ${{ steps.check.outcome }}
+        run: |
+          [ -n "$SLACK_BOT_TOKEN" ] || exit 0
+          RUN="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ "$OUTCOME" = failure ]; then
+            T="<!channel> :rotating_light: *Donexto caído:*$FAIL ($(date -u '+%Y-%m-%d %H:%M UTC')). Run: $RUN"
+          elif [ "$OUTCOME" = success ]; then
+            PREV=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/uptime.yml/runs?status=completed&per_page=1" --jq '.workflow_runs[0].conclusion' 2>/dev/null || echo "")
+            [ "$PREV" = failure ] || exit 0
+            T="<!channel> :white_check_mark: *Donexto recuperado:* www, app y api responden otra vez ($(date -u '+%Y-%m-%d %H:%M UTC')). Run: $RUN"
+          else exit 0; fi
+          P=$(python3 -c 'import json,sys;print(json.dumps({"channel":"#alertas","text":sys.argv[1]}))' "$T")
+          curl -s -m 15 -X POST https://slack.com/api/chat.postMessage -H "Authorization: Bearer $SLACK_BOT_TOKEN" -H 'Content-Type: application/json; charset=utf-8' -d "$P" | python3 -c 'import json,sys;print("slack ok:",json.load(sys.stdin).get("ok"))'

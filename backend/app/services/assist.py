@@ -1025,6 +1025,9 @@ def notify_human_handoff(email: str, history: list[dict[str, str]]) -> bool:
         f"Conversación:\n{transcript}\n\n"
         "Responde a este correo para escribirle."
     )
+    from app.services.slack_notify import CHANNEL_USERS, post_slack
+
+    post_slack(CHANNEL_USERS, f":raising_hand: *{email}* pide hablar con una persona en /asistencia. Revisa support@.")
     try:
         return bool(
             _send_via_resend(
