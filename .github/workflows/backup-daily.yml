@@ -27,7 +27,17 @@ jobs:
           /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" -Fc --no-owner --no-privileges \
             | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 --symmetric --cipher-algo AES256 -o "$RUNNER_TEMP/$F" 3<<<"$BACKUP_PASSPHRASE"
           SHA=$(sha256sum "$RUNNER_TEMP/$F" | cut -d' ' -f1)
-          aws s3 cp "$RUNNER_TEMP/$F" "s3://donexto-backups/db/$F" --endpoint-url "$R2_ENDPOINT" --metadata sha256=$SHA --only-show-errors
+          for i in 1 2 3 4 5; do
+            aws s3 cp "$RUNNER_TEMP/$F" "s3://donexto-backups/db/$F" --endpoint-url "$R2_ENDPOINT" --metadata sha256=$SHA --only-show-errors && break
+            [ $i = 5 ] && exit 1; echo "subida falló, reintento $i"; sleep $((i*20))
+          done
           aws s3api head-object --bucket donexto-backups --key "db/$F" --endpoint-url "$R2_ENDPOINT" --query '{size:ContentLength,sha256:Metadata.sha256}'
           echo "local sha256 $SHA size $(stat -c%s "$RUNNER_TEMP/$F")"
           rm -f "$RUNNER_TEMP/$F"
+      - name: Alerta si falla (correo a Héctor vía Resend)
+        if: failure()
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+        run: |
+          curl -s -X POST https://api.resend.com/emails -H "Authorization: Bearer $RESEND_API_KEY" -H 'Content-Type: application/json' \
+            -d "{\"from\":\"Donexto Monitor <support@donexto.com>\",\"to\":[\"hmcelinfo@gmail.com\"],\"subject\":\"Donexto: respaldo diario FALLÓ\",\"text\":\"Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID\"}" >/dev/null
