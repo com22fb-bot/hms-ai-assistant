@@ -276,6 +276,13 @@ def send_public_contact_message(
             "",
         ]
     )
+    from app.services.slack_notify import CHANNEL_USERS, post_slack
+
+    post_slack(
+        CHANNEL_USERS,
+        f":envelope: *Nuevo mensaje de contacto* de {safe_name or '(sin nombre)'} <{email}>\n"
+        f"{_one_line(message, 300)}\n{admin_contact_inbox_link(message_id)}",
+    )
     return _send_via_resend(
         PUBLIC_CONTACT_INBOX,
         subject,
@@ -344,6 +351,9 @@ def send_unsupported_domain_notice(email: str, domain: str) -> bool:
         "integrarlo (OAuth / lectura de buzón).\n"
     )
     persist_domain_request(email, domain, to_addr)
+    from app.services.slack_notify import CHANNEL_ADMIN, post_slack
+
+    post_slack(CHANNEL_ADMIN, f":globe_with_meridians: *Dominio por integrar:* {domain} (intento de {email})")
     # Same constraint as the public contact form: SMTP from Railway to
     # smtp.resend.com times out, so alerts go out over the Resend HTTP API.
     try:

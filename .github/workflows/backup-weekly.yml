@@ -72,6 +72,16 @@ jobs:
             pg_restore -l "$W/db.dump" > /dev/null
             echo "OK $TS sha256=$SHA size=$(stat -c%s "$F")"
             rm -rf "$RUNNER_TEMP/b" "$F" "$F.chk"'
+      - name: Alerta Slack #alertas
+        if: failure()
+        continue-on-error: true
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+        run: |
+          [ -n "$SLACK_BOT_TOKEN" ] || exit 0
+          T=":rotating_light: *Donexto: respaldo semanal FALLÓ* ($(date -u '+%Y-%m-%d %H:%M UTC'))\nRun: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          P=$(python3 -c 'import json,sys;print(json.dumps({"channel":"#alertas","text":sys.argv[1].replace("\\n","\n")}))' "$T")
+          curl -s -m 15 -X POST https://slack.com/api/chat.postMessage -H "Authorization: Bearer $SLACK_BOT_TOKEN" -H 'Content-Type: application/json; charset=utf-8' -d "$P" | python3 -c 'import json,sys;print("slack ok:",json.load(sys.stdin).get("ok"))'
       - name: Alerta si falla (correo a Héctor vía Resend)
         if: failure()
         env:
