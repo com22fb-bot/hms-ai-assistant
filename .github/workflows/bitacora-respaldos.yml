@@ -1,0 +1,34 @@
+name: Donexto bitácora respaldos
+# Solo registra en /admin > Bitácora el resultado de cada respaldo.
+# No modifica los workflows de respaldo ni su cobertura.
+on:
+  workflow_run:
+    workflows: ["Donexto backup daily", "Donexto backup weekly"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      backfill:
+        description: "Cuántas corridas recientes registrar (por workflow)"
+        default: "50"
+permissions: {contents: read, actions: read}
+jobs:
+  log:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with: {sparse-checkout: scripts}
+      - name: Registrar en bitácora
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          BACKFILL: ${{ inputs.backfill }}
+        run: |
+          if [ -n "$RUN_ID" ]; then
+            python3 scripts/backup_event_from_run.py "$RUN_ID"
+          else
+            python3 scripts/backup_event_from_run.py --backfill "${BACKFILL:-50}"
+          fi
