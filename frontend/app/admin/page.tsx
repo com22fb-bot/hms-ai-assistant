@@ -16,6 +16,7 @@ import {
   Shield,
   Tag,
   Users,
+  ScrollText,
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -30,6 +31,7 @@ import { ContactInbox } from "@/app/admin/ContactInbox";
 import { ExpensesPanel } from "@/app/admin/ExpensesPanel";
 import { PerformancePanel } from "@/app/admin/PerformancePanel";
 import { InfoPanel } from "@/app/admin/InfoPanel";
+import { EventsPanel } from "@/app/admin/EventsPanel";
 
 type AdminTab =
   | "overview"
@@ -41,7 +43,8 @@ type AdminTab =
   | "system"
   | "performance"
   | "expenses"
-  | "info";
+  | "info"
+  | "events";
 
 type OverviewResponse = {
   status: string;
@@ -157,6 +160,7 @@ const TABS: Array<{ id: AdminTab; label: string; icon: typeof Activity }> = [
   { id: "feedback", label: "Quejas e ideas", icon: MessageSquareWarning },
   { id: "promotions", label: "Promociones", icon: Tag },
   { id: "performance", label: "Rendimiento", icon: Gauge },
+  { id: "events", label: "Bitácora", icon: ScrollText },
   { id: "system", label: "Sistema", icon: Server },
 ];
 
@@ -308,7 +312,7 @@ function AdminPage() {
   const loadTab = useCallback(
     async (target: AdminTab) => {
       if (!session) return;
-      if (target === "messages" || target === "performance" || target === "expenses" || target === "info") {
+      if (target === "messages" || target === "performance" || target === "expenses" || target === "info" || target === "events") {
         setError(null);
         setForbidden(false);
         setLoading(false);
@@ -1027,6 +1031,7 @@ function AdminPage() {
         {!forbidden && tab === "performance" && <PerformancePanel />}
         {!forbidden && tab === "expenses" && <ExpensesPanel />}
         {!forbidden && tab === "info" && <InfoPanel />}
+        {!forbidden && tab === "events" && <EventsPanel />}
 
         {!forbidden && tab === "system" && health && (
           <section className="dx-admin__section">
