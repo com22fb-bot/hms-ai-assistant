@@ -11,7 +11,9 @@ Reglas (Términos y Privacidad, 9 oct 2026):
 Seguridad:
 - El borrado real solo corre con ``ACCOUNT_CLEANUP_DELETE_ENABLED=true``.
   Por defecto la limpieza es *dry-run*: cuenta y registra, no borra.
-- Los recordatorios automáticos solo salen con ``ACCOUNT_REMINDERS_AUTO_ENABLED=true``.
+- Los recordatorios automáticos solo salen con ``ACCOUNT_REMINDERS_AUTO_ENABLED=true``,
+  salvo cuentas de prueba (``account_plans.is_test``): esas reciben los avisos
+  mientras ``ACCOUNT_REMINDERS_TEST_ENABLED`` (default true) siga activo.
   El botón de /admin los manda cuando el dueño lo presiona.
 - Nunca se toca una cuenta protegida (hmcelinfo@gmail.com, ADMIN_EMAILS o
   ``ACCOUNT_CLEANUP_PROTECTED_EMAILS``).
@@ -52,6 +54,12 @@ def deletion_enabled() -> bool:
 
 def auto_reminders_enabled() -> bool:
     return _flag("ACCOUNT_REMINDERS_AUTO_ENABLED")
+
+
+def test_reminders_enabled() -> bool:
+    """Cuentas de prueba (``account_plans.is_test``) reciben los avisos aunque
+    estén protegidas, para validar el flujo. Nunca se borran por estar protegidas."""
+    return _flag("ACCOUNT_REMINDERS_TEST_ENABLED", "true")
 
 
 def protected_emails() -> set[str]:
@@ -228,6 +236,8 @@ def lifecycle_overview(client: Any, now: datetime | None = None) -> dict[str, An
             "plan_code": plan.get("plan_code"),
             "status": plan.get("status"),
             "protected": email in protected,
+            "is_test": bool(plan.get("is_test")),
+            "trial_started_at": plan.get("trial_started_at"),
         }
         retention = retention_for(plan, now)
         if plan.get("status") == "trialing" and retention is None:
@@ -301,7 +311,8 @@ def send_subscribe_reminders(
         if row.get("phase") != "por_borrar":
             result["skipped_active"] += 1
             continue
-        if row.get("protected") or not row.get("email"):
+        test_ok = bool(row.get("is_test")) and test_reminders_enabled()
+        if (row.get("protected") and not test_ok) or not row.get("email"):
             if not row.get("email"):
                 result["skipped_no_email"] += 1
             else:
@@ -364,10 +375,16 @@ def run_daily_cleanup(
         if not user_id or retention is None:
             continue
         email = emails.get(user_id, "")
+        is_test = bool(plan.get("is_test")) and test_reminders_enabled()
         # Falla cerrada: sin correo conocido no se puede comprobar la protección.
-        if not email or email in protected:
+        if not email:
             counts["skipped_protected"] += 1
             continue
+        if email in protected:
+            # Protegida: nunca se borra. Si es de prueba, sí recibe los avisos.
+            counts["skipped_protected"] += 1
+            if not is_test or now >= retention.delete_at:
+                continue
         if now >= retention.delete_at:
             counts["trial_due" if retention.group == "trial" else "lapsed_due"] += 1
             if delete:
@@ -380,7 +397,7 @@ def run_daily_cleanup(
             else:
                 counts["would_delete"] += 1
             continue
-        if not send_reminders or not email:
+        if not (send_reminders or is_test) or not email:
             continue
         for key, due_at, column in (
             ("reminders_final", retention.final_reminder_at, "reminder_final_sent_at"),

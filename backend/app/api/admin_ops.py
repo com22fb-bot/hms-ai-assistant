@@ -269,6 +269,7 @@ def admin_list_users(limit: int = 80) -> dict[str, Any]:
     ]
     profiles: dict[str, dict[str, Any]] = {}
     connected: set[str] = set()
+    plans: dict[str, dict[str, Any]] = {}
     if ids:
         try:
             for row in _rows(
@@ -293,6 +294,13 @@ def admin_list_users(limit: int = 80) -> dict[str, Any]:
                     connected.add(profile_id)
         except Exception:
             logger.info("admin mailbox lookup failed", exc_info=True)
+        try:
+            for row in _rows(
+                client.table("account_plans").select("*").in_("user_id", ids).execute()
+            ):
+                plans[str(row.get("user_id"))] = row
+        except Exception:
+            logger.info("admin plans lookup failed", exc_info=True)
 
     payload = []
     for user in auth_users:
@@ -306,6 +314,7 @@ def admin_list_users(limit: int = 80) -> dict[str, Any]:
             metadata = {}
         full_name = profile.get("full_name") or metadata.get("full_name")
         protected = user_id == actor_id or (email in allow if email else False)
+        plan = plans.get(user_id) or {}
         payload.append(
             {
                 "id": user_id,
@@ -315,8 +324,11 @@ def admin_list_users(limit: int = 80) -> dict[str, Any]:
                 "created_at": _user_attr(user, "created_at") or profile.get("created_at"),
                 "country_code": None,
                 "mailbox_connected": user_id in connected,
-                "subscription_status": None,
-                "plan_code": None,
+                "subscription_status": plan.get("status"),
+                "plan_code": plan.get("plan_code"),
+                "is_test": bool(plan.get("is_test")) if plan else False,
+                "trial_started_at": plan.get("trial_started_at"),
+                "trial_ends_at": plan.get("trial_ends_at"),
                 "first_product_use_at": None,
                 "protected": protected,
             }
@@ -369,15 +381,51 @@ def admin_delete_user(user_id: str) -> dict[str, Any]:
             detail={"status": "delete_forbidden", "message": reason},
         )
 
-    cleanup_user_records(client, found_id)
-    try:
-        client.auth.admin.delete_user(found_id)
-    except TypeError:
-        client.auth.admin.delete_user(found_id, should_soft_delete=False)
+    purge = purge_user_everything(client, found_id)
     return {
         "status": "deleted",
         "id": found_id,
         "email": email,
+        "mode": purge["mode"],
+        "rows_total": purge.get("rows_total"),
+        "counts": purge.get("counts") or {},
+    }
+
+
+def purge_user_everything(client: Any, user_id: str) -> dict[str, Any]:
+    """Borra TODO lo del usuario en una sola transacción (``admin_purge_user``).
+
+    Fase de pruebas: sin respaldo. La función SQL registra en la bitácora solo
+    conteos por tabla. Si la función aún no existe (migración pendiente), usa
+    la limpieza anterior por pasos y luego borra en Supabase Auth.
+    """
+    try:
+        response = client.rpc("admin_purge_user", {"p_user": user_id}).execute()
+    except Exception as error:
+        text = str(error)
+        if "admin_purge_user" in text and ("does not exist" in text or "PGRST202" in text):
+            logger.warning("admin_purge_user missing; legacy cleanup")
+            cleanup_user_records(client, user_id)
+            try:
+                client.auth.admin.delete_user(user_id)
+            except TypeError:
+                client.auth.admin.delete_user(user_id, should_soft_delete=False)
+            return {"mode": "legacy", "rows_total": None, "counts": {}}
+        logger.warning("admin_purge_user failed", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "status": "delete_failed",
+                "message": "No se pudo borrar la cuenta. No se borró nada.",
+            },
+        ) from error
+    data = getattr(response, "data", None)
+    if not isinstance(data, dict):
+        data = {}
+    return {
+        "mode": "transactional",
+        "rows_total": data.get("rows_total"),
+        "counts": data.get("counts") or {},
     }
 
 

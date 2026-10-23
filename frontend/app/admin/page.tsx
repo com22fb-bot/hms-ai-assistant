@@ -80,6 +80,9 @@ type UsersResponse = {
     plan_code?: string | null;
     first_product_use_at?: string | null;
     protected?: boolean;
+    is_test?: boolean;
+    trial_started_at?: string | null;
+    trial_ends_at?: string | null;
   }>;
   total: number;
 };
@@ -426,7 +429,7 @@ function AdminPage() {
     if (!userId || deletingId) return;
     const label = email || userId;
     const confirmed = window.confirm(
-      `¿Borrar la cuenta de prueba ${label}? Se elimina de Supabase Auth, el perfil y su espacio de trabajo. Esta acción no se puede deshacer.`,
+      `¿Borrar la cuenta de prueba ${label}? Se borran todos sus datos: correos, buzones, casos, clasificaciones y credenciales, sin respaldo. Esta acción no se puede deshacer.`,
     );
     if (!confirmed) return;
     setDeletingId(userId);
@@ -728,6 +731,11 @@ function AdminPage() {
                         {user.subscription_status
                           ? `(${adminLabel(user.subscription_status)})`
                           : ""}
+                        {user.is_test ? (
+                          <span className="dx-admin__pill" title="Cuenta de prueba">
+                            Prueba
+                          </span>
+                        ) : null}
                       </td>
                       <td>{user.country_code || "—"}</td>
                       <td>{formatWhen(user.created_at)}</td>
