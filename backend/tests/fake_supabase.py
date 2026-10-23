@@ -18,7 +18,7 @@ class _Query:
     def select(self, *_a, **_k):
         self.op = "select"; return self
 
-    def update(self, payload):
+    def update(self, payload, **_k):
         self.op, self.payload = "update", payload; return self
 
     def insert(self, payload):
@@ -32,6 +32,9 @@ class _Query:
             column, key = col.split("->>", 1)
             self.filters.append(lambda r: str((r.get(column) or {}).get(key)) == str(val)); return self
         self.filters.append(lambda r: str(r.get(col)) == str(val)); return self
+
+    def gt(self, col, val):
+        self.filters.append(lambda r: str(r.get(col)) > str(val)); return self
 
     def neq(self, col, val):
         self.filters.append(lambda r: str(r.get(col)) != str(val)); return self
