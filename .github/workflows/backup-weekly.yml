@@ -1,5 +1,7 @@
 # Repo PÚBLICO: nunca imprimir valores; no usar upload-artifact.
 name: Donexto backup weekly
+# Origen persistente (lo lee scripts/backup_guard.py vía display_title de la API).
+run-name: "Donexto backup weekly [origen=${{ github.event_name == 'schedule' && 'schedule' || (inputs.origen == 'cf-cron' && 'cf-cron' || 'manual') }}]"
 on:
   schedule: [{cron: "0 12 * * 0"}]   # respaldo: domingo 06:00 CDMX; el principal es el cron del Worker donexto-backup-cron (03:00 CDMX)
   workflow_dispatch:
@@ -8,7 +10,7 @@ on:
         description: "manual (siempre corre) o cf-cron (Worker; se salta si ya hubo respaldo hoy)"
         default: manual
 permissions: {contents: read, actions: read}
-concurrency: {group: donexto-backup, cancel-in-progress: false}
+concurrency: {group: donexto-backup-weekly, cancel-in-progress: false}
 jobs:
   guard:
     # Respaldo de GitHub schedule: se salta si el cron de Cloudflare ya corrió hoy (evita doble respaldo).
@@ -66,7 +68,7 @@ jobs:
         run: |
           set -euo pipefail
           bash -euo pipefail -c '
-            TS=$(date -u +%Y%m%dT%H%MZ); W="$RUNNER_TEMP/b/$TS"; mkdir -p "$W"
+            TS=$(date -u +%Y%m%dT%H%M%SZ)-r${{ github.run_id }}-a${{ github.run_attempt }}; W="$RUNNER_TEMP/b/$TS"; mkdir -p "$W"
             git bundle create "$W/repo.bundle" --all
             pg_dump "$SUPABASE_DB_URL" -Fc --no-owner --no-privileges -f "$W/db.dump"
             pg_dump "$SUPABASE_DB_URL" -Fc -n auth --data-only -f "$W/auth_data.dump"
