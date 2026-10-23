@@ -42,3 +42,9 @@ flowchart LR
 | GitHub + Slack + Resend caídos | **Hueco hoy.** Propuesta (no implementada, requiere aprobación): segundo cron del Worker 15:00 UTC que lea el último objeto `db/` del bucket R2 (binding gratuito) y, si tiene > 26 h, avise por Cloudflare Email Routing (`send_email`, gratis) a la dirección verificada de Héctor. Independiente de GitHub, Slack y Resend. |
 
 **Estado.** El cron real NO se ha probado (la prueba de 00:25 UTC no disparó). Worker desplegado con `schedules: []`.
+
+## GH_DISPATCH_TOKEN (dedicado, mínimo)
+Fine-grained PAT de la cuenta dueña del repo: *Repository access* = solo `com22fb-bot/hms-ai-assistant`;
+*Permissions* = **Actions: Read and write** (Metadata: Read se agrega solo). Nada más. Vigencia ≤ 1 año.
+Guardarlo en Doppler `donexto/prd` como `GH_DISPATCH_TOKEN`; desde ahí se carga con
+`wrangler secret put GH_DISPATCH_TOKEN` y se activa `crons = ["0 9 * * *"]`.
