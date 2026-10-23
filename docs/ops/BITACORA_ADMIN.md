@@ -54,3 +54,6 @@ y columna Estado con Pendiente / En curso / Hecho. Sin migración.
 doppler run -p donexto -c prd -- scripts/bitacora_pedido.sh <clave> <pendiente|en_curso|hecho> "<título>" ["<detalle>"] ["<fecha ISO>"]
 ```
 Repetir con la misma clave actualiza el estado (y cierra el evento cuando es `hecho`).
+Orden de la vista: Pendientes, luego En curso, al final Realizados (más reciente primero en cada grupo).
+Eventos sin `meta.estado`: abierto = Pendiente, resuelto = Realizado. Para marcar un evento cualquiera
+como En curso basta con `meta.estado = en_curso`.

@@ -13,7 +13,10 @@ type Severity = (typeof SEVERITIES)[number];
 type Status = "abierto" | "resuelto";
 type BackupKind = "diario" | "semanal";
 type PedidoEstado = "pendiente" | "en_curso" | "hecho";
-const ESTADO_LABEL: Record<PedidoEstado, string> = { pendiente: "Pendiente", en_curso: "En curso", hecho: "Hecho" };
+const ESTADO_LABEL: Record<PedidoEstado, string> = { pendiente: "Pendiente", en_curso: "En curso", hecho: "Realizado" };
+const ESTADO_ORDER: Record<PedidoEstado, number> = { pendiente: 0, en_curso: 1, hecho: 2 };
+const estadoOf = (e: AdminEvent): PedidoEstado =>
+  e.meta?.estado && e.meta.estado in ESTADO_ORDER ? e.meta.estado : e.status === "resuelto" ? "hecho" : "pendiente";
 const isPedido = (e: AdminEvent) => e.meta?.kind === "pedido";
 
 type AdminEvent = {
@@ -167,6 +170,8 @@ export function EventsPanel() {
         (!fTipo || (fTipo === "pedido") === isPedido(e)) &&
         (!fStatus || e.status === fStatus) &&
         (!q || `${e.title} ${e.detail}`.toLowerCase().includes(q)),
+    ).sort((a, b) =>
+      ESTADO_ORDER[estadoOf(a)] - ESTADO_ORDER[estadoOf(b)] || b.occurred_at.localeCompare(a.occurred_at),
     );
   }, [events, fSource, fStatus, fText, fTipo]);
 
@@ -301,8 +306,8 @@ export function EventsPanel() {
           Estado
           <select value={fStatus} onChange={(e) => setFStatus(e.target.value as Status | "")}>
             <option value="">Todos</option>
-            <option value="abierto">Abierto</option>
-            <option value="resuelto">Resuelto</option>
+            <option value="abierto">Pendiente / En curso</option>
+            <option value="resuelto">Realizado</option>
           </select>
         </label>
         <label>
@@ -343,9 +348,7 @@ export function EventsPanel() {
                   )}
                 </td>
                 <td>
-                  {isPedido(e) && e.meta?.estado ? (
-                    <span className="dx-admin__pill">{ESTADO_LABEL[e.meta.estado] ?? e.meta.estado}</span>
-                  ) : e.status === "abierto" ? "Abierto" : "Resuelto"}
+                  <span className="dx-admin__pill">{ESTADO_LABEL[estadoOf(e)]}</span>
                 </td>
                 <td>{when(e.ended_at)}</td>
                 <td>
