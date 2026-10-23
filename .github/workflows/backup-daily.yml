@@ -1,10 +1,26 @@
 name: Donexto backup daily
 on:
-  schedule: [{cron: "0 9 * * *"}]
+  schedule: [{cron: "0 12 * * *"}]
   workflow_dispatch:
-permissions: {contents: read}
+permissions: {contents: read, actions: read}
 jobs:
+  guard:
+    # Respaldo de GitHub schedule: se salta si el cron de Cloudflare ya corrió hoy (evita doble respaldo).
+    runs-on: ubuntu-latest
+    outputs: {run: "${{ steps.c.outputs.run }}"}
+    steps:
+      - id: c
+        env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then echo run=true >> "$GITHUB_OUTPUT"; exit 0; fi
+          D=$(date -u +%Y-%m-%d)
+          N=$(gh api "repos/${{ github.repository }}/actions/workflows/backup-daily.yml/runs?created=$D&per_page=50" \
+            --jq "[.workflow_runs[] | select(.id != ${{ github.run_id }}) | select(.conclusion==\"success\" or .status==\"in_progress\" or .status==\"queued\")] | length")
+          echo "corridas previas hoy: $N"
+          if [ "$N" -gt 0 ]; then echo run=false >> "$GITHUB_OUTPUT"; else echo run=true >> "$GITHUB_OUTPUT"; fi
   backup:
+    needs: guard
+    if: needs.guard.outputs.run == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: PG17 client
