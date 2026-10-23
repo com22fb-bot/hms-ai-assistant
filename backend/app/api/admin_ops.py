@@ -254,6 +254,53 @@ def admin_overview() -> dict[str, Any]:
     }
 
 
+def _empty_mail_stats(stats: dict[str, Any]) -> dict[str, Any]:
+    """Sin buzones => 0 real; si la consulta falló => None (la UI muestra «Error de consulta»)."""
+    if stats.get("__error__"):
+        return {"messages_saved": None, "mailboxes": None, "mail_counts_status": "error"}
+    return {"messages_saved": 0, "mailboxes": [], "mail_counts_status": "ok"}
+
+
+def mailbox_stats_by_user(client: Any, ids: list[str]) -> dict[str, Any]:
+    """Conteo real de correos guardados por usuario y por buzón (una sola RPC agregada).
+
+    Usuario -> communication_accounts.connected_by_profile_id -> account_id -> communication_messages.
+    No usa el correo de login como buzón. Solo devuelve conteos y metadatos del buzón, nunca contenido.
+    """
+    if not ids:
+        return {}
+    try:
+        response = client.rpc("admin_mailbox_stats", {"p_profile_ids": ids}).execute()
+    except Exception:
+        logger.info("admin mailbox stats failed", exc_info=True)
+        return {"__error__": True}
+    data = getattr(response, "data", None)
+    if not isinstance(data, list):
+        return {"__error__": True}
+    wanted = set(ids)
+    out: dict[str, Any] = {}
+    for row in data:
+        if not isinstance(row, dict):
+            continue
+        profile_id = str(row.get("profile_id") or "")
+        if profile_id not in wanted:  # aislamiento: nunca se atribuye a otro usuario
+            continue
+        entry = out.setdefault(profile_id, {"messages_saved": 0, "mailboxes": [], "mail_counts_status": "ok"})
+        count = int(row.get("messages") or 0)
+        entry["messages_saved"] += count
+        entry["mailboxes"].append({
+            "account_id": row.get("account_id"),
+            "provider": row.get("provider"),
+            "email": row.get("mailbox_email"),
+            "status": row.get("status") or "desconocido",
+            "last_sync_at": row.get("last_sync_at"),
+            "messages": count,
+        })
+    for entry in out.values():
+        entry["mailboxes"].sort(key=lambda m: -m["messages"])
+    return out
+
+
 @router.get("/users")
 def admin_list_users(limit: int = 80) -> dict[str, Any]:
     context = _require_admin()
@@ -270,6 +317,7 @@ def admin_list_users(limit: int = 80) -> dict[str, Any]:
     profiles: dict[str, dict[str, Any]] = {}
     connected: set[str] = set()
     plans: dict[str, dict[str, Any]] = {}
+    mail_stats = mailbox_stats_by_user(client, ids)
     if ids:
         try:
             for row in _rows(
@@ -331,9 +379,11 @@ def admin_list_users(limit: int = 80) -> dict[str, Any]:
                 "trial_ends_at": plan.get("trial_ends_at"),
                 "first_product_use_at": None,
                 "protected": protected,
+                **mail_stats.get(user_id, _empty_mail_stats(mail_stats)),
             }
         )
-    return {"users": payload, "total": len(payload)}
+    return {"users": payload, "total": len(payload),
+            "mail_counts_status": "error" if mail_stats.get("__error__") else "ok"}
 
 
 @router.delete("/users/{user_id}")
