@@ -232,40 +232,122 @@ def _get_encryption_secret() -> str:
     return secret
 
 
+def _derive_fernet(secret: str) -> Fernet:
+    """Deriva una clave Fernet (sha256 + base64) de un secreto de 32+ caracteres."""
+    digest = hashlib.sha256(secret.encode("utf-8")).digest()
+    return Fernet(base64.urlsafe_b64encode(digest))
+
+
+# --------------------------------------------------------------------------
+# Llavero versionado (opcional). Sin variables nuevas el comportamiento es
+# idéntico al histórico: se cifra con OAUTH_ENCRYPTION_KEY y sin prefijo.
+#
+#   OAUTH_ENCRYPTION_KEYRING   "k2:<secreto>,k3:<secreto>"  (ids [a-z0-9]{1,16})
+#   OAUTH_ENCRYPTION_ACTIVE_KEY_ID  id con el que se cifra lo nuevo ("k2").
+#
+# Formato versionado: "<id>$<token fernet>". Sin prefijo = versión legado
+# (OAUTH_ENCRYPTION_KEY). El descifrado acepta ambos (estilo MultiFernet).
+# --------------------------------------------------------------------------
+
+KEY_VERSION_SEPARATOR = "$"
+LEGACY_KEY_ID = "legacy"
+_KEY_ID_RE = __import__("re").compile(r"^[a-z0-9]{1,16}$")
+
+
+def _parse_keyring() -> dict[str, str]:
+    raw = os.getenv("OAUTH_ENCRYPTION_KEYRING", "").strip()
+    ring: dict[str, str] = {}
+    if not raw:
+        return ring
+    for item in raw.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        key_id, sep, secret = item.partition(":")
+        key_id = key_id.strip().lower()
+        secret = secret.strip()
+        if not sep or not _KEY_ID_RE.match(key_id) or key_id == LEGACY_KEY_ID:
+            raise OAuthConfigurationError("OAUTH_ENCRYPTION_KEYRING tiene un id inválido.")
+        if len(secret) < 32:
+            raise OAuthConfigurationError(
+                f"La llave {key_id} de OAUTH_ENCRYPTION_KEYRING debe tener 32+ caracteres."
+            )
+        if key_id in ring:
+            raise OAuthConfigurationError(f"Id de llave duplicado: {key_id}.")
+        ring[key_id] = secret
+    return ring
+
+
+def _active_key_id() -> str:
+    ring = _parse_keyring()  # valida el llavero aunque la activa sea legado
+    active = os.getenv("OAUTH_ENCRYPTION_ACTIVE_KEY_ID", "").strip().lower()
+    if not active or active == LEGACY_KEY_ID:
+        return LEGACY_KEY_ID
+    if active not in ring:
+        raise OAuthConfigurationError(
+            "OAUTH_ENCRYPTION_ACTIVE_KEY_ID no existe en OAUTH_ENCRYPTION_KEYRING."
+        )
+    return active
+
+
+def _fernet_for(key_id: str) -> Fernet:
+    if key_id == LEGACY_KEY_ID:
+        return _derive_fernet(_get_encryption_secret())
+    ring = _parse_keyring()
+    if key_id not in ring:
+        raise OAuthCredentialError(f"Llave {key_id} no disponible para descifrar.")
+    return _derive_fernet(ring[key_id])
+
+
 def _build_fernet() -> Fernet:
-    """
-    Deriva una clave Fernet estable a partir del secreto del backend.
+    """Compatibilidad: Fernet de la llave legado (OAUTH_ENCRYPTION_KEY)."""
+    return _fernet_for(LEGACY_KEY_ID)
 
-    El secreto original nunca se guarda en Supabase.
-    """
 
-    secret = _get_encryption_secret().encode("utf-8")
-    digest = hashlib.sha256(secret).digest()
-    fernet_key = base64.urlsafe_b64encode(digest)
-
-    return Fernet(fernet_key)
+def key_version_of(value: str | None) -> str | None:
+    """Versión de llave de un valor cifrado, sin descifrarlo (para auditorías)."""
+    if not value:
+        return None
+    head, sep, _ = value.partition(KEY_VERSION_SEPARATOR)
+    if sep and _KEY_ID_RE.match(head):
+        return head
+    return LEGACY_KEY_ID
 
 
 def _encrypt(value: str | None) -> str | None:
     if value is None or value == "":
         return None
 
-    encrypted = _build_fernet().encrypt(value.encode("utf-8"))
-    return encrypted.decode("utf-8")
+    key_id = _active_key_id()
+    token = _fernet_for(key_id).encrypt(value.encode("utf-8")).decode("utf-8")
+    if key_id == LEGACY_KEY_ID:
+        return token
+    return f"{key_id}{KEY_VERSION_SEPARATOR}{token}"
 
 
 def _decrypt(value: str | None) -> str | None:
     if value is None or value == "":
         return None
 
+    key_id = key_version_of(value)
+    token = value.split(KEY_VERSION_SEPARATOR, 1)[1] if key_id != LEGACY_KEY_ID else value
     try:
-        decrypted = _build_fernet().decrypt(value.encode("utf-8"))
+        decrypted = _fernet_for(key_id).decrypt(token.encode("utf-8"))
         return decrypted.decode("utf-8")
     except InvalidToken as exc:
         raise OAuthCredentialError(
             "No fue posible descifrar las credenciales. "
             "Verifica que OAUTH_ENCRYPTION_KEY no haya cambiado."
         ) from exc
+
+
+def reencrypt_value(value: str | None) -> tuple[str | None, bool]:
+    """Re-cifra con la llave activa. Devuelve (valor, cambió). Idempotente."""
+    if not value:
+        return value, False
+    if key_version_of(value) == _active_key_id():
+        return value, False
+    return _encrypt(_decrypt(value)), True
 
 
 def _state_hash(raw_state: str) -> str:

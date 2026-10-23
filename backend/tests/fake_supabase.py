@@ -33,6 +33,9 @@ class _Query:
             self.filters.append(lambda r: str((r.get(column) or {}).get(key)) == str(val)); return self
         self.filters.append(lambda r: str(r.get(col)) == str(val)); return self
 
+    def gt(self, col, val):
+        self.filters.append(lambda r: str(r.get(col)) > str(val)); return self
+
     def neq(self, col, val):
         self.filters.append(lambda r: str(r.get(col)) != str(val)); return self
 
