@@ -762,3 +762,20 @@
   .dx-admin > .dx-admin__nav .dx-admin__tab:hover { background: #f1f5f9; color: #0f172a; }
   .dx-admin > .dx-admin__nav .dx-admin__tab.is-active { background: #e0e9ff; color: #1e3a8a; }
 }
+
+/* Tema claro del panel: contenedores heredados del tema oscuro. */
+.dx-admin--shell .dx-admin__section { background: #ffffff; border-color: #e2e8f0; box-shadow: 0 6px 24px rgba(15, 23, 42, 0.06); color: #0f172a; }
+.dx-admin--shell .dx-admin__section-head h2, .dx-admin--shell .dx-admin__header h1 { font-family: inherit; font-weight: 800; color: #0f172a; }
+.dx-admin--shell .dx-admin__section-head p { color: #475569; }
+.dx-admin--shell .dx-admin__table th { background: #f1f5f9; color: #334155; }
+.dx-admin--shell .dx-admin__quote { background: #f1f5f9; color: #0f172a; }
+.dx-admin--shell .dx-admin__pill.is-draft { color: #1e3a8a; }
+.dx-admin--shell .dx-admin__session { color: #475569; }
+.dx-admin--shell input, .dx-admin--shell select, .dx-admin--shell textarea { background: #ffffff; color: #0f172a; border-color: #cbd5e1; }
+.dx-admin--shell > .dx-admin__main { max-width: none; }
+@media (max-width: 640px) {
+  .dx-admin--shell .dx-admin__header { gap: 8px; }
+  .dx-admin--shell .dx-admin__session { display: none; }
+  .dx-admin--shell .dx-admin__header-actions { gap: 6px; }
+  .dx-admin--shell .dx-admin__header-actions .dx-admin__btn { padding: 6px 10px; font-size: 13px; }
+}

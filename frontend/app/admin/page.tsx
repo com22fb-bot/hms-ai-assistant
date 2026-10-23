@@ -432,8 +432,9 @@ function AdminPage() {
   }, [session]);
 
   const headerMeta = useMemo(() => {
+    // No se muestra el correo del administrador en pantalla (capturas, pantallas compartidas).
     if (!sessionEmail) return "Sin sesión";
-    return sessionEmail;
+    return "Sesión de administrador";
   }, [sessionEmail]);
 
   async function onDeleteUser(userId: string, email: string | null | undefined) {
