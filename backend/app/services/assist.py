@@ -22,7 +22,7 @@ import os
 import re
 import secrets
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 import unicodedata
 from dataclasses import dataclass
 from typing import Any
@@ -91,6 +91,10 @@ def _dedicated_key() -> bytes | None:
     return None
 
 
+# Enlaces duran 7 días; la ventana de transición nunca puede superar 14 días desde "ahora".
+_LEGACY_WINDOW_MAX_S = 14 * 24 * 3600
+
+
 def _legacy_verify_window_open() -> bool:
     """ASSIST_LEGACY_VERIFY_UNTIL=<epoch o ISO-8601>: hasta entonces se ACEPTAN (no se emiten)
     firmas hechas con la llave derivada de OAUTH_ENCRYPTION_KEY. Sin valor o inválido = cerrada."""
@@ -98,11 +102,21 @@ def _legacy_verify_window_open() -> bool:
     if not raw:
         return False
     try:
-        until = float(raw) if raw.replace(".", "", 1).isdigit() else datetime.fromisoformat(
-            raw.replace("Z", "+00:00")).timestamp()
+        if raw.replace(".", "", 1).isdigit():
+            until = float(raw)
+        else:
+            dt = datetime.fromisoformat(raw.replace("Z", "+00:00"))
+            if dt.tzinfo is None:  # ISO sin zona = UTC (no la zona del servidor)
+                dt = dt.replace(tzinfo=timezone.utc)
+            until = dt.timestamp()
     except ValueError:
         return False
-    return time.time() < until
+    now = time.time()
+    # Tope duro: una ventana más larga que _LEGACY_WINDOW_MAX_S se considera mal configurada y
+    # queda CERRADA, así un valor lejano (p. ej. 2099) nunca acepta firmas viejas indefinidamente.
+    if until - now > _LEGACY_WINDOW_MAX_S:
+        return False
+    return now < until
 
 
 def _signing_key() -> bytes:

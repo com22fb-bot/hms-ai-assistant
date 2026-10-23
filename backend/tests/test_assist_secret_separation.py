@@ -44,6 +44,22 @@ class AssistSeparation(unittest.TestCase):
             with self.assertRaises(assist.AssistTokenError):
                 assist.read_token(old, "link")
 
+    def test_ventana_lejana_queda_cerrada(self):
+        with env():
+            old = assist.sign_token("link", "a@b.co", 3600)
+        for far in (str(time.time() + 15 * 86400), "2099-01-01T00:00:00Z", "9999999999"):
+            with env(ASSIST_TOKEN_SECRET=DED, ASSIST_LEGACY_VERIFY_UNTIL=far):
+                with self.assertRaises(assist.AssistTokenError):
+                    assist.read_token(old, "link")
+
+    def test_iso_sin_zona_es_utc(self):
+        from datetime import datetime, timedelta, timezone
+        with env():
+            old = assist.sign_token("link", "a@b.co", 3600)
+        naive = (datetime.now(timezone.utc) + timedelta(hours=2)).replace(tzinfo=None).isoformat()
+        with env(ASSIST_TOKEN_SECRET=DED, ASSIST_LEGACY_VERIFY_UNTIL=naive):
+            self.assertEqual(assist.read_token(old, "link")["e"], "a@b.co")
+
     def test_en_ventana_se_firma_con_dedicada(self):
         with env(ASSIST_TOKEN_SECRET=DED, ASSIST_LEGACY_VERIFY_UNTIL=str(time.time() + 3600)):
             t = assist.sign_token("session", "a@b.co", 60)
