@@ -43,3 +43,17 @@ Ejemplo para el monitor (pendiente; no aplicado para no generar un evento cada 1
           SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
         run: scripts/log_admin_event.sh monitor grave "Donexto caído" "Run ${{ github.run_id }}"
 ```
+
+## Pedidos de Héctor
+Cada pedido se registra como evento `source=manual`, `created_by=pedido`,
+`meta = {kind: pedido, estado: pendiente|en_curso|hecho, historial: [...]}` y
+`external_id = pedido-<clave>` (idempotente). En el panel: filtro **Tipo › Pedidos de Héctor**
+y columna Estado con Pendiente / En curso / Hecho. Sin migración.
+
+```bash
+doppler run -p donexto -c prd -- scripts/bitacora_pedido.sh <clave> <pendiente|en_curso|hecho> "<título>" ["<detalle>"] ["<fecha ISO>"]
+```
+Repetir con la misma clave actualiza el estado (y cierra el evento cuando es `hecho`).
+Orden de la vista: Pendientes, luego En curso, al final Realizados (más reciente primero en cada grupo).
+Eventos sin `meta.estado`: abierto = Pendiente, resuelto = Realizado. Para marcar un evento cualquiera
+como En curso basta con `meta.estado = en_curso`.

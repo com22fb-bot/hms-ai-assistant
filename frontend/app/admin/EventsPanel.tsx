@@ -12,6 +12,12 @@ type Source = (typeof SOURCES)[number];
 type Severity = (typeof SEVERITIES)[number];
 type Status = "abierto" | "resuelto";
 type BackupKind = "diario" | "semanal";
+type PedidoEstado = "pendiente" | "en_curso" | "hecho";
+const ESTADO_LABEL: Record<PedidoEstado, string> = { pendiente: "Pendiente", en_curso: "En curso", hecho: "Realizado" };
+const ESTADO_ORDER: Record<PedidoEstado, number> = { pendiente: 0, en_curso: 1, hecho: 2 };
+const estadoOf = (e: AdminEvent): PedidoEstado =>
+  e.meta?.estado && e.meta.estado in ESTADO_ORDER ? e.meta.estado : e.status === "resuelto" ? "hecho" : "pendiente";
+const isPedido = (e: AdminEvent) => e.meta?.kind === "pedido";
 
 type AdminEvent = {
   id: string;
@@ -24,7 +30,8 @@ type AdminEvent = {
   status: Status;
   created_by: string;
   meta?: {
-    kind?: BackupKind;
+    kind?: BackupKind | "pedido" | string;
+    estado?: PedidoEstado;
     result?: "ok" | "fallido";
     size_bytes?: number | null;
     duration_s?: number;
@@ -127,6 +134,7 @@ export function EventsPanel() {
   const [fSource, setFSource] = useState<Source | "">("");
   const [fStatus, setFStatus] = useState<Status | "">("");
   const [fText, setFText] = useState("");
+  const [fTipo, setFTipo] = useState<"" | "pedido" | "evento">("");
   const [draft, setDraft] = useState({
     occurred_at: localInputNow(),
     source: "manual" as Source,
@@ -159,10 +167,13 @@ export function EventsPanel() {
     return (events ?? []).filter(
       (e) =>
         (!fSource || e.source === fSource) &&
+        (!fTipo || (fTipo === "pedido") === isPedido(e)) &&
         (!fStatus || e.status === fStatus) &&
         (!q || `${e.title} ${e.detail}`.toLowerCase().includes(q)),
+    ).sort((a, b) =>
+      ESTADO_ORDER[estadoOf(a)] - ESTADO_ORDER[estadoOf(b)] || b.occurred_at.localeCompare(a.occurred_at),
     );
-  }, [events, fSource, fStatus, fText]);
+  }, [events, fSource, fStatus, fText, fTipo]);
 
   async function add(event: FormEvent) {
     event.preventDefault();
@@ -216,6 +227,8 @@ export function EventsPanel() {
   }
 
   const open = events.filter((e) => e.status === "abierto").length;
+  const pedidos = events.filter(isPedido);
+  const pedidosPend = pedidos.filter((e) => e.meta?.estado !== "hecho").length;
 
   return (
     <section className="dx-admin__section dx-perf">
@@ -223,7 +236,7 @@ export function EventsPanel() {
         <div>
           <h2>Bitácora de eventos</h2>
           <p>
-            {events.length} eventos · {open} abiertos. Caídas de proveedores, despliegues, respaldos y alertas.
+            {events.length} eventos · {open} abiertos · {pedidos.length} pedidos ({pedidosPend} sin terminar). Caídas de proveedores, despliegues, respaldos y alertas.
           </p>
         </div>
         <button type="button" className="dx-admin__btn" onClick={() => setAdding((v) => !v)} disabled={saving}>
@@ -282,11 +295,19 @@ export function EventsPanel() {
           </select>
         </label>
         <label>
+          Tipo
+          <select value={fTipo} onChange={(e) => setFTipo(e.target.value as "" | "pedido" | "evento")}>
+            <option value="">Todos</option>
+            <option value="pedido">Pedidos de Héctor</option>
+            <option value="evento">Eventos</option>
+          </select>
+        </label>
+        <label>
           Estado
           <select value={fStatus} onChange={(e) => setFStatus(e.target.value as Status | "")}>
             <option value="">Todos</option>
-            <option value="abierto">Abierto</option>
-            <option value="resuelto">Resuelto</option>
+            <option value="abierto">Pendiente / En curso</option>
+            <option value="resuelto">Realizado</option>
           </select>
         </label>
         <label>
@@ -317,7 +338,7 @@ export function EventsPanel() {
             {visible.map((e) => (
               <tr key={e.id}>
                 <td>{when(e.occurred_at)}</td>
-                <td>{SOURCE_LABEL[e.source] ?? e.source}</td>
+                <td>{isPedido(e) ? "Pedido" : SOURCE_LABEL[e.source] ?? e.source}</td>
                 <td><span className="dx-admin__pill">{SEVERITY_LABEL[e.severity] ?? e.severity}</span></td>
                 <td>
                   <strong>{e.title}</strong>
@@ -326,7 +347,9 @@ export function EventsPanel() {
                     <a href={e.meta.run_url} target="_blank" rel="noreferrer">Ver corrida en GitHub</a>
                   )}
                 </td>
-                <td>{e.status === "abierto" ? "Abierto" : "Resuelto"}</td>
+                <td>
+                  <span className="dx-admin__pill">{ESTADO_LABEL[estadoOf(e)]}</span>
+                </td>
                 <td>{when(e.ended_at)}</td>
                 <td>
                   {e.status === "abierto" && (
