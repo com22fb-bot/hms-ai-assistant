@@ -45,3 +45,10 @@ test("página: marca Donexto, botones 'Click para…', sección Buzones y seccio
   const panel = readFileSync(new URL("../app/admin/MailboxesPanel.tsx", import.meta.url), "utf8");
   assert.ok(!/\.email\b|account_id/.test(panel), "Buzones no debe pintar correo ni IDs");
 });
+
+test("el diseño de rejilla solo aplica al panel (no al acceso ni a la carga)", () => {
+  const css = readFileSync(new URL("../app/admin/admin.css", import.meta.url), "utf8");
+  const block = css.slice(css.indexOf("/* ===== Centro de control"));
+  assert.doesNotMatch(block, /(^|\n)\s*\.dx-admin \{/);
+  assert.match(block, /\.dx-admin--shell \{[^}]*grid-template-areas/);
+});
