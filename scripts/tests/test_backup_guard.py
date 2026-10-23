@@ -6,7 +6,9 @@ from backup_event_from_run import guard_skipped
 T = "2026-10-23"
 RAN = [{"name": "guard", "conclusion": "success"}, {"name": "backup", "conclusion": "success"}]
 SKIP = [{"name": "guard", "conclusion": "success"}, {"name": "backup", "conclusion": "skipped"}]
-def r(i, status="completed", concl="success", day=T): return {"id": i, "status": status, "conclusion": concl, "created_at": f"{day}T09:00:05Z"}
+def r(i, status="completed", concl="success", day=T, origen="cf-cron", event="workflow_dispatch"):
+    t = "Donexto backup daily" + (f" [origen={origen}]" if origen else "")
+    return {"id": i, "status": status, "conclusion": concl, "created_at": f"{day}T09:00:05Z", "display_title": t, "event": event}
 def jobs(m): return lambda rid: m.get(rid, RAN)
 
 class Guard(unittest.TestCase):
@@ -41,3 +43,47 @@ class Guard(unittest.TestCase):
         self.assertTrue(guard_skipped({"jobs": SKIP})); self.assertFalse(guard_skipped({"jobs": RAN}))
 
 if __name__ == "__main__": unittest.main()
+
+
+class AstraOrigen(unittest.TestCase):
+    """Los 6 casos de ASTRA (corrección del guard, 23-oct-2026)."""
+    def test_1_manual_exitoso_no_bloquea_al_primer_cf_cron(self):
+        self.assertTrue(should_run("workflow_dispatch", "cf-cron", 9, [r(1, origen="manual")], T, jobs({})))
+    def test_1b_manual_exitoso_no_bloquea_al_schedule(self):
+        self.assertTrue(should_run("schedule", "", 9, [r(1, origen="manual")], T, jobs({})))
+    def test_2_cf_cron_exitoso_deduplica_al_schedule(self):
+        self.assertFalse(should_run("schedule", "", 9, [r(1, origen="cf-cron")], T, jobs({})))
+    def test_3_cf_cron_duplicado_se_salta_y_schedule_deduplica_cf_cron(self):
+        self.assertFalse(should_run("workflow_dispatch", "cf-cron", 9, [r(1, origen="cf-cron")], T, jobs({})))
+        self.assertFalse(should_run("workflow_dispatch", "cf-cron", 9, [r(1, origen="schedule", event="schedule")], T, jobs({})))
+    def test_4_automatica_en_vuelo_bloquea_pero_manual_en_vuelo_no(self):
+        self.assertFalse(should_run("schedule", "", 9, [r(1, "in_progress", None, origen="cf-cron")], T, jobs({})))
+        self.assertTrue(should_run("workflow_dispatch", "cf-cron", 9, [r(1, "in_progress", None, origen="manual")], T, jobs({})))
+    def test_5_automatica_fallida_o_de_ayer_no_bloquea_reintento(self):
+        self.assertTrue(should_run("schedule", "", 9, [r(1, concl="failure")], T, jobs({})))
+        self.assertTrue(should_run("workflow_dispatch", "cf-cron", 9, [r(1, day="2026-10-22")], T, jobs({})))
+    def test_6_error_de_api_falla_abierto(self):
+        import io, contextlib, backup_guard as g
+        os.environ["GITHUB_REPOSITORY"] = "x/y"
+        def boom(*a, **k): raise RuntimeError("api caída")
+        orig, g._gh_json_lines = g._gh_json_lines, boom
+        argv, sys.argv = sys.argv, ["g", "backup-daily.yml", "workflow_dispatch", "9", "cf-cron"]
+        buf = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(buf), contextlib.redirect_stderr(io.StringIO()):
+                g.main()
+        finally:
+            g._gh_json_lines, sys.argv = orig, argv
+        self.assertEqual(buf.getvalue().strip(), "run=true")
+    def test_legado_sin_etiqueta(self):
+        from backup_guard import origin_of
+        self.assertEqual(origin_of({"event": "schedule", "display_title": "Donexto backup daily"}), "schedule")
+        self.assertEqual(origin_of({"event": "workflow_dispatch", "display_title": "Donexto backup daily"}), "manual")
+    def test_run_name_del_workflow_coincide_con_el_parser(self):
+        base = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        for wf in ("backup-daily.yml", "backup-weekly.yml"):
+            txt = open(os.path.join(base, ".github", "workflows", wf)).read()
+            self.assertIn("[origen=${{ github.event_name == 'schedule' && 'schedule' || (inputs.origen == 'cf-cron' && 'cf-cron' || 'manual') }}]", txt)
+            self.assertIn("-r${{ github.run_id }}-a${{ github.run_attempt }}", txt)
+        self.assertNotEqual(*[open(os.path.join(base, ".github", "workflows", w)).read().split("concurrency:")[1].split("\n")[0] for w in ("backup-daily.yml", "backup-weekly.yml")])
+

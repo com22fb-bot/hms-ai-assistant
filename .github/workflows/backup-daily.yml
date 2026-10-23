@@ -1,4 +1,6 @@
 name: Donexto backup daily
+# Origen persistente (lo lee scripts/backup_guard.py vía display_title de la API).
+run-name: "Donexto backup daily [origen=${{ github.event_name == 'schedule' && 'schedule' || (inputs.origen == 'cf-cron' && 'cf-cron' || 'manual') }}]"
 on:
   schedule: [{cron: "0 12 * * *"}]   # respaldo: 06:00 CDMX; el principal es el Worker donexto-backup-cron (09:00 UTC = 03:00 CDMX)
   workflow_dispatch:
@@ -43,7 +45,7 @@ jobs:
           R2_ENDPOINT: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
         run: |
           set -euo pipefail
-          F="donexto-db-$(date -u +%Y%m%dT%H%MZ).dump.gpg"
+          F="donexto-db-$(date -u +%Y%m%dT%H%M%SZ)-r${{ github.run_id }}-a${{ github.run_attempt }}.dump.gpg"  # único: nunca sobrescribe
           /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" -Fc --no-owner --no-privileges \
             | gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 --symmetric --cipher-algo AES256 -o "$RUNNER_TEMP/$F" 3<<<"$BACKUP_PASSPHRASE"
           SHA=$(sha256sum "$RUNNER_TEMP/$F" | cut -d' ' -f1)

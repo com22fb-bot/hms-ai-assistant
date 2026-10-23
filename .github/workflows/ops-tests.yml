@@ -1,0 +1,21 @@
+name: Ops tests (guard de respaldos + Workers)
+on:
+  pull_request:
+    paths: ["scripts/**", "workers/**", ".github/workflows/backup-*.yml", ".github/workflows/ops-tests.yml"]
+  push:
+    branches: [main]
+    paths: ["scripts/**", "workers/**", ".github/workflows/backup-*.yml", ".github/workflows/ops-tests.yml"]
+permissions: {contents: read}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Guard de respaldos (Python)
+        run: cd scripts && python3 -m unittest tests.test_backup_guard -v
+      - name: Worker backup-cron
+        run: node --test workers/backup-cron/index.test.mjs
+      - name: Worker backup-watch
+        run: node --test workers/backup-watch/index.test.mjs
