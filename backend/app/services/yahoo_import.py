@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from app.services.brain_v1.headers import imap_mail_headers
 from app.services.brain_v1 import brain_v1_enabled
 from app.services.import_categories import skip_message
 import email
@@ -592,6 +593,7 @@ def sync_yahoo_page(
                             "received_at": received_at_iso,
                             "has_attachments": has_attachments,
                             "labels": labels,
+                            **({"mail_headers": imap_mail_headers(parsed, folder, flags_text.split())} if brain_v1_enabled() else {}),
                             "is_unread": is_unread,
                             "snippet": snippet,
                             "direction": direction,

@@ -154,7 +154,7 @@ class C10HeadersFirstTests(unittest.TestCase):
             result = mi.sync_microsoft_page(account={"id": "a1", "email": "u@outlook.com"}, refs=refs, offset=0, exclude=["social"])
         self.assertEqual(result["skipped_excluded"], 1)
         self.assertEqual(calls.count(mi.MICROSOFT_HEADER_SELECT), 2)
-        self.assertEqual(calls.count(mi.MICROSOFT_SELECT), 1)  # solo la alerta de seguridad baja cuerpo
+        self.assertEqual(calls.count(mi.MICROSOFT_SELECT + mi.MICROSOFT_BRAIN_EXTRA), 1)  # solo la alerta de seguridad baja cuerpo
 
     def test_imap_excluded_message_never_downloads_body(self):
         import app.services.yahoo_import as yi

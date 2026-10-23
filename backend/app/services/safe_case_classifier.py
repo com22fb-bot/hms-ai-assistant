@@ -399,6 +399,8 @@ def classify_pending_messages(
     client = storage.client
     safe_limit = min(max(limit, 1), 500)
 
+    from app.services.brain_v1 import brain_v1_enabled as _brain_on
+
     if message_ids is not None and not message_ids:
         messages: list[dict[str, Any]] = []
     else:
@@ -408,6 +410,7 @@ def classify_pending_messages(
                 "id,thread_id,account_id,external_message_id,sender,"
                 "recipients,cc,bcc,subject,body_text,snippet,"
                 "received_at,labels,is_unread,direction,case_processed"
+                + (",mail_headers" if _brain_on() else "")  # PR #128: requiere migración 006
             )
             .eq("account_id", account_id)
             .eq("case_processed", False)
