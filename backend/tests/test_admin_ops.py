@@ -77,7 +77,7 @@ class AdminDeleteGuardTests(unittest.TestCase):
         self.assertEqual(result["status"], "deleted")
         self.assertEqual(result["email"], "prueba@hotmail.com")
         self.assertEqual(result["mode"], "transactional")
-        client.rpc.assert_called_once_with("admin_purge_user", {"p_user": "test-1"})
+        client.rpc.assert_any_call("admin_purge_user", {"p_user": "test-1", "p_dry_run": False})
         # La función SQL borra también en auth.users dentro de la transacción.
         client.auth.admin.delete_user.assert_not_called()
 
@@ -103,16 +103,18 @@ class AdminDeleteGuardTests(unittest.TestCase):
         self.assertEqual(result["rows_total"], 7)
         self.assertEqual(result["counts"]["communication_messages"], 5)
 
-    def test_delete_falls_back_when_function_missing(self) -> None:
+    def test_delete_fails_closed_when_function_missing(self) -> None:
         client = MagicMock()
         client.rpc.return_value.execute.side_effect = Exception(
             "PGRST202 Could not find the function public.admin_purge_user"
         )
         a, b, c = self._ctx(client)
         with a, b, c:
-            result = admin_delete_user("test-1")
-        self.assertEqual(result["mode"], "legacy")
-        client.auth.admin.delete_user.assert_called_once_with("test-1")
+            with self.assertRaises(HTTPException) as caught:
+                admin_delete_user("test-1")
+        self.assertEqual(caught.exception.status_code, 409)
+        client.auth.admin.delete_user.assert_not_called()
+        client.table.assert_not_called()
 
     def test_delete_failure_deletes_nothing_else(self) -> None:
         client = MagicMock()

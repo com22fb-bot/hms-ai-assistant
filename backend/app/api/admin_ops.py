@@ -391,7 +391,7 @@ def admin_list_users(limit: int = 80) -> dict[str, Any]:
 
 
 @router.delete("/users/{user_id}")
-def admin_delete_user(user_id: str) -> dict[str, Any]:
+def admin_delete_user(user_id: str, dry_run: bool = False) -> dict[str, Any]:
     context = _require_admin()
     target_id = (user_id or "").strip()
     if not target_id:
@@ -435,18 +435,35 @@ def admin_delete_user(user_id: str) -> dict[str, Any]:
             detail={"status": "delete_forbidden", "message": reason},
         )
 
-    purge = purge_user_everything(client, found_id)
+    purge = purge_user_everything(client, found_id, dry_run=dry_run)
+    return {**purge_response(purge), "id": found_id, "email": email}
+
+
+def purge_response(purge: dict[str, Any]) -> dict[str, Any]:
+    """Estado fiel: solo «deleted» si Storage también terminó; si no, «deleted_storage_pending»."""
+    if purge.get("dry_run"):
+        status, complete = "dry_run", False
+    else:
+        storage = purge.get("storage") or {}
+        complete = storage.get("status") in ("ok", "sin_archivos")
+        status = "deleted" if complete else "deleted_storage_pending"
     return {
-        "status": "deleted",
-        "id": found_id,
-        "email": email,
-        "mode": purge["mode"],
+        "status": status,
+        "complete": complete,
+        "mode": purge.get("mode"),
         "rows_total": purge.get("rows_total"),
         "counts": purge.get("counts") or {},
+        "backup_counts": purge.get("backup_counts") or {},
+        "shared_kept": purge.get("shared_kept"),
+        "shared_accounts": purge.get("shared_accounts") or [],
+        "storage_queued": purge.get("storage_queued"),
+        "storage": purge.get("storage"),
+        "message": None if complete or purge.get("dry_run") else
+        "Datos borrados; quedan archivos por borrar en Storage. Se reintentará; ver /admin/storage-purge.",
     }
 
 
-def purge_user_everything(client: Any, user_id: str) -> dict[str, Any]:
+def purge_user_everything(client: Any, user_id: str, dry_run: bool = False) -> dict[str, Any]:
     """Borra TODO lo del usuario en una sola transacción (``admin_purge_user``).
 
     Fase de pruebas: sin respaldo. La función SQL registra en la bitácora solo
@@ -454,17 +471,19 @@ def purge_user_everything(client: Any, user_id: str) -> dict[str, Any]:
     la limpieza anterior por pasos y luego borra en Supabase Auth.
     """
     try:
-        response = client.rpc("admin_purge_user", {"p_user": user_id}).execute()
+        response = client.rpc("admin_purge_user", {"p_user": user_id, "p_dry_run": bool(dry_run)}).execute()
     except Exception as error:
         text = str(error)
+        if dry_run:
+            raise HTTPException(status_code=409, detail={"status": "dry_run_unavailable",
+                                "message": "La simulación requiere la migración 20261023_002."}) from error
         if "admin_purge_user" in text and ("does not exist" in text or "PGRST202" in text):
-            logger.warning("admin_purge_user missing; legacy cleanup")
-            cleanup_user_records(client, user_id)
-            try:
-                client.auth.admin.delete_user(user_id)
-            except TypeError:
-                client.auth.admin.delete_user(user_id, should_soft_delete=False)
-            return {"mode": "legacy", "rows_total": None, "counts": {}}
+            # Falla cerrada: sin la función v2 no se borra nada (la limpieza por pasos
+            # anterior no respetaba buzones compartidos ni Storage).
+            logger.warning("admin_purge_user v2 missing; nothing deleted")
+            raise HTTPException(status_code=409, detail={
+                "status": "migration_pending",
+                "message": "Falta la migración 20261023_002 (borrado v2). No se borró nada."}) from error
         logger.warning("admin_purge_user failed", exc_info=True)
         raise HTTPException(
             status_code=500,
@@ -476,38 +495,87 @@ def purge_user_everything(client: Any, user_id: str) -> dict[str, Any]:
     data = getattr(response, "data", None)
     if not isinstance(data, dict):
         data = {}
-    storage = purge_storage_paths(client, data.get("storage_paths") or [])
-    return {
-        "mode": "transactional",
-        "rows_total": data.get("rows_total"),
-        "counts": data.get("counts") or {},
-        "storage": storage,
-    }
+    if data.get("dry_run"):
+        return {"mode": "transactional", "dry_run": True, **data}
+    storage = drain_storage_queue(client) if data.get("storage_queued") else {"status": "sin_archivos", "requested": 0}
+    return {"mode": "transactional", "dry_run": False, **{k: v for k, v in data.items() if k != "storage_paths"},
+            "storage": storage}
 
 
 ATTACHMENTS_BUCKET = "attachments"
 
 
-def purge_storage_paths(client: Any, paths: list[str]) -> dict[str, Any]:
-    """Borra los archivos de adjuntos que devolvió admin_purge_user (v2).
+def process_storage_queue(client: Any, limit: int = 200) -> dict[str, Any]:
+    """Borra archivos pendientes de la cola duradera admin_storage_purge_queue.
 
-    Las filas ya se borraron en la transacción; si Storage falla, se reporta
-    (no se oculta) para reintentar. Devuelve solo conteos, nunca rutas.
+    Cada lote reclamado se marca hecho o fallido (con espera exponencial y máximo de
+    intentos en SQL). Nunca se reporta «ok» si queda algo pendiente o fallido.
     """
-    clean = [p for p in paths if isinstance(p, str) and p.strip()]
-    if not clean:
-        return {"requested": 0, "deleted": 0, "status": "sin_archivos"}
-    deleted, failed = 0, 0
-    for start in range(0, len(clean), 100):
-        chunk = clean[start:start + 100]
-        try:
-            client.storage.from_(ATTACHMENTS_BUCKET).remove(chunk)
-            deleted += len(chunk)
-        except Exception:
-            failed += len(chunk)
-            logger.warning("storage purge chunk failed", exc_info=True)
-    return {"requested": len(clean), "deleted": deleted, "failed": failed,
-            "status": "ok" if not failed else "parcial"}
+    try:
+        claimed = _rows(client.rpc("admin_storage_purge_claim", {"p_limit": limit}).execute())
+    except Exception as error:
+        return {"status": "error", "message": type(error).__name__}
+    done, failed = 0, 0
+    by_bucket: dict[str, list[dict[str, Any]]] = {}
+    for row in claimed:
+        by_bucket.setdefault(str(row.get("bucket") or ATTACHMENTS_BUCKET), []).append(row)
+    for bucket, rows in by_bucket.items():
+        for start in range(0, len(rows), 100):
+            chunk = rows[start:start + 100]
+            ids = [int(r["id"]) for r in chunk]
+            try:
+                client.storage.from_(bucket).remove([str(r["path"]) for r in chunk])
+                ok, err = True, None
+            except Exception as error:
+                ok, err = False, type(error).__name__
+                logger.warning("storage purge chunk failed", exc_info=True)
+            try:
+                client.rpc("admin_storage_purge_mark", {"p_ids": ids, "p_ok": ok, "p_error": err}).execute()
+            except Exception:
+                logger.warning("storage purge mark failed", exc_info=True)
+                ok = False  # sin marca, se reintentará al vencer la espera
+            if ok:
+                done += len(chunk)
+            else:
+                failed += len(chunk)
+    try:
+        queue = client.rpc("admin_storage_purge_status", {}).execute().data
+    except Exception:
+        queue = None
+    pending = (queue or {}).get("pendiente") if isinstance(queue, dict) else None
+    lost = (queue or {}).get("fallido") if isinstance(queue, dict) else None
+    if failed or pending or lost or queue is None:
+        status = "parcial"
+    else:
+        status = "ok"
+    return {"status": status, "processed": len(claimed), "deleted": done, "failed": failed, "queue": queue}
+
+
+def drain_storage_queue(client: Any, rounds: int = 10, limit: int = 200) -> dict[str, Any]:
+    """Procesa lotes hasta vaciar lo reclamable (máx. rounds); el estado final es el del último lote."""
+    total_deleted, total_failed, last = 0, 0, {}
+    for _ in range(rounds):
+        last = process_storage_queue(client, limit)
+        total_deleted += last.get("deleted") or 0
+        total_failed += last.get("failed") or 0
+        if last.get("status") == "error" or (last.get("processed") or 0) < limit:
+            break
+    return {**last, "deleted": total_deleted, "failed": total_failed}
+
+
+@router.get("/storage-purge")
+def admin_storage_purge_status() -> dict[str, Any]:
+    _require_admin()
+    try:
+        return {"status": "ok", "queue": get_supabase_client().rpc("admin_storage_purge_status", {}).execute().data}
+    except Exception as error:
+        return {"status": "error", "queue": None, "message": type(error).__name__}
+
+
+@router.post("/storage-purge/retry")
+def admin_storage_purge_retry() -> dict[str, Any]:
+    _require_admin()
+    return process_storage_queue(get_supabase_client())
 
 
 @router.get("/mailboxes/{account_id}/timeline")
