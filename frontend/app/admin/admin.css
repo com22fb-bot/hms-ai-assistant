@@ -658,24 +658,38 @@
 .dx-admin__pill.is-warn { background: #fff4e5; color: #8a4b00; }
 
 /* Semáforo global de salud (visible en todas las pestañas) */
-.dx-health { margin: 0 0 12px; border-radius: 12px; border: 1px solid var(--a-line, #e5e7eb); background: #fff; }
+/* Semáforo global de salud. Panel CLARO dentro del tema oscuro de /admin: todos los colores son explícitos
+   (nada se hereda de --a-text, que es casi blanco) y cada par texto/fondo cumple WCAG AA ≥ 4.5:1
+   (lib/adminHealthContrast.test.ts lo mide). */
+.dx-health { margin: 0 0 12px; border-radius: 12px; border: 1px solid #cbd5e1; background: #f8fafc; color: #111827; }
+.dx-health--verificando { border-color: #cbd5e1; background: #f8fafc; color: #111827; }
+.dx-health--verde { border-color: #86efac; background: #f0fdf4; color: #111827; }
+.dx-health--amarillo { border-color: #fcd34d; background: #fffbeb; color: #111827; }
+.dx-health--rojo { border-color: #fca5a5; background: #fef2f2; color: #111827; }
 .dx-health__bar { width: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 10px 14px;
-  background: none; border: 0; text-align: left; cursor: pointer; font: inherit; color: inherit; }
-.dx-health__dot { width: 14px; height: 14px; border-radius: 50%; background: #9ca3af; flex: none; }
+  background: none; border: 0; text-align: left; cursor: pointer; font: inherit; color: #111827; }
+.dx-health__dot { width: 14px; height: 14px; border-radius: 50%; background: #6b7280; flex: none; }
 .dx-health--verde .dx-health__dot { background: #16a34a; }
-.dx-health--amarillo .dx-health__dot { background: #f59e0b; }
+.dx-health--amarillo .dx-health__dot { background: #d97706; }
 .dx-health--rojo .dx-health__dot { background: #dc2626; }
 .dx-health--verificando .dx-health__dot { animation: dx-health-pulse 1.2s infinite; }
-.dx-health--rojo { border-color: #fecaca; background: #fef2f2; }
-.dx-health--amarillo { border-color: #fde68a; background: #fffbeb; }
-.dx-health__note { flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere; font-size: 0.9em; }
-.dx-health__meta { font-size: 0.8em; opacity: 0.75; }
-.dx-health__detail { padding: 0 14px 12px; }
-.dx-health__detail h3 { font-size: 0.95em; margin: 10px 0 6px; }
+.dx-health__label { font-weight: 700; color: #374151; }
+.dx-health--verde .dx-health__label { color: #166534; }
+.dx-health--amarillo .dx-health__label { color: #92400e; }
+.dx-health--rojo .dx-health__label { color: #991b1b; }
+.dx-health__note { flex: 1 1 260px; min-width: 0; overflow-wrap: anywhere; font-size: 0.9em; color: #111827; }
+.dx-health__meta { font-size: 0.8em; color: #374151; }
+.dx-health__detail { padding: 0 14px 12px; color: #111827; }
+.dx-health__detail h3 { font-size: 0.95em; margin: 10px 0 6px; color: #111827; }
 .dx-health__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.dx-health__list li { font-size: 0.88em; line-height: 1.4; overflow-wrap: anywhere; padding: 6px 8px; border-radius: 8px; background: rgba(0,0,0,0.03); }
-.dx-health__list li.is-falla { background: #fee2e2; }
-.dx-health__list li.is-degradado, .dx-health__list li.is-sin_verificar { background: #fef3c7; }
-.dx-health__policy { font-size: 0.8em; opacity: 0.8; }
+.dx-health__list li { font-size: 0.88em; line-height: 1.4; overflow-wrap: anywhere; padding: 6px 8px; border-radius: 8px;
+  background: #ffffff; border: 1px solid #e5e7eb; color: #111827; }
+.dx-health__list li.is-ok { background: #ffffff; color: #111827; }
+.dx-health__list li.is-falla { background: #fee2e2; border-color: #fca5a5; color: #7f1d1d; }
+.dx-health__list li.is-degradado, .dx-health__list li.is-sin_verificar { background: #fef3c7; border-color: #fcd34d; color: #78350f; }
+.dx-health__list li * { color: inherit; }
+.dx-health__policy { font-size: 0.8em; color: #374151; }
+.dx-health .dx-admin__btn, .dx-health .dx-admin__btn--ghost { background: #ffffff; color: #111827; border: 1px solid #6b7280; }
+.dx-health a, .dx-health__list li a { color: #1d4ed8; text-decoration: underline; }
 @keyframes dx-health-pulse { 50% { opacity: 0.3; } }
 @media (max-width: 640px) { .dx-health__meta { width: 100%; } }
