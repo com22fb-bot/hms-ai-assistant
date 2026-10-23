@@ -33,6 +33,7 @@ type Inventory = {
   provider_label: string;
   eligible_messages: number;
   period_start_local: string;
+  history_days?: number;
   period_end_local: string;
   timezone: string;
   breakdown: Breakdown[];
@@ -476,7 +477,9 @@ export function GuidedImportWizard({
                 <Clock3 size={18} />
                 <span>{T("period")}</span>
                 <strong>
-                  {formatLocalDate(inventory.period_start_local, locale)}
+                  {(inventory.history_days ?? 0) < 0
+                    ? T("allHistory")
+                    : formatLocalDate(inventory.period_start_local, locale)}
                   {" – "}
                   {formatLocalDate(inventory.period_end_local, locale)}
                 </strong>

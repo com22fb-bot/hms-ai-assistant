@@ -5,12 +5,18 @@ from __future__ import annotations
 from app.services.brain_v1 import brain_v1_enabled
 from app.services.import_categories import skip_message
 import email
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any
 
 from app.services.gmail_full_sync import _existing_message_ids
-from app.services.gmail_import_inventory import INITIAL_HISTORY_DAYS, LOCAL_TIMEZONE
+from app.services.gmail_import_inventory import (
+    INITIAL_HISTORY_DAYS,
+    LOCAL_TIMEZONE,
+    HISTORY_EPOCH,
+    history_start,
+    is_unlimited_history,
+)
 from app.services.gmail_sync import (
     _format_sender,
     _get_or_create_thread,
@@ -99,7 +105,7 @@ def _history_window(
     if current.tzinfo is None:
         current = current.replace(tzinfo=timezone.utc)
     current = current.astimezone(timezone.utc)
-    start = current - timedelta(days=int(history_days or INITIAL_HISTORY_DAYS))
+    start = history_start(current, history_days)
     return start, current
 
 
@@ -168,6 +174,8 @@ def _folder_uids_since(
     mailbox_provider: str = "yahoo",
 ) -> list[str]:
     _select_folder(client, folder, mailbox_provider)
+    if since <= HISTORY_EPOCH:
+        return _uid_search(client, "ALL")  # cuenta protegida: sin filtro de fecha
     return _uid_search(client, "SINCE", imap_search_date(since))
 
 
@@ -233,14 +241,12 @@ def yahoo_initial_snapshot(
         for folder in inbox_folders:
             try:
                 _select_folder(client, folder, mailbox_provider)
-                unread += len(
-                    _uid_search(
-                        client,
-                        "SINCE",
-                        imap_search_date(start),
-                        "UNSEEN",
-                    )
+                criteria = (
+                    ("UNSEEN",)
+                    if start <= HISTORY_EPOCH
+                    else ("SINCE", imap_search_date(start), "UNSEEN")
                 )
+                unread += len(_uid_search(client, *criteria))
             except Exception:
                 continue
     finally:
@@ -263,7 +269,7 @@ def yahoo_initial_snapshot(
         "period_start_local": start.astimezone(LOCAL_TIMEZONE).isoformat(),
         "period_end_local": current.astimezone(LOCAL_TIMEZONE).isoformat(),
         "timezone": "America/Chihuahua",
-        "history_days": int(history_days or INITIAL_HISTORY_DAYS),
+        "history_days": -1 if is_unlimited_history(history_days) else int(history_days or INITIAL_HISTORY_DAYS),
         "breakdown": {
             "received": len(grouped.get("inbox", [])),
             "sent": len(grouped.get("sent", [])),
