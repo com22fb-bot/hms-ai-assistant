@@ -35,6 +35,8 @@ logger = logging.getLogger(__name__)
 MEXICO_CITY = ZoneInfo("America/Mexico_City")
 MONTHLY_HISTORY_DAYS = 90
 ANNUAL_HISTORY_DAYS = 183
+# Cuentas protegidas: todo el historial, sin límite de fecha (decisión de Héctor, 23-oct-2026).
+UNLIMITED_HISTORY_DAYS = -1
 TRIAL_GRACE_DAYS = 7
 LAPSED_GRACE_DAYS = 30
 CLEANUP_HOUR_LOCAL = 3
@@ -87,7 +89,7 @@ def _rows(response: Any) -> list[dict[str, Any]]:
 def history_days_for_workspace(client: Any, workspace_id: str) -> int:
     """Días de historial para la importación inicial de un buzón.
 
-    Cuentas protegidas (dueño/pruebas) usan la ventana anual. Si no hay plan
+    Cuentas protegidas (dueño/pruebas) descargan todo el historial (sin límite). Si no hay plan
     registrado, se usa la del plan mensual (90 días). Ante un error, 90 días.
     """
     try:
@@ -99,7 +101,7 @@ def history_days_for_workspace(client: Any, workspace_id: str) -> int:
             return MONTHLY_HISTORY_DAYS
         profiles = _rows(client.table("profiles").select("id,email").in_("id", profile_ids).execute())
         if any(str(p.get("email") or "").lower() in protected_emails() for p in profiles):
-            return ANNUAL_HISTORY_DAYS
+            return UNLIMITED_HISTORY_DAYS
         plans = _rows(
             client.table("account_plans").select("plan_code,status").in_("user_id", profile_ids).execute()
         )
@@ -122,7 +124,7 @@ def plan_status_for_workspace(client: Any, workspace_id: str, now: datetime | No
         if profile_ids:
             profiles = _rows(client.table("profiles").select("id,email").in_("id", profile_ids).execute())
             if any(str(p.get("email") or "").lower() in protected_emails() for p in profiles):
-                return {"state": "owner", "plan_code": "annual", "days_left": None, "history_days": ANNUAL_HISTORY_DAYS}
+                return {"state": "owner", "plan_code": "annual", "days_left": None, "history_days": UNLIMITED_HISTORY_DAYS}
             plans = _rows(
                 client.table("account_plans").select("plan_code,status,trial_ends_at,period_ends_at")
                 .in_("user_id", profile_ids).execute()

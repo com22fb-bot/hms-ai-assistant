@@ -72,7 +72,7 @@ class HistoryWindowTests(unittest.TestCase):
         client = _Client(_db())
         self.assertEqual(lc.history_days_for_workspace(client, "w5"), 183)
         self.assertEqual(lc.history_days_for_workspace(client, "w1"), 90)
-        self.assertEqual(lc.history_days_for_workspace(client, "w4"), 183)  # dueño protegido
+        self.assertEqual(lc.history_days_for_workspace(client, "w4"), lc.UNLIMITED_HISTORY_DAYS)  # dueño protegido: sin límite
         self.assertEqual(lc.history_days_for_workspace(client, "nope"), 90)
 
 

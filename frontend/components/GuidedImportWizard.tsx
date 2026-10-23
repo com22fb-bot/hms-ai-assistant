@@ -476,7 +476,9 @@ export function GuidedImportWizard({
                 <Clock3 size={18} />
                 <span>{T("period")}</span>
                 <strong>
-                  {formatLocalDate(inventory.period_start_local, locale)}
+                  {inventory.history_days < 0
+                    ? T("allHistory")
+                    : formatLocalDate(inventory.period_start_local, locale)}
                   {" – "}
                   {formatLocalDate(inventory.period_end_local, locale)}
                 </strong>

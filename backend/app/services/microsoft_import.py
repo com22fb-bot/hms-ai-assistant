@@ -9,7 +9,13 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.services.gmail_full_sync import _existing_message_ids
-from app.services.gmail_import_inventory import INITIAL_HISTORY_DAYS, LOCAL_TIMEZONE
+from app.services.gmail_import_inventory import (
+    INITIAL_HISTORY_DAYS,
+    LOCAL_TIMEZONE,
+    HISTORY_EPOCH,
+    history_start,
+    is_unlimited_history,
+)
 from app.services.gmail_sync import (
     _format_sender,
     _get_or_create_thread,
@@ -83,7 +89,7 @@ def _history_window(
     if current.tzinfo is None:
         current = current.replace(tzinfo=timezone.utc)
     current = current.astimezone(timezone.utc)
-    start = current - timedelta(days=int(history_days or INITIAL_HISTORY_DAYS))
+    start = history_start(current, history_days)
     return start, current
 
 
@@ -264,7 +270,7 @@ def microsoft_initial_snapshot(
         "period_start_local": start.astimezone(LOCAL_TIMEZONE).isoformat(),
         "period_end_local": current.astimezone(LOCAL_TIMEZONE).isoformat(),
         "timezone": "America/Chihuahua",
-        "history_days": int(history_days or INITIAL_HISTORY_DAYS),
+        "history_days": -1 if is_unlimited_history(history_days) else int(history_days or INITIAL_HISTORY_DAYS),
         "breakdown": {
             "received": len(inbox_ids),
             "sent": len(sent_ids),

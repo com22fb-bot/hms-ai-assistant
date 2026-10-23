@@ -13,6 +13,20 @@ from app.database.supabase import get_supabase_client
 
 LOCAL_TIMEZONE = ZoneInfo("America/Chihuahua")
 INITIAL_HISTORY_DAYS = 183
+# Ventana sin límite (cuentas protegidas): sin filtro de fecha.
+UNLIMITED_HISTORY_DAYS = -1
+HISTORY_EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
+
+
+def is_unlimited_history(history_days: int | None) -> bool:
+    return history_days is not None and int(history_days) < 0
+
+
+def history_start(current: datetime, history_days: int | None) -> datetime:
+    """Inicio de la ventana; para cuentas protegidas, el origen (todo el historial)."""
+    if is_unlimited_history(history_days):
+        return HISTORY_EPOCH
+    return current - timedelta(days=int(history_days or INITIAL_HISTORY_DAYS))
 EXCLUDED_QUERY = "-in:spam -in:trash -in:drafts"
 
 
@@ -97,16 +111,17 @@ def initial_import_snapshot(
     cutoff_at: datetime | None = None,
     history_days: int | None = None,
 ) -> dict[str, Any]:
-    days = int(history_days or INITIAL_HISTORY_DAYS)
+    days = UNLIMITED_HISTORY_DAYS if is_unlimited_history(history_days) else int(history_days or INITIAL_HISTORY_DAYS)
     current = cutoff_at or datetime.now(timezone.utc)
     if current.tzinfo is None:
         current = current.replace(tzinfo=timezone.utc)
 
     current = current.astimezone(timezone.utc)
-    start = current - timedelta(days=days)
+    start = history_start(current, days)
 
+    after = "" if is_unlimited_history(days) else f"after:{int(start.timestamp())} "
     query = (
-        f"after:{int(start.timestamp())} "
+        f"{after}"
         f"before:{int(current.timestamp())} "
         f"{EXCLUDED_QUERY}"
     ).strip()
