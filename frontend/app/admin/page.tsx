@@ -547,7 +547,7 @@ function AdminPage() {
   }
 
   return (
-    <div className="dx-admin">
+    <div className="dx-admin dx-admin--shell">
       <header className="dx-admin__header">
         <div className="dx-admin__brand">
           <Shield size={22} aria-hidden />

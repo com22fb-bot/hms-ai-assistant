@@ -697,7 +697,7 @@
 /* ===== Centro de control (diseño Figma aprobado 2026-10-23) =====
    Barra lateral oscura en escritorio, pestañas inferiores en móvil, área principal clara.
    Contraste AA: texto #0f172a/#475569 sobre #f6f8fb/#ffffff; barra #e2e8f0 sobre #0b1530. */
-.dx-admin {
+.dx-admin--shell {
   --a-bg: #f6f8fb; --a-elevated: #ffffff; --a-surface: #ffffff; --a-surface-2: #f1f5f9;
   --a-line: #e2e8f0; --a-text: #0f172a; --a-muted: #475569; --a-accent: #2f5bea;
   --a-accent-soft: #e0e9ff; --a-danger: #b42318; --a-warn: #8a5a00; --a-ok: #166534;
@@ -752,7 +752,7 @@
 .dx-cc__bar i { display: block; height: 100%; background: #2f5bea; }
 @media (max-width: 1100px) { .dx-cc__kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dx-cc__grid { grid-template-columns: 1fr; } }
 @media (max-width: 900px) {
-  .dx-admin { grid-template-columns: minmax(0, 1fr); grid-template-areas: "header" "health" "main"; padding: 0 16px 96px; }
+  .dx-admin--shell { grid-template-columns: minmax(0, 1fr); grid-template-areas: "header" "health" "main"; padding: 0 16px 96px; }
   .dx-admin > .dx-admin__nav { position: fixed; top: auto; bottom: 0; left: 0; right: 0; height: auto; z-index: 50;
     flex-direction: row; overflow-x: auto; padding: 8px 8px calc(8px + env(safe-area-inset-bottom)); background: #ffffff;
     border-top: 1px solid #e2e8f0; gap: 2px; }
