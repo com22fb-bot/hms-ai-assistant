@@ -41,3 +41,18 @@ jobs:
         working-directory: backend
         env: {PURGE_SQL_REQUIRED: "1"}
         run: python -m pytest -v -s tests/test_purge_sql.py --noconftest -p no:cacheprovider
+  integracion-181-184:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env: {POSTGRES_PASSWORD: postgres}
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: git fetch origin db/normalizacion-propuesta:refs/remotes/origin/db/normalizacion-propuesta main:refs/remotes/origin/main
+      - name: Integración #181 × #184 (esquema prod → #181 → 001 → 003 → 002 → borrado dry-run y real; órdenes inválidos)
+        env: {PGPASSWORD: postgres, REF181: HEAD}
+        run: PGURL="-h localhost -p 5432 -U postgres" bash supabase/tests/integracion_181_184/run.sh

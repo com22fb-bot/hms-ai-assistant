@@ -18,15 +18,26 @@ de producción (23-oct-2026). Cualquier otra tabla queda intacta aunque tenga `u
 
 | Clave | Tablas.columna |
 |---|---|
-| mensaje (de buzones borrados) | ai_analysis.message_id, attachments.message_id, case_messages.message_id, communication_tasks.message_id, hms_notifications.message_id, message_watch_matches.message_id, message_watch_rules.source_message_id, tasks.message_id |
+| mensaje (de buzones borrados) | ai_analysis.message_id, attachments.message_id, case_messages.message_id, communication_tasks.message_id, hms_notifications.message_id, message_watch_matches.message_id, message_watch_rules.source_message_id |
 | buzón borrado | oauth_credentials, gmail_sync_jobs, intelligent_cases, case_reclassification_runs, message_classification_rules, message_watch_rules, hms_notifications (.account_id) |
 | espacio solo del usuario | case_events, case_notifications, communication_tasks, gmail_sync_jobs, intelligent_cases, organizational_patterns, oauth_states (.workspace_id) |
 | usuario (profile_id) | donexto_alert_rules, donexto_preferences, hms_notifications, message_classification_rules, message_watch_rules, oauth_states, push_subscriptions |
-| usuario (user_id) | account_plans, alerts, audit_log, emails, mail_accounts, notifications, tasks, user_workspaces |
-| núcleo (orden fijo) | communication_messages, communication_threads, communication_accounts, workspace_members, workspaces, users, profiles, auth.users |
+| usuario (user_id) | account_plans |
+| núcleo (orden fijo) | communication_messages, communication_threads, communication_accounts, workspace_members, workspaces, profiles, auth.users |
 
 Excluidas a propósito: admin_events, admin_allowlist, admin_storage_purge_queue, system_incidents (FK SET NULL),
 case_events.message_id (FK SET NULL), ops_*, y `communication_accounts.connected_by_profile_id` (P2 conserva el buzón).
+
+## Tablas legadas (compatibilidad con PR #184)
+alerts, emails, user_workspaces, notifications, users, reminders, tasks, audit_log y mail_accounts **no** están en la lista
+ni en el cuerpo de `_admin_purge_user_exec` (ya no existe `delete from public.users`). PR #184 las elimina (001/002).
+Opción elegida (explícita y auditable): sacarlas de la lista y revisarlas aparte en `_admin_purge_legacy_check()` con
+`to_regclass()`:
+- no existe → `omitida_inexistente` (queda en el plan, campo `legacy`);
+- existe sin filas del usuario → `presente_sin_filas`;
+- existe con filas del usuario → **aborta** sin borrar nada (hoy todas tienen 0 filas en producción).
+Orden: #181 → #184 001 → 003 → 002. La 002 de #184 aborta si falta #181 o si quedan referencias.
+Prueba: `supabase/tests/integracion_181_184/run.sh` (CI, job `integracion-181-184`).
 
 ## Esquemas de respaldo
 Solo los que coinciden con `^hms_backup_[a-z0-9_]+$`, con **la misma lista explícita** (incluidas las tablas núcleo).

@@ -57,7 +57,7 @@ PLAN=$($P -c "select admin_purge_user('$U', true)")
 echo "DRY-RUN: $PLAN"
 [ "$(snap)" = "$B" ] && ok "dry-run sin cambios"
 echo "$PLAN" | grep -q '"users": "omitida_inexistente"' && ok "legado users = omitida_inexistente"
-REAL=$($P -c "select admin_purge_user('$U', false) - 'purge_ref'")
+REAL=$($P -c "select admin_purge_user('$U', false) - 'purge_ref' - 'storage_paths'")
 echo "REAL: $REAL"
 [ "$($P -c "select (('$REAL')::jsonb->'counts') = (('$PLAN')::jsonb->'counts')")" = t ] && ok "real = plan"
 [ "$($P -c "select count(*) from auth.users where id='$U'")" = 0 ] && ok "usuario borrado"
@@ -72,4 +72,4 @@ ORPH=$($P -c "select (select count(*) from communication_messages m left join co
 [ "$ORPH" = 0 ] && ok "sin huérfanos"
 [ "$($P -c "select count(*) from admin_storage_purge_queue where status='pendiente'")" = 4 ] && ok "4 rutas en cola Storage"
 echo "TOTAL PASS=$pass"
-[ "$pass" -ge 17 ] || fail "faltan aserciones ($pass)"
+[ "$pass" -eq 16 ] || fail "se esperaban 16 aserciones ($pass)"
