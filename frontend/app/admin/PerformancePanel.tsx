@@ -34,7 +34,7 @@ type Database = (Missing | { available: true; status: "ok" }) & {
   connections_active?: number;
   connections_total?: number;
   top_tables?: Array<{ name: string; bytes: number }>;
-  slow_queries?: Array<{ query: string; calls: number; mean_ms: number }> | null;
+  slow_queries?: Array<{ query?: string | null; calls?: number | null; mean_ms?: number | null; total_s?: number | null }> | null;
 };
 
 type Cloudflare = (Missing | { available: true; status: "ok" }) & {
@@ -160,6 +160,11 @@ function MissingToken({ data }: { data: Missing }) {
   );
 }
 
+/** Acepta solo filas objeto; cualquier otra forma cuenta como "Sin datos" (evita <li> vacíos). */
+function slowList(v: unknown): Array<{ query?: string | null; calls?: number | null; mean_ms?: number | null; total_s?: number | null }> {
+  return Array.isArray(v) ? v.filter((x) => x && typeof x === "object") : [];
+}
+
 export function PerformancePanel() {
   const [data, setData] = useState<Perf | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -270,16 +275,24 @@ export function PerformancePanel() {
                   <li key={t.name}><code>{t.name}</code><span>{mb(t.bytes)}</span></li>
                 ))}
               </ul>
-              {db.slow_queries && db.slow_queries.length > 0 && (
-                <details className="dx-perf__missing">
-                  <summary>Consultas más lentas ({db.slow_queries.length})</summary>
+              <details className="dx-perf__missing" data-testid="slow-queries">
+                <summary>Consultas más lentas ({slowList(db.slow_queries).length || "—"})</summary>
+                {db.slow_queries === null || db.slow_queries === undefined ? (
+                  <p>Error de consulta (sin acceso a pg_stat_statements)</p>
+                ) : slowList(db.slow_queries).length === 0 ? (
+                  <p>Sin datos</p>
+                ) : (
                   <ol>
-                    {db.slow_queries.map((q) => (
-                      <li key={q.query}><code>{q.query}</code> — {q.mean_ms} ms × {q.calls}</li>
+                    {slowList(db.slow_queries).map((q, i) => (
+                      <li key={i}>
+                        <code>{q.query || "(texto no disponible)"}</code>
+                        {" — "}promedio {q.mean_ms ?? "Sin datos"} ms · total {q.total_s ?? "Sin datos"} s · {q.calls ?? "Sin datos"} llamadas
+                      </li>
                     ))}
                   </ol>
-                </details>
-              )}
+                )}
+                <p className="dx-perf__hint">Fuente: pg_stat_statements (texto normalizado, sin valores; acumulado desde el último reinicio de estadísticas).</p>
+              </details>
             </>
           ) : (
             <MissingToken data={db as Missing} />
