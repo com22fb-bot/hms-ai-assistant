@@ -22,6 +22,7 @@ import os
 import re
 import secrets
 import time
+from datetime import datetime
 import unicodedata
 from dataclasses import dataclass
 from typing import Any
@@ -75,15 +76,59 @@ class AssistTokenError(ValueError):
 # --------------------------------------------------------------------------
 
 
-def _signing_key() -> bytes:
-    dedicated = os.getenv("ASSIST_TOKEN_SECRET", "").strip()
-    if len(dedicated) >= 32:
-        return hashlib.sha256(_TOKEN_LABEL + b"|" + dedicated.encode("utf-8")).digest()
+def _legacy_key() -> bytes | None:
     base = os.getenv("OAUTH_ENCRYPTION_KEY", "").strip()
     if len(base) >= 32:
         # Derived, so the encryption key itself never signs anything public.
         return hmac.new(base.encode("utf-8"), _TOKEN_LABEL, hashlib.sha256).digest()
-    raise AssistUnavailable("assist_secret_missing")
+    return None
+
+
+def _dedicated_key() -> bytes | None:
+    dedicated = os.getenv("ASSIST_TOKEN_SECRET", "").strip()
+    if len(dedicated) >= 32:
+        return hashlib.sha256(_TOKEN_LABEL + b"|" + dedicated.encode("utf-8")).digest()
+    return None
+
+
+def _legacy_verify_window_open() -> bool:
+    """ASSIST_LEGACY_VERIFY_UNTIL=<epoch o ISO-8601>: hasta entonces se ACEPTAN (no se emiten)
+    firmas hechas con la llave derivada de OAUTH_ENCRYPTION_KEY. Sin valor o inválido = cerrada."""
+    raw = os.getenv("ASSIST_LEGACY_VERIFY_UNTIL", "").strip()
+    if not raw:
+        return False
+    try:
+        until = float(raw) if raw.replace(".", "", 1).isdigit() else datetime.fromisoformat(
+            raw.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return False
+    return time.time() < until
+
+
+def _signing_key() -> bytes:
+    """Llave con la que se FIRMA: ASSIST_TOKEN_SECRET si existe; si no, la derivada (histórico)."""
+    key = _dedicated_key() or _legacy_key()
+    if key is None:
+        raise AssistUnavailable("assist_secret_missing")
+    return key
+
+
+def _verification_keys() -> list[bytes]:
+    """Llaves aceptadas al VERIFICAR. Con ASSIST_TOKEN_SECRET, la derivada solo dentro de la ventana."""
+    primary = _signing_key()
+    keys = [primary]
+    legacy = _legacy_key()
+    if _dedicated_key() is not None and legacy is not None and legacy != primary and _legacy_verify_window_open():
+        keys.append(legacy)
+    return keys
+
+
+def _matches_any(material: bytes, given: str) -> bool:
+    ok = False
+    for key in _verification_keys():
+        expected = _b64(hmac.new(key, material, hashlib.sha256).digest())
+        ok = hmac.compare_digest(given, expected) or ok  # sin cortocircuito
+    return ok
 
 
 def assist_available() -> bool:
@@ -115,8 +160,7 @@ def read_token(token: str, kind: str) -> dict[str, Any]:
     if not clean or len(clean) > 2000 or clean.count(".") != 1:
         raise AssistTokenError("malformed")
     body, signature = clean.split(".", 1)
-    expected = _b64(hmac.new(_signing_key(), body.encode("ascii"), hashlib.sha256).digest())
-    if not hmac.compare_digest(signature, expected):
+    if not _matches_any(body.encode("ascii"), signature):
         raise AssistTokenError("bad_signature")
     try:
         payload = json.loads(_unb64(body))
@@ -179,9 +223,12 @@ def redeem_link(token: str) -> dict[str, Any]:
     return issue_session(str(payload["e"]))
 
 
+def _code_material(nonce: str, email: str, code: str) -> bytes:
+    return f"{nonce}|{email}|{code}".encode("utf-8")
+
+
 def _code_digest(nonce: str, email: str, code: str) -> str:
-    material = f"{nonce}|{email}|{code}".encode("utf-8")
-    return _b64(hmac.new(_signing_key(), material, hashlib.sha256).digest())
+    return _b64(hmac.new(_signing_key(), _code_material(nonce, email, code), hashlib.sha256).digest())
 
 
 def new_code_challenge(email: str) -> tuple[str, str]:
@@ -207,7 +254,7 @@ def verify_code(challenge: str, code: str) -> dict[str, Any]:
     if len(digits) != 6:
         raise AssistTokenError("bad_code")
     expected = str(payload.get("h") or "")
-    if not hmac.compare_digest(_code_digest(nonce, str(payload["e"]), digits), expected):
+    if not _matches_any(_code_material(nonce, str(payload["e"]), digits), expected):
         raise AssistTokenError("bad_code")
     return issue_session(str(payload["e"]))
 

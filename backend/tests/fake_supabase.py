@@ -18,7 +18,7 @@ class _Query:
     def select(self, *_a, **_k):
         self.op = "select"; return self
 
-    def update(self, payload):
+    def update(self, payload, **_k):
         self.op, self.payload = "update", payload; return self
 
     def insert(self, payload):

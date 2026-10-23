@@ -1,6 +1,7 @@
 """Re-cifrado versionado de oauth_credentials (NO se ejecuta en producción sin aprobación).
 
-Por defecto es dry-run y solo imprime CONTEOS (nunca valores, ids completos ni hashes).
+Por defecto es dry-run y solo imprime CONTEOS y el último cursor (uuid) para reanudar; nunca valores ni hashes.
+Un error de configuración (falta OAUTH_ENCRYPTION_KEY, llavero inválido) aborta antes de escribir.
 
     python -m scripts.reencrypt_oauth_credentials            # auditoría, solo conteos
     python -m scripts.reencrypt_oauth_credentials --apply    # re-cifra (requiere aprobación)
@@ -28,7 +29,8 @@ FIELDS = ("access_token", "refresh_token")
 def run(client: Any, *, apply: bool = False, after: str | None = None, batch: int = 200) -> dict[str, Any]:
     stats: Counter = Counter()
     versions: Counter = Counter()
-    active = ost._active_key_id()
+    active = ost._active_key_id()      # valida llavero y llave activa
+    ost._get_encryption_secret()       # la llave legado debe existir (filas sin prefijo)
     cursor = after
     while True:
         q = client.table("oauth_credentials").select("id,access_token,refresh_token").order("id")
@@ -47,6 +49,7 @@ def run(client: Any, *, apply: bool = False, after: str | None = None, batch: in
                 if v:
                     versions[ost.key_version_of(v)] += 1
                 try:
+                    ost._decrypt(v)  # verifica también filas ya en la llave activa
                     new, changed = ost.reencrypt_value(v)
                 except ost.OAuthCredentialError:
                     bad = True
@@ -62,17 +65,27 @@ def run(client: Any, *, apply: bool = False, after: str | None = None, batch: in
             stats["por_recifrar"] += 1
             if not apply:
                 continue
-            uq = client.table("oauth_credentials").update(update).eq("id", row["id"])
+            # returning=representation (default de postgrest-py): PostgREST devuelve las filas
+            # actualizadas; vacío = ninguna fila cumplió el filtro optimista.
+            uq = client.table("oauth_credentials").update(update, returning="representation").eq("id", row["id"])
             for f in FIELDS:
                 uq = uq.eq(f, row.get(f)) if row.get(f) else uq.is_(f, "null")
             if ost._rows_of(uq.execute()):
                 stats["recifradas"] += 1
-            else:
+                continue
+            # Vacío no se asume como carrera: se relee para clasificar.
+            now = ost._rows_of(client.table("oauth_credentials").select("id,access_token,refresh_token")
+                               .eq("id", row["id"]).limit(1).execute())
+            if not now:
+                stats["eliminada_durante_proceso"] += 1
+            elif any(now[0].get(f) != row.get(f) for f in FIELDS):
                 stats["carrera_reintentar"] += 1
+            else:
+                stats["update_sin_confirmar"] += 1
         if len(rows) < batch:
             break
     return {"llave_activa": active, "modo": "apply" if apply else "dry-run",
-            "conteos": dict(stats), "versiones_campos": dict(versions), "ultimo_cursor_presente": cursor is not None}
+            "conteos": dict(stats), "versiones_campos": dict(versions), "ultimo_cursor": cursor}
 
 
 def main() -> None:

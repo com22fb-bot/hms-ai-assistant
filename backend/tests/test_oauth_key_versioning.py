@@ -122,10 +122,10 @@ class ReencryptScriptTests(unittest.TestCase):
             q = real(name)
             orig_update = q.update
 
-            def update(payload):
+            def update(payload, **_k):
                 # simula un save_credentials concurrente justo antes del UPDATE
                 db.tables["oauth_credentials"][0]["access_token"] = "k2$concurrente"
-                return orig_update(payload)
+                return orig_update(payload, **_k)
             q.update = update
             return q
         with env(OAUTH_ENCRYPTION_KEYRING=f"k2:{K2}", OAUTH_ENCRYPTION_ACTIVE_KEY_ID="k2"), \
@@ -137,3 +137,83 @@ class ReencryptScriptTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FormatoYErroresTests(unittest.TestCase):
+    def test_legado_nunca_tiene_dolar_ni_parece_versionado(self):
+        with env():
+            for _ in range(50):
+                c = ost._encrypt("x" * 40)
+                self.assertTrue(c.startswith("gAAAA")); self.assertNotIn("$", c)
+                self.assertEqual(ost.key_version_of(c), "legacy")
+
+    def test_prefijo_invalido_se_trata_como_legado_y_falla_controlado(self):
+        with env(OAUTH_ENCRYPTION_KEYRING=f"k2:{K2}"):
+            for bad in ("K2$gAAAAxx", "k-2$abc", "$abc", "k2$", "k2$basura", "k9$gAAAA"):
+                with self.assertRaises(ost.OAuthCredentialError, msg=bad):
+                    ost._decrypt(bad)
+
+    def test_falta_llave_legado_es_error_de_configuracion(self):
+        with patch.dict(os.environ, {"OAUTH_ENCRYPTION_KEY": "", "OAUTH_ENCRYPTION_KEYRING": "", "OAUTH_ENCRYPTION_ACTIVE_KEY_ID": ""}):
+            with self.assertRaises(ost.OAuthConfigurationError):
+                ost._encrypt("x")
+
+
+class ScriptRobustezTests(unittest.TestCase):
+    def _db(self, n=5):
+        with env():
+            rows = [{"id": f"0000000{i}", "access_token": ost._encrypt(f"a{i}"), "refresh_token": None} for i in range(1, n + 1)]
+        return FakeSupabase({"oauth_credentials": rows})
+
+    def test_config_incompleta_aborta_sin_escribir(self):
+        db = self._db(); before = [dict(r) for r in db.tables["oauth_credentials"]]
+        with patch.dict(os.environ, {"OAUTH_ENCRYPTION_KEY": "", "OAUTH_ENCRYPTION_KEYRING": f"k2:{K2}", "OAUTH_ENCRYPTION_ACTIVE_KEY_ID": "k2"}):
+            with self.assertRaises(ost.OAuthConfigurationError):
+                rc.run(db, apply=True)
+        self.assertEqual(db.tables["oauth_credentials"], before)
+
+    def test_reanudar_con_cursor_impreso(self):
+        db = self._db()
+        with env(OAUTH_ENCRYPTION_KEYRING=f"k2:{K2}", OAUTH_ENCRYPTION_ACTIVE_KEY_ID="k2"):
+            out = rc.run(db, apply=False, batch=2)
+            self.assertEqual(out["ultimo_cursor"], "00000005")
+            part = rc.run(db, apply=True, after="00000002", batch=2)
+            self.assertEqual(part["conteos"]["recifradas"], 3)
+            rest = rc.run(db, apply=True, batch=2)
+            self.assertEqual(rest["conteos"], {"filas": 5, "por_recifrar": 2, "recifradas": 2, "ya_en_llave_activa": 3})
+
+    def _patch_update_empty(self, db, mutate):
+        real = db.table
+        def table(name):
+            q = real(name); orig = q.execute
+            def execute():
+                if q.op == "update":
+                    mutate(db)
+                    return type("R", (), {"data": []})()
+                return orig()
+            q.execute = execute
+            return q
+        return patch.object(db, "table", side_effect=table)
+
+    def test_update_vacio_fila_eliminada(self):
+        db = self._db(1)
+        with env(OAUTH_ENCRYPTION_KEYRING=f"k2:{K2}", OAUTH_ENCRYPTION_ACTIVE_KEY_ID="k2"), \
+                self._patch_update_empty(db, lambda d: d.tables["oauth_credentials"].clear()):
+            out = rc.run(db, apply=True)
+        self.assertEqual(out["conteos"].get("eliminada_durante_proceso"), 1)
+
+    def test_update_vacio_sin_cambios_no_se_asume_carrera(self):
+        db = self._db(1)
+        with env(OAUTH_ENCRYPTION_KEYRING=f"k2:{K2}", OAUTH_ENCRYPTION_ACTIVE_KEY_ID="k2"), \
+                self._patch_update_empty(db, lambda d: None):
+            out = rc.run(db, apply=True)
+        self.assertEqual(out["conteos"].get("update_sin_confirmar"), 1)
+        self.assertNotIn("carrera_reintentar", out["conteos"])
+
+    def test_indescifrable_se_reporta_y_no_se_sobrescribe(self):
+        db = self._db(1)
+        db.tables["oauth_credentials"].append({"id": "00000009", "access_token": "k2$corrupto", "refresh_token": None})
+        with env(OAUTH_ENCRYPTION_KEYRING=f"k2:{K2}", OAUTH_ENCRYPTION_ACTIVE_KEY_ID="k2"):
+            out = rc.run(db, apply=True)
+        self.assertEqual(out["conteos"]["indescifrables"], 1)
+        self.assertEqual(db.tables["oauth_credentials"][-1]["access_token"], "k2$corrupto")
