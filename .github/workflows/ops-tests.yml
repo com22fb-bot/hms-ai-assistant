@@ -29,4 +29,4 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - name: Semáforo e importador (criterios 5–8)
-        run: node --experimental-strip-types --test lib/adminHealth.test.ts lib/adminHealthMount.test.ts lib/importPlan.test.ts lib/i18n/rawKeys.test.ts
+        run: node --experimental-strip-types --test lib/adminHealth.test.ts lib/adminHealthMount.test.ts lib/adminHealthContrast.test.ts lib/importPlan.test.ts lib/i18n/rawKeys.test.ts
