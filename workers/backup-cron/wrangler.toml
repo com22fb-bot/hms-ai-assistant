@@ -1,0 +1,13 @@
+name = "donexto-backup-cron"
+main = "index.js"
+compatibility_date = "2026-10-01"
+workers_dev = false
+
+[observability]
+enabled = true
+
+[triggers]
+# 09:00 UTC = 03:00 CDMX (UTC-6). Domingo también dispara el semanal.
+crons = []  # PAUSADO: activar con ["0 9 * * *"] cuando se apruebe
+
+# Secret: GH_DISPATCH_TOKEN (wrangler secret put). Nunca en el repo.

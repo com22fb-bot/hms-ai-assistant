@@ -1,10 +1,30 @@
 name: Donexto backup daily
 on:
-  schedule: [{cron: "0 9 * * *"}]
+  schedule: [{cron: "0 12 * * *"}]   # respaldo: 06:00 CDMX; el principal es el Worker donexto-backup-cron (09:00 UTC = 03:00 CDMX)
   workflow_dispatch:
-permissions: {contents: read}
+    inputs:
+      origen:
+        description: "manual (siempre corre) o cf-cron (Worker; se salta si ya hubo respaldo hoy)"
+        default: manual
+permissions: {contents: read, actions: read}
+concurrency: {group: donexto-backup-daily, cancel-in-progress: false}
 jobs:
+  guard:
+    # Respaldo de GitHub schedule: se salta si el cron de Cloudflare ya corrió hoy (evita doble respaldo).
+    runs-on: ubuntu-latest
+    outputs: {run: "${{ steps.c.outputs.run }}"}
+    steps:
+      - uses: actions/checkout@v4
+        with: {sparse-checkout: scripts}
+      - id: c
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ORIGEN: ${{ inputs.origen }}
+        run: (python3 scripts/backup_guard.py backup-daily.yml "${{ github.event_name }}" "${{ github.run_id }}" "$ORIGEN" || echo run=true) | tee -a "$GITHUB_OUTPUT"
   backup:
+    needs: guard
+    # Falla abierta: si el guard falla, se respalda igual (doble respaldo es inocuo; faltante no).
+    if: always() && needs.guard.outputs.run != 'false'
     runs-on: ubuntu-latest
     steps:
       - name: PG17 client

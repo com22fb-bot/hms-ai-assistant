@@ -23,11 +23,20 @@ def ts(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def guard_skipped(run: dict) -> bool:
+    jobs = {j.get("name"): j.get("conclusion") for j in run.get("jobs") or []}
+    return jobs.get("backup") == "skipped"
+
+
 def event_for(run_id: str) -> dict | None:
     run = json.loads(gh("run", "view", run_id, "--json",
-                        "databaseId,workflowName,conclusion,status,startedAt,updatedAt,url"))
+                        "databaseId,workflowName,conclusion,status,startedAt,updatedAt,url,jobs"))
     kind = KINDS.get(run["workflowName"])
     if not kind or run["status"] != "completed" or run["conclusion"] in ("cancelled", "skipped"):
+        return None
+    # Corrida de respaldo (schedule de GitHub) que el guard saltó porque el cron de
+    # Cloudflare ya respaldó ese día: no es un respaldo, no se registra.
+    if guard_skipped(run):
         return None
     ok = run["conclusion"] == "success"
     size = None
