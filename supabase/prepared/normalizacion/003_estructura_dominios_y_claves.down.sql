@@ -1,0 +1,14 @@
+begin;
+alter table public.case_messages add constraint case_messages_case_id_message_id_key unique (case_id, message_id);
+alter table public.intelligent_cases drop constraint if exists fk_cases_account_same_workspace;
+alter table public.communication_accounts drop constraint if exists uq_comm_accounts_id_workspace;
+alter table public.communication_messages drop constraint if exists fk_comm_messages_thread_same_account;
+alter table public.communication_threads drop constraint if exists uq_comm_threads_id_account;
+alter table public.oauth_credentials drop constraint if exists ck_oauth_scopes_array;
+alter table public.communication_messages drop constraint if exists ck_comm_messages_lists_are_arrays;
+alter table public.workspaces drop constraint if exists ck_workspaces_status;
+alter table public.communication_messages drop constraint if exists ck_comm_messages_provider;
+alter table public.communication_threads drop constraint if exists ck_comm_threads_provider;
+alter table public.communication_accounts drop constraint if exists ck_comm_accounts_provider;
+alter table public.communication_accounts drop constraint if exists ck_comm_accounts_status;
+commit;
