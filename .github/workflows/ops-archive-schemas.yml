@@ -1,0 +1,92 @@
+name: Donexto ops · archivar y eliminar esquemas de respaldo de agosto (Lista B)
+# Solo manual. Aprobado por Héctor 23-oct-2026 («Apruebo B"). No toca backup-daily ni banderas.
+on:
+  workflow_dispatch:
+    inputs:
+      confirmar:
+        description: "LISTA-B (archivar + DROP) o VACUUM (VACUUM FULL communication_messages)"
+        required: true
+permissions: {contents: read}
+concurrency: {group: donexto-ops-archive-schemas, cancel-in-progress: false}
+jobs:
+  listab:
+    if: inputs.confirmar == 'LISTA-B' || inputs.confirmar == 'VACUUM'
+    runs-on: ubuntu-latest
+    env:
+      S1: hms_backup_reset_20260804_1850_mx
+      S2: hms_backup_logistica1_triage_20260804_2155_mx
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      R2_ENDPOINT: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+    steps:
+      - name: PG17 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSo /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
+      - name: Tamaños ANTES
+        run: |
+          P=/usr/lib/postgresql/17/bin/psql
+          $P "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 <<'SQL'
+          select pg_size_pretty(pg_database_size(current_database())) as db, pg_database_size(current_database()) as bytes;
+          select n.nspname, pg_size_pretty(sum(pg_total_relation_size(c.oid))) sz, sum(pg_total_relation_size(c.oid)) b, count(*) rels
+            from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind in ('r','m','p') group by 1 order by 3 desc limit 12;
+          select pg_size_pretty(pg_total_relation_size('public.communication_messages')) total,
+                 pg_size_pretty(pg_relation_size('public.communication_messages')) heap,
+                 pg_size_pretty(coalesce(pg_total_relation_size(reltoastrelid),0)) toast,
+                 (select count(*) from public.communication_messages) filas
+            from pg_class where oid='public.communication_messages'::regclass;
+          SQL
+      - name: Archivar (pg_dump solo 2 esquemas) + cifrar + subir + verificar
+        if: inputs.confirmar == 'LISTA-B'
+        run: |
+          set -euo pipefail
+          F="archive-schemas-agosto-$(date -u +%Y%m%dT%H%M%SZ).dump.gpg"
+          B=/usr/lib/postgresql/17/bin
+          $B/pg_dump "$SUPABASE_DB_URL" -Fc --no-owner --no-privileges -n "$S1" -n "$S2" -f "$RUNNER_TEMP/a.dump"
+          gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 --symmetric --cipher-algo AES256 -o "$RUNNER_TEMP/$F" "$RUNNER_TEMP/a.dump" 3<<<"$BACKUP_PASSPHRASE"
+          SHA=$(sha256sum "$RUNNER_TEMP/$F" | cut -d' ' -f1)
+          aws s3 cp "$RUNNER_TEMP/$F" "s3://donexto-backups/db/$F" --endpoint-url "$R2_ENDPOINT" --metadata sha256=$SHA --only-show-errors
+          aws s3api head-object --bucket donexto-backups --key "db/$F" --endpoint-url "$R2_ENDPOINT" --query '{size:ContentLength,sha256:Metadata.sha256}'
+          # verificación independiente: bajar, sha, descifrar, pg_restore --list
+          aws s3 cp "s3://donexto-backups/db/$F" "$RUNNER_TEMP/v.gpg" --endpoint-url "$R2_ENDPOINT" --only-show-errors
+          SHA2=$(sha256sum "$RUNNER_TEMP/v.gpg" | cut -d' ' -f1); [ "$SHA" = "$SHA2" ] || { echo "SHA DISTINTO"; exit 1; }
+          gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 -d -o "$RUNNER_TEMP/v.dump" "$RUNNER_TEMP/v.gpg" 3<<<"$BACKUP_PASSPHRASE"
+          cmp "$RUNNER_TEMP/a.dump" "$RUNNER_TEMP/v.dump"
+          $B/pg_restore --list "$RUNNER_TEMP/v.dump" > "$RUNNER_TEMP/list.txt"
+          T1=$(grep -c " TABLE DATA $S1 " "$RUNNER_TEMP/list.txt" || true); T2=$(grep -c " TABLE DATA $S2 " "$RUNNER_TEMP/list.txt" || true)
+          D1=$($B/psql "$SUPABASE_DB_URL" -XAtc "select count(*) from pg_tables where schemaname='$S1'")
+          D2=$($B/psql "$SUPABASE_DB_URL" -XAtc "select count(*) from pg_tables where schemaname='$S2'")
+          echo "objeto db/$F sha256 $SHA2 tamaño $(stat -c%s "$RUNNER_TEMP/v.gpg") entradas_list $(grep -vc '^;' "$RUNNER_TEMP/list.txt")"
+          echo "TABLE DATA $S1: lista=$T1 bd=$D1 · $S2: lista=$T2 bd=$D2"
+          [ "$T1" = "$D1" ] && [ "$T2" = "$D2" ] && [ "$D1" -gt 0 ] && [ "$D2" -gt 0 ] || { echo "CONTEO NO COINCIDE: no se borra"; exit 1; }
+          rm -f "$RUNNER_TEMP"/*.dump "$RUNNER_TEMP"/*.gpg
+      - name: DROP SCHEMA (solo los 2)
+        if: inputs.confirmar == 'LISTA-B'
+        run: |
+          set -euo pipefail
+          P=/usr/lib/postgresql/17/bin/psql
+          $P "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -c "begin; drop schema $S1 cascade; drop schema $S2 cascade; commit;"
+          echo "esquemas restantes: $($P "$SUPABASE_DB_URL" -XAtc "select count(*) from pg_namespace where nspname in ('$S1','$S2')")"
+      - name: VACUUM FULL communication_messages
+        if: inputs.confirmar == 'VACUUM'
+        run: |
+          set -euo pipefail
+          time /usr/lib/postgresql/17/bin/psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -c "vacuum (full, analyze, verbose) public.communication_messages;"
+      - name: Tamaños DESPUÉS
+        run: |
+          P=/usr/lib/postgresql/17/bin/psql
+          $P "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 <<'SQL'
+          select pg_size_pretty(pg_database_size(current_database())) as db, pg_database_size(current_database()) as bytes;
+          select n.nspname, pg_size_pretty(sum(pg_total_relation_size(c.oid))) sz, sum(pg_total_relation_size(c.oid)) b, count(*) rels
+            from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind in ('r','m','p') group by 1 order by 3 desc limit 12;
+          select pg_size_pretty(pg_total_relation_size('public.communication_messages')) total,
+                 pg_size_pretty(pg_relation_size('public.communication_messages')) heap,
+                 pg_size_pretty(coalesce(pg_total_relation_size(reltoastrelid),0)) toast,
+                 (select count(*) from public.communication_messages) filas
+            from pg_class where oid='public.communication_messages'::regclass;
+          SQL
