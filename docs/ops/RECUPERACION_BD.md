@@ -10,6 +10,16 @@ Prueba real: 23-oct-2026 ~16:55 CDMX, en Postgres 17 efímero en la caja (nunca 
 - Filas: `admin_events` del respaldo = 23 = eventos de prod con fecha ≤ hora del respaldo (coincide exacto). El resto de diferencias son actividad posterior al respaldo (borrado de buzones de prueba y nuevas entradas de Bitácora del 23-oct).
 - El volcado aún incluía los 2 esquemas de respaldo de agosto, que se archivaron y quitaron de prod el 23-oct.
 
+## Qué se probó / qué NO
+**Probado:** restauración de la BD (volcado `pg_dump -Fc`) solo en Postgres 17 efímero en la caja; verificación de estructura y conteos contra prod en solo lectura.
+
+**NO probado:**
+- Recuperación completa de Supabase: servicios administrados (Auth, Realtime, PostgREST, Edge), extensión `supabase_vault` y sus secretos, configuración de Auth (proveedores, URLs, plantillas, límites).
+- Storage: prod tiene 0 objetos, así que no se demostró recuperar archivos.
+- Restauración sobre un proyecto Supabase real (ni nuevo ni prod).
+
+> ⚠️ **Advertencia: esquemas de agosto en el volcado.** Los respaldos de este periodo incluyen 2 esquemas de respaldo de agosto (`hms_backup_*`) que ya se retiraron de prod el 23-oct-2026. Restaurar tal cual los volvería a introducir. Antes de restaurar en cualquier destino: `pg_restore -l b.dump > lista.txt`, identificar las entradas de esos esquemas, decidir con Héctor su trato (excluir o restaurar aparte) y restaurar con la lista filtrada: `pg_restore -L lista_filtrada.txt …`.
+
 ## Procedimiento (pasos)
 1. Congelar escrituras: pausar workers/sync (auto-sync ya está apagado) y avisar a Héctor.
 2. Elegir el respaldo: `aws s3 ls s3://donexto-backups/db/ --endpoint-url https://<ACCOUNT>.r2.cloudflarestorage.com` (credenciales desde Doppler `donexto/prd`; nunca imprimirlas).
