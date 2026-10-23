@@ -20,6 +20,25 @@ Prueba real: 23-oct-2026 ~16:55 CDMX, en Postgres 17 efímero en la caja (nunca 
 
 > ⚠️ **Advertencia: esquemas de agosto en el volcado.** Los respaldos de este periodo incluyen 2 esquemas de respaldo de agosto (`hms_backup_*`) que ya se retiraron de prod el 23-oct-2026. Restaurar tal cual los volvería a introducir. Antes de restaurar en cualquier destino: `pg_restore -l b.dump > lista.txt`, identificar las entradas de esos esquemas, decidir con Héctor su trato (excluir o restaurar aparte) y restaurar con la lista filtrada: `pg_restore -L lista_filtrada.txt …`.
 
+## Postgres estándar vs proyecto Supabase
+- **Postgres estándar (lo probado):** solo restaura tablas, datos, funciones, políticas e índices del volcado. No existen `supabase_vault`, Auth, PostgREST ni Storage como servicios; los roles `anon/authenticated/service_role` hay que crearlos a mano, y con `--no-privileges` los GRANT no se restauran.
+- **Proyecto Supabase (NO probado):** ya trae roles, extensiones (incl. `supabase_vault`) y servicios. Hay que restaurar sobre esquemas que ya existen (auth, storage) sin pisar lo administrado, reconfigurar Auth (proveedores OAuth, URLs, plantillas) y recuperar Storage por separado.
+
+## Diferencias esperadas al restaurar este respaldo
+- 3 errores de `supabase_vault` (exclusiva de Supabase) en Postgres estándar: esperados.
+- `admin_mailbox_stats` no está: se creó después del respaldo (migración 20261023_001); reaplicar migraciones posteriores.
+- 2 esquemas de respaldo de agosto incluidos (ver advertencia).
+- Storage con 0 objetos: la prueba **no** demuestra recuperación de archivos.
+
+## Validación post-restauración (obligatoria)
+1. `pg_restore` sin errores fuera de la lista esperada.
+2. Conteos de tablas, FK, políticas, índices y funciones vs referencia; RLS activo en todas las tablas public.
+3. Conteo de filas por tabla y `admin_events` hasta la hora del respaldo.
+4. Permisos efectivos: anon sin acceso a tablas sin políticas; authenticated solo lo suyo; service_role operativo.
+5. Login, /admin, Bitácora y advisors de Supabase.
+
+> **Autorización:** restaurar sobre producción requiere autorización expresa de Héctor, por escrito, y un respaldo inmediato previo.
+
 ## Procedimiento (pasos)
 1. Congelar escrituras: pausar workers/sync (auto-sync ya está apagado) y avisar a Héctor.
 2. Elegir el respaldo: `aws s3 ls s3://donexto-backups/db/ --endpoint-url https://<ACCOUNT>.r2.cloudflarestorage.com` (credenciales desde Doppler `donexto/prd`; nunca imprimirlas).
