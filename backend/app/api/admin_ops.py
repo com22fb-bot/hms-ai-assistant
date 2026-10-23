@@ -476,11 +476,49 @@ def purge_user_everything(client: Any, user_id: str) -> dict[str, Any]:
     data = getattr(response, "data", None)
     if not isinstance(data, dict):
         data = {}
+    storage = purge_storage_paths(client, data.get("storage_paths") or [])
     return {
         "mode": "transactional",
         "rows_total": data.get("rows_total"),
         "counts": data.get("counts") or {},
+        "storage": storage,
     }
+
+
+ATTACHMENTS_BUCKET = "attachments"
+
+
+def purge_storage_paths(client: Any, paths: list[str]) -> dict[str, Any]:
+    """Borra los archivos de adjuntos que devolvió admin_purge_user (v2).
+
+    Las filas ya se borraron en la transacción; si Storage falla, se reporta
+    (no se oculta) para reintentar. Devuelve solo conteos, nunca rutas.
+    """
+    clean = [p for p in paths if isinstance(p, str) and p.strip()]
+    if not clean:
+        return {"requested": 0, "deleted": 0, "status": "sin_archivos"}
+    deleted, failed = 0, 0
+    for start in range(0, len(clean), 100):
+        chunk = clean[start:start + 100]
+        try:
+            client.storage.from_(ATTACHMENTS_BUCKET).remove(chunk)
+            deleted += len(chunk)
+        except Exception:
+            failed += len(chunk)
+            logger.warning("storage purge chunk failed", exc_info=True)
+    return {"requested": len(clean), "deleted": deleted, "failed": failed,
+            "status": "ok" if not failed else "parcial"}
+
+
+@router.get("/mailboxes/{account_id}/timeline")
+def admin_mailbox_timeline(account_id: str) -> dict[str, Any]:
+    """Bitácora por buzón: conexión, tokens, sincronizaciones, descargas y proceso (sin contenido)."""
+    _require_admin()
+    try:
+        rows = _rows(get_supabase_client().rpc("admin_mailbox_timeline", {"p_account": account_id}).execute())
+    except Exception as error:
+        return {"status": "error", "events": None, "message": type(error).__name__}
+    return {"status": "ok", "events": rows, "timezone_hint": "UTC; la interfaz muestra CDMX"}
 
 
 @router.get("/billing/summary")
