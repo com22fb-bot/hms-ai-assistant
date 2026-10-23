@@ -18,6 +18,11 @@ expect_err(){ if $PSQL -c "$2" >/dev/null 2>&1; then fail "$1"; else ok "$1"; fi
 $PSQL -c "set client_min_messages=warning; drop schema if exists public cascade; drop schema if exists auth cascade; create schema public;"
 $PSQL -f $T/schema_prod.sql
 [ "$($PSQL -c "select count(*) from pg_tables where schemaname='public'")" = 49 ] && ok "esquema prod cargado (49 tablas)"
+# Requisito de 002: borrado v2 de la PR #181 (se lee de git si no está en este árbol).
+M181=supabase/migrations/20261023_002_admin_purge_user_v2.sql
+[ -f "$M181" ] || { git show "${REF181:-origin/admin/purge-cascada}:$M181" > /tmp/m181.sql; M181=/tmp/m181.sql; }
+$PSQL -c "do \$\$ begin if not exists (select 1 from pg_roles where rolname='anon') then create role anon; end if; if not exists (select 1 from pg_roles where rolname='authenticated') then create role authenticated; end if; if not exists (select 1 from pg_roles where rolname='service_role') then create role service_role; end if; end \$\$"
+$PSQL -f "$M181" >/dev/null 2>&1 && ok "PR #181 (20261023_002) aplicada antes (requisito de 002)"
 BEFORE=$(snap)
 
 # Guardia: si una tabla a borrar tiene filas, 001 aborta sin tocar nada
@@ -29,7 +34,7 @@ $PSQL -c "delete from public.ops_r3_operation"
 expect_err "002 exige 001 previa" "\\i $M/002_drop_legado_listas_limpieza.up.sql"
 $PSQL -f $M/001_drop_legado_sin_codigo.up.sql
 $PSQL -f $M/002_drop_legado_listas_limpieza.up.sql
-[ "$($PSQL -c "select count(*) from pg_tables where schemaname='public'")" = 36 ] && ok "A: 13 tablas legadas fuera (36 quedan)"
+[ "$($PSQL -c "select count(*) from pg_tables where schemaname='public'")" = 38 ] && ok "A: 13 tablas legadas fuera (38 quedan: 36 + 2 del #181)"
 [ "$($PSQL -c "select count(*) from pg_tables where schemaname='public' and tablename in ('communication_accounts','communication_messages','profiles','workspaces','intelligent_cases','attachments','communication_tasks','ai_analysis')")" = 8 ] && ok "tablas en uso intactas"
 
 $PSQL -f $M/003_estructura_dominios_y_claves.up.sql

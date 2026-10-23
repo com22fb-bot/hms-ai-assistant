@@ -119,7 +119,7 @@ Leyenda: ✅ cumple · ❌ no cumple · — no aplica / no vale la pena.
 - Quitar clave duplicada case_messages(case_id,message_id).
 
 **C · Renombres / fusiones con cambio de código** (sin migración todavía)
-- C1: quitar tasks, reminders, notifications, audit_log de `admin_ops._WORKSPACE_CLEANUP_TABLES` y de `admin_purge_targets` (#181); quitar health-check de mail_accounts en system.py. Habilita 002.
+- C1 (**hecho en PR #181**): la migración 20261023_002 ya no lista tablas legadas en `admin_purge_targets` y `_admin_purge_user_exec` ya no ejecuta `delete from public.users`; las tablas legadas solo se revisan en `_admin_purge_legacy_check` con `to_regclass()` (`omitida_inexistente` / `presente_sin_filas` / aborta si hay filas del usuario). También salen de `admin_ops._WORKSPACE_CLEANUP_TABLES` y `system.py` usa `communication_accounts`. **Requisito duro de 002:** #181 aplicada antes; 002 aborta si falta o si `admin_purge_targets` o el cuerpo de `admin_purge_user`/`_admin_purge_user_exec` (pg_proc) aún referencian notifications, users, reminders, tasks, audit_log o mail_accounts.
 - C2: eliminar communication_messages.provider y communication_threads.provider (leer de communication_accounts).
 - C3: renombrar gmail_sync_jobs → mailbox_sync_jobs (sirve a Gmail, IMAP, Yahoo, Microsoft).
 - C4: unificar notificaciones: hms_notifications + case_notifications → una tabla `notifications` con tipo.
@@ -128,4 +128,4 @@ Leyenda: ✅ cumple · ❌ no cumple · — no aplica / no vale la pena.
 - C7: correos de participantes/solicitantes como address_key normalizado; opcional `message_participants`.
 - C8: attachments: confirmar con la cola Storage del #181 (bucket inexistente hoy) antes de decidir.
 
-Orden de riesgo: 001 → 003 → (C1) → 002 → C2…C8.
+Orden de riesgo: #181 (20261023_002 + backend) → 001 → 003 → 002 → C2…C8. Prueba de integración: `supabase/tests/integracion_181_184/run.sh` (CI).
