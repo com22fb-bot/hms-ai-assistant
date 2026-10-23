@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { hmsJson } from "@/lib/hmsApi";
 import { KIND_LABEL, lightState, type HealthPayload } from "@/lib/adminHealth";
+import { checkMark } from "@/lib/adminControl";
 
 const POLL_MS = 60_000;
 const STATE_TEXT = {
@@ -56,8 +57,21 @@ export function HealthBar() {
         <span className="dx-health__label">{STATE_TEXT[state]}</span>
         <span className="dx-health__note">{note}</span>
         <span className="dx-health__meta">
-          {payload ? `Evaluado ${when(payload.evaluated_at)} · caché ${Math.round(payload.cache_age_s)} s` : ""}
+          {payload ? `Evaluado ${when(payload.evaluated_at)} · caché ${Math.round(payload.cache_age_s)} s · ` : ""}
+          <b>{open ? "Click para ocultar detalle" : "Click para ver detalle"}</b>
         </span>
+        {payload && payload.checks.length > 0 && (
+          <span className="dx-health__chips">
+            {payload.checks.map((c) => {
+              const m = checkMark(c.status);
+              return (
+                <span key={c.id} className={`dx-health__chip is-${m.tone}`} title={`${c.label}: ${m.text}`}>
+                  {c.label} <span aria-hidden>{m.mark}</span><span className="dx-sr"> {m.text}</span>
+                </span>
+              );
+            })}
+          </span>
+        )}
       </button>
       {open && payload && (
         <div className="dx-health__detail">

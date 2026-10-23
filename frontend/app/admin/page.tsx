@@ -17,6 +17,7 @@ import {
   Tag,
   Users,
   ScrollText,
+  Mail,
 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
@@ -34,6 +35,8 @@ import { PerformancePanel } from "@/app/admin/PerformancePanel";
 import { HealthBar } from "@/app/admin/HealthBar";
 import { InfoPanel } from "@/app/admin/InfoPanel";
 import { EventsPanel } from "@/app/admin/EventsPanel";
+import { OverviewDashboard } from "@/app/admin/OverviewDashboard";
+import { MailboxesPanel } from "@/app/admin/MailboxesPanel";
 
 type AdminTab =
   | "overview"
@@ -46,7 +49,8 @@ type AdminTab =
   | "performance"
   | "expenses"
   | "info"
-  | "events";
+  | "events"
+  | "mailboxes";
 
 type OverviewResponse = {
   status: string;
@@ -68,10 +72,6 @@ type OverviewResponse = {
     account_vs_mailbox?: string;
   };
 };
-
-function showCount(value: number | null | undefined): string {
-  return value == null ? "Sin datos" : value.toLocaleString("es-MX");
-}
 
 type UsersResponse = {
   users: Array<{
@@ -173,6 +173,7 @@ type HealthResponse = {
 const TABS: Array<{ id: AdminTab; label: string; icon: typeof Activity }> = [
   { id: "overview", label: "Resumen", icon: Activity },
   { id: "users", label: "Usuarios", icon: Users },
+  { id: "mailboxes", label: "Buzones", icon: Mail },
   { id: "billing", label: "Cobros", icon: CreditCard },
   { id: "expenses", label: "Mis gastos", icon: Wallet },
   { id: "info", label: "Información", icon: Info },
@@ -342,7 +343,7 @@ function AdminPage() {
             { cache: "no-store" },
           );
           setOverview(data);
-        } else if (target === "users") {
+        } else if (target === "users" || target === "mailboxes") {
           const data = await hmsJson<UsersResponse>(
             "/api/hms/admin/users?limit=80",
             { cache: "no-store" },
@@ -552,7 +553,7 @@ function AdminPage() {
           <Shield size={22} aria-hidden />
           <div>
             <p className="dx-admin__eyebrow">Donexto · Operaciones</p>
-            <h1>Panel de administración</h1>
+            <h1>Centro de control</h1>
           </div>
         </div>
         <div className="dx-admin__header-actions">
@@ -569,18 +570,18 @@ function AdminPage() {
             disabled={loading}
           >
             <RefreshCw size={16} />
-            Actualizar
+            Click para actualizar
           </button>
           <a href={PRODUCT_APP_ORIGIN} className="dx-admin__btn dx-admin__btn--ghost">
             <ArrowLeft size={16} />
-            App
+            Click para ir a la app
           </a>
           <button
             type="button"
             className="dx-admin__btn"
             onClick={() => void signOut()}
           >
-            Cerrar sesión
+            Click para cerrar sesión
           </button>
         </div>
       </header>
@@ -588,6 +589,9 @@ function AdminPage() {
       {!forbidden && <HealthBar />}
 
       <nav className="dx-admin__nav" aria-label="Secciones de administración">
+        <div className="dx-admin__navbrand" aria-hidden>
+          <span className="dx-admin__logo">D</span>Donexto
+        </div>
         {TABS.map((item) => {
           const Icon = item.icon;
           return (
@@ -652,13 +656,8 @@ function AdminPage() {
                 Cuenta Donexto ≠ buzón conectado.
               </p>
             </header>
+            <OverviewDashboard counts={overview.counts} onOpen={setTab} />
             <AttentionPanel />
-            <div className="dx-admin__kpis">
-              <article>
-                <span>Mensajes por atender</span>
-                <strong>{showCount(overview.counts.contact_unread)}</strong>
-              </article>
-            </div>
             {overview.schema?.migrations_hint && (
               <p className="dx-admin__hint">
                 Esquema: {overview.schema.migrations_hint}
@@ -769,6 +768,8 @@ function AdminPage() {
             </div>
           </section>
         )}
+
+        {!forbidden && tab === "mailboxes" && users && <MailboxesPanel users={users.users} />}
 
         {!forbidden && tab === "billing" && billing && (
           <section className="dx-admin__section">
