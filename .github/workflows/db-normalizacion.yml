@@ -1,0 +1,19 @@
+name: DB normalización (propuesta, no aplicada)
+on:
+  pull_request:
+    paths: ["supabase/prepared/normalizacion/**", "supabase/tests/normalizacion/**", ".github/workflows/db-normalizacion.yml"]
+  workflow_dispatch:
+jobs:
+  normalizacion-sql:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env: {POSTGRES_PASSWORD: postgres}
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: up 001-003 → pruebas → down → catálogo idéntico (Postgres efímero)
+        env: {PGPASSWORD: postgres}
+        run: PGURL="-h localhost -p 5432 -U postgres" bash supabase/tests/normalizacion/run_normalizacion_test.sh
