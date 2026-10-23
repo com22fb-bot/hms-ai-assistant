@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { hmsJson } from "@/lib/hmsApi";
 
@@ -68,18 +68,19 @@ export default function AttentionPanel() {
   const [data, setData] = useState<AttentionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    try {
-      setError(null);
-      setData(await hmsJson<AttentionResponse>("/api/hms/admin/attention", { cache: "no-store" }));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo cargar");
-    }
-  }, []);
-
   useEffect(() => {
-    void load();
-  }, [load]);
+    let cancelled = false;
+    hmsJson<AttentionResponse>("/api/hms/admin/attention", { cache: "no-store" })
+      .then((result) => {
+        if (!cancelled) setData(result);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "No se pudo cargar");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (error) {
     return (
