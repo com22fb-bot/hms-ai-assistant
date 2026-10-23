@@ -37,3 +37,10 @@ create schema otro_esquema;
 create table otro_esquema.communication_messages (id uuid, account_id uuid, profile_id uuid);
 create schema hms_backupX;  -- no cumple el patrón (mayúscula/sin guion bajo)
 create table hms_backupX.profiles (id uuid);
+
+-- Storage mínimo (como en Supabase) y tablas AJENAS con columnas uuid de mismos nombres: NO deben tocarse.
+create schema if not exists storage;
+create table storage.buckets (id text primary key, name text not null, public boolean default false, created_at timestamptz default now());
+create table public.tabla_ajena (id uuid primary key default gen_random_uuid(), user_id uuid, profile_id uuid, account_id uuid,
+  workspace_id uuid, message_id uuid, source_message_id uuid);
+create table hms_backup_test_20260804.tabla_ajena (user_id uuid, profile_id uuid, account_id uuid, workspace_id uuid, message_id uuid);

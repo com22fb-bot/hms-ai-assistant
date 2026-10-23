@@ -502,7 +502,18 @@ def purge_user_everything(client: Any, user_id: str, dry_run: bool = False) -> d
             "storage": storage}
 
 
-ATTACHMENTS_BUCKET = "attachments"
+# El bucket lo fija SQL (public.admin_attachments_bucket() = 'attachments') y viaja en cada fila
+# de la cola; el backend no tiene otro nombre ni variable de entorno. Verificado 23-oct-2026:
+# storage.buckets está vacío en producción, así que hoy el borrado de archivos reporta
+# «bucket_inexistente» en vez de éxito.
+
+
+def _bucket_exists(client: Any, bucket: str) -> bool:
+    try:
+        client.storage.get_bucket(bucket)
+        return True
+    except Exception:
+        return False
 
 
 def process_storage_queue(client: Any, limit: int = 200) -> dict[str, Any]:
@@ -518,8 +529,18 @@ def process_storage_queue(client: Any, limit: int = 200) -> dict[str, Any]:
     done, failed = 0, 0
     by_bucket: dict[str, list[dict[str, Any]]] = {}
     for row in claimed:
-        by_bucket.setdefault(str(row.get("bucket") or ATTACHMENTS_BUCKET), []).append(row)
+        by_bucket.setdefault(str(row.get("bucket") or ""), []).append(row)
+    missing: list[str] = []
     for bucket, rows in by_bucket.items():
+        if not bucket or not _bucket_exists(client, bucket):
+            missing.append(bucket or "(vacío)")
+            ids = [int(r["id"]) for r in rows]
+            try:
+                client.rpc("admin_storage_purge_mark", {"p_ids": ids, "p_ok": False, "p_error": "bucket_inexistente"}).execute()
+            except Exception:
+                logger.warning("storage purge mark failed", exc_info=True)
+            failed += len(rows)
+            continue
         for start in range(0, len(rows), 100):
             chunk = rows[start:start + 100]
             ids = [int(r["id"]) for r in chunk]
@@ -548,7 +569,10 @@ def process_storage_queue(client: Any, limit: int = 200) -> dict[str, Any]:
         status = "parcial"
     else:
         status = "ok"
-    return {"status": status, "processed": len(claimed), "deleted": done, "failed": failed, "queue": queue}
+    if missing:
+        status = "bucket_inexistente"
+    return {"status": status, "processed": len(claimed), "deleted": done, "failed": failed,
+            "missing_buckets": missing, "queue": queue}
 
 
 def drain_storage_queue(client: Any, rounds: int = 10, limit: int = 200) -> dict[str, Any]:

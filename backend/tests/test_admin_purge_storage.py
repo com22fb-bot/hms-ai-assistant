@@ -26,6 +26,10 @@ class _Bucket:
 class _Storage:
     def __init__(self, c): self.c = c
     def from_(self, name): return _Bucket(self.c)
+    def get_bucket(self, name):
+        if name not in self.c.buckets:
+            raise RuntimeError("Bucket not found")
+        return {"id": name}
 
 
 class FakeDB:
@@ -36,6 +40,7 @@ class FakeDB:
         self.storage_fail, self.rpc_fail = storage_fail, set()
         self.calls, self.removed_attempts = [], []
         self.storage = _Storage(self)
+        self.buckets = {"attachments"}
         self.handlers = {
             "admin_storage_purge_claim": self._claim, "admin_storage_purge_mark": self._mark,
             "admin_storage_purge_status": self._status, "admin_purge_user": self._purge}
@@ -119,3 +124,17 @@ def test_dry_run_no_toca_storage():
     assert r["status"] == "dry_run" and r["storage_queued"] == 4 and r["shared_kept"] == 1
     assert db.removed_attempts == [] and ("admin_storage_purge_claim", {"p_limit": 200}) not in db.calls
     assert db.calls[0] == ("admin_purge_user", {"p_user": "u", "p_dry_run": True})
+
+
+def test_bucket_inexistente_no_es_exito_ni_borra():
+    db = FakeDB(2); db.buckets = set()
+    r = admin_ops.purge_response(admin_ops.purge_user_everything(db, "u"))
+    assert r["complete"] is False and r["status"] == "deleted_storage_pending"
+    assert r["storage"]["status"] == "bucket_inexistente" and r["storage"]["missing_buckets"] == ["attachments"]
+    assert db.removed_attempts == [] and all(q["status"] == "pendiente" for q in db.queue.values())
+
+
+def test_el_backend_no_tiene_otro_nombre_de_bucket():
+    import inspect
+    src = inspect.getsource(admin_ops)
+    assert "ATTACHMENTS_BUCKET" not in src and 'from_("attachments")' not in src

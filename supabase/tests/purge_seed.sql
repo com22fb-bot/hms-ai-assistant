@@ -38,3 +38,8 @@ insert into hms_backup_test_20260804.communication_messages select id, account_i
 insert into hms_backup_test_20260804.communication_messages values (gen_random_uuid(),'29999999-0000-0000-0000-000000000009');
 insert into otro_esquema.communication_messages values (gen_random_uuid(),'20000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-0000000000aa');
 insert into hms_backupX.profiles values ('00000000-0000-0000-0000-0000000000aa');
+
+insert into public.tabla_ajena(user_id,profile_id,account_id,workspace_id,message_id,source_message_id)
+  select '00000000-0000-0000-0000-0000000000aa','00000000-0000-0000-0000-0000000000aa','20000000-0000-0000-0000-000000000001',
+         '10000000-0000-0000-0000-000000000001', id, id from public.communication_messages where account_id='20000000-0000-0000-0000-000000000001';
+insert into hms_backup_test_20260804.tabla_ajena select user_id,profile_id,account_id,workspace_id,message_id from public.tabla_ajena;

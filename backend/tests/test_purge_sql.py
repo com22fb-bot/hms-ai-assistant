@@ -160,3 +160,28 @@ def test_cola_storage_duradera_reintentos_y_fallido(pg):
     assert json.loads(q(f"select admin_storage_purge_mark(array[{others}]::bigint[], true)"))["hecho"] == 3
     st = json.loads(q("select admin_storage_purge_status()"))
     assert (st["pendiente"], st["fallido"], st["hecho"]) == (0, 2, 3)
+
+
+def test_tablas_ajenas_con_mismos_nombres_de_columna_quedan_intactas(pg):
+    q = pg()
+    before = q("select count(*)||'/'||(select count(*) from hms_backup_test_20260804.tabla_ajena) from tabla_ajena")
+    assert before == "5/5"
+    q(f"select admin_purge_user('{U}')")
+    assert q("select count(*)||'/'||(select count(*) from hms_backup_test_20260804.tabla_ajena) from tabla_ajena") == "5/5"
+
+
+def test_lista_explicita_revisada():
+    sql = (ROOT / "migrations/20261023_002_admin_purge_user_v2.sql").read_text()
+    assert "information_schema.columns c\n    join information_schema.tables" not in sql  # sin recorrido dinámico por nombre
+    assert "from public.admin_purge_targets t" in sql and "cross join public.admin_purge_targets t" in sql
+    assert "tabla_ajena" not in sql
+
+
+def test_bucket_en_plan_y_cola(pg):
+    q = pg()
+    plan = json.loads(q(f"select admin_purge_user('{U}', true)"))
+    assert plan["storage_bucket"] == "attachments" and plan["storage_bucket_exists"] is False
+    q("insert into storage.buckets(id,name) values ('attachments','attachments')")
+    assert json.loads(q(f"select admin_purge_user('{U}', true)"))["storage_bucket_exists"] is True
+    q(f"select admin_purge_user('{U}')")
+    assert q("select string_agg(distinct bucket, ',') from admin_storage_purge_queue") == "attachments"

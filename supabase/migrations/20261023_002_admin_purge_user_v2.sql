@@ -38,6 +38,74 @@ grant select, insert, update on public.admin_storage_purge_queue to service_role
 grant usage on sequence public.admin_storage_purge_queue_id_seq to service_role;
 
 drop function if exists public.admin_purge_user(uuid);
+-- LISTA EXPLÍCITA Y REVISADA de tablas/relaciones a limpiar (23-oct-2026, contra las FK reales de producción).
+-- key: message = mensajes de buzones borrados; account = buzones borrados; workspace = espacios solo del usuario;
+--      profile = id del usuario (profiles/auth.users/public.users comparten el mismo uuid).
+-- core = tablas núcleo; en public se borran aparte (orden fijo), en respaldos se usan desde esta lista.
+-- Cualquier tabla NO listada no se toca aunque tenga columnas con el mismo nombre.
+create table if not exists public.admin_purge_targets (
+  tbl text not null, col text not null, key text not null check (key in ('message','account','workspace','profile')),
+  ord int not null, core boolean not null default false, motivo text not null, primary key (tbl, col));
+revoke all on public.admin_purge_targets from public, anon, authenticated;
+grant select on public.admin_purge_targets to service_role;
+delete from public.admin_purge_targets;
+insert into public.admin_purge_targets (tbl, col, key, ord, core, motivo) values
+  ('ai_analysis','message_id','message',1,false,'análisis IA del mensaje'),
+  ('attachments','message_id','message',1,false,'adjuntos (rutas ya encoladas para Storage)'),
+  ('case_messages','message_id','message',1,false,'vínculo caso-mensaje'),
+  ('communication_tasks','message_id','message',1,false,'tareas del mensaje'),
+  ('hms_notifications','message_id','message',1,false,'avisos del mensaje'),
+  ('message_watch_matches','message_id','message',1,false,'coincidencias de vigilancia'),
+  ('message_watch_rules','source_message_id','message',1,false,'reglas creadas desde el mensaje'),
+  ('tasks','message_id','message',1,false,'tareas legadas del mensaje'),
+  ('oauth_credentials','account_id','account',2,false,'tokens del buzón'),
+  ('gmail_sync_jobs','account_id','account',2,false,'trabajos de sincronización'),
+  ('intelligent_cases','account_id','account',2,false,'casos del buzón'),
+  ('case_reclassification_runs','account_id','account',2,false,'reclasificaciones del buzón'),
+  ('message_classification_rules','account_id','account',2,false,'reglas del buzón'),
+  ('message_watch_rules','account_id','account',2,false,'vigilancias del buzón'),
+  ('hms_notifications','account_id','account',2,false,'avisos del buzón'),
+  ('case_events','workspace_id','workspace',3,false,'eventos de casos del espacio'),
+  ('case_notifications','workspace_id','workspace',3,false,'avisos de casos del espacio'),
+  ('communication_tasks','workspace_id','workspace',3,false,'tareas del espacio (sin FK)'),
+  ('gmail_sync_jobs','workspace_id','workspace',3,false,'trabajos del espacio'),
+  ('intelligent_cases','workspace_id','workspace',3,false,'casos del espacio'),
+  ('organizational_patterns','workspace_id','workspace',3,false,'patrones del espacio'),
+  ('oauth_states','workspace_id','workspace',3,false,'estados OAuth del espacio'),
+  ('donexto_alert_rules','profile_id','profile',4,false,'reglas de alerta personales'),
+  ('donexto_preferences','profile_id','profile',4,false,'preferencias personales'),
+  ('hms_notifications','profile_id','profile',4,false,'avisos personales'),
+  ('message_classification_rules','profile_id','profile',4,false,'reglas personales'),
+  ('message_watch_rules','profile_id','profile',4,false,'vigilancias personales'),
+  ('oauth_states','profile_id','profile',4,false,'estados OAuth personales'),
+  ('push_subscriptions','profile_id','profile',4,false,'suscripciones push'),
+  ('account_plans','user_id','profile',5,false,'plan de la cuenta'),
+  ('alerts','user_id','profile',5,false,'alertas legadas'),
+  ('audit_log','user_id','profile',5,false,'registro de auditoría con id del usuario (PII)'),
+  ('emails','user_id','profile',5,false,'correos legados'),
+  ('mail_accounts','user_id','profile',5,false,'buzones legados'),
+  ('notifications','user_id','profile',5,false,'avisos legados'),
+  ('tasks','user_id','profile',5,false,'tareas legadas'),
+  ('user_workspaces','user_id','profile',5,false,'membresías legadas'),
+  ('communication_messages','id','message',6,true,'núcleo: mensajes'),
+  ('communication_messages','account_id','account',6,true,'núcleo: mensajes por buzón (respaldos)'),
+  ('communication_threads','account_id','account',7,true,'núcleo: hilos'),
+  ('communication_accounts','id','account',8,true,'núcleo: buzones'),
+  ('workspace_members','profile_id','profile',9,true,'núcleo: membresías'),
+  ('workspace_members','workspace_id','workspace',9,true,'núcleo: membresías del espacio'),
+  ('workspaces','id','workspace',10,true,'núcleo: espacios'),
+  ('users','id','profile',11,true,'núcleo: usuario legado'),
+  ('profiles','id','profile',11,true,'núcleo: perfil');
+-- Excluidas a propósito: admin_events (bitácora sin PII), admin_allowlist, admin_storage_purge_queue,
+-- system_incidents (FK SET NULL, operativo), case_events.message_id (FK SET NULL), ops_* ; y cualquier tabla no listada.
+-- communication_accounts.connected_by_profile_id NO se usa para borrar: en un espacio compartido el buzón se conserva (P2).
+
+-- Bucket de adjuntos: constante única. Verificado 23-oct-2026: storage.buckets está VACÍO en producción
+-- y ningún código sube adjuntos a Storage (attachments.storage_path nunca se escribe). La cola valida
+-- que el bucket exista antes de borrar; si no existe, marca el error y no declara éxito.
+create or replace function public.admin_attachments_bucket() returns text
+language sql immutable as $$ select 'attachments'::text $$;
+
 create or replace function public.admin_purge_user(p_user uuid, p_dry_run boolean default false)
 returns jsonb
 language plpgsql
@@ -159,37 +227,24 @@ begin
   select coalesce(array_agg(distinct x.storage_path) filter (where nullif(x.storage_path, '') is not null), '{}') into v_paths
   from public.attachments x where x.message_id = any(v_msg);
   insert into public.admin_storage_purge_queue (bucket, path, purge_ref)
-  select 'attachments', p, p_ref from unnest(v_paths) p
+  select public.admin_attachments_bucket(), p, p_ref from unnest(v_paths) p
   on conflict (bucket, path) do update set status = 'pendiente', next_attempt_at = now(), updated_at = now();
 
-  -- Hojas primero (public). Las tablas con account_id solo se borran para buzones borrados.
+  -- Lista EXPLÍCITA y revisada (public.admin_purge_targets). Hojas primero; las tablas
+  -- núcleo (mensajes, hilos, buzones, membresías, espacios) se borran después, aparte.
   for r in
-    select c.table_name, c.column_name, k.ord
-    from information_schema.columns c
-    join information_schema.tables t
-      on t.table_schema = c.table_schema and t.table_name = c.table_name and t.table_type = 'BASE TABLE'
-    join (values ('message_id', 1), ('account_id', 2), ('workspace_id', 3), ('profile_id', 4), ('user_id', 5))
-      as k(col, ord) on k.col = c.column_name
-    where c.table_schema = 'public' and c.data_type = 'uuid'
-      and c.table_name not in ('admin_events', 'admin_allowlist', 'admin_storage_purge_queue',
-                               'communication_messages', 'communication_threads', 'communication_accounts',
-                               'workspaces', 'workspace_members', 'profiles', 'users')
-      and c.table_name not like 'ops\_%'
-    order by k.ord, c.table_name
+    select t.tbl, t.col, t.key from public.admin_purge_targets t
+    where not t.core and to_regclass(format('public.%I', t.tbl)) is not null
+      and exists (select 1 from information_schema.columns c where c.table_schema = 'public'
+                  and c.table_name = t.tbl and c.column_name = t.col and c.data_type = 'uuid')
+    order by t.ord, t.tbl, t.col
   loop
-    if r.column_name = 'message_id' then
-      execute format('delete from public.%I where message_id = any($1)', r.table_name) using v_msg;
-    elsif r.column_name = 'account_id' then
-      execute format('delete from public.%I where account_id = any($1)', r.table_name) using v_acc;
-    elsif r.column_name = 'workspace_id' then
-      execute format('delete from public.%I where workspace_id = any($1)', r.table_name) using v_ws;
-    else
-      execute format('delete from public.%I where %I = $1', r.table_name, r.column_name) using p_user;
-    end if;
+    execute format('delete from public.%I where %I = any($1)', r.tbl, r.col)
+      using case r.key when 'message' then v_msg when 'account' then v_acc
+                       when 'workspace' then v_ws else array[p_user] end;
     get diagnostics v_n = row_count;
     if v_n > 0 then
-      v_counts := jsonb_set(v_counts, array[r.table_name],
-                            to_jsonb(coalesce((v_counts ->> r.table_name)::bigint, 0) + v_n));
+      v_counts := jsonb_set(v_counts, array[r.tbl], to_jsonb(coalesce((v_counts ->> r.tbl)::bigint, 0) + v_n));
       v_total := v_total + v_n;
     end if;
   end loop;
@@ -205,33 +260,24 @@ begin
   delete from public.workspaces where id = any(v_ws);
   get diagnostics v_n = row_count; v_counts := v_counts || jsonb_build_object('workspaces', v_n); v_total := v_total + v_n;
 
-  -- P4: esquemas de respaldo por patrón explícito; solo filas del usuario.
+  -- P4: esquemas de respaldo (patrón ^hms_backup_[a-z0-9_]+$) con la MISMA lista explícita,
+  -- incluidas las tablas núcleo (allí no hay FK). Solo filas; nunca esquemas ni tablas.
   for r in
-    select c.table_schema, c.table_name, c.column_name
-    from information_schema.columns c
-    join information_schema.tables t
-      on t.table_schema = c.table_schema and t.table_name = c.table_name and t.table_type = 'BASE TABLE'
-    where c.table_schema ~ '^hms_backup_[a-z0-9_]+$'
-      and c.data_type = 'uuid'
-      and (c.column_name in ('message_id', 'account_id', 'workspace_id', 'profile_id', 'user_id',
-                             'connected_by_profile_id', 'owner_profile_id')
-           or (c.column_name = 'id' and c.table_name in ('communication_messages', 'communication_accounts',
-                                                          'workspaces', 'profiles', 'users')))
-    order by 1, 2, 3
+    select n.nspname sch, t.tbl, t.col, t.key
+    from pg_namespace n cross join public.admin_purge_targets t
+    where n.nspname ~ '^hms_backup_[a-z0-9_]+$'
+      and to_regclass(format('%I.%I', n.nspname, t.tbl)) is not null
+      and exists (select 1 from information_schema.columns c where c.table_schema = n.nspname
+                  and c.table_name = t.tbl and c.column_name = t.col and c.data_type = 'uuid')
+    order by n.nspname, t.ord, t.tbl, t.col
   loop
-    if r.column_name = 'message_id' or (r.column_name = 'id' and r.table_name = 'communication_messages') then
-      execute format('delete from %I.%I where %I = any($1)', r.table_schema, r.table_name, r.column_name) using v_msg;
-    elsif r.column_name = 'account_id' or (r.column_name = 'id' and r.table_name = 'communication_accounts') then
-      execute format('delete from %I.%I where %I = any($1)', r.table_schema, r.table_name, r.column_name) using v_acc;
-    elsif r.column_name = 'workspace_id' or (r.column_name = 'id' and r.table_name = 'workspaces') then
-      execute format('delete from %I.%I where %I = any($1)', r.table_schema, r.table_name, r.column_name) using v_ws;
-    else  -- profile_id, user_id, connected_by_profile_id, owner_profile_id, profiles.id, users.id
-      execute format('delete from %I.%I where %I = $1', r.table_schema, r.table_name, r.column_name) using p_user;
-    end if;
+    execute format('delete from %I.%I where %I = any($1)', r.sch, r.tbl, r.col)
+      using case r.key when 'message' then v_msg when 'account' then v_acc
+                       when 'workspace' then v_ws else array[p_user] end;
     get diagnostics v_n = row_count;
     if v_n > 0 then
-      v_backup := jsonb_set(v_backup, array[r.table_schema || '.' || r.table_name],
-                            to_jsonb(coalesce((v_backup ->> (r.table_schema || '.' || r.table_name))::bigint, 0) + v_n));
+      v_backup := jsonb_set(v_backup, array[r.sch || '.' || r.tbl],
+                            to_jsonb(coalesce((v_backup ->> (r.sch || '.' || r.tbl))::bigint, 0) + v_n));
       v_total := v_total + v_n;
     end if;
   end loop;
@@ -248,6 +294,8 @@ begin
     'workspaces_deleted', coalesce(array_length(v_ws, 1), 0),
     'workspaces_shared', coalesce(array_length(v_shared, 1), 0),
     'shared_kept', jsonb_array_length(v_reassigned), 'shared_accounts', v_reassigned,
+    'storage_bucket', public.admin_attachments_bucket(),
+    'storage_bucket_exists', exists (select 1 from storage.buckets b where b.id = public.admin_attachments_bucket()),
     'storage_queued', coalesce(array_length(v_paths, 1), 0), 'storage_paths', to_jsonb(v_paths));
 end;
 $$;
