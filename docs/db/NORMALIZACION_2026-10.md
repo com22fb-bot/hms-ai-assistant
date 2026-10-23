@@ -129,3 +129,18 @@ Leyenda: ✅ cumple · ❌ no cumple · — no aplica / no vale la pena.
 - C8: attachments: confirmar con la cola Storage del #181 (bucket inexistente hoy) antes de decidir.
 
 Orden de riesgo: #181 (20261023_002 + backend) → 001 → 003 → 002 → C2…C8. Prueba de integración: `supabase/tests/integracion_181_184/run.sh` (CI).
+
+## 5. Advisors de Supabase (leídos 23-oct-2026 16:45 CDMX) y migración 004 (NO aplicada)
+Seguridad: `rls_enabled_no_policy` 38 tablas (INFO) · `extension_in_public` citext, unaccent (WARN) · `authenticated_security_definer_function_executable` is_donexto_admin (WARN) · `auth_leaked_password_protection` (WARN).
+Rendimiento: `unindexed_foreign_keys` 22 · `unused_index` 16 · `auth_rls_initplan` 2 (donexto_preferences_own, donexto_alert_rules_own) · `no_primary_key` ops_r3_rollback_report.
+
+Acceso efectivo comprobado (solo lectura): con `set role anon`, `system_incidents` devuelve 0 de 7 filas → RLS sin políticas = denegar todo; **no es vulnerabilidad confirmada**. Higiene: 8 tablas en uso conservan GRANT ALL (incl. TRUNCATE) a anon/authenticated; PostgREST no expone TRUNCATE, pero sobra.
+
+`004_advisors_indices_permisos` (requiere 001–003): índice para cada FK sin índice (16 tras quitar legados; 22 hoy), 2 políticas con `(select auth.uid())`, REVOKE ALL a anon/authenticated en 8 tablas sin políticas. Reversible e idempotente; 21/21 PASS en Postgres 17 efímero.
+
+Fuera de 004, a propósito:
+- is_donexto_admin(): se queda ejecutable por authenticated porque las políticas de admin_events la llaman; devuelve solo un booleano del propio usuario, con search_path fijo. Advisor aceptado con justificación.
+- citext/unaccent a esquema `extensions`: afecta columnas citext de profiles; migración aparte con prueba propia.
+- Índices sin uso (16): no borrar hasta tener tráfico real del motor (hoy 0 mensajes en prod).
+- Contraseñas filtradas (Auth): ajuste del panel; en Supabase es función del plan Pro → no se activa (sin servicios de pago).
+- Supabase Branching: tiene costo (cómputo por rama) → no usado; se prueba con Postgres efímero en CI.

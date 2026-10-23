@@ -16,7 +16,7 @@ jobs:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
       - run: git fetch origin admin/purge-cascada:refs/remotes/origin/admin/purge-cascada main:refs/remotes/origin/main
-      - name: up 001-003 → pruebas → down → catálogo idéntico (Postgres efímero)
+      - name: up 001-004 → pruebas → down → catálogo idéntico (Postgres efímero)
         env: {PGPASSWORD: postgres}
         run: PGURL="-h localhost -p 5432 -U postgres" bash supabase/tests/normalizacion/run_normalizacion_test.sh
       - name: Integración #181 × #184 (orden previsto y órdenes inválidos)

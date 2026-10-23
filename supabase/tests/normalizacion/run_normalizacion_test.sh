@@ -58,6 +58,26 @@ $PSQL -c "delete from public.communication_accounts where id='00000000-0000-0000
 [ "$($PSQL -c "select count(*) from public.communication_messages")" = 0 ] && ok "B: cascada sin huérfanos al borrar buzón"
 $PSQL -c "delete from public.communication_accounts; delete from public.workspaces; delete from public.profiles; delete from auth.users"
 
+# 004 · advisors: emular lo de prod que no trae schema_prod.sql (auth.uid, 2 políticas por fila, GRANT por defecto)
+$PSQL <<'S'
+create or replace function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+drop policy if exists donexto_preferences_own on public.donexto_preferences;
+drop policy if exists donexto_alert_rules_own on public.donexto_alert_rules;
+create policy donexto_preferences_own on public.donexto_preferences for all to authenticated using (profile_id = auth.uid()) with check (profile_id = auth.uid());
+create policy donexto_alert_rules_own on public.donexto_alert_rules for all to authenticated using (profile_id = auth.uid()) with check (profile_id = auth.uid());
+grant all on all tables in schema public to anon, authenticated, service_role;
+S
+FKSIN="select count(*) from pg_constraint c where c.connamespace='public'::regnamespace and c.contype='f' and not exists (select 1 from pg_index i where i.indrelid=c.conrelid and i.indkey[0]=c.conkey[1])"
+N0=$($PSQL -c "$FKSIN"); echo "FK sin índice antes de 004: $N0"
+$PSQL -f $M/004_advisors_indices_permisos.up.sql
+[ "$($PSQL -c "$FKSIN")" = 0 ] && ok "004: 0 FK sin índice (antes $N0)"
+[ "$($PSQL -c "select count(*) from pg_policies where policyname in ('donexto_preferences_own','donexto_alert_rules_own') and qual like '%SELECT auth.uid()%' and with_check like '%SELECT auth.uid()%'")" = 2 ] && ok "004: políticas con (select auth.uid()) (initplan)"
+[ "$($PSQL -c "select bool_or(has_table_privilege(r,'public.'||t,'select') or has_table_privilege(r,'public.'||t,'truncate')) from unnest(array['anon','authenticated']) r, unnest(array['communication_messages','attachments','system_incidents','gmail_sync_jobs']) t")" = f ] && ok "004: anon/authenticated sin SELECT/TRUNCATE en tablas sin políticas"
+[ "$($PSQL -c "select has_table_privilege('service_role','public.communication_messages','insert') and has_table_privilege('authenticated','public.donexto_preferences','select')")" = t ] && ok "004: service_role y tablas con políticas intactas"
+$PSQL -f $M/004_advisors_indices_permisos.up.sql && ok "004: idempotente (segunda pasada)"
+$PSQL -f $M/004_advisors_indices_permisos.down.sql
+[ "$($PSQL -c "$FKSIN")" = "$N0" ] && [ "$($PSQL -c "select has_table_privilege('anon','public.attachments','select')")" = t ] && ok "004 down: índices y permisos como antes"
+
 $PSQL -f $M/003_estructura_dominios_y_claves.down.sql
 $PSQL -f $M/002_drop_legado_listas_limpieza.down.sql
 $PSQL -f $M/001_drop_legado_sin_codigo.down.sql
