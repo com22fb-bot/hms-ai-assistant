@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       confirmar:
-        description: "Escribe LISTA-B para ejecutar"
+        description: "LISTA-B (archivar + DROP) o VACUUM (VACUUM FULL communication_messages)"
         required: true
 permissions: {contents: read}
 concurrency: {group: donexto-ops-archive-schemas, cancel-in-progress: false}
 jobs:
   listab:
-    if: inputs.confirmar == 'LISTA-B'
+    if: inputs.confirmar == 'LISTA-B' || inputs.confirmar == 'VACUUM'
     runs-on: ubuntu-latest
     env:
       S1: hms_backup_reset_20260804_1850_mx
@@ -42,6 +42,7 @@ jobs:
             from pg_class where oid='public.communication_messages'::regclass;
           SQL
       - name: Archivar (pg_dump solo 2 esquemas) + cifrar + subir + verificar
+        if: inputs.confirmar == 'LISTA-B'
         run: |
           set -euo pipefail
           F="archive-schemas-agosto-$(date -u +%Y%m%dT%H%M%SZ).dump.gpg"
@@ -64,13 +65,18 @@ jobs:
           echo "TABLE DATA $S1: lista=$T1 bd=$D1 · $S2: lista=$T2 bd=$D2"
           [ "$T1" = "$D1" ] && [ "$T2" = "$D2" ] && [ "$D1" -gt 0 ] && [ "$D2" -gt 0 ] || { echo "CONTEO NO COINCIDE: no se borra"; exit 1; }
           rm -f "$RUNNER_TEMP"/*.dump "$RUNNER_TEMP"/*.gpg
-      - name: DROP SCHEMA (solo los 2) + VACUUM FULL communication_messages
+      - name: DROP SCHEMA (solo los 2)
+        if: inputs.confirmar == 'LISTA-B'
         run: |
           set -euo pipefail
           P=/usr/lib/postgresql/17/bin/psql
           $P "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -c "begin; drop schema $S1 cascade; drop schema $S2 cascade; commit;"
-          time $P "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -c "vacuum (full, analyze, verbose) public.communication_messages;"
-          $P "$SUPABASE_DB_URL" -XAtc "select count(*) from pg_namespace where nspname in ('$S1','$S2')"
+          echo "esquemas restantes: $($P "$SUPABASE_DB_URL" -XAtc "select count(*) from pg_namespace where nspname in ('$S1','$S2')")"
+      - name: VACUUM FULL communication_messages
+        if: inputs.confirmar == 'VACUUM'
+        run: |
+          set -euo pipefail
+          time /usr/lib/postgresql/17/bin/psql "$SUPABASE_DB_URL" -X -v ON_ERROR_STOP=1 -c "vacuum (full, analyze, verbose) public.communication_messages;"
       - name: Tamaños DESPUÉS
         run: |
           P=/usr/lib/postgresql/17/bin/psql
