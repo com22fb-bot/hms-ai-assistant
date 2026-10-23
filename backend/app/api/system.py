@@ -115,13 +115,13 @@ def env_status() -> dict[str, Any]:
 
 @router.get("/database-health")
 def database_health() -> dict[str, Any]:
-    """Comprueba la conexión con Supabase y la tabla mail_accounts. Solo admin."""
+    """Comprueba la conexión con Supabase (tabla communication_accounts; mail_accounts es legado, PR #184). Solo admin."""
     _require_admin_context()
     try:
         supabase = get_supabase_client()
 
         response = (
-            supabase.table("mail_accounts")
+            supabase.table("communication_accounts")
             .select("*", count="exact")
             .limit(1)
             .execute()
@@ -136,7 +136,7 @@ def database_health() -> dict[str, Any]:
         return {
             "status": "ok",
             "database": "connected",
-            "table": "mail_accounts",
+            "table": "communication_accounts",
             "records": record_count,
         }
 

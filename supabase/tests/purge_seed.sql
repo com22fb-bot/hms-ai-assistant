@@ -4,7 +4,6 @@ insert into auth.users values ('00000000-0000-0000-0000-0000000000aa','u@x.test'
   ('00000000-0000-0000-0000-0000000000cc','a@x.test'),('00000000-0000-0000-0000-0000000000dd','p@x.test');
 insert into auth.identities(user_id) values ('00000000-0000-0000-0000-0000000000aa');
 insert into public.profiles(id,email) select id,email from auth.users;
-insert into public.users values ('00000000-0000-0000-0000-0000000000aa','u@x.test');
 insert into public.admin_allowlist(user_id) values ('00000000-0000-0000-0000-0000000000cc');
 insert into public.workspaces values ('10000000-0000-0000-0000-000000000001','W1','00000000-0000-0000-0000-0000000000aa'),
   ('10000000-0000-0000-0000-000000000002','W2','00000000-0000-0000-0000-0000000000bb'),

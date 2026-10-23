@@ -37,10 +37,6 @@ _WORKSPACE_CLEANUP_TABLES = (
     "organizational_patterns",
     "communication_messages",
     "communication_threads",
-    "tasks",
-    "reminders",
-    "notifications",
-    "audit_log",
     "system_incidents",
     "oauth_states",
 )

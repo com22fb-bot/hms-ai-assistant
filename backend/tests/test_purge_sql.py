@@ -185,3 +185,25 @@ def test_bucket_en_plan_y_cola(pg):
     assert json.loads(q(f"select admin_purge_user('{U}', true)"))["storage_bucket_exists"] is True
     q(f"select admin_purge_user('{U}')")
     assert q("select string_agg(distinct bucket, ',') from admin_storage_purge_queue") == "attachments"
+
+
+def test_legado_omitido_o_presente_y_falla_cerrada_con_filas(pg):
+    q = pg()
+    plan = json.loads(q(f"select admin_purge_user('{U}', true)"))
+    assert plan["legacy"]["users"] == "presente_sin_filas"          # fixture tiene public.users vacía de U
+    assert plan["legacy"]["mail_accounts"] == "omitida_inexistente"  # no existe en el fixture
+    assert "users" not in plan["counts"]
+    q(f"insert into public.users values ('{U}','u@x.test')")
+    r = q(f"select admin_purge_user('{U}')", ok=False)
+    assert r.returncode and "tabla legada users tiene 1 filas" in r.stderr
+    assert q(f"select count(*) from auth.users where id='{U}'") == "1"  # no se borró nada
+    q("drop table public.users")
+    plan = json.loads(q(f"select admin_purge_user('{U}', true)"))
+    assert plan["legacy"]["users"] == "omitida_inexistente"
+    assert json.loads(q(f"select admin_purge_user('{U}')"))["counts"]["auth_users"] == 1
+
+
+def test_sin_referencias_directas_a_tablas_legadas():
+    import re
+    sql = (ROOT / "migrations/20261023_002_admin_purge_user_v2.sql").read_text()
+    assert not re.search(r"public\.(users|notifications|tasks|reminders|audit_log|mail_accounts|alerts|emails|user_workspaces)\b", sql)

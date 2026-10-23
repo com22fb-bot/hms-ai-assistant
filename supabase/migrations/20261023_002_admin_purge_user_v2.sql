@@ -40,7 +40,7 @@ grant usage on sequence public.admin_storage_purge_queue_id_seq to service_role;
 drop function if exists public.admin_purge_user(uuid);
 -- LISTA EXPLÍCITA Y REVISADA de tablas/relaciones a limpiar (23-oct-2026, contra las FK reales de producción).
 -- key: message = mensajes de buzones borrados; account = buzones borrados; workspace = espacios solo del usuario;
---      profile = id del usuario (profiles/auth.users/public.users comparten el mismo uuid).
+--      profile = id del usuario (profiles y auth.users comparten el mismo uuid).
 -- core = tablas núcleo; en public se borran aparte (orden fijo), en respaldos se usan desde esta lista.
 -- Cualquier tabla NO listada no se toca aunque tenga columnas con el mismo nombre.
 create table if not exists public.admin_purge_targets (
@@ -57,7 +57,6 @@ insert into public.admin_purge_targets (tbl, col, key, ord, core, motivo) values
   ('hms_notifications','message_id','message',1,false,'avisos del mensaje'),
   ('message_watch_matches','message_id','message',1,false,'coincidencias de vigilancia'),
   ('message_watch_rules','source_message_id','message',1,false,'reglas creadas desde el mensaje'),
-  ('tasks','message_id','message',1,false,'tareas legadas del mensaje'),
   ('oauth_credentials','account_id','account',2,false,'tokens del buzón'),
   ('gmail_sync_jobs','account_id','account',2,false,'trabajos de sincronización'),
   ('intelligent_cases','account_id','account',2,false,'casos del buzón'),
@@ -80,13 +79,6 @@ insert into public.admin_purge_targets (tbl, col, key, ord, core, motivo) values
   ('oauth_states','profile_id','profile',4,false,'estados OAuth personales'),
   ('push_subscriptions','profile_id','profile',4,false,'suscripciones push'),
   ('account_plans','user_id','profile',5,false,'plan de la cuenta'),
-  ('alerts','user_id','profile',5,false,'alertas legadas'),
-  ('audit_log','user_id','profile',5,false,'registro de auditoría con id del usuario (PII)'),
-  ('emails','user_id','profile',5,false,'correos legados'),
-  ('mail_accounts','user_id','profile',5,false,'buzones legados'),
-  ('notifications','user_id','profile',5,false,'avisos legados'),
-  ('tasks','user_id','profile',5,false,'tareas legadas'),
-  ('user_workspaces','user_id','profile',5,false,'membresías legadas'),
   ('communication_messages','id','message',6,true,'núcleo: mensajes'),
   ('communication_messages','account_id','account',6,true,'núcleo: mensajes por buzón (respaldos)'),
   ('communication_threads','account_id','account',7,true,'núcleo: hilos'),
@@ -94,8 +86,12 @@ insert into public.admin_purge_targets (tbl, col, key, ord, core, motivo) values
   ('workspace_members','profile_id','profile',9,true,'núcleo: membresías'),
   ('workspace_members','workspace_id','workspace',9,true,'núcleo: membresías del espacio'),
   ('workspaces','id','workspace',10,true,'núcleo: espacios'),
-  ('users','id','profile',11,true,'núcleo: usuario legado'),
   ('profiles','id','profile',11,true,'núcleo: perfil');
+-- LEGADO (compatibilidad con PR #184, migraciones 001/002 de normalización): alerts, emails, user_workspaces,
+-- notifications, users, reminders, tasks, audit_log, mail_accounts NO están en esta lista ni en el cuerpo de
+-- _admin_purge_user_exec. Las revisa aparte public._admin_purge_legacy_check(): si la tabla no existe →
+-- 'omitida_inexistente'; si existe sin filas del usuario → 'presente_sin_filas'; si tiene filas del usuario →
+-- ABORTA (falla cerrada, no se borra nada) para no dejar datos personales huérfanos.
 -- Excluidas a propósito: admin_events (bitácora sin PII), admin_allowlist, admin_storage_purge_queue,
 -- system_incidents (FK SET NULL, operativo), case_events.message_id (FK SET NULL), ops_* ; y cualquier tabla no listada.
 -- communication_accounts.connected_by_profile_id NO se usa para borrar: en un espacio compartido el buzón se conserva (P2).
@@ -147,6 +143,47 @@ begin
 end;
 $$;
 
+
+create or replace function public._admin_purge_legacy_check(p_user uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, pg_catalog
+as $$
+declare
+  v_out jsonb := '{}'::jsonb;
+  v_n bigint;
+  r record;
+begin
+  for r in select * from (values
+      ('alerts', 'user_id'), ('emails', 'user_id'), ('user_workspaces', 'user_id'), ('notifications', 'user_id'),
+      ('users', 'id'), ('tasks', 'user_id'), ('audit_log', 'user_id'), ('mail_accounts', 'user_id'),
+      ('reminders', 'task_id')) l(tbl, col)
+  loop
+    if to_regclass(format('public.%I', r.tbl)) is null then
+      v_out := v_out || jsonb_build_object(r.tbl, 'omitida_inexistente');
+      continue;
+    end if;
+    if r.tbl = 'reminders' then
+      if to_regclass(format('public.%I', 'tasks')) is null then
+        execute format('select count(*) from public.%I', r.tbl) into v_n;  -- sin tasks no hay dueño: cualquier fila bloquea
+      else
+        execute format('select count(*) from public.%I x where x.task_id in (select t.id from public.%I t where t.user_id = $1)',
+                       r.tbl, 'tasks') into v_n using p_user;
+      end if;
+    else
+      execute format('select count(*) from public.%I where %I = $1', r.tbl, r.col) into v_n using p_user;
+    end if;
+    if v_n > 0 then
+      raise exception 'admin_purge_user: la tabla legada % tiene % filas del usuario; no se borra nada (ver docs/ops/BORRADO_USUARIOS.md)', r.tbl, v_n;
+    end if;
+    v_out := v_out || jsonb_build_object(r.tbl, 'presente_sin_filas');
+  end loop;
+  return v_out;
+end;
+$$;
+revoke all on function public._admin_purge_legacy_check(uuid) from public, anon, authenticated, service_role;
+
 create or replace function public._admin_purge_user_exec(p_user uuid, p_ref uuid)
 returns jsonb
 language plpgsql
@@ -166,9 +203,16 @@ declare
   v_n bigint;
   v_total bigint := 0;
   v_heir uuid;
+  v_legacy jsonb;
+  v_bucket_exists boolean;  -- null = esquema storage ausente (solo en pruebas)
   r record;
   acc record;
 begin
+  v_legacy := public._admin_purge_legacy_check(p_user);
+  if to_regclass('storage.buckets') is not null then
+    execute 'select exists (select 1 from storage.buckets b where b.id = $1)' into v_bucket_exists
+      using public.admin_attachments_bucket();
+  end if;
   -- Miembros "activos": status distinto de 'removed' y sin deleted_at.
   select coalesce(array_agg(x.id), '{}') into v_ws from (
     select w.id from public.workspaces w
@@ -282,8 +326,6 @@ begin
     end if;
   end loop;
 
-  delete from public.users where id = p_user;
-  get diagnostics v_n = row_count; v_counts := v_counts || jsonb_build_object('users', v_n); v_total := v_total + v_n;
   delete from public.profiles where id = p_user;
   get diagnostics v_n = row_count; v_counts := v_counts || jsonb_build_object('profiles', v_n); v_total := v_total + v_n;
   delete from auth.users where id = p_user;
@@ -295,7 +337,8 @@ begin
     'workspaces_shared', coalesce(array_length(v_shared, 1), 0),
     'shared_kept', jsonb_array_length(v_reassigned), 'shared_accounts', v_reassigned,
     'storage_bucket', public.admin_attachments_bucket(),
-    'storage_bucket_exists', exists (select 1 from storage.buckets b where b.id = public.admin_attachments_bucket()),
+    'storage_bucket_exists', v_bucket_exists,
+    'legacy', v_legacy,
     'storage_queued', coalesce(array_length(v_paths, 1), 0), 'storage_paths', to_jsonb(v_paths));
 end;
 $$;
