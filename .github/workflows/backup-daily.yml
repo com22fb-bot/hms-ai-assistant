@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs: {run: "${{ steps.c.outputs.run }}"}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: {sparse-checkout: scripts}
       - id: c
         env:
