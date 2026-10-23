@@ -20,6 +20,7 @@ import { hmsJson } from "@/lib/hmsApi";
 import { shouldSurfacePollError } from "@/lib/networkRetry";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { importCategoryLabel, importText, type ImportKey } from "@/lib/i18n/importWizard";
+import { downloadPlan } from "@/lib/importPlan";
 
 
 type Breakdown = {
@@ -57,6 +58,7 @@ type Preview = {
   worlds?: { hogar: number; ocupacion: number; personal: number };
   areas?: Record<string, number>;
   review?: number;
+  area_protected?: Record<string, Record<string, number>>;
   security?: number;
   protected?: Record<string, number>;
   social_platforms: Record<string, number>;
@@ -225,6 +227,10 @@ export function GuidedImportWizard({
       .catch(() => setPreview(null))
       .finally(() => setPreviewLoading(false));
   }
+
+  // Números = mensajes únicos que realmente se procesarán (misma regla que el backend: skip_message).
+  const plan = preview && !preview.unavailable && preview.area_protected ? downloadPlan(preview, exclude) : null;
+  const approx = preview && preview.exact && !preview.partial ? "" : "~";
 
   function countBadge(id: string) {
     if (!preview || preview.unavailable) return null;
@@ -631,6 +637,17 @@ export function GuidedImportWizard({
               </section>
             ) : null}
 
+            {choice === "custom" && plan && exclude.some((id) => !id.startsWith(PROTECT)) ? (
+              <p className="hms-import-plan" data-testid="import-plan">
+                {T("planSummary", {
+                  n: `${approx}${estimate(plan.to_process, preview?.scale ?? 1).toLocaleString()}`,
+                  s: `${approx}${estimate(plan.selected, preview?.scale ?? 1).toLocaleString()}`,
+                  p: `${approx}${estimate(plan.protected, preview?.scale ?? 1).toLocaleString()}`,
+                  x: `${approx}${estimate(plan.excluded, preview?.scale ?? 1).toLocaleString()}`,
+                })}
+              </p>
+            ) : null}
+
             <div className="hms-import-actions">
               <button
                 type="button"
@@ -652,7 +669,9 @@ export function GuidedImportWizard({
                 {starting
                   ? T("starting")
                   : choice === "custom" && exclude.some((id) => !id.startsWith(PROTECT))
-                    ? T("startChosen")
+                    ? plan
+                      ? T("startChosenN", { n: `${approx}${estimate(plan.to_process, preview?.scale ?? 1).toLocaleString()}` })
+                      : T("startChosen")
                     : T("startAll", { n: inventory.eligible_messages.toLocaleString() })}
               </button>
             </div>

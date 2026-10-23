@@ -31,6 +31,7 @@ import { ContactInbox } from "@/app/admin/ContactInbox";
 import AttentionPanel from "@/app/admin/AttentionPanel";
 import { ExpensesPanel } from "@/app/admin/ExpensesPanel";
 import { PerformancePanel } from "@/app/admin/PerformancePanel";
+import { HealthBar } from "@/app/admin/HealthBar";
 import { InfoPanel } from "@/app/admin/InfoPanel";
 import { EventsPanel } from "@/app/admin/EventsPanel";
 
@@ -50,14 +51,14 @@ type AdminTab =
 type OverviewResponse = {
   status: string;
   counts: {
-    users: number;
-    trials_active: number;
-    active_paid: number;
-    mailbox_connected: number;
-    feedback_open: number;
-    signed_up_no_product_use_24h: number;
-    contact_nuevo?: number;
-    contact_unread?: number;
+    users: number | null;
+    trials_active: number | null;
+    active_paid: number | null;
+    mailbox_connected: number | null;
+    feedback_open: number | null;
+    signed_up_no_product_use_24h: number | null;
+    contact_nuevo?: number | null;
+    contact_unread?: number | null;
   };
   schema?: {
     migrations_hint?: string | null;
@@ -67,6 +68,10 @@ type OverviewResponse = {
     account_vs_mailbox?: string;
   };
 };
+
+function showCount(value: number | null | undefined): string {
+  return value == null ? "Sin datos" : value.toLocaleString("es-MX");
+}
 
 type UsersResponse = {
   users: Array<{
@@ -580,6 +585,8 @@ function AdminPage() {
         </div>
       </header>
 
+      {!forbidden && <HealthBar />}
+
       <nav className="dx-admin__nav" aria-label="Secciones de administración">
         {TABS.map((item) => {
           const Icon = item.icon;
@@ -649,7 +656,7 @@ function AdminPage() {
             <div className="dx-admin__kpis">
               <article>
                 <span>Mensajes por atender</span>
-                <strong>{overview.counts.contact_unread ?? "Sin datos"}</strong>
+                <strong>{showCount(overview.counts.contact_unread)}</strong>
               </article>
             </div>
             {overview.schema?.migrations_hint && (

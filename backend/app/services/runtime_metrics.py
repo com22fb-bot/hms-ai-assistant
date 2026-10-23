@@ -35,9 +35,9 @@ def bump(name: str) -> None:
         _COUNTERS[name] += 1
 
 
-def _percentile(values: list[float], pct: float) -> float:
+def _percentile(values: list[float], pct: float) -> float | None:
     if not values:
-        return 0.0
+        return None  # sin muestras: «Sin datos», nunca 0 ms
     ordered = sorted(values)
     index = min(len(ordered) - 1, max(0, int(round(pct / 100 * (len(ordered) - 1)))))
     return round(ordered[index], 1)
@@ -78,6 +78,7 @@ def snapshot() -> dict[str, Any]:
         key=lambda row: row["count"],
         reverse=True,
     )[:8]
+    last_15 = [item for item in ring if item[0] >= now - 900]
     cpu = os.times()
     uptime = max(now - STARTED_AT, 1.0)
     return {
@@ -87,8 +88,13 @@ def snapshot() -> dict[str, Any]:
         "sample_size": len(last_day),
         "p50_ms": _percentile(durations, 50),
         "p95_ms": _percentile(durations, 95),
-        "error_rate_pct": round(errors / len(last_day) * 100, 2) if last_day else 0.0,
+        "error_rate_pct": round(errors / len(last_day) * 100, 2) if last_day else None,
+        "window": "últimas 24 h o desde el último reinicio (lo que sea menor)",
+        "started_at": STARTED_AT,
+        "ring_capacity": _RING.maxlen,
+        "recent_15m": {"requests": len(last_15), "errors_5xx": sum(1 for item in last_15 if item[3] >= 500)},
         "routes": routes,
+        "counters_reset": "Los contadores de seguridad se reinician con cada despliegue o reinicio del proceso (desde started_at).",
         "counters": {
             "requests_total": counters.get("requests_total", 0),
             "unauthorized_401": counters.get("unauthorized_401", 0),

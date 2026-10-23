@@ -20,6 +20,8 @@ from pydantic import BaseModel, Field
 
 from app.api.admin_ops import _require_admin
 from app.database.supabase import get_supabase_client
+from app.services import health_eval
+from app.services.health_eval import classify_provider_error
 from app.services.runtime_metrics import snapshot as runtime_snapshot
 
 logger = logging.getLogger(__name__)
@@ -51,9 +53,8 @@ def _missing(var: str, steps: list[str]) -> dict[str, Any]:
 # --- Railway -------------------------------------------------------------------
 
 RAILWAY_STEPS = [
-    "En railway.com abre tu cuenta > Account Settings > Tokens.",
-    "Crea un token de cuenta (Account token) con el nombre 'donexto-admin-metricas'.",
-    "En el proyecto grand-nourishment > servicio hms-ai-assistant > Variables, agrega RAILWAY_API_TOKEN con ese valor.",
+    "En Railway > proyecto grand-nourishment > Settings > Tokens, crea un token de PROYECTO (entorno production) llamado 'donexto-admin-metricas'.",
+    "Guárdalo en Doppler donexto/prd como RAILWAY_METRICS_TOKEN y cárgalo en el servicio hms-ai-assistant.",
 ]
 
 _RAILWAY_QUERY = """
@@ -62,20 +63,33 @@ query($p:String!,$s:String!,$e:String!,$d:DateTime!){
           measurements:[CPU_USAGE,CPU_LIMIT,MEMORY_USAGE_GB,MEMORY_LIMIT_GB],
           sampleRateSeconds:900){ measurement values{ ts value } }
   deployments(first:1, input:{projectId:$p, serviceId:$s, environmentId:$e}){
-    edges{ node{ id status createdAt } } }
+    edges{ node{ id status createdAt meta } } }
 }
 """
 
 
+def _railway_headers() -> dict[str, str] | None:
+    """Token de PROYECTO (mínimo: un proyecto/entorno) con su cabecera propia; si no, el de cuenta (Bearer).
+
+    Causa raíz del «Not Authorized» del 23-oct: el RAILWAY_API_TOKEN cargado en Railway era un token viejo
+    sin acceso; además un token de proyecto no sirve con 'Authorization: Bearer' (requiere Project-Access-Token).
+    """
+    project = os.getenv("RAILWAY_METRICS_TOKEN", "").strip()
+    if project:
+        return {"Project-Access-Token": project}
+    account = os.getenv("RAILWAY_API_TOKEN", "").strip()
+    return {"Authorization": f"Bearer {account}"} if account else None
+
+
 def _railway() -> dict[str, Any]:
-    token = os.getenv("RAILWAY_API_TOKEN", "").strip()
+    headers = _railway_headers()
     base = {
         "region": os.getenv("RAILWAY_REPLICA_REGION", "") or None,
         "replica_id": (os.getenv("RAILWAY_REPLICA_ID", "") or "")[:8] or None,
         "deployment_id": (os.getenv("RAILWAY_DEPLOYMENT_ID", "") or "")[:8] or None,
     }
-    if not token:
-        return {**base, **_missing("RAILWAY_API_TOKEN", RAILWAY_STEPS)}
+    if not headers:
+        return {**base, **_missing("RAILWAY_METRICS_TOKEN", RAILWAY_STEPS), "kind": "permiso"}
     ids = {
         "p": os.getenv("RAILWAY_PROJECT_ID", ""),
         "s": os.getenv("RAILWAY_SERVICE_ID", ""),
@@ -86,15 +100,18 @@ def _railway() -> dict[str, Any]:
         response = httpx.post(
             "https://backboard.railway.com/graphql/v2",
             json={"query": _RAILWAY_QUERY, "variables": ids},
-            headers={"Authorization": f"Bearer {token}"},
+            headers={**headers, "User-Agent": "donexto-admin"},
             timeout=8,
         )
         payload = response.json()
     except Exception as error:
-        return {**base, "available": False, "status": "error", "message": type(error).__name__}
-    if payload.get("errors") and not payload.get("data"):
-        return {**base, "available": False, "status": "error",
-                "message": str(payload["errors"][0].get("message", ""))[:200]}
+        return {**base, "available": False, "status": "error", "message": type(error).__name__,
+                "kind": classify_provider_error(exc=error)}
+    if payload.get("errors"):
+        # También errores PARCIALES (p. ej. deployments sin permiso): nunca se presentan como "ok".
+        message = str(payload["errors"][0].get("message", ""))[:200]
+        return {**base, "available": False, "status": "error", "message": message,
+                "kind": classify_provider_error(message, response.status_code)}
     data = payload.get("data") or {}
     series = {m["measurement"]: m.get("values") or [] for m in data.get("metrics") or []}
 
@@ -120,7 +137,10 @@ def _railway() -> dict[str, Any]:
         "memory_limit_gb": last("MEMORY_LIMIT_GB"),
         "cpu_series": [round(float(v["value"]), 4) for v in series.get("CPU_USAGE", [])][-48:],
         "memory_series": [round(float(v["value"]), 3) for v in series.get("MEMORY_USAGE_GB", [])][-48:],
-        "last_deploy": {"status": deploy.get("status"), "created_at": deploy.get("createdAt")},
+        "last_deploy": {"status": deploy.get("status"), "created_at": deploy.get("createdAt"),
+                        "id": (deploy.get("id") or "")[:8] or None,
+                        "commit": ((deploy.get("meta") or {}).get("commitHash") or "")[:12] or None},
+        "metrics_at": (series.get("MEMORY_USAGE_GB") or [{}])[-1].get("ts") if series.get("MEMORY_USAGE_GB") else None,
     }
 
 
@@ -135,12 +155,14 @@ def _database() -> dict[str, Any]:
     if isinstance(response.data, list) and response.data:
         first = response.data[0]
         data = first.get("admin_db_stats", first) if isinstance(first, dict) else {}
+    if not data:
+        return {"available": False, "status": "error", "message": "admin_db_stats sin datos"}
     size = int(data.get("db_size_bytes") or 0)
     return {
         "available": True,
         "status": "ok",
         **data,
-        "plan": "Free",
+        "plan": "Free",  # verificado 23-oct-2026 con la API de Supabase (organización: plan free)
         "plan_limit_bytes": FREE_DB_LIMIT_BYTES,
         "used_pct": round(size / FREE_DB_LIMIT_BYTES * 100, 1) if size else None,
     }
@@ -189,7 +211,8 @@ def _cloudflare() -> dict[str, Any]:
         "days": rows,
         "requests_7d": total,
         "threats_7d": sum(r["threats"] for r in rows),
-        "cached_pct": round(cached / total * 100, 1) if total else 0.0,
+        "cached_pct": round(cached / total * 100, 1) if total else None,
+        "period": "7 días naturales UTC (incluye hoy parcial)",
         "today": rows[-1] if rows else None,
     }
 
@@ -238,6 +261,38 @@ def _performance_payload() -> dict[str, Any]:
     return result
 
 
+def _health_build() -> tuple[dict, dict]:
+    client = get_supabase_client()
+    snap = runtime_snapshot()
+    fns = {
+        "api": lambda: health_eval.result("api", "API del backend", True, "ok", "ok",
+                                          f"Proceso activo {snap['uptime_seconds']} s", data_at=datetime.now(timezone.utc).isoformat(),
+                                          source="este proceso en Railway"),
+        "database": lambda: health_eval.check_database(client),
+        "config": health_eval.check_config,
+        "backup": lambda: health_eval.check_backup(client),
+        "frontend": lambda: health_eval.check_site("frontend", "App (app.donexto.com)", "https://app.donexto.com/", True),
+        "landing": lambda: health_eval.check_site("landing", "Landing (www.donexto.com)", "https://www.donexto.com/", False),
+        "db_quota": lambda: health_eval.check_db_quota(client),
+        "errors": lambda: health_eval.check_errors(snap),
+        "railway": lambda: health_eval.check_railway(lambda: _cached("railway", _railway)),
+        "cloudflare": lambda: health_eval.check_cloudflare(lambda: _cached("cloudflare", _cloudflare)),
+    }
+    meta = {"api": ("API del backend", True), "database": ("Base de datos (Supabase)", True),
+            "config": ("Autenticación y configuración crítica", True), "backup": ("Respaldo diario", True),
+            "frontend": ("App (app.donexto.com)", True), "landing": ("Landing (www.donexto.com)", False),
+            "db_quota": ("Espacio de base", False), "errors": ("Errores recientes del backend", False),
+            "railway": ("Railway (métricas y despliegue)", False), "cloudflare": ("Cloudflare (analítica)", False)}
+    return fns, meta
+
+
+@router.get("/health")
+def admin_health(force: bool = False) -> dict[str, Any]:
+    """Evaluación única de salud (semáforo de /admin y base del futuro Centro de control)."""
+    _require_admin()
+    return health_eval.evaluate(_health_build, get_supabase_client, force=force)
+
+
 @router.get("/performance")
 def admin_performance() -> dict[str, Any]:
     _require_admin()
@@ -245,6 +300,11 @@ def admin_performance() -> dict[str, Any]:
     # Las métricas del propio proceso son baratas: siempre al momento.
     payload["process"] = runtime_snapshot()
     payload["cache_seconds"] = CACHE_SECONDS
+    # Cada tarjeta muestra su estado desde la MISMA evaluación del semáforo (no colores propios).
+    try:
+        payload["health"] = health_eval.evaluate(_health_build, get_supabase_client)
+    except Exception:  # noqa: BLE001
+        payload["health"] = None
     return payload
 
 

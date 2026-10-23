@@ -184,6 +184,30 @@ def skip_message(exclude: Iterable[str] | None, sender: str | None, subject: str
     return import_category(sender, subject, labels) in excluded
 
 
+def download_plan(preview: dict, exclude: Iterable[str] | None) -> dict[str, int]:
+    """Mensajes únicos que se procesarán con esta elección (misma regla que skip_message, v2).
+
+    seleccionados = mensajes de áreas marcadas (incluye "Por revisar" si está marcada)
+    protegidos    = mensajes de áreas DESmarcadas que igual se descargan por una protección encendida
+    excluidos     = el resto de las áreas desmarcadas
+    seleccionados + protegidos + excluidos = total revisado (sin dobles conteos).
+    """
+    excluded = set(exclude or ())
+    areas = dict(preview.get("areas") or {})
+    areas[REVIEW_ID] = int(preview.get("review") or 0)
+    matrix = preview.get("area_protected") or {}
+    selected = protected_extra = dropped = 0
+    for area, count in areas.items():
+        if area not in excluded:
+            selected += int(count)
+            continue
+        kept = sum(int(n) for cls, n in (matrix.get(area) or {}).items() if PROTECTED_PREFIX + cls not in excluded)
+        protected_extra += kept
+        dropped += int(count) - kept
+    return {"selected": selected, "protected": protected_extra, "excluded": dropped,
+            "to_process": selected + protected_extra, "total": selected + protected_extra + dropped}
+
+
 def gmail_query_exclusions(exclude: Iterable[str] | None) -> str:
     """Filtro de Gmail para no descargar lo excluido (búsqueda solo lectura)."""
     excluded = set(exclude or ())
@@ -220,6 +244,9 @@ def summarize(headers: Iterable[tuple[str, str, list[str]]], max_examples: int =
     areas_review = [0]
     security = 0
     protected: dict[str, int] = {p: 0 for p in PROTECTED_IDS}
+    # Matriz área × protección (cada mensaje cuenta UNA vez: tiene una sola área y una sola protección).
+    # La interfaz la usa para saber cuántos protegidos se descargan aunque su área esté desmarcada.
+    area_protected: dict[str, dict[str, int]] = {}
     total = 0
     for sender, subject, labels in headers:
         total += 1
@@ -241,6 +268,8 @@ def summarize(headers: Iterable[tuple[str, str, list[str]]], max_examples: int =
         prot = protected_class(sender, subject, labels)
         if prot:
             protected[prot] += 1
+            cell = area_protected.setdefault(area, {})
+            cell[prot] = cell.get(prot, 0) + 1
         platform = social_platform(sender)
         if platform:
             platforms[platform] = platforms.get(platform, 0) + 1
@@ -261,6 +290,6 @@ def summarize(headers: Iterable[tuple[str, str, list[str]]], max_examples: int =
     return {
         "sampled": total, "categories": categories, "spheres": worlds,
         "worlds": worlds, "areas": areas, "review": areas_review[0],
-        "security": security, "protected": protected,
+        "security": security, "protected": protected, "area_protected": area_protected,
         "social_platforms": platforms, "examples": examples, "taxonomy": "v2",
     }
