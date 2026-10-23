@@ -169,5 +169,52 @@ class OverviewTests(unittest.TestCase):
             lc.send_subscribe_reminders(_Client(_db()), "otro", now=NOW, sender=lambda *a: True)
 
 
+
+class TestAccountReminders(unittest.TestCase):
+    """Cuentas de prueba protegidas: reciben avisos, nunca se borran."""
+
+    def _db(self):
+        start = datetime(2026, 10, 21, 6, 0, tzinfo=timezone.utc)
+        return {
+            "profiles": [{"id": "own", "email": "hmcelinfo@gmail.com"}],
+            "account_plans": [{"user_id": "own", "plan_code": "trial", "status": "trialing",
+                               "is_test": True, "trial_started_at": start.isoformat(),
+                               "trial_ends_at": (start + timedelta(days=3)).isoformat()}],
+        }
+
+    def test_protected_test_account_gets_mid_reminder_not_deleted(self):
+        db = self._db()
+        sent, removed = [], []
+        now = datetime(2026, 10, 28, 9, 0, tzinfo=timezone.utc)  # 3 a. m. CDMX
+        res = lc.run_daily_cleanup(_Client(db), now=now, delete=True, send_reminders=False,
+                                   sender=lambda *a: sent.append(a) or True,
+                                   deleter=lambda c, u: removed.append(u))
+        self.assertEqual(res["reminders_mid"], 1)
+        self.assertEqual(removed, [])
+        self.assertEqual(sent[0][0], "hmcelinfo@gmail.com")
+        self.assertTrue(db["account_plans"][0]["reminder_mid_sent_at"])
+
+    def test_no_reminder_before_midpoint(self):
+        res = lc.run_daily_cleanup(_Client(self._db()), now=datetime(2026, 10, 27, 9, 0, tzinfo=timezone.utc),
+                                   delete=False, send_reminders=False, sender=lambda *a: True)
+        self.assertEqual(res["reminders_mid"], 0)
+
+    def test_protected_test_account_never_deleted_after_due(self):
+        removed = []
+        res = lc.run_daily_cleanup(_Client(self._db()), now=datetime(2026, 11, 5, 9, 0, tzinfo=timezone.utc),
+                                   delete=True, send_reminders=True, sender=lambda *a: True,
+                                   deleter=lambda c, u: removed.append(u))
+        self.assertEqual(removed, [])
+        self.assertEqual(res["deleted"], 0)
+
+    def test_flag_off_keeps_old_behaviour(self):
+        os.environ["ACCOUNT_REMINDERS_TEST_ENABLED"] = "false"
+        try:
+            res = lc.run_daily_cleanup(_Client(self._db()), now=datetime(2026, 10, 28, 9, 0, tzinfo=timezone.utc),
+                                       delete=False, send_reminders=False, sender=lambda *a: True)
+        finally:
+            del os.environ["ACCOUNT_REMINDERS_TEST_ENABLED"]
+        self.assertEqual(res["reminders_mid"], 0)
+
 if __name__ == "__main__":
     unittest.main()
