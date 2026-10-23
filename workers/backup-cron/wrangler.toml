@@ -8,6 +8,6 @@ enabled = true
 
 [triggers]
 # 09:00 UTC = 03:00 CDMX (UTC-6). Domingo también dispara el semanal.
-crons = []  # PAUSADO: activar con ["0 9 * * *"] cuando se apruebe
+crons = ["0 9 * * *"]  # 09:00 UTC = 03:00 CDMX; token dedicado GH_DISPATCH_TOKEN (donexto-backup-dispatch)
 
 # Secret: GH_DISPATCH_TOKEN (wrangler secret put). Nunca en el repo.

@@ -61,10 +61,15 @@ jobs:
     steps:
       - name: Check public endpoints
         shell: bash
+        env:
+          # Cloudflare Bot Fight Mode responde managed_challenge (403) al UA "curl/x" desde IPs de
+          # runners (evento bot_fight_mode en /admin, 23-oct 01:09Z). Se identifica el chequeo con un UA
+          # de navegador, igual que uptime.yml; no se relaja ninguna regla de seguridad del dominio.
+          VERIFY_UA: "Mozilla/5.0 DonextoDeployVerify"
         run: |
           failed=0
           for path in / /api/hms/health; do
-            status=$(curl --silent --show-error --retry 3 --max-time 30 -o response.txt -w '%{http_code}' "https://app.donexto.com$path") || status=000
+            status=$(curl --silent --show-error --retry 3 --max-time 30 -A "$VERIFY_UA" -o response.txt -w '%{http_code}' "https://app.donexto.com$path") || status=000
             echo "Endpoint $path: HTTP $status" >> "$GITHUB_STEP_SUMMARY"
             if [ "$status" != 200 ]; then
               echo "::error::Publication completed, but endpoint $path returned HTTP $status. Inspect domain access/security and application health."
@@ -73,7 +78,7 @@ jobs:
               python3 -c 'import json; assert json.load(open("response.txt")).get("status") == "ok"' || failed=1
             fi
           done
-          admin_line=$(curl --silent --show-error --retry 3 --max-time 30 -o /dev/null -w '%{http_code} %{redirect_url}' "https://app.donexto.com/admin") || admin_line="000"
+          admin_line=$(curl --silent --show-error --retry 3 --max-time 30 -A "$VERIFY_UA" -o /dev/null -w '%{http_code} %{redirect_url}' "https://app.donexto.com/admin") || admin_line="000"
           echo "Admin redirect: $admin_line" >> "$GITHUB_STEP_SUMMARY"
           case "$admin_line" in
             308\ https://www.donexto.com/admin*|301\ https://www.donexto.com/admin*) ;;
