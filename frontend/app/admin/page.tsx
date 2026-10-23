@@ -28,6 +28,7 @@ import { HmsApiError, hmsJson } from "@/lib/hmsApi";
 import "@/app/admin/admin.css";
 import { AdminLogin } from "@/app/admin/AdminLogin";
 import { ContactInbox } from "@/app/admin/ContactInbox";
+import AttentionPanel from "@/app/admin/AttentionPanel";
 import { ExpensesPanel } from "@/app/admin/ExpensesPanel";
 import { PerformancePanel } from "@/app/admin/PerformancePanel";
 import { InfoPanel } from "@/app/admin/InfoPanel";
@@ -166,13 +167,6 @@ const TABS: Array<{ id: AdminTab; label: string; icon: typeof Activity }> = [
   { id: "events", label: "Bitácora", icon: ScrollText },
   { id: "system", label: "Sistema", icon: Server },
 ];
-
-function moneyMx(cents: number): string {
-  return new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-  }).format((cents || 0) / 100);
-}
 
 function formatWhen(value?: string | null): string {
   if (!value) return "—";
@@ -640,36 +634,11 @@ function AdminPage() {
                 Cuenta Donexto ≠ buzón conectado.
               </p>
             </header>
+            <AttentionPanel />
             <div className="dx-admin__kpis">
               <article>
-                <span>Usuarios</span>
-                <strong>{overview.counts.users}</strong>
-              </article>
-              <article>
-                <span>Pruebas activas</span>
-                <strong>{overview.counts.trials_active}</strong>
-              </article>
-              <article>
-                <span>Pagos activos</span>
-                <strong>{overview.counts.active_paid}</strong>
-              </article>
-              <article>
-                <span>Buzones conectados</span>
-                <strong>{overview.counts.mailbox_connected}</strong>
-              </article>
-              <article>
-                <span>Quejas e ideas abiertas</span>
-                <strong>{overview.counts.feedback_open}</strong>
-              </article>
-              <article>
                 <span>Mensajes por atender</span>
-                <strong>{overview.counts.contact_unread ?? 0}</strong>
-              </article>
-              <article>
-                <span>Sin uso en 24&nbsp;h</span>
-                <strong>
-                  {overview.counts.signed_up_no_product_use_24h}
-                </strong>
+                <strong>{overview.counts.contact_unread ?? "Sin datos"}</strong>
               </article>
             </div>
             {overview.schema?.migrations_hint && (
@@ -773,43 +742,7 @@ function AdminPage() {
             {billing.stub && (
               <p className="dx-admin__note">{billing.note}</p>
             )}
-            <div className="dx-admin__kpis">
-              <article>
-                <span>Clientes</span>
-                <strong>{billing.summary.customers}</strong>
-              </article>
-              <article>
-                <span>Activos pagados</span>
-                <strong>{billing.summary.subscriptions_active}</strong>
-              </article>
-              <article>
-                <span>En prueba</span>
-                <strong>{billing.summary.subscriptions_trialing}</strong>
-              </article>
-              <article>
-                <span>Cargos</span>
-                <strong>{moneyMx(billing.summary.charges_cents)}</strong>
-              </article>
-              <article>
-                <span>Depósitos</span>
-                <strong>{moneyMx(billing.summary.deposits_cents)}</strong>
-              </article>
-              <article>
-                <span>Gastos app</span>
-                <strong>{moneyMx(billing.summary.app_expenses_cents)}</strong>
-              </article>
-            </div>
-            <h3 className="dx-admin__subhead">Geo (stub de suscriptores)</h3>
-            <ul className="dx-admin__list">
-              {billing.geo_subscribed_stub.length === 0 && (
-                <li>Sin country_code en clientes/perfiles todavía.</li>
-              )}
-              {billing.geo_subscribed_stub.map((row) => (
-                <li key={row.country_code}>
-                  <strong>{row.country_code}</strong> — {row.users} usuario(s)
-                </li>
-              ))}
-            </ul>
+            <p className="dx-admin__note">Cobros a clientes: Pendiente de instrumentación (Stripe no está activado). Los gastos propios viven en «Mis gastos». Ninguna cifra aquí es simulada.</p>
           </section>
         )}
 
