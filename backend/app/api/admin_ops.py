@@ -211,7 +211,7 @@ def cleanup_user_records(client: Any, user_id: str) -> None:
     _best_effort_delete(client, "profiles", "id", user_id)
 
 
-def _count(client: Any, table: str, **filters: str) -> int:
+def _count(client: Any, table: str, **filters: str) -> int | None:
     try:
         query = client.table(table).select("id", count="exact")
         for column, value in filters.items():
@@ -219,9 +219,13 @@ def _count(client: Any, table: str, **filters: str) -> int:
         response = query.limit(1).execute()
     except Exception:
         logger.info("admin count skip %s", table, exc_info=True)
-        return 0
+        return None  # «Error de consulta», nunca un 0 aparente
     count = getattr(response, "count", None)
-    return int(count or 0)
+    return int(count) if count is not None else None
+
+
+def _sum_counts(*values: int | None) -> int | None:
+    return None if any(v is None for v in values) else sum(values)  # type: ignore[arg-type]
 
 
 @router.get("/overview")
@@ -232,20 +236,20 @@ def admin_overview() -> dict[str, Any]:
         "status": "ok",
         "counts": {
             "users": _count(client, "profiles"),
-            "trials_active": 0,
-            "active_paid": 0,
+            "trials_active": None,  # sin fuente de cobros todavía: «Sin datos»
+            "active_paid": None,
             "mailbox_connected": _count(
                 client, "communication_accounts", status="active"
             ),
-            "feedback_open": 0,
-            "signed_up_no_product_use_24h": 0,
+            "feedback_open": None,
+            "signed_up_no_product_use_24h": None,
             "contact_nuevo": _count(client, "contact_messages", status="nuevo"),
-            "contact_unread": (
-                _count(client, "contact_messages", status="nuevo")
-                + _count(client, "contact_messages", status="borrador listo")
+            "contact_unread": _sum_counts(
+                _count(client, "contact_messages", status="nuevo"),
+                _count(client, "contact_messages", status="borrador listo"),
             ),
         },
-        "product_health": "ok",
+        "product_health": None,  # el estado real sale de GET /admin/health
         "notes": {
             "account_vs_mailbox": (
                 "La cuenta Donexto y el buzón conectado son cosas distintas."
@@ -540,22 +544,23 @@ def admin_create_promotion() -> dict[str, Any]:
 
 @router.get("/health-extended")
 def admin_health_extended() -> dict[str, Any]:
+    """Compatibilidad: ahora devuelve la evaluación integrada (Railway, Supabase, Cloudflare, respaldo,
+    configuración, errores y frescura). Antes solo consultaba Supabase y ocultaba fallas de Railway."""
     _require_admin()
-    client = get_supabase_client()
-    database_ok = True
-    detail = ""
-    try:
-        client.table("profiles").select("id").limit(1).execute()
-    except Exception as error:
-        database_ok = False
-        detail = type(error).__name__
+    from app.api.admin_perf import _health_build
+    from app.services import health_eval
+
+    evaluation = health_eval.evaluate(_health_build, get_supabase_client)
+    db = next((c for c in evaluation["checks"] if c["id"] == "database"), {})
     allow = admin_allowlist()
     return {
-        "status": "ok" if database_ok else "degraded",
+        "status": {"VERDE": "ok", "AMARILLO": "degraded", "ROJO": "critical"}[evaluation["overall"]["state"]],
+        "overall": evaluation["overall"],
         "version": settings.app_version,
         "deploy_marker": os.getenv("HMS_DEPLOY_MARKER", ""),
-        "database": {"ok": database_ok, "detail": detail or None},
-        "process": {"source": "admin"},
+        "database": {"ok": db.get("status") == "ok", "detail": None if db.get("status") == "ok" else db.get("evidence")},
+        "checks": evaluation["checks"],
+        "evaluated_at": evaluation["evaluated_at"],
         "admin_configured": bool(allow),
         "admin_allowlist_count": len(allow),
     }

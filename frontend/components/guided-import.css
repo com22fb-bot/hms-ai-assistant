@@ -885,3 +885,5 @@
 .hms-import-world.is-protected { padding: 6px 8px; border-radius: 10px; background: rgba(47, 227, 223, .06); }
 .hms-import-social-list { font-size: .8em; opacity: .75; }
 @media (min-width: 640px) { .hms-import-alerts small { display: inline; opacity: .7; } }
+
+.hms-import-plan { margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; background: rgba(0,0,0,0.04); font-size: 0.9em; line-height: 1.4; }

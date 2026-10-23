@@ -1,10 +1,10 @@
 name: Ops tests (guard de respaldos + Workers)
 on:
   pull_request:
-    paths: ["scripts/**", "workers/**", ".github/workflows/backup-*.yml", ".github/workflows/ops-tests.yml"]
+    paths: ["scripts/**", "workers/**", ".github/workflows/backup-*.yml", ".github/workflows/ops-tests.yml", "frontend/app/admin/**", "frontend/lib/**", "frontend/components/GuidedImportWizard.tsx"]
   push:
     branches: [main]
-    paths: ["scripts/**", "workers/**", ".github/workflows/backup-*.yml", ".github/workflows/ops-tests.yml"]
+    paths: ["scripts/**", "workers/**", ".github/workflows/backup-*.yml", ".github/workflows/ops-tests.yml", "frontend/app/admin/**", "frontend/lib/**", "frontend/components/GuidedImportWizard.tsx"]
 permissions: {contents: read}
 jobs:
   test:
@@ -19,3 +19,14 @@ jobs:
         run: node --test workers/backup-cron/index.test.mjs
       - name: Worker backup-watch
         run: node --test workers/backup-watch/index.test.mjs
+  admin-frontend:
+    runs-on: ubuntu-latest
+    defaults: {run: {working-directory: frontend}}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22', cache: npm, cache-dependency-path: frontend/package-lock.json}
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - name: Semáforo e importador (criterios 5–8)
+        run: node --experimental-strip-types --test lib/adminHealth.test.ts lib/adminHealthMount.test.ts lib/importPlan.test.ts lib/i18n/rawKeys.test.ts

@@ -4,8 +4,9 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { hmsJson } from "@/lib/hmsApi";
+import { KIND_LABEL, type HealthPayload } from "@/lib/adminHealth";
 
-type Missing = { available: false; status: string; variable?: string; steps?: string[]; message?: string };
+type Missing = { available: false; status: string; variable?: string; steps?: string[]; message?: string; kind?: string };
 
 type Railway = (Missing | { available: true; status: "ok" }) & {
   region?: string | null;
@@ -39,7 +40,8 @@ type Database = (Missing | { available: true; status: "ok" }) & {
 type Cloudflare = (Missing | { available: true; status: "ok" }) & {
   requests_7d?: number;
   threats_7d?: number;
-  cached_pct?: number;
+  cached_pct?: number | null;
+  period?: string;
   days?: Array<{ date: string; requests: number; threats: number }>;
 };
 
@@ -52,14 +54,18 @@ type Perf = {
   sites: Site[];
   generated_at: string;
   cache_seconds: number;
+  health?: HealthPayload | null;
   process: {
     uptime_seconds: number;
     memory_rss_mb: number | null;
     cpu_percent_avg: number;
     sample_size: number;
-    p50_ms: number;
-    p95_ms: number;
-    error_rate_pct: number;
+    p50_ms: number | null;
+    p95_ms: number | null;
+    error_rate_pct: number | null;
+    started_at?: number;
+    window?: string;
+    counters_reset?: string;
     routes: Array<{ route: string; count: number; avg_ms: number; p95_ms: number }>;
     counters: Record<string, number>;
   };
@@ -70,6 +76,27 @@ const nf = new Intl.NumberFormat("es-MX");
 function mb(bytes?: number): string {
   if (!bytes && bytes !== 0) return "—";
   return `${nf.format(Math.round(bytes / 1024 / 1024))} MB`;
+}
+
+function CheckBadge({ health, ids }: { health?: HealthPayload | null; ids: string[] }) {
+  const checks = (health?.checks || []).filter((c) => ids.includes(c.id));
+  if (!health || checks.length === 0) return <span className="dx-admin__pill">No verificado</span>;
+  const order = ["falla", "sin_verificar", "degradado", "ok"];
+  const worst = checks.slice().sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status))[0];
+  const cls = worst.status === "ok" ? "is-ok" : "is-warn";
+  return (
+    <span className={`dx-admin__pill ${cls}`} title={worst.evidence}>
+      {worst.status === "ok" ? "Verificado" : KIND_LABEL[worst.kind] || worst.status}
+    </span>
+  );
+}
+
+function val(v: number | null | undefined, unit: string): string {
+  return v == null ? "Sin datos" : `${v}${unit}`;
+}
+
+function num(v: number | null | undefined): string {
+  return v == null ? "Sin datos" : nf.format(v);
 }
 
 function uptime(seconds: number): string {
@@ -108,7 +135,16 @@ function Meter({ pct }: { pct?: number | null }) {
 
 function MissingToken({ data }: { data: Missing }) {
   if (data.status !== "falta_token") {
-    return <p className="dx-perf__warn">No se pudo leer: {data.message || data.status}</p>;
+    return (
+      <p className="dx-perf__warn">
+        {data.kind === "permiso"
+          ? "Error de permisos del monitoreo (no indica caída del proveedor): "
+          : data.kind === "proveedor_caido"
+            ? "El proveedor no responde: "
+            : "Error de consulta: "}
+        {data.message || data.status}
+      </p>
+    );
   }
   return (
     <details className="dx-perf__missing">
@@ -179,16 +215,16 @@ export function PerformancePanel() {
 
       <div className="dx-perf__grid">
         <article className="dx-perf__card">
-          <h3>Servidor (Railway)</h3>
+          <h3>Servidor (Railway) <CheckBadge health={data.health} ids={["railway"]} /></h3>
           {rw.available ? (
             <>
-              <div className="dx-perf__row"><span>CPU</span><strong>{rw.cpu_vcpu?.toFixed(3)} / {rw.cpu_limit} vCPU</strong></div>
+              <div className="dx-perf__row"><span>CPU</span><strong>{rw.cpu_vcpu == null ? "Sin datos" : `${rw.cpu_vcpu.toFixed(3)} / ${rw.cpu_limit ?? "?"} vCPU`}</strong></div>
               <Meter pct={cpuPct} />
               <Spark values={rw.cpu_series} />
-              <div className="dx-perf__row"><span>Memoria</span><strong>{((rw.memory_gb ?? 0) * 1024).toFixed(0)} MB / {rw.memory_limit_gb} GB</strong></div>
+              <div className="dx-perf__row"><span>Memoria</span><strong>{rw.memory_gb == null ? "Sin datos" : `${(rw.memory_gb * 1024).toFixed(0)} MB / ${rw.memory_limit_gb ?? "?"} GB`}</strong></div>
               <Meter pct={memPct} />
               <Spark values={rw.memory_series} />
-              <div className="dx-perf__row"><span>Pico 24 h</span><strong>{((rw.memory_gb_peak_24h ?? 0) * 1024).toFixed(0)} MB</strong></div>
+              <div className="dx-perf__row"><span>Pico 24 h</span><strong>{rw.memory_gb_peak_24h == null ? "Sin datos" : `${(rw.memory_gb_peak_24h * 1024).toFixed(0)} MB`}</strong></div>
               <div className="dx-perf__row"><span>Último deploy</span><strong>{rw.last_deploy?.status || "—"} · {when(rw.last_deploy?.created_at)}</strong></div>
             </>
           ) : (
@@ -198,13 +234,14 @@ export function PerformancePanel() {
         </article>
 
         <article className="dx-perf__card">
-          <h3>Proceso backend</h3>
+          <h3>Proceso backend <CheckBadge health={data.health} ids={["api", "errors"]} /></h3>
           <div className="dx-perf__kpis">
-            <div><span>p50</span><strong>{pr.p50_ms} ms</strong></div>
-            <div><span>p95</span><strong>{pr.p95_ms} ms</strong></div>
-            <div><span>Errores</span><strong>{pr.error_rate_pct}%</strong></div>
+            <div><span>p50</span><strong>{val(pr.p50_ms, " ms")}</strong></div>
+            <div><span>p95</span><strong>{val(pr.p95_ms, " ms")}</strong></div>
+            <div><span>Errores</span><strong>{val(pr.error_rate_pct, "%")}</strong></div>
             <div><span>Encendido</span><strong>{uptime(pr.uptime_seconds)}</strong></div>
           </div>
+          <p className="dx-perf__hint">Periodo: {pr.window || "últimas 24 h"}; encendido desde {pr.started_at ? when(new Date(pr.started_at * 1000).toISOString()) : "—"}.</p>
           <div className="dx-perf__row"><span>Peticiones (24 h)</span><strong>{nf.format(pr.sample_size)}</strong></div>
           <div className="dx-perf__row"><span>Memoria proceso</span><strong>{pr.memory_rss_mb ?? "—"} MB</strong></div>
           <ul className="dx-perf__routes">
@@ -215,16 +252,16 @@ export function PerformancePanel() {
         </article>
 
         <article className="dx-perf__card">
-          <h3>Base de datos (Supabase)</h3>
+          <h3>Base de datos (Supabase) <CheckBadge health={data.health} ids={["database", "db_quota"]} /></h3>
           {db.available ? (
             <>
-              <div className="dx-perf__row"><span>Tamaño</span><strong>{mb(db.db_size_bytes)} / 500 MB ({db.used_pct}%)</strong></div>
+              <div className="dx-perf__row"><span>Tamaño</span><strong>{mb(db.db_size_bytes)} / 500 MB ({val(db.used_pct, "%")}) · plan Free verificado</strong></div>
               <Meter pct={db.used_pct} />
               <div className="dx-perf__kpis">
-                <div><span>Correos</span><strong>{nf.format(db.emails_total ?? 0)}</strong></div>
-                <div><span>Últimos 30 d</span><strong>{nf.format(db.emails_last_30d ?? 0)}</strong></div>
-                <div><span>Buzones</span><strong>{db.mailboxes_active}</strong></div>
-                <div><span>Usuarios</span><strong>{db.users_total}</strong></div>
+                <div><span>Correos</span><strong>{num(db.emails_total)}</strong></div>
+                <div><span>Últimos 30 d</span><strong>{num(db.emails_last_30d)}</strong></div>
+                <div><span>Buzones</span><strong>{num(db.mailboxes_active)}</strong></div>
+                <div><span>Usuarios</span><strong>{num(db.users_total)}</strong></div>
               </div>
               <div className="dx-perf__row"><span>Desde</span><strong>{when(db.emails_first_at)}</strong></div>
               <div className="dx-perf__row"><span>Conexiones</span><strong>{db.connections_active} activas / {db.connections_total}</strong></div>
@@ -252,18 +289,18 @@ export function PerformancePanel() {
         <article className="dx-perf__card">
           <h3>Seguridad</h3>
           <div className="dx-perf__kpis">
-            <div><span>Accesos directos bloqueados</span><strong>{pr.counters.direct_access_403 ?? 0}</strong></div>
-            <div><span>Límite de intentos</span><strong>{pr.counters.rate_limit_blocks ?? 0}</strong></div>
-            <div><span>Sin sesión (401)</span><strong>{pr.counters.unauthorized_401 ?? 0}</strong></div>
-            <div><span>Errores 5xx</span><strong>{pr.counters.errors_5xx ?? 0}</strong></div>
+            <div><span>Accesos directos bloqueados</span><strong>{num(pr.counters.direct_access_403)}</strong></div>
+            <div><span>Límite de intentos</span><strong>{num(pr.counters.rate_limit_blocks)}</strong></div>
+            <div><span>Sin sesión (401)</span><strong>{num(pr.counters.unauthorized_401)}</strong></div>
+            <div><span>Errores 5xx</span><strong>{num(pr.counters.errors_5xx)}</strong></div>
           </div>
-          <p className="dx-perf__hint">Contadores desde el último encendido del servidor.</p>
-          <h4>Cloudflare (7 días)</h4>
+          <p className="dx-perf__hint">{pr.counters_reset || "Contadores desde el último encendido del servidor."} Un 0 aquí no prueba que no hubo incidentes antes de ese momento.</p>
+          <h4><CheckBadge health={data.health} ids={["cloudflare"]} /> Cloudflare ({cf.period || "7 días"})</h4>
           {cf.available ? (
             <div className="dx-perf__kpis">
-              <div><span>Peticiones</span><strong>{nf.format(cf.requests_7d ?? 0)}</strong></div>
-              <div><span>Amenazas</span><strong>{nf.format(cf.threats_7d ?? 0)}</strong></div>
-              <div><span>Desde caché</span><strong>{cf.cached_pct}%</strong></div>
+              <div><span>Peticiones</span><strong>{num(cf.requests_7d)}</strong></div>
+              <div><span>Amenazas</span><strong>{num(cf.threats_7d)}</strong></div>
+              <div><span>Desde caché</span><strong>{val(cf.cached_pct, "%")}</strong></div>
             </div>
           ) : (
             <MissingToken data={cf as Missing} />
@@ -271,7 +308,7 @@ export function PerformancePanel() {
         </article>
 
         <article className="dx-perf__card dx-perf__card--wide">
-          <h3>Sitio donexto.com</h3>
+          <h3>Sitio donexto.com <CheckBadge health={data.health} ids={["frontend", "landing"]} /></h3>
           <ul className="dx-perf__sites">
             {data.sites.map((s) => (
               <li key={s.url} className={s.ok ? "is-ok" : "is-bad"}>
