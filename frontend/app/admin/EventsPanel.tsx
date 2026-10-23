@@ -3,6 +3,7 @@
 import { CheckCircle2, Loader2, Plus } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
+import { ESTADOS, ESTADO_LABEL, ESTADO_ORDER, closePatch, estadoOf, isPedido, matchesEstado, sinTerminar, type HistorialItem, type PedidoEstado } from "@/lib/bitacoraEstado";
 import { supabase } from "@/lib/supabase";
 
 const SOURCES = ["railway", "cloudflare", "supabase", "github", "backup", "monitor", "deploy", "manual"] as const;
@@ -12,13 +13,6 @@ type Source = (typeof SOURCES)[number];
 type Severity = (typeof SEVERITIES)[number];
 type Status = "abierto" | "resuelto";
 type BackupKind = "diario" | "semanal";
-type PedidoEstado = "pendiente" | "en_curso" | "hecho";
-const ESTADO_LABEL: Record<PedidoEstado, string> = { pendiente: "Pendiente", en_curso: "En curso", hecho: "Realizado" };
-const ESTADO_ORDER: Record<PedidoEstado, number> = { pendiente: 0, en_curso: 1, hecho: 2 };
-const estadoOf = (e: AdminEvent): PedidoEstado =>
-  e.meta?.estado && e.meta.estado in ESTADO_ORDER ? e.meta.estado : e.status === "resuelto" ? "hecho" : "pendiente";
-const isPedido = (e: AdminEvent) => e.meta?.kind === "pedido";
-
 type AdminEvent = {
   id: string;
   occurred_at: string;
@@ -32,6 +26,7 @@ type AdminEvent = {
   meta?: {
     kind?: BackupKind | "pedido" | string;
     estado?: PedidoEstado;
+    historial?: HistorialItem[];
     result?: "ok" | "fallido";
     size_bytes?: number | null;
     duration_s?: number;
@@ -132,7 +127,7 @@ export function EventsPanel() {
   const [saving, setSaving] = useState(false);
   const [adding, setAdding] = useState(false);
   const [fSource, setFSource] = useState<Source | "">("");
-  const [fStatus, setFStatus] = useState<Status | "">("");
+  const [fStatus, setFStatus] = useState<PedidoEstado | "">("");
   const [fText, setFText] = useState("");
   const [fTipo, setFTipo] = useState<"" | "pedido" | "evento">("");
   const [draft, setDraft] = useState({
@@ -168,7 +163,7 @@ export function EventsPanel() {
       (e) =>
         (!fSource || e.source === fSource) &&
         (!fTipo || (fTipo === "pedido") === isPedido(e)) &&
-        (!fStatus || e.status === fStatus) &&
+        matchesEstado(e, fStatus) &&
         (!q || `${e.title} ${e.detail}`.toLowerCase().includes(q)),
     ).sort((a, b) =>
       ESTADO_ORDER[estadoOf(a)] - ESTADO_ORDER[estadoOf(b)] || b.occurred_at.localeCompare(a.occurred_at),
@@ -202,7 +197,7 @@ export function EventsPanel() {
     setSaving(true);
     const { error: err } = await supabase
       .from("admin_events")
-      .update({ status: "resuelto", ended_at: new Date().toISOString() })
+      .update(closePatch(item, new Date().toISOString()))
       .eq("id", item.id);
     setSaving(false);
     if (err) {
@@ -228,7 +223,7 @@ export function EventsPanel() {
 
   const open = events.filter((e) => e.status === "abierto").length;
   const pedidos = events.filter(isPedido);
-  const pedidosPend = pedidos.filter((e) => e.meta?.estado !== "hecho").length;
+  const pedidosPend = pedidos.filter(sinTerminar).length;
 
   return (
     <section className="dx-admin__section dx-perf">
@@ -304,10 +299,11 @@ export function EventsPanel() {
         </label>
         <label>
           Estado
-          <select value={fStatus} onChange={(e) => setFStatus(e.target.value as Status | "")}>
+          <select value={fStatus} onChange={(e) => setFStatus(e.target.value as PedidoEstado | "")}>
             <option value="">Todos</option>
-            <option value="abierto">Pendiente / En curso</option>
-            <option value="resuelto">Realizado</option>
+            {ESTADOS.map((s) => (
+              <option key={s} value={s}>{ESTADO_LABEL[s]}</option>
+            ))}
           </select>
         </label>
         <label>
@@ -352,7 +348,7 @@ export function EventsPanel() {
                 </td>
                 <td>{when(e.ended_at)}</td>
                 <td>
-                  {e.status === "abierto" && (
+                  {(e.status === "abierto" || sinTerminar(e)) && (
                     <button type="button" className="dx-admin__btn dx-admin__btn--ghost" onClick={() => void close(e)} disabled={saving}>
                       <CheckCircle2 size={16} /> Cerrar
                     </button>
