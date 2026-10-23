@@ -83,8 +83,19 @@ type UsersResponse = {
     is_test?: boolean;
     trial_started_at?: string | null;
     trial_ends_at?: string | null;
+    messages_saved?: number | null;
+    mail_counts_status?: "ok" | "error";
+    mailboxes?: Array<{
+      account_id: string;
+      provider?: string | null;
+      email?: string | null;
+      status?: string | null;
+      last_sync_at?: string | null;
+      messages: number;
+    }> | null;
   }>;
   total: number;
+  mail_counts_status?: "ok" | "error";
 };
 
 type BillingResponse = {
@@ -702,9 +713,8 @@ function AdminPage() {
                   <tr>
                     <th>Correo</th>
                     <th>Nombre</th>
-                    <th>Buzón</th>
+                    <th>Buzones · Correos guardados</th>
                     <th>Plan / estado</th>
-                    <th>País</th>
                     <th>Alta</th>
                     <th>Acciones</th>
                   </tr>
@@ -712,18 +722,42 @@ function AdminPage() {
                 <tbody>
                   {users.users.length === 0 && (
                     <tr>
-                      <td colSpan={7}>Sin usuarios en Supabase Auth.</td>
+                      <td colSpan={6}>Sin usuarios en Supabase Auth.</td>
                     </tr>
                   )}
                   {users.users.map((user) => (
                     <tr key={user.id}>
                       <td>{user.email || "—"}</td>
                       <td>{user.full_name || "—"}</td>
-                      <td>
-                        {user.mailbox_connected ? (
-                          <span className="dx-admin__pill is-ok">Conectado</span>
+                      <td className="dx-admin__mail">
+                        {user.mail_counts_status === "error" || user.messages_saved == null ? (
+                          <span className="dx-admin__pill is-warn" title="No se pudo consultar el conteo">
+                            Error de consulta
+                          </span>
+                        ) : !user.mailboxes || user.mailboxes.length === 0 ? (
+                          <span className="dx-admin__pill">Sin buzón · 0</span>
                         ) : (
-                          <span className="dx-admin__pill">Sin buzón</span>
+                          <details>
+                            <summary>
+                              <strong>{user.messages_saved.toLocaleString("es-MX")}</strong>{" "}
+                              en {user.mailboxes.length}{" "}
+                              {user.mailboxes.length === 1 ? "buzón" : "buzones"}
+                            </summary>
+                            <ul className="dx-admin__mail-list">
+                              {user.mailboxes.map((box) => (
+                                <li key={box.account_id}>
+                                  <span className="dx-admin__mail-addr">{box.email || box.provider || "Buzón"}</span>{" "}
+                                  <strong>{box.messages.toLocaleString("es-MX")}</strong>
+                                  <small>
+                                    {" · "}
+                                    {adminLabel(box.status || "desconocido")}
+                                    {" · última sincronización: "}
+                                    {box.last_sync_at ? formatWhen(box.last_sync_at) : "desconocida"}
+                                  </small>
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
                         )}
                       </td>
                       <td>
@@ -737,7 +771,6 @@ function AdminPage() {
                           </span>
                         ) : null}
                       </td>
-                      <td>{user.country_code || "—"}</td>
                       <td>{formatWhen(user.created_at)}</td>
                       <td>
                         <button
