@@ -274,6 +274,16 @@ function AdminPasswordReset({
   );
 }
 
+type PurgeResult = {
+  status: string;
+  complete?: boolean;
+  rows_total?: number | null;
+  counts?: Record<string, number>;
+  shared_kept?: number | null;
+  storage_queued?: number | null;
+  message?: string | null;
+};
+
 function AdminPage() {
   const {
     session,
@@ -438,16 +448,26 @@ function AdminPage() {
   async function onDeleteUser(userId: string, email: string | null | undefined) {
     if (!userId || deletingId) return;
     const label = email || userId;
-    const confirmed = window.confirm(
-      `¿Borrar la cuenta de prueba ${label}? Se borran todos sus datos: correos, buzones, casos, clasificaciones y credenciales, sin respaldo. Esta acción no se puede deshacer.`,
-    );
-    if (!confirmed) return;
     setDeletingId(userId);
     setError(null);
+    const url = `/api/hms/admin/users/${encodeURIComponent(userId)}`;
     try {
-      await hmsJson(`/api/hms/admin/users/${encodeURIComponent(userId)}`, {
-        method: "DELETE",
-      });
+      // 1) Simulación: muestra el plan exacto antes de confirmar.
+      const plan = await hmsJson<PurgeResult>(`${url}?dry_run=true`, { method: "DELETE" });
+      const kept = plan.shared_kept ?? 0;
+      const confirmed = window.confirm(
+        `¿Borrar la cuenta de prueba ${label}?\n\n` +
+          `Se borrarán ${plan.rows_total ?? "?"} filas (correos: ${plan.counts?.communication_messages ?? 0}, ` +
+          `buzones: ${plan.counts?.communication_accounts ?? 0}) y ${plan.storage_queued ?? 0} archivos.\n` +
+          (kept ? `Se CONSERVAN ${kept} buzones compartidos con sus correos: se desconectan y pasan a otro miembro del espacio.\n` : "") +
+          `Sin respaldo. Esta acción no se puede deshacer.`,
+      );
+      if (!confirmed) return;
+      // 2) Borrado real; el estado de Storage se informa tal cual.
+      const done = await hmsJson<PurgeResult>(url, { method: "DELETE" });
+      if (!done.complete) {
+        setError(done.message || "Datos borrados; quedan archivos pendientes en Storage (se reintentará).");
+      }
       await loadTab("users");
     } catch (err) {
       setError(

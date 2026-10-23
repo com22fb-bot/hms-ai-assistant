@@ -1,10 +1,10 @@
 name: Ops tests (guard de respaldos + Workers)
 on:
   pull_request:
-    paths: ["scripts/**", "workers/**", ".github/workflows/backup-*.yml", ".github/workflows/ops-tests.yml", "frontend/app/admin/**", "frontend/lib/**", "frontend/components/GuidedImportWizard.tsx"]
+    paths: ["scripts/**", "workers/**", ".github/workflows/backup-*.yml", ".github/workflows/ops-tests.yml", "frontend/app/admin/**", "frontend/lib/**", "frontend/components/GuidedImportWizard.tsx", "supabase/**", "backend/app/api/admin_ops.py", "backend/tests/test_purge_sql.py", "backend/tests/test_admin_purge_storage.py"]
   push:
     branches: [main]
-    paths: ["scripts/**", "workers/**", ".github/workflows/backup-*.yml", ".github/workflows/ops-tests.yml", "frontend/app/admin/**", "frontend/lib/**", "frontend/components/GuidedImportWizard.tsx"]
+    paths: ["scripts/**", "workers/**", ".github/workflows/backup-*.yml", ".github/workflows/ops-tests.yml", "frontend/app/admin/**", "frontend/lib/**", "frontend/components/GuidedImportWizard.tsx", "supabase/**", "backend/app/api/admin_ops.py", "backend/tests/test_purge_sql.py", "backend/tests/test_admin_purge_storage.py"]
 permissions: {contents: read}
 jobs:
   test:
@@ -30,3 +30,29 @@ jobs:
       - run: npx tsc --noEmit
       - name: Semáforo e importador (criterios 5–8)
         run: node --experimental-strip-types --test lib/adminHealth.test.ts lib/adminHealthMount.test.ts lib/importPlan.test.ts lib/i18n/rawKeys.test.ts
+  purge-sql:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: pip install pytest
+      - name: Borrado v2 contra Postgres efímero (dry-run, compartidos, respaldos, cola Storage)
+        working-directory: backend
+        env: {PURGE_SQL_REQUIRED: "1"}
+        run: python -m pytest -v -s tests/test_purge_sql.py --noconftest -p no:cacheprovider
+  integracion-181-184:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env: {POSTGRES_PASSWORD: postgres}
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - run: git fetch origin db/normalizacion-propuesta:refs/remotes/origin/db/normalizacion-propuesta main:refs/remotes/origin/main
+      - name: Integración #181 × #184 (esquema prod → #181 → 001 → 003 → 002 → borrado dry-run y real; órdenes inválidos)
+        env: {PGPASSWORD: postgres, REF181: HEAD}
+        run: PGURL="-h localhost -p 5432 -U postgres" bash supabase/tests/integracion_181_184/run.sh
