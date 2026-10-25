@@ -397,7 +397,10 @@ def _find_case_for_message(
 
     if reply_ids:
         found = _find_case_by_reply_ids(
-            client=client, account_id=account_id, reply_ids=reply_ids
+            client=client,
+            account_id=account_id,
+            reply_ids=reply_ids,
+            workspace_id=workspace_id,
         )
         if found:
             return found
@@ -477,7 +480,18 @@ def _find_case_by_reply_ids(
     client: Any,
     account_id: str,
     reply_ids: list[str],
+    workspace_id: str | None = None,
 ) -> dict[str, Any] | None:
+    """Caso abierto referenciado por In-Reply-To/References.
+
+    Aislamiento (P0, issue #195): mismo criterio que _find_case_for_message.
+    Con workspace_id solo casos de ese workspace; sin él, solo de la cuenta.
+    Además se comprueba el alcance de la fila devuelta (defensa en profundidad):
+    no se confía en que case_messages apunte a un caso del mismo alcance.
+    """
+    scope_column, scope_value = (
+        ("workspace_id", workspace_id) if workspace_id else ("account_id", account_id)
+    )
     wanted = [str(item).strip() for item in reply_ids if str(item or "").strip()]
     if not wanted:
         return None
@@ -501,15 +515,21 @@ def _find_case_by_reply_ids(
     case_ids = list(dict.fromkeys(str(row["case_id"]) for row in links if row.get("case_id")))
     if not case_ids:
         return None
-    return _first_row(
+    found = _first_row(
         client.table("intelligent_cases")
         .select("*")
+        .eq(scope_column, scope_value)
         .in_("id", case_ids)
         .in_("status", _OPEN_STATUSES)
         .order("last_activity_at", desc=True)
         .limit(1)
         .execute()
     )
+    if not found or str(found.get(scope_column) or "") != str(scope_value or ""):
+        return None
+    if found.get("status") not in _OPEN_STATUSES:
+        return None
+    return found
 
 
 def message_reply_ids(message: dict[str, Any]) -> list[str]:
