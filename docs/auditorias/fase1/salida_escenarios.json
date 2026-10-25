@@ -1,0 +1,149 @@
+{
+ "1": {
+  "ownership": "entrante",
+  "clase": "notice",
+  "score": 80,
+  "motivo": "Aviso de seguridad o verificación de cuenta.",
+  "crea_o_actualiza_caso": false
+ },
+ "2": {
+  "ownership": "entrante",
+  "clase": "notice",
+  "score": 80,
+  "motivo": "Aviso de seguridad o verificación de cuenta.",
+  "crea_o_actualiza_caso": false
+ },
+ "3": {
+  "ownership": "entrante",
+  "clase": "review",
+  "score": 30,
+  "motivo": "Mensaje personal sin una solicitud suficientemente clara; requiere revisión humana.",
+  "crea_o_actualiza_caso": false
+ },
+ "4a": {
+  "ownership": "entrante",
+  "clase": "action_required",
+  "score": 85,
+  "motivo": "Continuación de una conversación con un caso abierto.",
+  "crea_o_actualiza_caso": true
+ },
+ "4b": {
+  "caso_asociado": null,
+  "nota": "buscar en case_engine/case_repository cierre automatico por recibo"
+ },
+ "5": {
+  "caso_asociado_mismo_asunto_otra_entidad": "C-f2"
+ },
+ "7": {
+  "nota": "no existe lógica de días/seguimiento en el motor; ver rg"
+ },
+ "8": {
+  "ownership": "propio_enviado",
+  "clase": "informational",
+  "score": 15,
+  "motivo": "Mensaje enviado sin un caso abierto previo.",
+  "crea_o_actualiza_caso": false
+ },
+ "7_envio_peticion": {
+  "ownership": "propio_enviado",
+  "clase": "informational",
+  "score": 15,
+  "motivo": "Mensaje enviado sin un caso abierto previo.",
+  "crea_o_actualiza_caso": false
+ },
+ "9a_yahoo_a_gmail_vista_desde_gmail": {
+  "ownership": "entrante",
+  "clase": "action_required",
+  "score": 100,
+  "motivo": "Se detectó que contiene una solicitud directa, incluye una fecha límite.",
+  "crea_o_actualiza_caso": true
+ },
+ "9b_mayus_espacios": {
+  "ownership": "nota_propia",
+  "clase": "review",
+  "score": 30,
+  "motivo": "Nota enviada a la propia cuenta; no crea caso automáticamente y requiere revisión humana.",
+  "crea_o_actualiza_caso": false
+ },
+ "9c_alias_gmail": {
+  "normalize('p.ropia2+x@gmail.com')": "propia2@gmail.com"
+ },
+ "9d_apropia2": {
+  "ownership": "entrante",
+  "clase": "review",
+  "score": 30,
+  "motivo": "Mensaje personal sin una solicitud suficientemente clara; requiere revisión humana.",
+  "crea_o_actualiza_caso": false
+ },
+ "10": {
+  "railway": {
+   "ownership": "entrante",
+   "clase": "automated",
+   "score": 10,
+   "motivo": "Remitente automatizado sin una solicitud humana directa.",
+   "crea_o_actualiza_caso": false
+  },
+  "github_ci": {
+   "ownership": "entrante",
+   "clase": "notice",
+   "score": 70,
+   "motivo": "Aviso importante para revisión, sin convertirlo automáticamente en caso.",
+   "crea_o_actualiza_caso": false
+  },
+  "respaldo": {
+   "ownership": "entrante",
+   "clase": "action_required",
+   "score": 80,
+   "motivo": "Se detectó que contiene una solicitud directa.",
+   "crea_o_actualiza_caso": true
+  }
+ },
+ "11": {
+  "ownership": "entrante",
+  "clase": "notice",
+  "score": 80,
+  "motivo": "Aviso de seguridad o verificación de cuenta.",
+  "crea_o_actualiza_caso": false
+ },
+ "12": {
+  "ownership": "entrante",
+  "clase": "automated",
+  "score": 10,
+  "motivo": "Remitente automatizado sin una solicitud humana directa.",
+  "crea_o_actualiza_caso": false
+ },
+ "13a": {
+  "ownership": "entrante",
+  "clase": "action_required",
+  "score": 85,
+  "motivo": "Continuación de una conversación con un caso abierto.",
+  "crea_o_actualiza_caso": true
+ },
+ "13b": {
+  "caso_asociado": null
+ },
+ "14": {
+  "caso_asociado_mismo_asunto": "C-gym"
+ },
+ "15": {
+  "factura_B_asociada_a": "C-A"
+ },
+ "16": {
+  "cerrado_reabierto_o_asociado": null
+ },
+ "17": {
+  "mismo_hilo": "C-h",
+  "propio_por_in_reply_to": "C-r",
+  "entrante_con_in_reply_to_sin_hilo": null
+ },
+ "18": {
+  "clasif": {
+   "ownership": "entrante",
+   "clase": "review",
+   "score": 30,
+   "motivo": "Mensaje personal sin una solicitud suficientemente clara; requiere revisión humana.",
+   "crea_o_actualiza_caso": false
+  },
+  "caso_asociado_asunto_generico": "C-g"
+ }
+}

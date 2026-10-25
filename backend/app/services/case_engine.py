@@ -16,6 +16,8 @@ from app.services.oauth_storage import OAuthStorage
 from app.utils.html_text import strip_css_noise
 
 
+_INFORMATIVE_TRIAGE = frozenset({"informational", "notice", "review", "automated"})
+
 _OPEN_STATUSES = [
     "new",
     "analyzing",
@@ -365,12 +367,18 @@ def _find_case_for_message(
     event_key: str | None = None,
     received_at: str | None = None,
     window_days: int = 7,
+    reply_ids: list[str] | None = None,
+    sender_email: str | None = None,
+    evidence_text: str | None = None,
 ) -> dict[str, Any] | None:
     """Busca el caso abierto del mismo evento.
 
     Alcance: el usuario (workspace, todos sus buzones), no solo el buzón.
-    Orden: mismo hilo del buzón → misma clave de evento (marca+tema) dentro de
-    la ventana → mismo asunto normalizado.
+    Orden (P0.2, issue #195): mismo hilo del buzón → In-Reply-To/References
+    → misma clave de evento (marca+tema) dentro de la ventana → mismo asunto
+    normalizado SOLO con evidencia corroborante (mismo remitente que el
+    solicitante del caso y un identificador común: folio/referencia/importe).
+    El asunto normalizado por sí solo nunca basta; sin evidencia no se asocia.
     """
     if thread_id:
         response = (
@@ -384,6 +392,13 @@ def _find_case_for_message(
             .execute()
         )
         found = _first_row(response)
+        if found:
+            return found
+
+    if reply_ids:
+        found = _find_case_by_reply_ids(
+            client=client, account_id=account_id, reply_ids=reply_ids
+        )
         if found:
             return found
 
@@ -413,22 +428,99 @@ def _find_case_for_message(
         if found:
             return found
 
-    if normalized_subject:
-        response = (
+    if normalized_subject and sender_email and evidence_text:
+        candidates = _rows(
             client.table("intelligent_cases")
             .select("*")
             .eq(scope_column, scope_value)
             .eq("normalized_subject", normalized_subject)
             .in_("status", _OPEN_STATUSES)
             .order("last_activity_at", desc=True)
-            .limit(1)
+            .limit(20)
             .execute()
         )
-        found = _first_row(response)
-        if found:
-            return found
+        for candidate in candidates:
+            if _has_corroborating_evidence(candidate, sender_email, evidence_text):
+                return candidate
 
     return None
+
+
+_IDENTIFIER_RE = re.compile(r"\b(?:[a-z]{1,6}[-#]?)?\d{5,}\b", re.IGNORECASE)
+_AMOUNT_RE = re.compile(r"\$\s?(\d[\d,]*\.\d{2})")
+
+
+def _identifiers(text: str | None) -> set[str]:
+    value = str(text or "").lower()
+    ids = {m.group(0).replace("#", "").replace("-", "") for m in _IDENTIFIER_RE.finditer(value)}
+    ids |= {
+        "$" + m.group(1).replace(",", "")
+        for m in _AMOUNT_RE.finditer(value)
+        if m.group(1).replace(",", "") not in {"0.00"}
+    }
+    return ids
+
+
+def _has_corroborating_evidence(
+    case: dict[str, Any], sender_email: str, evidence_text: str
+) -> bool:
+    """Evidencia mínima para asociar por asunto sin hilo (P0.2)."""
+    requester = str(case.get("requester_email") or "").strip().lower()
+    if not requester or requester != str(sender_email or "").strip().lower():
+        return False
+    case_ids = _identifiers(f"{case.get('title') or ''}\n{case.get('summary') or ''}")
+    return bool(case_ids & _identifiers(evidence_text))
+
+
+def _find_case_by_reply_ids(
+    *,
+    client: Any,
+    account_id: str,
+    reply_ids: list[str],
+) -> dict[str, Any] | None:
+    wanted = [str(item).strip() for item in reply_ids if str(item or "").strip()]
+    if not wanted:
+        return None
+    variants = sorted({v for item in wanted for v in (item, item.strip("<>"), f"<{item.strip('<>')}>")})
+    parents = _rows(
+        client.table("communication_messages")
+        .select("id")
+        .eq("account_id", account_id)
+        .in_("internet_message_id", variants)
+        .execute()
+    )
+    parent_ids = [str(row["id"]) for row in parents if row.get("id")]
+    if not parent_ids:
+        return None
+    links = _rows(
+        client.table("case_messages")
+        .select("case_id")
+        .in_("message_id", parent_ids)
+        .execute()
+    )
+    case_ids = list(dict.fromkeys(str(row["case_id"]) for row in links if row.get("case_id")))
+    if not case_ids:
+        return None
+    return _first_row(
+        client.table("intelligent_cases")
+        .select("*")
+        .in_("id", case_ids)
+        .in_("status", _OPEN_STATUSES)
+        .order("last_activity_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+
+
+def message_reply_ids(message: dict[str, Any]) -> list[str]:
+    ids: list[str] = []
+    if message.get("in_reply_to"):
+        ids.append(str(message["in_reply_to"]))
+    refs = message.get("references_header") or []
+    if isinstance(refs, str):
+        refs = refs.split()
+    ids.extend(str(item) for item in refs if item)
+    return ids
 
 
 def _upsert_participant(
@@ -539,6 +631,7 @@ def process_message(
     workspace_id: str,
     account_id: str,
     message: dict[str, Any],
+    triage_category: str | None = None,
 ) -> tuple[str, str]:
     message_id = str(message["id"])
     received_at = _to_iso(message.get("received_at"))
@@ -579,6 +672,9 @@ def process_message(
         event_key=event_key,
         received_at=received_at,
         window_days=event[1] if event else 7,
+        reply_ids=message_reply_ids(message),
+        sender_email=sender_email,
+        evidence_text=text,
     )
 
     created = existing_case is None
@@ -703,7 +799,11 @@ def process_message(
             ),
         }
 
-        if direction == "outbound":
+        # P0.2: un mensaje informativo vinculado (recibo, cancelación, aviso)
+        # es evidencia; no cambia de quién se espera la acción.
+        if triage_category in _INFORMATIVE_TRIAGE:
+            pass
+        elif direction == "outbound":
             updates["waiting_on"] = "external"
         elif direction == "inbound":
             updates["waiting_on"] = "internal"
