@@ -179,3 +179,73 @@ def test_c1_reprocess_keeps_single_link_and_new_message_still_creates_case():
     assert (cid2, status2) == (cid, "already_linked")
     assert len(c.t["intelligent_cases"]) == n_cases == 1
     assert [r["case_id"] for r in c.t["case_messages"]] == [cid] and n_links == 1
+
+
+def test_tampered_in_memory_account_id_is_rejected():
+    # Fila persistida de A1; el objeto en memoria dice A2 y se procesa como A2.
+    own_a2 = _case("case-a2", WA, A2, thread="thr-t")
+    persisted = _msg("m-tamper", A1, thread="thr-t")
+    tampered = {**persisted, "account_id": A2}
+    c = FakeClient(cases=[own_a2], msgs=[persisted])
+    cid, status = ce.process_message(client=c, workspace_id=WA, account_id=A2, message=tampered)
+    assert (cid, status) == ("", "rejected")
+    assert c.inserts == [] and len(c.t["intelligent_cases"]) == 1 and c.t["case_messages"] == []
+
+
+def test_message_row_missing_is_rejected():
+    m = _msg("m-ghost", A1)
+    c = FakeClient(msgs=[])
+    assert ce.process_message(client=c, workspace_id=WA, account_id=A1, message=m) == ("", "rejected")
+    assert c.inserts == []
+
+
+def test_existing_link_to_case_in_other_workspace_is_rejected_without_leaking_id():
+    foreign = _case("case-foreign-b", WB, B1)
+    m = _msg("m-xlink", A1)
+    c = FakeClient(cases=[foreign], msgs=[m],
+                   links=[{"case_id": "case-foreign-b", "message_id": "m-xlink"}])
+    cid, status = ce.process_message(client=c, workspace_id=WA, account_id=A1, message=m)
+    assert (cid, status) == ("", "rejected")
+    assert "case-foreign-b" not in cid
+    assert c.inserts == [] and len(c.t["intelligent_cases"]) == 1 and len(c.t["case_messages"]) == 1
+
+
+class _Boom(FakeClient):
+    def __init__(self, fail_table, **kw):
+        super().__init__(**kw)
+        self.fail_table = fail_table
+
+    def table(self, name):
+        if name == self.fail_table:
+            raise RuntimeError("lookup down")
+        return super().table(name)
+
+
+@pytest.mark.parametrize("fail_table", ["communication_messages", "communication_accounts", "case_messages"])
+def test_lookup_error_fails_closed(fail_table):
+    m = _msg("m-err", A1)
+    c = _Boom(fail_table, msgs=[m])
+    assert ce.process_message(client=c, workspace_id=WA, account_id=A1, message=m) == ("", "rejected")
+    assert c.inserts == []
+
+
+def test_linked_case_lookup_error_fails_closed():
+    m = _msg("m-err2", A1)
+    c = _Boom("intelligent_cases", msgs=[m], links=[{"case_id": "x", "message_id": "m-err2"}])
+    assert ce.process_message(client=c, workspace_id=WA, account_id=A1, message=m) == ("", "rejected")
+    assert c.inserts == []
+
+
+@pytest.mark.parametrize("ws,acc", [("", A1), (None, A1), (WA, ""), (WA, None)])
+def test_empty_context_is_rejected(ws, acc):
+    m = {**_msg("m-empty", None)}
+    c = FakeClient(msgs=[m])  # fila con account_id None
+    assert ce.process_message(client=c, workspace_id=ws, account_id=acc, message=m) == ("", "rejected")
+    assert c.inserts == []
+
+
+def test_linked_case_missing_is_rejected():
+    m = _msg("m-dangling", A1)
+    c = FakeClient(msgs=[m], links=[{"case_id": "gone", "message_id": "m-dangling"}])
+    assert ce.process_message(client=c, workspace_id=WA, account_id=A1, message=m) == ("", "rejected")
+    assert c.inserts == []

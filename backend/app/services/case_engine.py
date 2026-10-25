@@ -655,6 +655,32 @@ def _scope_guard(
     account_id: str,
     message: dict[str, Any],
 ) -> tuple[bool, str | None]:
+    """Envoltura fail-closed: cualquier error de consulta equivale a rechazo."""
+    if not account_id or not workspace_id or not message.get("id"):
+        logger.warning("process_message rechazado: contexto incompleto")
+        return False, None
+    try:
+        return _scope_guard_checks(
+            client=client,
+            workspace_id=str(workspace_id),
+            account_id=str(account_id),
+            message=message,
+        )
+    except Exception as error:  # noqa: BLE001 - fail closed
+        logger.warning(
+            "process_message rechazado: error al verificar alcance (%s)",
+            type(error).__name__,
+        )
+        return False, None
+
+
+def _scope_guard_checks(
+    *,
+    client: Any,
+    workspace_id: str,
+    account_id: str,
+    message: dict[str, Any],
+) -> tuple[bool, str | None]:
     """P0 #195: defensa en profundidad antes de crear o vincular casos.
 
     Devuelve (permitido, case_id_existente). Rechaza si el mensaje no es de la
@@ -663,13 +689,12 @@ def _scope_guard(
     antes de crear ningún caso.
     """
     message_id = str(message["id"])
-    msg_account = message.get("account_id")
-    if msg_account is None:
-        row = _first_row(
-            client.table("communication_messages")
-            .select("account_id").eq("id", message_id).limit(1).execute()
-        )
-        msg_account = row.get("account_id") if row else None
+    # Nunca se acepta el valor en memoria como prueba: se lee la fila persistida.
+    row = _first_row(
+        client.table("communication_messages")
+        .select("id,account_id").eq("id", message_id).limit(1).execute()
+    )
+    msg_account = row.get("account_id") if row else None
     if str(msg_account or "") != str(account_id):
         logger.warning(
             "process_message rechazado: el mensaje %s no pertenece a la cuenta indicada",
@@ -691,6 +716,16 @@ def _scope_guard(
         .select("case_id").eq("message_id", message_id).limit(1).execute()
     )
     if link:
+        linked = _first_row(
+            client.table("intelligent_cases")
+            .select("id,workspace_id").eq("id", str(link["case_id"])).limit(1).execute()
+        )
+        if not linked or str(linked.get("workspace_id") or "") != str(workspace_id):
+            logger.warning(
+                "process_message rechazado: el mensaje %s ya está vinculado a un caso fuera del workspace autorizado",
+                message_id,
+            )
+            return False, None
         return True, str(link["case_id"])
     return True, None
 
