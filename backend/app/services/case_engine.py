@@ -4,6 +4,7 @@ import os
 import re
 from datetime import datetime, timezone
 from email.utils import getaddresses
+import logging
 from typing import Any
 
 from fastapi import HTTPException
@@ -644,6 +645,55 @@ def _update_learning(
             },
         )
 
+logger = logging.getLogger(__name__)
+
+
+def _scope_guard(
+    *,
+    client: Any,
+    workspace_id: str,
+    account_id: str,
+    message: dict[str, Any],
+) -> tuple[bool, str | None]:
+    """P0 #195: defensa en profundidad antes de crear o vincular casos.
+
+    Devuelve (permitido, case_id_existente). Rechaza si el mensaje no es de la
+    cuenta indicada o la cuenta no pertenece al workspace indicado. Si el
+    mensaje ya tiene vínculo en case_messages devuelve ese case_id para salir
+    antes de crear ningún caso.
+    """
+    message_id = str(message["id"])
+    msg_account = message.get("account_id")
+    if msg_account is None:
+        row = _first_row(
+            client.table("communication_messages")
+            .select("account_id").eq("id", message_id).limit(1).execute()
+        )
+        msg_account = row.get("account_id") if row else None
+    if str(msg_account or "") != str(account_id):
+        logger.warning(
+            "process_message rechazado: el mensaje %s no pertenece a la cuenta indicada",
+            message_id,
+        )
+        return False, None
+    account = _first_row(
+        client.table("communication_accounts")
+        .select("id,workspace_id").eq("id", str(account_id)).limit(1).execute()
+    )
+    if not account or str(account.get("workspace_id") or "") != str(workspace_id):
+        logger.warning(
+            "process_message rechazado: la cuenta del mensaje %s no pertenece al workspace indicado",
+            message_id,
+        )
+        return False, None
+    link = _first_row(
+        client.table("case_messages")
+        .select("case_id").eq("message_id", message_id).limit(1).execute()
+    )
+    if link:
+        return True, str(link["case_id"])
+    return True, None
+
 
 def process_message(
     *,
@@ -654,6 +704,17 @@ def process_message(
     triage_category: str | None = None,
 ) -> tuple[str, str]:
     message_id = str(message["id"])
+    allowed, linked_case_id = _scope_guard(
+        client=client,
+        workspace_id=workspace_id,
+        account_id=account_id,
+        message=message,
+    )
+    if not allowed:
+        return "", "rejected"
+    if linked_case_id:
+        # Ya vinculado: no se crea un caso huérfano ni un segundo vínculo.
+        return linked_case_id, "already_linked"
     received_at = _to_iso(message.get("received_at"))
     subject = strip_css_noise(str(message.get("subject") or "")) or "(Sin asunto)"
     body = str(message.get("body_text") or message.get("snippet") or "")
@@ -790,6 +851,13 @@ def process_message(
 
     else:
         case = existing_case
+        if str(case.get("workspace_id") or "") != str(workspace_id):
+            logger.warning(
+                "process_message rechazado: el caso %s no pertenece al workspace del mensaje %s",
+                case.get("id"),
+                message_id,
+            )
+            return "", "rejected"
         reminder_count = int(
             case.get("reminder_count") or 0
         ) + (1 if is_reminder else 0)
