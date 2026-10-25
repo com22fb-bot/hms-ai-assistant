@@ -58,3 +58,39 @@ Integración: igual que `integracion_informe.md` (initdb en /tmp, setup_db.sh, s
 Clúster local, base `p0obs`, PostgREST, gateway y secretos efímeros eliminados. Logs en `cerebro/.../integracion/logs/obs_*`.
 
 PR #196 en draft, sin merge ni despliegue.
+
+---
+
+# Ronda 2 — OBS-01 (NO CUMPLE de ASTRA sobre 8963784)
+
+Fecha: 25-oct-2026 (CDMX, UTC-6). Fix: `01ba854069734c3b414ec5b6672eda8d8286f6d2` (sobre `804e4d1`). OBS-02 ya CUMPLE y se mantiene.
+
+## Defectos señalados y corrección
+1. `_scope_guard()` confiaba en `message.account_id` en memoria. Ahora siempre lee la fila persistida de `communication_messages` por id; rechaza si falta o si su `account_id` ≠ cuenta autorizada; y luego exige cuenta ∈ workspace.
+2. Vínculo existente: antes de `already_linked` se lee el caso vinculado y se exige `workspace_id` = workspace autorizado; si no existe o es ajeno → `("", "rejected")`, sin escrituras ni exposición del id ajeno.
+
+## Autorrevisión adversarial de process_message / _scope_guard
+| Entrada / fallo | ¿Falsificable o falla abierta? | Resultado |
+|---|---|---|
+| `message.account_id` en memoria | Sí (defecto 1) | Corregido: solo cuenta la fila en BD |
+| Fila del mensaje inexistente | Pasaba si memoria coincidía | Corregido: rechazo |
+| `account_id` / `workspace_id` vacíos o None | No (la cuenta no existía → rechazo), endurecido | Rechazo explícito previo a consultas |
+| `message.id` ausente | KeyError antes de escribir | Rechazo explícito en guard |
+| Cuenta fuera del workspace | No (ya en r1) | Se mantiene |
+| Vínculo existente a caso ajeno / caso inexistente | Sí (defecto 2) | Corregido: rechazo sin id |
+| Error/excepción en cualquier consulta del guard | Excepción (sin escrituras), no explícito | Fail-closed: `rejected` + warning |
+| Caso destino de `_find_case_for_message` | No (r1 comprueba workspace) | Se mantiene |
+| thread_id / In-Reply-To / References en memoria | Solo guían la búsqueda, que filtra por cuenta/workspace ya validados; escrituras usan el id validado | Sin bypass |
+| Escrituras finales (`communication_messages` update, participantes) | Por `message_id` / `case_id` ya validados | Sin bypass |
+| Carrera: otro proceso vincula entre guard e insert | Índice único rechaza el 2.º vínculo; podría quedar un caso huérfano solo en carrera concurrente | Limitación documentada (requiere transacción/BD, fuera de OBS-01) |
+
+## Pruebas nuevas (12 casos)
+manipulación de `account_id` en memoria; fila inexistente; vínculo a caso de otro workspace (sin id ajeno, sin escrituras); vínculo a caso inexistente; error de consulta en `communication_messages`, `communication_accounts`, `case_messages`, `intelligent_cases`; contexto vacío/None (4). Todas verifican retorno y 0 inserciones.
+
+## Resultados
+- `tests/test_p0_write_paths_isolation.py`: en 8963784 → 8 failed, 12 passed (los 4 de contexto vacío ya pasaban: endurecimiento) · en 01ba854069734c3b414ec5b6672eda8d8286f6d2 → 20 passed.
+- Regresión P0: 34 passed, 3 xfailed (sin cambio).
+- Backend completo (`FRONTEND_ORIGINS=https://app.donexto.com`): 801 passed, 1 skipped, 7 xfailed, 0 failed.
+- Integración local no repetida en esta ronda (el cambio solo endurece el guard; a3/b3/c1 cubiertos por unitarias).
+
+Sin migraciones, merge ni despliegue; PR #196 en draft.
