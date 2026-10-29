@@ -33,5 +33,5 @@ jobs:
           aws s3api head-object --bucket donexto-backups --key "$K" --endpoint-url "$R2_ENDPOINT" --query '{size:ContentLength}'
           aws s3api list-objects-v2 --bucket donexto-backups --prefix logs/ --delimiter / --endpoint-url "$R2_ENDPOINT" --query 'CommonPrefixes[].Prefix' --output text | tr '\t' '\n' > "$RUNNER_TEMP/p.txt" || true
           python3 -c 'import sys,datetime;sys.path.insert(0,"scripts");from log_journal import expired_prefixes as e;print("\n".join(e(open(sys.argv[1]).read().split(),datetime.date.today().isoformat())))' "$RUNNER_TEMP/p.txt" | while read -r P; do
-            [ -n "$P" ] && aws s3 rm "s3://donexto-backups/$P" --recursive --endpoint-url "$R2_ENDPOINT" --only-show-errors && echo "retención: borrado $P"
+            if [ -n "$P" ]; then aws s3 rm "s3://donexto-backups/$P" --recursive --endpoint-url "$R2_ENDPOINT" --only-show-errors; echo "retención: borrado $P"; fi
           done

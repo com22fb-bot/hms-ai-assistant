@@ -28,7 +28,7 @@ def useful(sev: str, msg: str) -> bool:
     return sev in ("error", "err", "warn", "warning", "fatal", "critical") or bool(KEY_RE.search(msg or ""))
 
 def _post(url, body, headers):
-    req = urllib.request.Request(url, json.dumps(body).encode(), {**headers, "Content-Type": "application/json"})
+    req = urllib.request.Request(url, json.dumps(body).encode(), {**headers, "Content-Type": "application/json", "User-Agent": "donexto-log-journal"})
     with urllib.request.urlopen(req, timeout=60) as r:
         return json.load(r)
 
@@ -106,7 +106,7 @@ def main():
         try:
             e, n = fn()
         except Exception as ex:
-            e, n = [], f"error {type(ex).__name__}"
+            e, n = [], f"error {type(ex).__name__} {getattr(ex, 'code', '')}".strip()
         entries += e; notes[name] = n
     entries.sort(key=lambda x: x.get("ts", ""))
     out = os.environ.get("OUT", "journal.jsonl.gz")
