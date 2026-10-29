@@ -32,6 +32,7 @@ import { ContactInbox } from "@/app/admin/ContactInbox";
 import AttentionPanel from "@/app/admin/AttentionPanel";
 import { ExpensesPanel } from "@/app/admin/ExpensesPanel";
 import { PerformancePanel } from "@/app/admin/PerformancePanel";
+import { ToolsAgenda } from "@/app/admin/ToolsAgenda";
 import { HealthBar } from "@/app/admin/HealthBar";
 import { InfoPanel } from "@/app/admin/InfoPanel";
 import { EventsPanel } from "@/app/admin/EventsPanel";
@@ -1011,7 +1012,7 @@ function AdminPage() {
           </section>
         )}
 
-        {!forbidden && tab === "performance" && <PerformancePanel />}
+        {!forbidden && tab === "performance" && <><ToolsAgenda /><PerformancePanel /></>}
         {!forbidden && tab === "expenses" && <ExpensesPanel />}
         {!forbidden && tab === "info" && <InfoPanel />}
         {!forbidden && tab === "events" && <EventsPanel />}

@@ -56,6 +56,27 @@ jobs:
           aws s3api head-object --bucket donexto-backups --key "db/$F" --endpoint-url "$R2_ENDPOINT" --query '{size:ContentLength,sha256:Metadata.sha256}'
           echo "local sha256 $SHA size $(stat -c%s "$RUNNER_TEMP/$F")"
           rm -f "$RUNNER_TEMP/$F"
+      - name: Checkout (checklist agenda)
+        if: success()
+        uses: actions/checkout@v4
+        with: {sparse-checkout: "scripts\nbackend/app"}
+      - name: Checklist · agenda de herramientas y pagos por vencer
+        id: agenda
+        if: success()
+        continue-on-error: true
+        run: python3 scripts/agenda_check.py | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Alerta agenda amarilla o roja a Slack
+        if: success() && (steps.agenda.outputs.status == 'medium' || steps.agenda.outputs.status == 'critical')
+        continue-on-error: true
+        env:
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SUMMARY: ${{ steps.agenda.outputs.summary }}
+          STATUS: ${{ steps.agenda.outputs.status }}
+        run: |
+          [ -n "$SLACK_BOT_TOKEN" ] || exit 0
+          E=$([ "$STATUS" = critical ] && echo ':red_circle:' || echo ':large_yellow_circle:')
+          P=$(python3 -c 'import json,sys;print(json.dumps({"channel":"#alertas","text":sys.argv[1]}))' "$E *Donexto · agenda de herramientas*: $SUMMARY · https://www.donexto.com/admin")
+          curl -s -m 15 -X POST https://slack.com/api/chat.postMessage -H "Authorization: Bearer $SLACK_BOT_TOKEN" -H 'Content-Type: application/json; charset=utf-8' -d "$P" | python3 -c 'import json,sys;print("slack ok:",json.load(sys.stdin).get("ok"))'
       - name: Alerta Slack #alertas
         if: failure()
         continue-on-error: true
