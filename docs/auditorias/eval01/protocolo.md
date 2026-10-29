@@ -5,7 +5,7 @@ Fecha de fijación: 29-oct-2026, antes de cualquier importación. Responde a OBS
 ## 1. Cuenta y periodo
 - Usuario independiente de Donexto: **hsalcidor@yahoo.com** (no hmcelinfo, para no desactivar su Gmail).
 - Buzón: Yahoo IMAP, conectado con contraseña de aplicación.
-- Periodo: **últimos 90 días** desde el inicio de la importación (se reportan fechas exactas inicio/fin en UTC y CDMX).
+- Periodo: **últimos 180 días** desde el inicio de la importación (se reportan fechas exactas inicio/fin en UTC y CDMX). Excepción única autorizada por Héctor el 29-oct-2026; el límite general del plan (mensual/prueba 90, anual 183) no cambia.
 - BRAIN_V1_ENABLED permanece `false`. IMPORT_PUSH_NOTIFICATIONS_ENABLED permanece `false`.
 
 ## 2. Conteos a reportar
@@ -40,3 +40,17 @@ No se declara aprobado por solo terminar la importación sin errores.
 
 ## 8. Evidencia de 0 push
 - Logs de Railway del periodo con la línea `guided_import push suppressed` (guided_import_job_service.py) y 0 envíos push registrados para el usuario; confirmación de Héctor de no haber recibido notificaciones.
+
+## 9. Ventana de 180 días sin cambiar el plan (override puntual)
+`history_days_for_workspace` (account_lifecycle.py) consulta primero `admin_settings` con key `history_days_override:<workspace_id>`. Si existe y no ha expirado, usa esos días y deja en log `history_days override applied: workspace=… days=… reason=…`. Al expirar vuelve sola al plan. Pruebas: `backend/tests/test_history_override.py`.
+
+Preparado, **no ejecutado** hasta que la cuenta esté conectada:
+1. Héctor entra con hsalcidor@yahoo.com y conecta Yahoo; se obtiene su `workspace_id`.
+2. Insertar (service role), con expiración de 48 h:
+   ```sql
+   insert into public.admin_settings(key, value) values (
+     'history_days_override:<workspace_id>',
+     '{"days":180,"expires_at":"<ahora+48h ISO UTC>","reason":"EVAL-01","authorized_by":"Héctor 29-oct-2026"}');
+   ```
+3. Lanzar `/import/start` (modo initial) desde la app; verificar `history_days=180` en el snapshot del job y la línea de log.
+4. Al terminar, borrar la fila (`delete from public.admin_settings where key='history_days_override:<workspace_id>'`) y registrarlo en el informe.

@@ -86,12 +86,49 @@ def _rows(response: Any) -> list[dict[str, Any]]:
     return []
 
 
+HISTORY_OVERRIDE_PREFIX = "history_days_override:"
+
+
+def _history_override_days(client: Any, workspace_id: str) -> int | None:
+    """Override puntual registrado en admin_settings (no cambia el plan general).
+
+    key = 'history_days_override:<workspace_id>', value = JSON
+    {"days": 180, "expires_at": ISO8601, "reason": "...", "authorized_by": "..."}.
+    Solo se aplica si no ha expirado; se registra en log cada uso.
+    """
+    import json
+
+    try:
+        rows = _rows(
+            client.table("admin_settings").select("value")
+            .eq("key", f"{HISTORY_OVERRIDE_PREFIX}{workspace_id}").limit(1).execute()
+        )
+        if not rows:
+            return None
+        data = json.loads(rows[0].get("value") or "{}")
+        days = int(data.get("days") or 0)
+        expires = datetime.fromisoformat(str(data.get("expires_at")).replace("Z", "+00:00"))
+        if days <= 0 or expires <= datetime.now(timezone.utc):
+            return None
+        logger.warning(
+            "history_days override applied: workspace=%s days=%d reason=%s",
+            workspace_id, days, data.get("reason"),
+        )
+        return days
+    except Exception:
+        logger.info("history override lookup failed; ignoring", exc_info=True)
+        return None
+
+
 def history_days_for_workspace(client: Any, workspace_id: str) -> int:
     """Días de historial para la importación inicial de un buzón.
 
     Cuentas protegidas (dueño/pruebas) descargan todo el historial (sin límite). Si no hay plan
     registrado, se usa la del plan mensual (90 días). Ante un error, 90 días.
     """
+    override = _history_override_days(client, workspace_id)
+    if override is not None:
+        return override
     try:
         members = _rows(
             client.table("workspace_members").select("profile_id").eq("workspace_id", workspace_id).execute()
