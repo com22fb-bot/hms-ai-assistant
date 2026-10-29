@@ -38,6 +38,13 @@ const SEVERITY_LABEL: Record<AttentionItem["severity"], string> = {
   info: "Decisión",
 };
 
+/** Semáforo de pagos a proveedores: rojo vencido, amarillo <= 7 días, verde con margen. */
+export const PAYMENT_LIGHT: Record<string, string> = {
+  critical: "🔴",
+  medium: "🟡",
+  low: "🟢",
+};
+
 const COMMERCIAL_LABELS: Array<[string, string, boolean?]> = [
   ["users", "Usuarios"],
   ["mailboxes_active", "Buzones conectados"],
@@ -111,7 +118,9 @@ export default function AttentionPanel() {
         <ul className="dx-admin__list" data-testid="attention-list">
           {data.items.map((item) => (
             <li key={item.id} data-severity={item.severity}>
-              <strong>[{SEVERITY_LABEL[item.severity] ?? item.severity}] {item.title}</strong>
+              <strong>
+                {item.category === "pagos" ? `${PAYMENT_LIGHT[item.severity] ?? "⚪"} ` : ""}
+                [{SEVERITY_LABEL[item.severity] ?? item.severity}] {item.title}</strong>
               <br />
               <span>{item.detail}</span>
               <br />

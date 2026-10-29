@@ -82,7 +82,7 @@ class CommercialMetricsTests(unittest.TestCase):
 class AttentionTests(unittest.TestCase):
     def test_healthy_system_only_owner_decisions(self):
         items = mod.attention_items(FakeClient(), now=NOW)
-        self.assertEqual({i["category"] for i in items}, {"decision_propietario"})
+        self.assertEqual({i["category"] for i in items} - {"pagos"}, {"decision_propietario"})
 
     def test_items_sorted_by_severity(self):
         c = FakeClient(
