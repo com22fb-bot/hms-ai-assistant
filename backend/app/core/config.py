@@ -164,6 +164,13 @@ class Settings:
         )
     )
 
+    import_push_notifications_enabled: bool = field(
+        default_factory=lambda: get_boolean_environment_variable(
+            "IMPORT_PUSH_NOTIFICATIONS_ENABLED",
+            False,
+        )
+    )
+
     google_scopes: list[str] = field(
         default_factory=lambda: [
             "openid",
