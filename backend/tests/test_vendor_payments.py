@@ -31,3 +31,11 @@ def test_plan_limits_hobby_and_unknown():
     assert lim["plan"] == "Hobby" and lim["cpu_vcpu"] == 48 and lim["memory_gb"] == 48
     assert lim["replicas"] == 6 and lim["log_days"] == 7 and lim["included_usd"] == 5
     assert vp.plan_limits("nope") == {}
+
+
+def test_cursor_registered_with_semaforo():
+    assert any(p["vendor"] == "Cursor" and p["amount_usd"] == 20.0 for p in PAID)
+    items = vendor_payment_items(datetime(2026, 10, 31, tzinfo=timezone.utc))
+    cur = [i for i in items if i["id"] == "pago:Cursor:2026-11-07"]
+    assert len(cur) == 1 and cur[0]["severity"] == "medium" and "~US$20.00 vence en 7" in cur[0]["title"]
+    assert [i for i in vendor_payment_items(datetime(2026, 10, 29, tzinfo=timezone.utc)) if i["id"] == "pago:Cursor:2026-11-07"][0]["severity"] == "low"

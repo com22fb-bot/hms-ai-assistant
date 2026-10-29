@@ -25,6 +25,14 @@ PAID: list[dict[str, Any]] = [
         "paid_on": "2026-10-29",
         "note": "Uso real del mes anterior US$1.85, cubierto por el crédito incluido.",
     },
+    {
+        "vendor": "Cursor",
+        "concept": "Plan Pro (incluye Grok Bot) · periodo 7-oct a 7-nov-2026",
+        "invoice": "",
+        "amount_usd": 20.00,
+        "paid_on": "2026-10-07",
+        "note": "Fecha de pago según registro del proyecto; confirmar recibo en cursor.com/dashboard.",
+    },
 ]
 
 UPCOMING: list[dict[str, Any]] = [
@@ -33,6 +41,13 @@ UPCOMING: list[dict[str, Any]] = [
         "concept": "Plan Hobby · periodo 15-nov a 15-dic-2026",
         "amount_usd": 5.00,
         "due_on": "2026-11-15",
+        "estimated": True,
+    },
+    {
+        "vendor": "Cursor",
+        "concept": "Plan Pro (incluye Grok Bot) · renovación mensual; fecha estimada por el pago del 7-oct, por confirmar",
+        "amount_usd": 20.00,
+        "due_on": "2026-11-07",
         "estimated": True,
     },
 ]
