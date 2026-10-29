@@ -434,3 +434,17 @@ def admin_update_fx(payload: FxIn) -> dict[str, Any]:
         on_conflict="key",
     ).execute()
     return {"usd_mxn": payload.usd_mxn}
+
+
+# --- Agenda de herramientas ----------------------------------------------------
+
+@router.get("/tools-agenda")
+def admin_tools_agenda() -> dict[str, Any]:
+    """Plan, límites, uso real (solo lectura), costo US$/TC/MXN y vencimientos por herramienta."""
+    _require_admin()
+    from app.services.tools_agenda import build_agenda
+    try:
+        perf = _cached("performance", _performance_payload)
+    except Exception:  # noqa: BLE001
+        perf = None
+    return build_agenda(datetime.now(timezone.utc).date(), perf)
