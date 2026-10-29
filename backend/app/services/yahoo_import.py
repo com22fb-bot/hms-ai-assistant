@@ -5,6 +5,9 @@ from __future__ import annotations
 from app.services.brain_v1 import brain_v1_enabled
 from app.services.import_categories import skip_message
 import email
+import logging
+import re
+import time
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any
@@ -89,7 +92,9 @@ def _open_mailbox_client(
 
 
 YAHOO_IMPORT_TIMEOUT = 120
-YAHOO_PAGE_SIZE = 25
+logger = logging.getLogger(__name__)
+YAHOO_PAGE_SIZE = 50
+YAHOO_FETCH_CHUNK = 20
 
 
 def _quoted_mailbox(name: str) -> str:
@@ -403,6 +408,42 @@ def _fetch_uid_message(
     return email.message_from_bytes(raw_bytes), flags_text
 
 
+_UID_RE = re.compile(rb"UID (\d+)")
+
+
+def _fetch_uid_batch(
+    client: Any,
+    uids: list[str],
+) -> dict[str, tuple[email.message.Message, str]]:
+    """Un solo UID FETCH para varios UIDs (BODY.PEEK: no marca leído, sin STORE).
+
+    Devuelve uid -> (mensaje, flags). Los UIDs ausentes se recuperan uno a uno
+    por quien llama.
+    """
+    out: dict[str, tuple[email.message.Message, str]] = {}
+    if not uids:
+        return out
+    status, fetched = client.uid("FETCH", ",".join(uids), PEEK_FULL_SPEC)
+    if status != "OK" or not fetched:
+        return out
+    last_uid: str | None = None
+    for part in fetched:
+        if isinstance(part, tuple) and len(part) >= 2:
+            meta = part[0] if isinstance(part[0], bytes) else str(part[0]).encode()
+            match = _UID_RE.search(meta)
+            payload = part[1]
+            if match and isinstance(payload, bytes) and payload:
+                last_uid = match.group(1).decode()
+                out[last_uid] = (email.message_from_bytes(payload), _flags_from_fetch(meta))
+            else:
+                last_uid = None
+        elif isinstance(part, bytes) and last_uid and last_uid in out:
+            # Algunos servidores mandan FLAGS después del literal.
+            parsed, flags = out[last_uid]
+            out[last_uid] = (parsed, flags + _flags_from_fetch(part))
+    return out
+
+
 HEADER_ONLY_SPEC = "(BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE LIST-ID LIST-UNSUBSCRIBE)])"
 
 
@@ -503,7 +544,17 @@ def sync_yahoo_page(
         mailbox_provider=mailbox_provider,
     )
     selected_folder: str | None = None
+    timing = {"imap_s": 0.0, "db_s": 0.0}
+    prefetched: dict[tuple[str, str], tuple[email.message.Message, str]] = {}
+    pending_rows: list[tuple[str, dict[str, Any]]] = []
+    thread_cache: dict[str, dict[str, Any]] = {}
     try:
+        batch_mode = not (exclude and brain_v1_enabled())
+        by_folder: dict[str, list[str]] = {}
+        for ref in page_refs:
+            folder, uid = decode_yahoo_ref(ref)
+            if f"{mailbox_provider}:{folder}:{uid}" not in existing_ids:
+                by_folder.setdefault(folder, []).append(uid)
         for ref in page_refs:
             folder, uid = decode_yahoo_ref(ref)
             external_message_id = f"{mailbox_provider}:{folder}:{uid}"
@@ -523,11 +574,36 @@ def sync_yahoo_page(
                     ):
                         skipped_excluded += 1
                         continue
-                parsed, flags_text = _fetch_uid_message(
-                    imap_client,
-                    uid,
-                    mailbox_provider,
-                )
+                if batch_mode and (folder, uid) not in prefetched:
+                    # Lote perezoso de hasta 20 UIDs (acota memoria con adjuntos grandes).
+                    pending = by_folder.get(folder, [])
+                    position = pending.index(uid) if uid in pending else -1
+                    chunk = pending[position : position + YAHOO_FETCH_CHUNK] if position >= 0 else []
+                    if chunk:
+                        t0 = time.monotonic()
+                        try:
+                            if selected_folder != folder:
+                                _select_folder(imap_client, folder, mailbox_provider)
+                                selected_folder = folder
+                            for got_uid, value in _fetch_uid_batch(imap_client, chunk).items():
+                                prefetched[(folder, got_uid)] = value
+                        except Exception:
+                            logger.warning("batch fetch failed; per-message fallback", exc_info=True)
+                        timing["imap_s"] += time.monotonic() - t0
+                cached = prefetched.pop((folder, uid), None)
+                if cached is not None:
+                    parsed, flags_text = cached
+                else:
+                    t0 = time.monotonic()
+                    if selected_folder != folder:
+                        _select_folder(imap_client, folder, mailbox_provider)
+                        selected_folder = folder
+                    parsed, flags_text = _fetch_uid_message(
+                        imap_client,
+                        uid,
+                        mailbox_provider,
+                    )
+                    timing["imap_s"] += time.monotonic() - t0
                 body_text, body_html, has_attachments = extract_rfc822_bodies(
                     parsed
                 )
@@ -568,22 +644,19 @@ def sync_yahoo_page(
                 direction = "outbound" if folder_role == "sent" else "inbound"
                 # HTML-only mail: store readable text, not the subject.
                 body_text, snippet = import_body(body_text, body_html, subject)
-                thread = _get_or_create_thread(
+                t_db = time.monotonic()
+                thread_key = _external_thread_id(parsed, external_message_id)
+                thread = thread_cache.get(thread_key) or _get_or_create_thread(
                     client=client_db,
                     account_id=account_id,
-                    external_thread_id=_external_thread_id(
-                        parsed,
-                        external_message_id,
-                    ),
+                    external_thread_id=thread_key,
                     subject=subject,
                     participants=participants,
                     last_message_at=received_at_iso or _to_iso(_utc_now()) or "",
                     provider=mailbox_provider,
                 )
-                insert_response = (
-                    client_db.table("communication_messages")
-                    .insert(
-                        {
+                thread_cache[thread_key] = thread
+                pending_rows.append((external_message_id, {
                             "thread_id": str(thread["id"]),
                             "account_id": account_id,
                             "provider": mailbox_provider,
@@ -618,22 +691,8 @@ def sync_yahoo_page(
                             ],
                             "case_processed": False,
                             "ai_processed": False,
-                        }
-                    )
-                    .execute()
-                )
-                created = getattr(insert_response, "data", None)
-                created_row = None
-                if isinstance(created, list) and created:
-                    created_row = created[0]
-                elif isinstance(created, dict):
-                    created_row = created
-                if not created_row:
-                    raise RuntimeError(
-                        "Supabase no confirmó la creación del mensaje Yahoo."
-                    )
-                inserted += 1
-                inserted_message_ids.append(str(created_row["id"]))
+                        }))
+                timing["db_s"] += time.monotonic() - t_db
             except Exception as error:
                 error_text = str(error).lower()
                 if (
@@ -657,6 +716,38 @@ def sync_yahoo_page(
         except Exception:
             pass
 
+    # Escritura por lote: un INSERT para la página; si falla, fila por fila.
+    if pending_rows:
+        t_db = time.monotonic()
+        try:
+            response = client_db.table("communication_messages").insert([row for _, row in pending_rows]).execute()
+            created = getattr(response, "data", None) or []
+            if not isinstance(created, list) or len(created) != len(pending_rows):
+                raise RuntimeError("Supabase no confirmó el lote de mensajes Yahoo.")
+            inserted += len(created)
+            inserted_message_ids.extend(str(item["id"]) for item in created)
+        except Exception:
+            for external_message_id, row in pending_rows:
+                try:
+                    response = client_db.table("communication_messages").insert(row).execute()
+                    created = getattr(response, "data", None)
+                    created_row = created[0] if isinstance(created, list) and created else (
+                        created if isinstance(created, dict) else None
+                    )
+                    if not created_row:
+                        raise RuntimeError("Supabase no confirmó la creación del mensaje Yahoo.")
+                    inserted += 1
+                    inserted_message_ids.append(str(created_row["id"]))
+                except Exception as error:
+                    error_text = str(error).lower()
+                    if "duplicate key" in error_text or "unique constraint" in error_text or "23505" in error_text:
+                        duplicates += 1
+                        continue
+                    errors += 1
+                    if len(error_details) < 20:
+                        error_details.append({"message_id": external_message_id, "error": str(error)})
+        timing["db_s"] += time.monotonic() - t_db
+
     completed_at = _utc_now()
     return {
         "status": "ok" if errors == 0 else "partial",
@@ -675,4 +766,5 @@ def sync_yahoo_page(
         "has_more": has_more,
         "started_at": _to_iso(started_at),
         "completed_at": _to_iso(completed_at),
+        "timing": {k: round(v, 3) for k, v in timing.items()},
     }

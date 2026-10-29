@@ -11,6 +11,7 @@ import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 
 import { DonextoMark } from "@/components/brand/DonextoMark";
 import { GuidedImportWizard } from "@/components/GuidedImportWizard";
+import { ImportStatusPanel } from "@/components/ImportStatusPanel";
 import { ConfirmEmailGate } from "@/components/auth/ConfirmEmailGate";
 import { LoginScreen } from "@/components/auth/LoginScreen";
 import { OAuthReturnNotice } from "@/components/auth/OAuthReturnNotice";
@@ -449,10 +450,8 @@ function Dashboard({
 
         setImportFlowStatus(current);
 
-        if (
-          current.needs_initial_import
-          || Boolean(current.active)
-        ) {
+        // Con una descarga en curso se queda en el panel: el estado va en ImportStatusPanel.
+        if (current.needs_initial_import && !current.active) {
           setWantsInitialImport(true);
         }
 
@@ -624,6 +623,15 @@ function Dashboard({
           </button>
         </div>
       ) : null}
+
+        {usesGuidedImport ? (
+          <ImportStatusPanel
+            onFinished={() => {
+              void loadDashboard();
+              window.dispatchEvent(new Event("hms:data-changed"));
+            }}
+          />
+        ) : null}
 
         {mailboxPickerOpen ? (
           <MailboxConnectModal

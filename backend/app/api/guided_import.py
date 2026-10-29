@@ -272,6 +272,14 @@ def import_start(payload: ImportStartRequest) -> dict[str, Any]:
     }
 
 
+@router.post("/cancel")
+def import_cancel() -> dict[str, Any]:
+    """Detener descarga: solo afecta la cuenta del usuario autenticado."""
+    from app.services.guided_import_job_service import cancel_guided_import
+
+    return cancel_guided_import(_mailbox_account())
+
+
 @router.get("/compare")
 def import_compare() -> dict[str, Any]:
     account = _mailbox_account()

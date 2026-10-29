@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import {
   AlertTriangle,
   BadgeCheck,
@@ -392,7 +391,10 @@ export function GuidedImportWizard({
           exclude: mode === "initial" && choice === "custom" ? exclude : [],
         }),
       });
-      await loadStatus();
+      // Directo al panel: el avance real se ve en ImportStatusPanel.
+      window.dispatchEvent(new Event("hms:import-started"));
+      onClose();
+      return;
     } catch (reason) {
       setError(
         readableError(
@@ -427,7 +429,7 @@ export function GuidedImportWizard({
         {loading ? (
           <div className="hms-logistics-loading">
             <LoaderCircle className="app-spin" size={38} />
-            <h2>{T("loadingTitle")}</h2>
+
             <p>
 {T("loadingBody")}
             </p>
@@ -447,14 +449,6 @@ export function GuidedImportWizard({
         && inventory ? (
           <>
             <div className="hms-import-hero">
-              <Image
-                src="/hms-import-robot.png"
-                alt={T("robotAlt")}
-                width={1536}
-                height={1024}
-                priority
-                sizes="(max-width: 760px) 100vw, 430px"
-              />
 
               <div>
                 <span className="hms-import-kicker">Donexto · Do Next To…</span>
@@ -694,17 +688,6 @@ export function GuidedImportWizard({
 {T("keepsRunning")}
               </p>
             </header>
-
-            <div className="hms-processing-robot" aria-hidden="true">
-              <Image
-                src="/hms-import-robot.png"
-                alt=""
-                width={1536}
-                height={1024}
-                priority
-                sizes="(max-width: 760px) 94vw, 760px"
-              />
-            </div>
 
             <div className="hms-progress-block">
               <div className="hms-progress-heading">
