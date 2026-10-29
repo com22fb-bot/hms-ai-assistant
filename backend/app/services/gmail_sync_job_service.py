@@ -593,6 +593,10 @@ def resume_incomplete_jobs() -> int:
 
         for job in jobs:
             job_id = str(job["id"])
+            # Nunca reanudar un trabajo cancelado ni uno de la importación guiada
+            # (tiene su propio worker y su propia reanudación).
+            if bool(job.get("cancel_requested")) or bool((job.get("metadata") or {}).get("guided_import")):
+                continue
 
             if job.get("status") == "running":
                 _update_job(

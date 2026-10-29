@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import queue
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -50,6 +51,21 @@ from app.core.config import settings
 
 ACTIVE_STATUSES = {"queued", "running", "interrupted"}
 _registry_lock = threading.Lock()
+_counter_lock = threading.Lock()
+
+
+class _Cancelled(Exception):
+    """El dueño pidió detener la importación."""
+
+
+def _is_cancelled(job: dict[str, Any] | None) -> bool:
+    return bool(job) and (
+        str(job.get("status")) == "cancelled" or bool(job.get("cancel_requested"))
+    )
+
+
+def _is_active(job: dict[str, Any] | None) -> bool:
+    return bool(job) and str(job.get("status")) in ACTIVE_STATUSES and not _is_cancelled(job)
 _running_jobs: set[str] = set()
 
 
@@ -173,7 +189,7 @@ def _active_guided_job(account_id: str) -> dict[str, Any] | None:
         (
             row
             for row in _guided_jobs(account_id)
-            if str(row.get("status")) in ACTIVE_STATUSES
+            if _is_active(row)
         ),
         None,
     )
@@ -263,8 +279,73 @@ def _start_thread(job_id: str) -> bool:
     return True
 
 
+def _bump(job_id: str, increments: dict[str, int], extra: Any = None) -> None:
+    """Suma contadores del job sin pisar los del otro hilo (descarga / identificación)."""
+    with _counter_lock:
+        current = _job(job_id)
+        values: dict[str, Any] = {
+            key: int(current.get(key) or 0) + int(value or 0) for key, value in increments.items()
+        }
+        if callable(extra):
+            values.update(extra(current))
+        values["heartbeat_at"] = _iso()
+        _update_job(job_id, values)
+
+
+def _classifier_worker(job_id: str, work: "queue.Queue[list[str] | None]", account_id: str, workspace_id: str) -> None:
+    """Identificación de casos en paralelo a la descarga (pipeline)."""
+    while True:
+        ids = work.get()
+        try:
+            if ids is None:
+                return
+            if _is_cancelled(_job(job_id)):
+                continue
+            t0 = time.monotonic()
+            apply_active_rules_to_unprocessed_messages(
+                account_id=account_id, workspace_id=workspace_id, limit=len(ids), message_ids=ids,
+            )
+            result = classify_pending_messages(
+                account_id=account_id, workspace_id=workspace_id, limit=len(ids), message_ids=ids,
+            )
+            match_watch_rules_for_account(account_id=account_id, workspace_id=workspace_id)
+            _notify_or_suppress(account_id=account_id, workspace_id=workspace_id, candidates=len(ids))
+            _bump(
+                job_id,
+                {
+                    "cases_processed": int(result.get("processed") or 0),
+                    "created_cases": int(result.get("created_cases") or 0),
+                    "linked_cases": int(result.get("linked_cases") or 0),
+                    "errors": int(result.get("errors") or 0),
+                },
+                extra=lambda current: {"metadata": _merge_classification(current, result)},
+            )
+            _import_logger.warning(
+                "guided_import timing phase=identify job=%s n=%d seconds=%.2f",
+                job_id[:8], len(ids), time.monotonic() - t0,
+            )
+        except Exception:
+            _import_logger.warning("guided_import identify batch failed job=%s", job_id[:8], exc_info=True)
+            try:
+                _bump(job_id, {"errors": len(ids or [])})
+            except Exception:
+                pass
+        finally:
+            work.task_done()
+
+
 def _run_job(job_id: str) -> None:
+    work: "queue.Queue[list[str] | None]" = queue.Queue()
+    classifier: threading.Thread | None = None
+
+    def _finish_classifier(timeout: float | None = None) -> None:
+        if classifier is not None and classifier.is_alive():
+            work.put(None)
+            classifier.join(timeout)
+
     try:
+        if _is_cancelled(_job(job_id)):
+            raise _Cancelled()
         _update_job(
             job_id,
             {
@@ -277,6 +358,8 @@ def _run_job(job_id: str) -> None:
 
         while True:
             job = _job(job_id)
+            if _is_cancelled(job):
+                raise _Cancelled()
 
             from app.api.auth import (
                 get_google_credentials_for_account,
@@ -287,6 +370,15 @@ def _run_job(job_id: str) -> None:
             account = _storage().get_account(account_id)
             if not account:
                 raise RuntimeError("La cuenta de importación ya no existe.")
+            if classifier is None:
+                classifier = threading.Thread(
+                    target=_classifier_worker,
+                    args=(job_id, work, account_id, workspace_id),
+                    name=f"hms-guided-identify-{job_id[:8]}",
+                    daemon=True,
+                )
+                classifier.start()
+            page_t0 = time.monotonic()
 
             if is_icloud_provider(account):
                 metadata = dict(job.get("metadata") or {})
@@ -354,31 +446,31 @@ def _run_job(job_id: str) -> None:
                     exclude=list((job.get("metadata") or {}).get("exclude") or []),
                 )
 
-            current = _job(job_id)
-            _update_job(
+            def _page_values(current: dict[str, Any]) -> dict[str, Any]:
+                values: dict[str, Any] = {
+                    "next_page_token": sync_page.get("next_page_token"),
+                    "last_error": None,
+                }
+                if not _is_cancelled(current):
+                    values["status"] = "running"
+                return values
+
+            _bump(
                 job_id,
                 {
-                    "status": "running",
-                    "next_page_token": sync_page.get(
-                        "next_page_token"
-                    ),
-                    "pages_completed": int(
-                        current.get("pages_completed") or 0
-                    ) + 1,
-                    "messages_found": int(
-                        current.get("messages_found") or 0
-                    ) + int(sync_page.get("page_found") or 0),
-                    "messages_inserted": int(
-                        current.get("messages_inserted") or 0
-                    ) + int(sync_page.get("inserted") or 0),
-                    "duplicates": int(
-                        current.get("duplicates") or 0
-                    ) + int(sync_page.get("duplicates") or 0),
-                    "errors": int(current.get("errors") or 0)
-                    + int(sync_page.get("errors") or 0),
-                    "heartbeat_at": _iso(),
-                    "last_error": None,
+                    "pages_completed": 1,
+                    "messages_found": int(sync_page.get("page_found") or 0),
+                    "messages_inserted": int(sync_page.get("inserted") or 0),
+                    "duplicates": int(sync_page.get("duplicates") or 0),
+                    "errors": int(sync_page.get("errors") or 0),
                 },
+                extra=_page_values,
+            )
+            timing = sync_page.get("timing") or {}
+            _import_logger.warning(
+                "guided_import timing phase=download job=%s found=%s inserted=%s seconds=%.2f imap_s=%s db_s=%s",
+                job_id[:8], sync_page.get("page_found"), sync_page.get("inserted"),
+                time.monotonic() - page_t0, timing.get("imap_s"), timing.get("db_s"),
             )
 
             inserted_message_ids = [
@@ -387,38 +479,29 @@ def _run_job(job_id: str) -> None:
                 if value
             ]
             if inserted_message_ids:
-                apply_active_rules_to_unprocessed_messages(
-                    account_id=account_id,
-                    workspace_id=workspace_id,
-                    limit=len(inserted_message_ids),
-                    message_ids=inserted_message_ids,
-                )
-                result = classify_pending_messages(
-                    account_id=account_id,
-                    workspace_id=workspace_id,
-                    limit=len(inserted_message_ids),
-                    message_ids=inserted_message_ids,
-                )
-                match_watch_rules_for_account(account_id=account_id, workspace_id=workspace_id)
-                _notify_or_suppress(
-                    account_id=account_id,
-                    workspace_id=workspace_id,
-                    candidates=len(inserted_message_ids),
-                )
-                current = _job(job_id)
-                _update_job(
-                    job_id,
-                    {
-                        "cases_processed": int(current.get("cases_processed") or 0) + int(result.get("processed") or 0),
-                        "created_cases": int(current.get("created_cases") or 0) + int(result.get("created_cases") or 0),
-                        "linked_cases": int(current.get("linked_cases") or 0) + int(result.get("linked_cases") or 0),
-                        "errors": int(current.get("errors") or 0) + int(result.get("errors") or 0),
-                        "metadata": _merge_classification(current, result),
-                        "heartbeat_at": _iso(),
-                    },
-                )
+                work.put(inserted_message_ids)
 
             if not bool(sync_page.get("has_more")):
+                _finish_classifier()
+                if _is_cancelled(_job(job_id)):
+                    raise _Cancelled()
+                # Barrido final: lo descargado que quedó sin identificar (p. ej. tras un reinicio).
+                try:
+                    sweep = classify_pending_messages(
+                        account_id=account_id, workspace_id=workspace_id, limit=1000,
+                    )
+                    if int(sweep.get("processed") or 0):
+                        _bump(
+                            job_id,
+                            {
+                                "cases_processed": int(sweep.get("processed") or 0),
+                                "created_cases": int(sweep.get("created_cases") or 0),
+                                "linked_cases": int(sweep.get("linked_cases") or 0),
+                            },
+                            extra=lambda current: {"metadata": _merge_classification(current, sweep)},
+                        )
+                except Exception:
+                    _import_logger.warning("guided_import final sweep failed job=%s", job_id[:8], exc_info=True)
                 completed_at = _now()
                 _update_job(
                     job_id,
@@ -446,7 +529,15 @@ def _run_job(job_id: str) -> None:
 
             time.sleep(0.08)
 
+    except _Cancelled:
+        _finish_classifier(timeout=120)
+        _update_job(
+            job_id,
+            {"status": "cancelled", "completed_at": _iso(), "heartbeat_at": _iso()},
+        )
+        _import_logger.warning("guided_import cancelled job=%s", job_id[:8])
     except Exception as error:
+        _finish_classifier(timeout=120)
         try:
             current = _job(job_id)
             retries = int(current.get("retry_count") or 0) + 1
@@ -487,7 +578,7 @@ def _resume_if_needed(job: dict[str, Any] | None) -> None:
         return
 
     job_id = str(job["id"])
-    if str(job.get("status")) in ACTIVE_STATUSES:
+    if _is_active(job):
         _start_thread(job_id)
 
 
@@ -500,7 +591,7 @@ def get_guided_import_status(
         (
             row
             for row in jobs
-            if str(row.get("status")) in ACTIVE_STATUSES
+            if _is_active(row)
         ),
         None,
     )
@@ -552,9 +643,45 @@ def get_guided_import_status(
         else 0
     )
 
+    found = int((job or {}).get("messages_found") or 0)
+    rate_per_min = 0.0
+    eta_seconds: int | None = None
+    started_raw = (job or {}).get("started_at")
+    if active and started_raw:
+        try:
+            started = datetime.fromisoformat(str(started_raw).replace("Z", "+00:00"))
+            elapsed = max((_now() - started).total_seconds(), 1.0)
+            rate_per_min = round(found * 60 / elapsed, 1)
+            if found > 0 and expected > found:
+                eta_seconds = int((expected - found) * elapsed / found)
+            elif expected and found >= expected:
+                eta_seconds = 0
+        except Exception:
+            pass
+
+    recent_cases: list[dict[str, Any]] = []
+    if job and (active or str(job.get("status")) in {"completed", "cancelled", "failed", "interrupted"}):
+        try:
+            recent_cases = _rows(
+                _storage().client.table("intelligent_cases")
+                .select("id,title,priority,created_at")
+                .eq("workspace_id", str(account["workspace_id"]))
+                .gte("created_at", str(job.get("created_at") or _iso()))
+                .order("created_at", desc=True)
+                .limit(8)
+                .execute()
+            )
+        except Exception:
+            recent_cases = []
+
     return {
         "status": "ok",
         "guided_import_enabled": _enabled(),
+        "job_status": (job or {}).get("status"),
+        "last_error": (job or {}).get("last_error"),
+        "heartbeat_at": (job or {}).get("heartbeat_at"),
+        "server_time": _iso(),
+        "recent_cases": recent_cases,
         "provider": str(account.get("provider") or "google"),
         "email": account.get("email"),
         "needs_initial_import": needs_initial,
@@ -580,6 +707,9 @@ def get_guided_import_status(
             ),
             "errors": int((job or {}).get("errors") or 0),
             "download_percent": download_percent,
+            "processed": found,
+            "rate_per_min": rate_per_min,
+            "eta_seconds": eta_seconds,
             "classification_percent": classification_percent,
             "categories": dict(
                 metadata.get("classification_totals") or {}
@@ -591,6 +721,23 @@ def get_guided_import_status(
             else "La cuenta está lista para descargar correo nuevo."
         ),
     }
+
+
+def cancel_guided_import(account: dict[str, Any]) -> dict[str, Any]:
+    """Detiene la importación guiada activa de esta cuenta (solo la del dueño)."""
+    account_id = str(account["id"])
+    stopped: list[str] = []
+    for row in _guided_jobs(account_id):
+        if str(row.get("status")) in ACTIVE_STATUSES and not _is_cancelled(row):
+            values: dict[str, Any] = {"cancel_requested": True, "heartbeat_at": _iso()}
+            with _registry_lock:
+                running_here = str(row["id"]) in _running_jobs
+            if not running_here:
+                # Sin worker vivo en este proceso: se cierra de inmediato.
+                values.update({"status": "cancelled", "completed_at": _iso()})
+            _update_job(str(row["id"]), values)
+            stopped.append(str(row["id"]))
+    return {"status": "ok", "cancelled_jobs": stopped}
 
 
 def start_guided_import(

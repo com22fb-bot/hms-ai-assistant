@@ -373,7 +373,7 @@ export function AttentionHome({
           <div>
             <strong>No hay clasificación almacenada aún</strong>
             <span>
-              {error} Completa Descargar y clasificar para ver lo que pide
+              {error} Completa «Descargar e identificar casos» para ver lo que pide
               acción. El buzón original no se modifica.
             </span>
           </div>
