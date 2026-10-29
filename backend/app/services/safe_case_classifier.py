@@ -4,7 +4,13 @@ from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
 
-from app.services.mail_direction import direction_from_labels, is_self_delivered
+from app.services.mail_direction import (
+    direction_from_labels,
+    is_self_delivered,
+    normalize_address,
+    own_address_set,
+)
+import re
 from app.services.classification_catalog import (
     identify_sender,
     is_marketing_local_part,
@@ -13,7 +19,46 @@ from app.services.classification_catalog import (
 from app.services.classification_catalog.matching import sender_email as _sender_email
 
 
-CLASSIFIER_VERSION = "logistica1-triage-v4"
+CLASSIFIER_VERSION = "logistica1-triage-v5"
+
+# P0.1 (issue #195): alertas de seguridad que REQUIEREN acción del usuario.
+# Se evalúan antes que cualquier regla informativa. Frases condicionales como
+# "si fuiste tú, no necesitas hacer nada" NO cuentan: solo la pregunta directa.
+SECURITY_ACTION_PATTERNS = tuple(
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"¿\s*fuiste\s+t[uú]\s*\?",
+        r"\bwas\s+(?:this|it)\s+you\s*\?",
+        r"\bconfirm(?:a|e|ar)?\s+(?:la\s+)?actividad\b",
+        r"\bconfirm(?:a|e|ar)?\s+que\s+fuiste\s+t[uú]\b",
+        r"\bconfirm\s+(?:the\s+)?activity\b",
+        r"\bconfirm\s+it\s+was\s+you\b",
+        r"\bactividad\s+sospechosa\b",
+        r"\bsuspicious\s+(?:activity|sign[- ]?in|login)\b",
+        r"\binicio\s+de\s+sesi[oó]n\s+sospechoso\b",
+        r"\bintento\s+de\s+inicio\s+de\s+sesi[oó]n\s+(?:sospechoso|bloqueado)\b",
+        r"\bbloqueamos\s+un\s+intento\b",
+        r"\bblocked\s+(?:a\s+)?(?:suspicious\s+)?sign[- ]?in\s+attempt\b",
+        r"\bcritical\s+security\s+alert\b",
+        r"\balerta\s+de\s+seguridad\s+cr[ií]tica\b",
+    )
+)
+
+# P0.2 (issue #195): mensajes que, aun relacionados con un caso abierto, son
+# informativos (no crean acción pendiente ni cierran el caso por sí solos).
+INFORMATIONAL_UPDATE_TERMS = (
+    "pago recibido", "pago realizado", "pago exitoso", "pago aplicado",
+    "hemos recibido tu pago", "recibimos tu pago", "tu pago fue recibido",
+    "payment received", "payment successful", "thank you for your payment",
+    "pagada", "pagado", "saldo $0", "saldo: $0", "comprobante de pago", "recibo de pago",
+    "cancelación confirmada", "cancelacion confirmada", "fue cancelada", "fue cancelado",
+    "ha sido cancelada", "ha sido cancelado", "subscription cancelled", "subscription canceled",
+    "has been cancelled", "has been canceled",
+)
+
+
+def requires_security_action(text: str) -> bool:
+    return any(p.search(text) for p in SECURITY_ACTION_PATTERNS)
 
 PROMOTIONAL_MARKERS = (
     "newsletter",
@@ -246,11 +291,19 @@ def _classify_known_vertical(
             f"Campaña comercial de {name}.",
             False,
         )
-    if needs_action or existing_case is not None:
+    if needs_action:
         return (
             "action_required",
             85,
             f"Hay un pago o trámite pendiente con {name}.",
+            True,
+        )
+    if existing_case is not None:
+        # P0.2: el caso abierto determina la vinculación, no la clasificación.
+        return (
+            "notice",
+            70,
+            f"Aviso de {kind} vinculado a un caso abierto con {name}.",
             True,
         )
     return (
@@ -265,6 +318,7 @@ def classify_message(
     message: dict[str, Any],
     *,
     existing_case: dict[str, Any] | None,
+    own_addresses: set[str] | None = None,
 ) -> tuple[str, int, str, bool]:
     labels = {str(item).upper() for item in (message.get("labels") or [])}
     sender = str(message.get("sender") or "")
@@ -282,6 +336,37 @@ def classify_message(
         if existing_case is not None:
             return ("waiting_external", 75, "Respuesta enviada dentro de un caso existente.", True)
         return ("informational", 15, "Mensaje enviado sin un caso abierto previo.", False)
+
+    # H4 (issue #195): un mensaje de otra dirección propia confirmada (otro
+    # buzón conectado del mismo usuario) no es de un tercero externo.
+    own = own_address_set(own_addresses)
+    if own and normalize_address(sender) in own:
+        return (
+            "review",
+            30,
+            "Mensaje de una dirección propia del usuario (otro buzón conectado); no se trata como externo ni crea caso automáticamente.",
+            False,
+        )
+
+    # P0.1: una alerta que pide confirmar actividad o reporta actividad
+    # sospechosa requiere acción; ninguna regla informativa posterior la anula.
+    if requires_security_action(short_text):
+        return (
+            "action_required",
+            90,
+            "Alerta de seguridad que pide confirmar una actividad o reporta actividad sospechosa. Verifica desde el sitio oficial, no desde enlaces del correo.",
+            True,
+        )
+
+    # P0.2: un caso abierto relacionado no convierte un recibo pagado o una
+    # cancelación en acción pendiente. Se vincula como evidencia informativa.
+    if existing_case is not None and _text_has_any(short_text, INFORMATIONAL_UPDATE_TERMS):
+        return (
+            "informational",
+            40,
+            "Recibo o cancelación relacionado con un caso abierto; se agrega como evidencia sin crear acción pendiente ni cerrar el caso.",
+            True,
+        )
 
     known = _classify_known_vertical(sender, short_text, existing_case)
     if known is not None:
@@ -305,7 +390,25 @@ def classify_message(
     if _sender_is_automated(sender):
         return ("automated", 10, "Remitente automatizado sin una solicitud humana directa.", False)
     if existing_case is not None:
-        return ("action_required", 85, "Continuación de una conversación con un caso abierto.", True)
+        # P0.2: el mensaje sigue la clasificación por su propio contenido; el
+        # caso abierto solo determina la vinculación (existing_case viene de
+        # hilo, In-Reply-To/References o evidencia corroborada, nunca del
+        # asunto solo).
+        linked = _classify_by_content(message, subject, short_text, labels, self_delivered)
+        if linked[0] == "action_required":
+            return linked
+        return (linked[0], linked[1], "Continuación de un caso abierto: " + linked[2], True)
+    return _classify_by_content(message, subject, short_text, labels, self_delivered)
+
+
+def _classify_by_content(
+    message: dict[str, Any],
+    subject: str,
+    short_text: str,
+    labels: set[str],
+    self_delivered: bool,
+) -> tuple[str, int, str, bool]:
+    sender = str(message.get("sender") or "")
 
     score = 20
     reasons: list[str] = []
@@ -380,6 +483,8 @@ def classify_pending_messages(
     from app.services.case_engine import (
         _find_case_for_message,
         _rows,
+        _sender_parts,
+        message_reply_ids,
         normalize_subject,
         process_message,
     )
@@ -399,6 +504,23 @@ def classify_pending_messages(
     client = storage.client
     safe_limit = min(max(limit, 1), 500)
 
+    # H4 (issue #195): identidad propia a nivel usuario = correos de todos los
+    # buzones conectados del workspace. Sin esquema nuevo; si la consulta
+    # falla se usa solo el correo del buzón actual.
+    own_addresses = own_address_set([account.get("email")])
+    try:
+        own_addresses |= own_address_set(
+            row.get("email")
+            for row in _rows(
+                client.table("communication_accounts")
+                .select("email")
+                .eq("workspace_id", workspace_id)
+                .execute()
+            )
+        )
+    except Exception:
+        pass
+
     if message_ids is not None and not message_ids:
         messages: list[dict[str, Any]] = []
     else:
@@ -407,7 +529,8 @@ def classify_pending_messages(
             .select(
                 "id,thread_id,account_id,external_message_id,sender,"
                 "recipients,cc,bcc,subject,body_text,snippet,"
-                "received_at,labels,is_unread,direction,case_processed"
+                "received_at,labels,is_unread,direction,case_processed,"
+                "in_reply_to,references_header"
             )
             .eq("account_id", account_id)
             .eq("case_processed", False)
@@ -453,10 +576,14 @@ def classify_pending_messages(
                 ),
                 normalized_subject=normalized_subject,
                 workspace_id=workspace_id,
+                reply_ids=message_reply_ids(message),
+                sender_email=_sender_parts(message.get("sender"))[1],
+                evidence_text=f"{message.get('subject') or ''}\n{message.get('body_text') or message.get('snippet') or ''}",
             )
             category, score, reason, actionable = classify_message(
                 message,
                 existing_case=existing_case,
+                own_addresses=own_addresses,
             )
 
             if actionable:
@@ -465,6 +592,7 @@ def classify_pending_messages(
                     workspace_id=workspace_id,
                     account_id=account_id,
                     message=message,
+                    triage_category=category,
                 )
                 (
                     client.table("communication_messages")
