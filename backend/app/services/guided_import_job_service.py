@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 import threading
 import time
@@ -44,11 +45,31 @@ from app.services.safe_case_classifier import classify_pending_messages
 from app.services.message_rules_service import apply_active_rules_to_unprocessed_messages
 from app.services.message_watch_service import match_watch_rules_for_account
 from app.services.push_service import notify_actionable_messages
+from app.core.config import settings
 
 
 ACTIVE_STATUSES = {"queued", "running", "interrupted"}
 _registry_lock = threading.Lock()
 _running_jobs: set[str] = set()
+
+
+_import_logger = logging.getLogger(__name__)
+
+
+def _notify_or_suppress(*, account_id: str, workspace_id: str, candidates: int) -> None:
+    """Avisos push de la importación guiada, apagados salvo IMPORT_PUSH_NOTIFICATIONS_ENABLED=true."""
+    if not settings.import_push_notifications_enabled:
+        _import_logger.info(
+            "guided_import push suppressed: candidates=%d account=%s",
+            candidates,
+            account_id,
+        )
+        return
+    notify_actionable_messages(
+        account_id=account_id,
+        workspace_id=workspace_id,
+        limit=max(candidates, 1),
+    )
 
 
 def _enabled() -> bool:
@@ -379,10 +400,10 @@ def _run_job(job_id: str) -> None:
                     message_ids=inserted_message_ids,
                 )
                 match_watch_rules_for_account(account_id=account_id, workspace_id=workspace_id)
-                notify_actionable_messages(
+                _notify_or_suppress(
                     account_id=account_id,
                     workspace_id=workspace_id,
-                    limit=max(len(inserted_message_ids), 1),
+                    candidates=len(inserted_message_ids),
                 )
                 current = _job(job_id)
                 _update_job(
