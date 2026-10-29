@@ -14,8 +14,8 @@ const fake = (codes, runsCount = 0) => {
 const sleep = async () => {};
 
 test("diario lunes a sábado, diario+semanal domingo (09:00 UTC)", () => {
-  assert.deepEqual(workflowsFor(Date.parse("2026-10-22T09:00:00Z")), ["backup-daily.yml"]);
-  assert.deepEqual(workflowsFor(Date.parse("2026-10-25T09:00:00Z")), ["backup-daily.yml", "backup-weekly.yml"]);
+  assert.deepEqual(workflowsFor(Date.parse("2026-10-22T09:00:00Z")), ["backup-daily.yml", "log-journal.yml"]);
+  assert.deepEqual(workflowsFor(Date.parse("2026-10-25T09:00:00Z")), ["backup-daily.yml", "log-journal.yml", "backup-weekly.yml"]);
 });
 test("204 = una sola llamada y envía origen=cf-cron", async () => {
   const f = fake([204]); assert.equal(await dispatch(env, "backup-daily.yml", { ...f, sleep }), true);

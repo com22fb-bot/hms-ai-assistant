@@ -50,7 +50,7 @@ export async function dispatch(env, wf, { fetchImpl = fetch, sleep = (ms) => new
 
 export function workflowsFor(scheduledTime) {
   // 09:00 UTC = 03:00 CDMX todo el año (México sin horario de verano desde oct 2022).
-  const wfs = ["backup-daily.yml"];
+  const wfs = ["backup-daily.yml", "log-journal.yml"];
   if (new Date(scheduledTime).getUTCDay() === 0) wfs.push("backup-weekly.yml");
   return wfs;
 }
