@@ -15,6 +15,8 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Any, Literal
 
 import httpx
+
+from app.services.vendor_payments import plan_limits
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
@@ -123,6 +125,7 @@ def _railway() -> dict[str, Any]:
         values = series.get(name) or []
         return max(float(v["value"]) for v in values) if values else None
 
+    plan = plan_limits("railway")
     edges = ((data.get("deployments") or {}).get("edges")) or []
     deploy = edges[0]["node"] if edges else {}
     return {
@@ -131,10 +134,13 @@ def _railway() -> dict[str, Any]:
         "status": "ok",
         "cpu_vcpu": last("CPU_USAGE"),
         "cpu_vcpu_peak_24h": peak("CPU_USAGE"),
-        "cpu_limit": last("CPU_LIMIT"),
+        "cpu_limit": plan.get("cpu_vcpu") or last("CPU_LIMIT"),
+        "cpu_limit_reported": last("CPU_LIMIT"),
         "memory_gb": last("MEMORY_USAGE_GB"),
         "memory_gb_peak_24h": peak("MEMORY_USAGE_GB"),
-        "memory_limit_gb": last("MEMORY_LIMIT_GB"),
+        "memory_limit_gb": plan.get("memory_gb") or last("MEMORY_LIMIT_GB"),
+        "memory_limit_gb_reported": last("MEMORY_LIMIT_GB"),
+        "plan": plan,
         "cpu_series": [round(float(v["value"]), 4) for v in series.get("CPU_USAGE", [])][-48:],
         "memory_series": [round(float(v["value"]), 3) for v in series.get("MEMORY_USAGE_GB", [])][-48:],
         "last_deploy": {"status": deploy.get("status"), "created_at": deploy.get("createdAt"),

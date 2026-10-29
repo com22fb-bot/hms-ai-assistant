@@ -16,6 +16,7 @@ from fastapi import APIRouter
 
 from app.api.admin_ops import _require_admin
 from app.database.supabase import get_supabase_client
+from app.services.vendor_payments import PAID, vendor_payment_items
 
 logger = logging.getLogger(__name__)
 
@@ -188,7 +189,10 @@ def attention_items(client: Any, *, now: datetime | None = None) -> list[dict[st
             "source": "supabase.contact_messages",
         })
 
-    # 5) Decisiones del propietario registradas (fijas, explícitas, no métricas).
+    # 5) Pagos a proveedores por vencer (semáforo).
+    items.extend(vendor_payment_items(now))
+
+    # 6) Decisiones del propietario registradas (fijas, explícitas, no métricas).
     items.append({
         "id": "decision:stripe",
         "severity": "info",
@@ -225,4 +229,5 @@ def admin_attention() -> dict[str, Any]:
         "generated_at": now.isoformat(),
         "items": attention_items(client, now=now),
         "commercial": commercial_metrics(client),
+        "expenses": PAID,
     }
