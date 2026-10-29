@@ -83,3 +83,22 @@ def vendor_payment_items(now: datetime | None = None,
             "source": "vendor_payments",
         })
     return items
+
+
+# --- Planes contratados: fuente única de límites por plataforma -------------------
+# Al cambiar de plan, edita CURRENT_PLANS; /admin (Rendimiento) toma los límites de aquí.
+PLAN_LIMITS: dict[str, dict[str, dict[str, Any]]] = {
+    "railway": {
+        "Trial": {"cpu_vcpu": 2, "memory_gb": 1, "replicas": 1, "log_days": 3, "included_usd": 5},
+        "Hobby": {"cpu_vcpu": 48, "memory_gb": 48, "replicas": 6, "log_days": 7, "included_usd": 5},
+        "Pro": {"cpu_vcpu": 1000, "memory_gb": 1000, "replicas": 42, "log_days": 30, "included_usd": 20},
+    },
+}
+CURRENT_PLANS: dict[str, str] = {"railway": "Hobby"}
+
+
+def plan_limits(platform: str) -> dict[str, Any]:
+    """Plan vigente y sus límites; {} si la plataforma o el plan no están registrados."""
+    name = CURRENT_PLANS.get(platform)
+    limits = PLAN_LIMITS.get(platform, {}).get(name or "")
+    return {"plan": name, **limits} if limits else {}

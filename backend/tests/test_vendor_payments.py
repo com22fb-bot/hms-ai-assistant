@@ -23,3 +23,11 @@ def test_items_and_invalid():
 
 def test_railway_paid_registered():
     assert any(p["vendor"] == "Railway" and p["amount_usd"] == 5.0 for p in PAID)
+
+
+def test_plan_limits_hobby_and_unknown():
+    from app.services import vendor_payments as vp
+    lim = vp.plan_limits("railway")
+    assert lim["plan"] == "Hobby" and lim["cpu_vcpu"] == 48 and lim["memory_gb"] == 48
+    assert lim["replicas"] == 6 and lim["log_days"] == 7 and lim["included_usd"] == 5
+    assert vp.plan_limits("nope") == {}

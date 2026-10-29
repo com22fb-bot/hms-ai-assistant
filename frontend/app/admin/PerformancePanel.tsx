@@ -17,6 +17,7 @@ type Railway = (Missing | { available: true; status: "ok" }) & {
   memory_gb?: number | null;
   memory_gb_peak_24h?: number | null;
   memory_limit_gb?: number | null;
+  plan?: { plan?: string; replicas?: number; log_days?: number; included_usd?: number };
   cpu_series?: number[];
   memory_series?: number[];
   last_deploy?: { status?: string; created_at?: string };
@@ -223,6 +224,9 @@ export function PerformancePanel() {
           <h3>Servidor (Railway) <CheckBadge health={data.health} ids={["railway"]} /></h3>
           {rw.available ? (
             <>
+              {rw.plan?.plan ? (
+                <div className="dx-perf__row"><span>Plan</span><strong>{`${rw.plan.plan} · ${rw.plan.replicas} réplicas · logs ${rw.plan.log_days} días · US$${rw.plan.included_usd} incluidos`}</strong></div>
+              ) : null}
               <div className="dx-perf__row"><span>CPU</span><strong>{rw.cpu_vcpu == null ? "Sin datos" : `${rw.cpu_vcpu.toFixed(3)} / ${rw.cpu_limit ?? "?"} vCPU`}</strong></div>
               <Meter pct={cpuPct} />
               <Spark values={rw.cpu_series} />
