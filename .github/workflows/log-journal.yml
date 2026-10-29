@@ -1,0 +1,37 @@
+name: Donexto bitácora logs
+# Respaldo diario de logs útiles (errores/warnings + eventos clave), redactados, a R2 logs/AAAA-MM-DD/. Retención 90 días.
+on:
+  schedule: [{cron: "30 9 * * *"}]   # 03:30 CDMX (tras el respaldo de BD)
+  workflow_dispatch:
+    inputs:
+      day: {description: "Día UTC AAAA-MM-DD (vacío = ayer)", default: ""}
+      origen: {description: "manual o cf-cron", default: manual}
+permissions: {contents: read, actions: read}
+concurrency: {group: donexto-log-journal, cancel-in-progress: false}
+jobs:
+  journal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {sparse-checkout: scripts}
+      - name: Recolectar + redactar + subir + retención
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          R2_ENDPOINT: https://${{ secrets.CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+          DAY: ${{ inputs.day }}
+        run: |
+          set -euo pipefail
+          OUT="$RUNNER_TEMP/journal.jsonl.gz" python3 scripts/log_journal.py ${DAY:+"$DAY"} | tee "$RUNNER_TEMP/sum.json"
+          D=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["day"])' "$RUNNER_TEMP/sum.json")
+          K="logs/$D/journal-r${{ github.run_id }}-a${{ github.run_attempt }}.jsonl.gz"
+          aws s3 cp "$RUNNER_TEMP/journal.jsonl.gz" "s3://donexto-backups/$K" --endpoint-url "$R2_ENDPOINT" --only-show-errors
+          aws s3api head-object --bucket donexto-backups --key "$K" --endpoint-url "$R2_ENDPOINT" --query '{size:ContentLength}'
+          aws s3api list-objects-v2 --bucket donexto-backups --prefix logs/ --delimiter / --endpoint-url "$R2_ENDPOINT" --query 'CommonPrefixes[].Prefix' --output text | tr '\t' '\n' > "$RUNNER_TEMP/p.txt" || true
+          python3 -c 'import sys,datetime;sys.path.insert(0,"scripts");from log_journal import expired_prefixes as e;print("\n".join(e(open(sys.argv[1]).read().split(),datetime.date.today().isoformat())))' "$RUNNER_TEMP/p.txt" | while read -r P; do
+            [ -n "$P" ] && aws s3 rm "s3://donexto-backups/$P" --recursive --endpoint-url "$R2_ENDPOINT" --only-show-errors && echo "retención: borrado $P"
+          done
