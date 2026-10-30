@@ -548,16 +548,10 @@
   overscroll-behavior: contain;
 }
 
+/* OBS-UI-02: sin robot en carga ni en "listo" (solo indicador). */
 .hms-import-ready::before,
 .hms-logistics-loading::before {
-  content: "";
-  width: min(360px, 78vw);
-  height: clamp(110px, 19dvh, 180px);
-  display: block;
-  margin: 0 auto 12px;
-  border: 1px solid rgba(47, 220, 220, 0.22);
-  border-radius: 20px;
-  background: #082832 url('/hms-import-robot.png') center / contain no-repeat;
+  content: none;
 }
 
 @media (max-height: 800px) and (min-width: 701px) {
