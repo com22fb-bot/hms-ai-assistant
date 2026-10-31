@@ -1,0 +1,86 @@
+sssssssssssssssssssssssssssssssssssssssssssssssss..............sssssssss [  7%]
+ssssssss................................................................ [ 15%]
+.........xx......x...................................................... [ 23%]
+........................................................................ [ 31%]
+........................................................................ [ 39%]
+.................................................................... [ 46%]
+........................................................................ [ 54%]
+........................................................................ [ 62%]
+.................................................................. [ 70%]
+F....F.................................................................. [ 77%]
+........................................................................ [ 85%]
+........................................................xxxx............ [ 93%]
+.........................................................                [100%]
+=================================== FAILURES ===================================
+________ MicrosoftOAuthTests.test_callback_missing_code_redirects_home _________
+
+self = <test_microsoft_oauth.MicrosoftOAuthTests testMethod=test_callback_missing_code_redirects_home>
+
+    def test_callback_missing_code_redirects_home(self) -> None:
+        from fastapi.responses import RedirectResponse
+        from app.api.microsoft_mail import microsoft_callback
+    
+        response = microsoft_callback(
+            SimpleNamespace(query_params={})  # type: ignore[arg-type]
+        )
+        self.assertIsInstance(response, RedirectResponse)
+        self.assertEqual(response.status_code, 302)
+        location = str(response.headers.get("location") or response.url)
+>       self.assertIn("https://app.donexto.com", location)
+E       AssertionError: 'https://app.donexto.com' not found in 'http://127.0.0.1:3000?donexto=microsoft_error&reason=Microsoft+no+devolvi%C3%B3+un+c%C3%B3digo+de+autorizaci%C3%B3n.+Vuelve+a+Donexto+y+pulsa+Continuar.'
+
+tests/test_microsoft_oauth.py:186: AssertionError
+_________ MicrosoftOAuthTests.test_callback_used_state_redirects_home __________
+
+self = <test_microsoft_oauth.MicrosoftOAuthTests testMethod=test_callback_used_state_redirects_home>
+
+    def test_callback_used_state_redirects_home(self) -> None:
+        from fastapi.responses import RedirectResponse
+        from app.api.microsoft_mail import microsoft_callback
+        from app.services.oauth_storage import OAuthStateError
+    
+        request = SimpleNamespace(
+            query_params={
+                "state": "login.consumers.used",
+                "code": "auth-code",
+            }
+        )
+        with patch("app.api.microsoft_mail.oauth_storage") as storage:
+            storage.load_oauth_state.side_effect = OAuthStateError(
+                "El estado OAuth no existe, ya fue utilizado o no corresponde "
+                "al proveedor."
+            )
+            response = microsoft_callback(request)  # type: ignore[arg-type]
+    
+        self.assertIsInstance(response, RedirectResponse)
+        self.assertEqual(response.status_code, 302)
+        location = str(response.headers.get("location") or response.url)
+>       self.assertIn("https://app.donexto.com", location)
+E       AssertionError: 'https://app.donexto.com' not found in 'http://127.0.0.1:3000?donexto=microsoft_error&reason=El+inicio+de+sesi%C3%B3n+de+Microsoft+expir%C3%B3+o+esa+ventana+ya+se+us%C3%B3.+Vuelve+a+Donexto+y+pulsa+Continuar.+No+recargues+la+p%C3%A1gina+de+Microsoft.'
+
+tests/test_microsoft_oauth.py:211: AssertionError
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/anyio/pytest_plugin.py:14
+  /workspace/hms-ai-assistant/backend/.venv/lib/python3.13/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+tests/test_audit_phase1_regression.py:26
+  /workspace/hms-ai-assistant/backend/tests/test_audit_phase1_regression.py:26: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytestmark = pytest.mark.unit
+
+tests/test_p0_reply_ids_isolation.py:56
+  /workspace/hms-ai-assistant/backend/tests/test_p0_reply_ids_isolation.py:56: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytestmark = pytest.mark.unit
+
+tests/test_p0_write_paths_isolation.py:20
+  /workspace/hms-ai-assistant/backend/tests/test_p0_write_paths_isolation.py:20: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+    pytestmark = pytest.mark.unit
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_microsoft_oauth.py::MicrosoftOAuthTests::test_callback_missing_code_redirects_home
+FAILED tests/test_microsoft_oauth.py::MicrosoftOAuthTests::test_callback_used_state_redirects_home
+2 failed, 836 passed, 66 skipped, 7 xfailed, 4 warnings, 154 subtests passed in 5.98s

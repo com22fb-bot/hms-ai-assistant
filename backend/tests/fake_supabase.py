@@ -43,6 +43,35 @@ class _Query:
         want_null = str(val).lower() == "null"
         self.filters.append(lambda r: (r.get(col) is None) == want_null); return self
 
+    def gte(self, col, val):
+        self.filters.append(lambda r: r.get(col) is not None and str(r.get(col)) >= str(val)); return self
+
+    def lte(self, col, val):
+        self.filters.append(lambda r: r.get(col) is not None and str(r.get(col)) <= str(val)); return self
+
+    def lt(self, col, val):
+        self.filters.append(lambda r: r.get(col) is not None and str(r.get(col)) < str(val)); return self
+
+    def or_(self, expr):
+        """Subconjunto de PostgREST or=(a.op.v,b.op.v): is.null, eq, neq, lt, gt (valores entre comillas)."""
+        conds = []
+        for part in [p for p in expr.split(",") if p]:
+            col, op, val = part.split(".", 2)
+            val = val.strip('"')
+            if op == "is":
+                conds.append(lambda r, c=col, v=val: (r.get(c) is None) == (v.lower() == "null"))
+            elif op in ("eq", "neq", "lt", "gt"):
+                def f(r, c=col, o=op, v=val):
+                    x = r.get(c)
+                    if x is None:
+                        return False  # SQL: NULL op v no es verdadero
+                    x = str(x)
+                    return {"eq": x == v, "neq": x != v, "lt": x < v, "gt": x > v}[o]
+                conds.append(f)
+            else:
+                raise NotImplementedError(f"or_: operador {op}")
+        self.filters.append(lambda r: any(c(r) for c in conds)); return self
+
     def in_(self, col, vals):
         vals = {str(v) for v in vals}
         self.filters.append(lambda r: str(r.get(col)) in vals); return self
@@ -102,3 +131,54 @@ class FakeSupabase:
 
     def table(self, name):
         return _Query(self, name)
+
+    def rpc(self, fn, params):
+        """Emula public.conc01_commit_message (CONC-01 R2): valida y aplica todo o nada."""
+        if fn != "conc01_commit_message":
+            raise NotImplementedError(fn)
+        db = self
+
+        def run():
+            msgs = db.tables.setdefault("communication_messages", [])
+            m = next((r for r in msgs if str(r.get("id")) == str(params["p_message_id"])), None)
+            acc = next((r for r in db.tables.get("communication_accounts", [])
+                        if str(r.get("id")) == str(params["p_account_id"])), None)
+            if (m is None or bool(m.get("case_processed")) or m.get("triage_reason") != params["p_token"]
+                    or str(m.get("account_id")) != str(params["p_account_id"])
+                    or acc is None or str(acc.get("workspace_id")) != str(params["p_workspace_id"])):
+                return {"status": "claim_lost"}
+            snapshot = copy.deepcopy(db.tables)
+            deduped, skipped = set(), 0
+            try:
+                for op in params["p_ops"]:
+                    t, rows = op["table"], db.tables.setdefault(op["table"], [])
+                    if op["kind"] == "insert":
+                        row = copy.deepcopy(op["row"])
+                        if t in ("case_events", "case_messages") and str(row.get("message_id")) != str(params["p_message_id"]):
+                            raise PermissionError("conc01: mensaje no coincide")
+                        if t == "case_events" and any(
+                                r.get("case_id") == row.get("case_id") and row.get("dedupe_key")
+                                and r.get("dedupe_key") == row.get("dedupe_key") for r in rows):
+                            deduped.add(str(row["id"])); continue
+                        if t == "case_notifications":
+                            if not row.get("event_id"):
+                                raise PermissionError("conc01: notificación sin evento")
+                            if str(row["event_id"]) in deduped:
+                                skipped += 1; continue
+                            ev = next((e for e in db.tables.get("case_events", []) if str(e.get("id")) == str(row["event_id"])), None)
+                            if not ev or str(ev.get("message_id")) != str(params["p_message_id"]) \
+                                    or str(ev.get("case_id")) != str(row.get("case_id")):
+                                raise PermissionError("conc01: evento de la notificación no corresponde")
+                        rows.append(db._derive(t, {"id": str(uuid.uuid4()), **row}))
+                    else:
+                        if t == "communication_messages" and str(op["where"].get("id")) != str(params["p_message_id"]):
+                            raise PermissionError("conc01: update de otro mensaje")
+                        for r in rows:
+                            if all(str(r.get(k)) == str(v) for k, v in op["where"].items()):
+                                r.update(copy.deepcopy(op["set"]))
+            except Exception:
+                db.tables = snapshot
+                raise
+            return {"status": "ok", "skipped": skipped}
+
+        return SimpleNamespace(execute=lambda: SimpleNamespace(data=run()))

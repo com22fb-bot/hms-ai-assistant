@@ -1,0 +1,230 @@
+FFF..F..FFF                                                              [100%]
+=================================== FAILURES ===================================
+_______________ test_rollback_script_removes_function_keeps_data _______________
+
+env = {'hooks': [], 'push': [], 'default_returning': 'representation', 'admin': <tests.conc01.pgclient.PgClient object at 0x7efdc13674d0>, ...}
+
+    @needs_hooks
+    def test_rollback_script_removes_function_keeps_data(env):
+        """Rollback probado: retira función y permisos y restaura el CHECK original (NOT VALID)
+        sin tocar datos; es idempotente y la migración se puede volver a aplicar."""
+        from app.services.safe_case_classifier import classify_pending_messages
+        admin = env["admin"]
+        ids = _seed(admin, 2)
+        classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=ids)
+        # una fila reclamada en curso al momento del rollback
+        admin.conn().execute(
+            "insert into communication_messages (id,account_id,external_message_id,subject,triage_category,triage_reason,triaged_at)"
+            " values (%s,%s,'yahoo:Inbox:9998','x','classifying','classifying:'||gen_random_uuid(), now())", (str(uuid.uuid4()), ACC))
+        extra = [str(uuid.uuid4())]
+        admin.conn().execute(
+            "insert into communication_messages (id,account_id,thread_id,external_message_id,sender,recipients,subject,body_text,snippet,received_at,direction)"
+            " select %s, account_id, thread_id, 'yahoo:Inbox:9999', sender, recipients, subject, body_text, snippet, now(), direction"
+            " from communication_messages where id=%s", (extra[0], ids[0]))
+        before = _invariants(admin)
+        rows_before = admin.conn().execute("select id, triage_category, case_processed, triage_reason from communication_messages order by id").fetchall()
+        admin.conn().execute(RPC_ROLLBACK.read_text())
+        admin.conn().execute(RPC_ROLLBACK.read_text())  # idempotente
+        assert admin.conn().execute("select count(*) c from pg_proc where proname='conc01_commit_message'").fetchone()["c"] == 0
+        assert _invariants(admin) == before  # 0 datos de negocio afectados
+        after = {r["id"]: r for r in admin.conn().execute("select id, triage_category, case_processed, triage_reason from communication_messages").fetchall()}
+        for r in rows_before:  # solo cambian las filas classifying/retry_pending, y con trazabilidad
+            if r["triage_category"] in ("classifying", "retry_pending"):
+>               assert after[r["id"]]["triage_category"] == "unreviewed"
+E               AssertionError: assert 'classifying' == 'unreviewed'
+E                 
+E                 - unreviewed
+E                 + classifying
+
+tests/conc01/test_conc01_real_pg.py:726: AssertionError
+___________________ test_h1_participant_case_id_is_immutable ___________________
+
+env = {'hooks': [], 'push': [], 'default_returning': 'representation', 'admin': <tests.conc01.pgclient.PgClient object at 0x7efdbdb71810>, ...}
+
+    def test_h1_participant_case_id_is_immutable(env):
+        """H1: un UPDATE de case_participants no puede mover el participante a otro caso
+        (aquí, de otro workspace): rechazo y rollback completo, 0 escrituras persistentes."""
+        client, ids, token = _claimed(env)
+        admin = env["admin"]
+        ws2, c1, c2, p1 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+        admin.conn().execute("insert into workspaces values (%s)", (ws2,))
+        admin.conn().execute("insert into intelligent_cases (id, workspace_id, account_id, title) values (%s,%s,%s,'a')", (c1, WS, ACC))
+        admin.conn().execute("insert into intelligent_cases (id, workspace_id, title) values (%s,%s,'b')", (c2, ws2))
+        admin.conn().execute("insert into case_participants (id, case_id, email) values (%s,%s,'x@y.mx')", (p1, c1))
+        before = _invariants(admin)
+        snap = admin.conn().execute("select * from case_participants").fetchall()
+        msg = admin.conn().execute("select * from communication_messages where id=%s", (ids[0],)).fetchone()
+        ops = [_case_op(str(uuid.uuid4())),  # escritura previa en el lote: también debe revertirse
+               {"table": "case_participants", "kind": "update",
+                "set": {"case_id": c2, "message_count": 9}, "where": {"id": p1}}]
+>       with pytest.raises(Exception) as e:
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE Exception
+
+tests/conc01/test_conc01_real_pg.py:883: Failed
+_________ test_h2_rollback_normalizes_states_then_old_code_updates_ok __________
+
+env = {'hooks': [], 'push': [], 'default_returning': 'representation', 'admin': <tests.conc01.pgclient.PgClient object at 0x7efdbdd03950>, ...}
+
+    def test_h2_rollback_normalizes_states_then_old_code_updates_ok(env):
+        """H2: filas en classifying y retry_pending → rollback → 'unreviewed' con trazabilidad, sin tocar
+        case_processed; después, las escrituras de triage del código anterior no dan 23514; no se pierden
+        casos, vínculos, eventos ni datos."""
+        from app.services.safe_case_classifier import classify_pending_messages
+        admin = env["admin"]
+        ids = _seed(admin, 4)
+        classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=ids[:2])  # 1 caso real + 1 sin caso
+        extra = []
+        for n, (state, processed) in enumerate([("classifying", False), ("retry_pending", False), ("retry_pending", True)]):
+            mid = str(uuid.uuid4()); extra.append((mid, state, processed))
+            admin.conn().execute(
+                "insert into communication_messages (id,account_id,external_message_id,subject,triage_category,triage_reason,triaged_at,case_processed)"
+                " values (%s,%s,%s,'x',%s,%s, now(), %s)",
+                (mid, ACC, f"yahoo:Inbox:{8000+n}", state, f"motivo {n}" if n else "classifying:" + str(uuid.uuid4()), processed))
+        biz = lambda: admin.conn().execute(  # noqa: E731
+            "select (select count(*) from intelligent_cases) c, (select count(*) from case_messages) l,"
+            " (select count(*) from case_events) e, (select count(*) from case_notifications) n,"
+            " (select count(*) from case_participants) p, (select count(*) from organizational_patterns) o,"
+            " (select md5(string_agg(id::text||coalesce(subject,'')||coalesce(body_text,'')||case_processed::text, ',' order by id))"
+            "  from communication_messages) m").fetchone()
+        before = biz()
+        prev = {r["id"]: r for r in admin.conn().execute("select id, triage_reason from communication_messages").fetchall()}
+        admin.conn().execute(RPC_ROLLBACK.read_text())
+        assert biz() == before  # casos, vínculos, eventos, notificaciones, participantes, patrones y mensajes intactos
+        for mid, state, processed in extra:
+            r = admin.conn().execute("select triage_category, triage_reason, case_processed from communication_messages where id=%s", (mid,)).fetchone()
+>           assert r["triage_category"] == "unreviewed" and r["case_processed"] is processed
+E           AssertionError: assert ('classifying' == 'unreviewed'
+E             
+E             - unreviewed
+E             + classifying)
+
+tests/conc01/test_conc01_real_pg.py:925: AssertionError
+_ test_ownership_columns_immutable_on_update[intelligent_cases-primary_thread_id] _
+
+env = {'hooks': [], 'push': [], 'default_returning': 'representation', 'admin': <tests.conc01.pgclient.PgClient object at 0x7efdbdb18d70>, ...}
+table = 'intelligent_cases', col = 'primary_thread_id'
+
+    @pytest.mark.parametrize("table,col", [
+        ("intelligent_cases", "workspace_id"), ("intelligent_cases", "account_id"),
+        ("intelligent_cases", "primary_thread_id"), ("organizational_patterns", "workspace_id"),
+        ("communication_messages", "account_id"), ("communication_messages", "thread_id"),
+        ("case_participants", "case_id")])
+    def test_ownership_columns_immutable_on_update(env, table, col):
+        """Autorrevisión: ninguna columna de propiedad/FK puede cambiarse por UPDATE en la RPC."""
+        client, ids, token = _claimed(env)
+        admin = env["admin"]
+        ws2, acc2, c1, c2, th2, pat, p1 = (str(uuid.uuid4()) for _ in range(7))
+        admin.conn().execute("insert into workspaces values (%s)", (ws2,))
+        admin.conn().execute("insert into communication_accounts (id, workspace_id) values (%s,%s)", (acc2, ws2))
+        admin.conn().execute("insert into communication_threads values (%s)", (th2,))
+        admin.conn().execute("insert into intelligent_cases (id, workspace_id, account_id, title) values (%s,%s,%s,'a')", (c1, WS, ACC))
+        admin.conn().execute("insert into intelligent_cases (id, workspace_id, title) values (%s,%s,'b')", (c2, ws2))
+        admin.conn().execute("insert into case_participants (id, case_id, email) values (%s,%s,'x@y.mx')", (p1, c1))
+        admin.conn().execute("insert into organizational_patterns (id, workspace_id, pattern_type, pattern_key) values (%s,%s,'t','k')", (pat, WS))
+        target = {"intelligent_cases": c1, "organizational_patterns": pat, "communication_messages": ids[0],
+                  "case_participants": p1}[table]
+        value = {"workspace_id": ws2, "account_id": acc2, "primary_thread_id": th2, "thread_id": th2, "case_id": c2}[col]
+        dump = lambda: [admin.conn().execute(f"select * from {t} order by id").fetchall() for t in BUSINESS_TABLES]  # noqa: E731
+        before = dump()
+>       with pytest.raises(Exception) as e:
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE Exception
+
+tests/conc01/test_conc01_real_pg.py:966: Failed
+_ test_ownership_columns_immutable_on_update[communication_messages-thread_id] _
+
+env = {'hooks': [], 'push': [], 'default_returning': 'representation', 'admin': <tests.conc01.pgclient.PgClient object at 0x7efdbda80c50>, ...}
+table = 'communication_messages', col = 'thread_id'
+
+    @pytest.mark.parametrize("table,col", [
+        ("intelligent_cases", "workspace_id"), ("intelligent_cases", "account_id"),
+        ("intelligent_cases", "primary_thread_id"), ("organizational_patterns", "workspace_id"),
+        ("communication_messages", "account_id"), ("communication_messages", "thread_id"),
+        ("case_participants", "case_id")])
+    def test_ownership_columns_immutable_on_update(env, table, col):
+        """Autorrevisión: ninguna columna de propiedad/FK puede cambiarse por UPDATE en la RPC."""
+        client, ids, token = _claimed(env)
+        admin = env["admin"]
+        ws2, acc2, c1, c2, th2, pat, p1 = (str(uuid.uuid4()) for _ in range(7))
+        admin.conn().execute("insert into workspaces values (%s)", (ws2,))
+        admin.conn().execute("insert into communication_accounts (id, workspace_id) values (%s,%s)", (acc2, ws2))
+        admin.conn().execute("insert into communication_threads values (%s)", (th2,))
+        admin.conn().execute("insert into intelligent_cases (id, workspace_id, account_id, title) values (%s,%s,%s,'a')", (c1, WS, ACC))
+        admin.conn().execute("insert into intelligent_cases (id, workspace_id, title) values (%s,%s,'b')", (c2, ws2))
+        admin.conn().execute("insert into case_participants (id, case_id, email) values (%s,%s,'x@y.mx')", (p1, c1))
+        admin.conn().execute("insert into organizational_patterns (id, workspace_id, pattern_type, pattern_key) values (%s,%s,'t','k')", (pat, WS))
+        target = {"intelligent_cases": c1, "organizational_patterns": pat, "communication_messages": ids[0],
+                  "case_participants": p1}[table]
+        value = {"workspace_id": ws2, "account_id": acc2, "primary_thread_id": th2, "thread_id": th2, "case_id": c2}[col]
+        dump = lambda: [admin.conn().execute(f"select * from {t} order by id").fetchall() for t in BUSINESS_TABLES]  # noqa: E731
+        before = dump()
+>       with pytest.raises(Exception) as e:
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE Exception
+
+tests/conc01/test_conc01_real_pg.py:966: Failed
+____ test_ownership_columns_immutable_on_update[case_participants-case_id] _____
+
+env = {'hooks': [], 'push': [], 'default_returning': 'representation', 'admin': <tests.conc01.pgclient.PgClient object at 0x7efdbdc1fb70>, ...}
+table = 'case_participants', col = 'case_id'
+
+    @pytest.mark.parametrize("table,col", [
+        ("intelligent_cases", "workspace_id"), ("intelligent_cases", "account_id"),
+        ("intelligent_cases", "primary_thread_id"), ("organizational_patterns", "workspace_id"),
+        ("communication_messages", "account_id"), ("communication_messages", "thread_id"),
+        ("case_participants", "case_id")])
+    def test_ownership_columns_immutable_on_update(env, table, col):
+        """Autorrevisión: ninguna columna de propiedad/FK puede cambiarse por UPDATE en la RPC."""
+        client, ids, token = _claimed(env)
+        admin = env["admin"]
+        ws2, acc2, c1, c2, th2, pat, p1 = (str(uuid.uuid4()) for _ in range(7))
+        admin.conn().execute("insert into workspaces values (%s)", (ws2,))
+        admin.conn().execute("insert into communication_accounts (id, workspace_id) values (%s,%s)", (acc2, ws2))
+        admin.conn().execute("insert into communication_threads values (%s)", (th2,))
+        admin.conn().execute("insert into intelligent_cases (id, workspace_id, account_id, title) values (%s,%s,%s,'a')", (c1, WS, ACC))
+        admin.conn().execute("insert into intelligent_cases (id, workspace_id, title) values (%s,%s,'b')", (c2, ws2))
+        admin.conn().execute("insert into case_participants (id, case_id, email) values (%s,%s,'x@y.mx')", (p1, c1))
+        admin.conn().execute("insert into organizational_patterns (id, workspace_id, pattern_type, pattern_key) values (%s,%s,'t','k')", (pat, WS))
+        target = {"intelligent_cases": c1, "organizational_patterns": pat, "communication_messages": ids[0],
+                  "case_participants": p1}[table]
+        value = {"workspace_id": ws2, "account_id": acc2, "primary_thread_id": th2, "thread_id": th2, "case_id": c2}[col]
+        dump = lambda: [admin.conn().execute(f"select * from {t} order by id").fetchall() for t in BUSINESS_TABLES]  # noqa: E731
+        before = dump()
+>       with pytest.raises(Exception) as e:
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE Exception
+
+tests/conc01/test_conc01_real_pg.py:966: Failed
+________________ test_case_insert_with_foreign_thread_rejected _________________
+
+env = {'hooks': [], 'push': [], 'default_returning': 'representation', 'admin': <tests.conc01.pgclient.PgClient object at 0x7efdbdb04190>, ...}
+
+    def test_case_insert_with_foreign_thread_rejected(env):
+        client, ids, token = _claimed(env)
+        th2 = str(uuid.uuid4())
+        env["admin"].conn().execute("insert into communication_threads values (%s)", (th2,))
+        op = _case_op(str(uuid.uuid4())); op["row"]["primary_thread_id"] = th2
+>       with pytest.raises(Exception) as e:
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+E       Failed: DID NOT RAISE Exception
+
+tests/conc01/test_conc01_real_pg.py:978: Failed
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/anyio/pytest_plugin.py:14
+  /workspace/hms-ai-assistant/backend/.venv/lib/python3.13/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/conc01/test_conc01_real_pg.py::test_rollback_script_removes_function_keeps_data
+FAILED tests/conc01/test_conc01_real_pg.py::test_h1_participant_case_id_is_immutable
+FAILED tests/conc01/test_conc01_real_pg.py::test_h2_rollback_normalizes_states_then_old_code_updates_ok
+FAILED tests/conc01/test_conc01_real_pg.py::test_ownership_columns_immutable_on_update[intelligent_cases-primary_thread_id]
+FAILED tests/conc01/test_conc01_real_pg.py::test_ownership_columns_immutable_on_update[communication_messages-thread_id]
+FAILED tests/conc01/test_conc01_real_pg.py::test_ownership_columns_immutable_on_update[case_participants-case_id]
+FAILED tests/conc01/test_conc01_real_pg.py::test_case_insert_with_foreign_thread_rejected
+7 failed, 4 passed, 38 deselected, 1 warning in 1.11s
