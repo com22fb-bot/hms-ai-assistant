@@ -720,10 +720,17 @@ def test_rollback_script_removes_function_keeps_data(env):
     admin.conn().execute(RPC_ROLLBACK.read_text())  # idempotente
     assert admin.conn().execute("select count(*) c from pg_proc where proname='conc01_commit_message'").fetchone()["c"] == 0
     assert _invariants(admin) == before  # 0 datos de negocio afectados
-    assert admin.conn().execute("select id, triage_category, case_processed, triage_reason from communication_messages order by id").fetchall() == rows_before
+    after = {r["id"]: r for r in admin.conn().execute("select id, triage_category, case_processed, triage_reason from communication_messages").fetchall()}
+    for r in rows_before:  # solo cambian las filas classifying/retry_pending, y con trazabilidad
+        if r["triage_category"] in ("classifying", "retry_pending"):
+            assert after[r["id"]]["triage_category"] == "unreviewed"
+            assert after[r["id"]]["triage_reason"] == f"conc01_rollback:{r['triage_category']}:{r['triage_reason'] or ''}"
+            assert after[r["id"]]["case_processed"] == r["case_processed"]
+        else:
+            assert after[r["id"]] == r
     chk = admin.conn().execute("select convalidated, pg_get_constraintdef(oid) d from pg_constraint"
                                " where conname='communication_messages_triage_category_check'").fetchone()
-    assert chk["convalidated"] is False and "classifying" not in chk["d"]
+    assert chk["convalidated"] is True and "classifying" not in chk["d"]
     # Código nuevo SIN migración (orden de despliegue incorrecto): falla cerrado antes de escribir.
     with pytest.raises(Exception) as e:
         classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=extra)
@@ -731,7 +738,7 @@ def test_rollback_script_removes_function_keeps_data(env):
     row = admin.conn().execute("select case_processed, triage_category from communication_messages where id=%s", (extra[0],)).fetchone()
     assert row["case_processed"] is False and row["triage_category"] == "unreviewed"
     assert _invariants(admin)["cases"] == before["cases"]
-    # Reaplicar la migración: con una fila 'classifying' existente, VALIDATE la acepta.
+    # Reaplicar la migración de forma controlada.
     admin.conn().execute(RPC_SQL.read_text())
     assert admin.conn().execute("select count(*) c from pg_proc where proname='conc01_commit_message'").fetchone()["c"] == 1
     assert admin.conn().execute("select convalidated c from pg_constraint where conname='communication_messages_triage_category_check'").fetchone()["c"] is True
@@ -855,3 +862,120 @@ def test_valid_event_dedupe_still_skips_notification(env):
     assert r.data["status"] == "ok" and r.data["skipped"] == 1, r.data
     inv = _invariants(admin)
     assert inv["events"] == 1 and inv["notifications"] == 0, inv
+
+
+def test_h1_participant_case_id_is_immutable(env):
+    """H1: un UPDATE de case_participants no puede mover el participante a otro caso
+    (aquí, de otro workspace): rechazo y rollback completo, 0 escrituras persistentes."""
+    client, ids, token = _claimed(env)
+    admin = env["admin"]
+    ws2, c1, c2, p1 = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    admin.conn().execute("insert into workspaces values (%s)", (ws2,))
+    admin.conn().execute("insert into intelligent_cases (id, workspace_id, account_id, title) values (%s,%s,%s,'a')", (c1, WS, ACC))
+    admin.conn().execute("insert into intelligent_cases (id, workspace_id, title) values (%s,%s,'b')", (c2, ws2))
+    admin.conn().execute("insert into case_participants (id, case_id, email) values (%s,%s,'x@y.mx')", (p1, c1))
+    before = _invariants(admin)
+    snap = admin.conn().execute("select * from case_participants").fetchall()
+    msg = admin.conn().execute("select * from communication_messages where id=%s", (ids[0],)).fetchone()
+    ops = [_case_op(str(uuid.uuid4())),  # escritura previa en el lote: también debe revertirse
+           {"table": "case_participants", "kind": "update",
+            "set": {"case_id": c2, "message_count": 9}, "where": {"id": p1}}]
+    with pytest.raises(Exception) as e:
+        _call(client, ids, token, ops)
+    assert "42501" in str(e.value) or "inmutable" in str(e.value)
+    assert _invariants(admin) == before
+    assert admin.conn().execute("select * from case_participants").fetchall() == snap
+    assert admin.conn().execute("select * from communication_messages where id=%s", (ids[0],)).fetchone() == msg
+    # Los campos legítimos de _upsert_participant siguen permitidos (sin case_id, o con el mismo).
+    ok = [{"table": "case_participants", "kind": "update",
+           "set": {"display_name": "X", "participant_role": "requester", "message_count": 2,
+                   "last_seen_at": "2026-10-31T00:00:00Z"}, "where": {"id": p1}}]
+    assert _call(client, ids, token, ok).data["status"] == "ok"
+    row = admin.conn().execute("select case_id, message_count from case_participants where id=%s", (p1,)).fetchone()
+    assert str(row["case_id"]) == c1 and row["message_count"] == 2
+
+
+def test_h2_rollback_normalizes_states_then_old_code_updates_ok(env):
+    """H2: filas en classifying y retry_pending → rollback → 'unreviewed' con trazabilidad, sin tocar
+    case_processed; después, las escrituras de triage del código anterior no dan 23514; no se pierden
+    casos, vínculos, eventos ni datos."""
+    from app.services.safe_case_classifier import classify_pending_messages
+    admin = env["admin"]
+    ids = _seed(admin, 4)
+    classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=ids[:2])  # 1 caso real + 1 sin caso
+    extra = []
+    for n, (state, processed) in enumerate([("classifying", False), ("retry_pending", False), ("retry_pending", True)]):
+        mid = str(uuid.uuid4()); extra.append((mid, state, processed))
+        admin.conn().execute(
+            "insert into communication_messages (id,account_id,external_message_id,subject,triage_category,triage_reason,triaged_at,case_processed)"
+            " values (%s,%s,%s,'x',%s,%s, now(), %s)",
+            (mid, ACC, f"yahoo:Inbox:{8000+n}", state, f"motivo {n}" if n else "classifying:" + str(uuid.uuid4()), processed))
+    biz = lambda: admin.conn().execute(  # noqa: E731
+        "select (select count(*) from intelligent_cases) c, (select count(*) from case_messages) l,"
+        " (select count(*) from case_events) e, (select count(*) from case_notifications) n,"
+        " (select count(*) from case_participants) p, (select count(*) from organizational_patterns) o,"
+        " (select md5(string_agg(id::text||coalesce(subject,'')||coalesce(body_text,'')||case_processed::text, ',' order by id))"
+        "  from communication_messages) m").fetchone()
+    before = biz()
+    prev = {r["id"]: r for r in admin.conn().execute("select id, triage_reason from communication_messages").fetchall()}
+    admin.conn().execute(RPC_ROLLBACK.read_text())
+    assert biz() == before  # casos, vínculos, eventos, notificaciones, participantes, patrones y mensajes intactos
+    for mid, state, processed in extra:
+        r = admin.conn().execute("select triage_category, triage_reason, case_processed from communication_messages where id=%s", (mid,)).fetchone()
+        assert r["triage_category"] == "unreviewed" and r["case_processed"] is processed
+        assert r["triage_reason"] == f"conc01_rollback:{state}:{prev[uuid.UUID(mid)]['triage_reason'] or ''}"
+    assert admin.conn().execute("select count(*) c from communication_messages where triage_category in ('classifying','retry_pending')").fetchone()["c"] == 0
+    assert admin.conn().execute("select convalidated c from pg_constraint where conname='communication_messages_triage_category_check'").fetchone()["c"] is True
+    # Escrituras representativas del código anterior (main): marca sin caso, triage accionable y revisión.
+    client = _api_client(env)
+    for (mid, _, _), cat in zip(extra, ("informational", "action_required", "review")):
+        client.table("communication_messages").update(
+            {"triage_category": cat, "actionability_score": 10, "triage_reason": "código anterior", "triaged_at": "2026-10-31T00:00:00Z",
+             "processed_at": "2026-10-31T00:00:00Z", "case_processed": True}).eq("id", mid).execute()
+    cats = {r["triage_category"] for r in admin.conn().execute(
+        "select triage_category from communication_messages where id = any(%s::uuid[])", ([m for m, _, _ in extra],)).fetchall()}
+    assert cats == {"informational", "action_required", "review"}
+    # Y un estado de CONC-01 vuelve a estar prohibido (el CHECK original está vigente).
+    with pytest.raises(Exception) as e:
+        client.table("communication_messages").update({"triage_category": "classifying"}).eq("id", extra[0][0]).execute()
+    assert "23514" in str(e.value)
+
+
+@pytest.mark.parametrize("table,col", [
+    ("intelligent_cases", "workspace_id"), ("intelligent_cases", "account_id"),
+    ("intelligent_cases", "primary_thread_id"), ("organizational_patterns", "workspace_id"),
+    ("communication_messages", "account_id"), ("communication_messages", "thread_id"),
+    ("case_participants", "case_id")])
+def test_ownership_columns_immutable_on_update(env, table, col):
+    """Autorrevisión: ninguna columna de propiedad/FK puede cambiarse por UPDATE en la RPC."""
+    client, ids, token = _claimed(env)
+    admin = env["admin"]
+    ws2, acc2, c1, c2, th2, pat, p1 = (str(uuid.uuid4()) for _ in range(7))
+    admin.conn().execute("insert into workspaces values (%s)", (ws2,))
+    admin.conn().execute("insert into communication_accounts (id, workspace_id) values (%s,%s)", (acc2, ws2))
+    admin.conn().execute("insert into communication_threads values (%s)", (th2,))
+    admin.conn().execute("insert into intelligent_cases (id, workspace_id, account_id, title) values (%s,%s,%s,'a')", (c1, WS, ACC))
+    admin.conn().execute("insert into intelligent_cases (id, workspace_id, title) values (%s,%s,'b')", (c2, ws2))
+    admin.conn().execute("insert into case_participants (id, case_id, email) values (%s,%s,'x@y.mx')", (p1, c1))
+    admin.conn().execute("insert into organizational_patterns (id, workspace_id, pattern_type, pattern_key) values (%s,%s,'t','k')", (pat, WS))
+    target = {"intelligent_cases": c1, "organizational_patterns": pat, "communication_messages": ids[0],
+              "case_participants": p1}[table]
+    value = {"workspace_id": ws2, "account_id": acc2, "primary_thread_id": th2, "thread_id": th2, "case_id": c2}[col]
+    dump = lambda: [admin.conn().execute(f"select * from {t} order by id").fetchall() for t in BUSINESS_TABLES]  # noqa: E731
+    before = dump()
+    with pytest.raises(Exception) as e:
+        _call(client, ids, token, [_case_op(str(uuid.uuid4())),
+                                    {"table": table, "kind": "update", "set": {col: value}, "where": {"id": target}}])
+    assert "42501" in str(e.value) or "inmutable" in str(e.value)
+    assert dump() == before  # rollback completo, 0 escrituras persistentes
+
+
+def test_case_insert_with_foreign_thread_rejected(env):
+    client, ids, token = _claimed(env)
+    th2 = str(uuid.uuid4())
+    env["admin"].conn().execute("insert into communication_threads values (%s)", (th2,))
+    op = _case_op(str(uuid.uuid4())); op["row"]["primary_thread_id"] = th2
+    with pytest.raises(Exception) as e:
+        _call(client, ids, token, [op])
+    assert "42501" in str(e.value) or "hilo" in str(e.value)
+    _zero_writes(env, token, ids)

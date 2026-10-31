@@ -60,6 +60,9 @@ declare
   v_skipped int := 0;
   v_n int;
   v_deduped uuid[] := '{}';
+  v_thread uuid;
+  v_key text;
+  v_same boolean;
 begin
   -- Parámetros: tipos los valida la firma; valores aquí.
   if p_message_id is null or p_workspace_id is null or p_account_id is null then
@@ -73,8 +76,8 @@ begin
   end if;
 
   -- Único bloqueo explícito, siempre primero y por PK (orden de bloqueo constante).
-  select m.account_id, m.case_processed, m.triage_reason
-    into v_account, v_processed, v_reason
+  select m.account_id, m.case_processed, m.triage_reason, m.thread_id
+    into v_account, v_processed, v_reason, v_thread
     from public.communication_messages m
    where m.id = p_message_id
    for update;
@@ -112,6 +115,10 @@ begin
       end if;
       if v_table = 'intelligent_cases' and (v_row->>'account_id')::uuid is distinct from p_account_id then
         raise exception 'conc01: cuenta no coincide' using errcode = '42501';
+      end if;
+      if v_table = 'intelligent_cases' and (v_row->>'primary_thread_id') is not null
+         and (v_row->>'primary_thread_id')::uuid is distinct from v_thread then
+        raise exception 'conc01: hilo no coincide' using errcode = '42501';
       end if;
       -- Vínculos y eventos: message_id obligatorio y exactamente p_message_id.
       if v_table in ('case_messages', 'case_events')
@@ -176,9 +183,19 @@ begin
       else
         raise exception 'conc01: update no permitido' using errcode = '42501';
       end if;
-      if (op->'set') ?| array['id', 'workspace_id', 'account_id'] then
-        raise exception 'conc01: columnas de identidad inmutables' using errcode = '42501';
-      end if;
+      -- Columnas de propiedad / claves foráneas inmutables en TODAS las tablas de la lista:
+      -- se rechaza cualquier valor distinto del actual (p. ej. case_id de case_participants, H1).
+      foreach v_key in array array['id', 'workspace_id', 'account_id', 'case_id', 'message_id',
+                                     'event_id', 'thread_id', 'primary_thread_id'] loop
+        if (op->'set') ? v_key then
+          execute format('select exists (select 1 from public.%I t where t.id = $1 and t.%I::text is not distinct from $2)',
+                         v_table, v_key)
+            into v_same using (v_where->>'id')::uuid, op->'set'->>v_key;
+          if not v_same then
+            raise exception 'conc01: columna % inmutable', v_key using errcode = '42501';
+          end if;
+        end if;
+      end loop;
       select string_agg(format('%I = r.%I', k, k), ', ') into v_sets from jsonb_object_keys(op->'set') as k;
       -- id con '=' para usar la PK (IS NOT DISTINCT FROM no usa índice); el resto, null-seguro.
       select string_agg(case when k = 'id' then 't.id = w.id'
