@@ -39,9 +39,9 @@ Rutas: Gmail API (`gmail_full_sync.py:187` `format=full`, `gmail_sync.py:533`); 
 
 | Campo | Gmail API | MS Graph | Yahoo IMAP | iCloud IMAP |
 |---|---|---|---|---|
-| Message-ID | D R S (`gmail_full_sync.py:295`) | D R S (`internetMessageId`, `microsoft_import.py:506`) | D R S (`yahoo_import.py:677`) | igual que Yahoo |
+| Message-ID | D R S (`gmail_full_sync.py:295`) | D R S (`internetMessageId`, `microsoft_import.py:508`) | D R S (`yahoo_import.py:677`) | igual que Yahoo |
 | ID interno | D R S `external_message_id` | D R S | UID → `external_message_id` | igual |
-| Thread-ID | D R S `threadId` (`:196`) U | D R S `conversationId` (`:478`) U | **no existe**; se deriva de In-Reply-To/Message-ID (`yahoo_import.py:463`) U | igual |
+| Thread-ID | D R S `threadId` (`:196`) U | D R S `conversationId` (`microsoft_import.py:476`) U | **no existe**; se deriva de In-Reply-To/Message-ID (`yahoo_import.py:463`) U | igual |
 | In-Reply-To | D R S (`:302`) U | **D, no R**: se guarda `None` (`microsoft_import.py:511`) | D R S (`:681`) U | igual |
 | References | D R S (`:309`) U | **no R**: `[]` (`:512`) | D R S (`:685`) U | igual |
 | From (nombre + dirección) | D R S A U | D R S A U | D R S A U | igual |
@@ -183,7 +183,7 @@ Lista completa (19) en `docs/auditorias/eval01/diagnostico-casos.md` §4.
 | H-10 | Media | `yahoo_imap.py:extract_rfc822_bodies:432-434` | Los adjuntos se descartan; la tabla `attachments` sin uso (0 filas) |
 | H-11 | Media | (esquema) | Los encabezados (List-Unsubscribe, Authentication-Results) se recuperan pero no se guardan, así que BRAIN_V1 (`brain_v1/analyzer.py:346`) no puede usarlos al clasificar |
 | H-12 | Media | `taxonomy.py:204` + `safe_case_classifier.py:375` | SECURITY_NOTICE_TERMS se aplica al cuerpo completo y coincide con pies de página |
-| H-13 | Media | `safe_case_classifier.py:569-582` vs `case_engine.py:790-803` | El clasificador busca el caso sin `event_key` y el motor con `event_key`: dos criterios de vinculación distintos |
+| H-13 | Media | `safe_case_classifier.py:569-582` vs `case_engine.py:778-792` | El clasificador busca el caso sin `event_key` y el motor con `event_key`: dos criterios de vinculación distintos |
 | H-14 | Media | `import_categories.py`, `safe_case_classifier.py`, `frontend/lib/nucleo/lifeAreas.ts:247` | Tres taxonomías independientes (7 / 7 / 16 áreas); el dashboard reclasifica en el navegador |
 | H-15 | Baja | `ai_analyzer.py:905-918`, `api/ai.py:40` | Análisis "IA" simulado (mock), fuera del flujo; 0 filas |
 | H-16 | Baja | `yahoo_import.py:614-624` | Se pierde la zona horaria original y no se usa INTERNALDATE |
