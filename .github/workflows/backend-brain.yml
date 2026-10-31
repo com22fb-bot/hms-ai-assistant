@@ -59,7 +59,7 @@ jobs:
               assert run.get("partd"), f"{run.get('flag')}: sin resultados parte D"
           print("brain-eval.json válido:", [(r["flag"], r["emails"], r["errors"]) for r in data])
           PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: brain-eval
