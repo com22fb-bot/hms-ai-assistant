@@ -704,5 +704,12 @@ def test_rollback_script_removes_function_keeps_data(env):
     admin.conn().execute(RPC_ROLLBACK.read_text())  # idempotente
     assert admin.conn().execute("select count(*) c from pg_proc where proname='conc01_commit_message'").fetchone()["c"] == 0
     assert _invariants(admin) == before  # 0 datos de negocio afectados
+    # Código nuevo sin RPC (orden de despliegue incorrecto): falla cerrado, no escribe ni se cae.
+    extra = _seed(admin, 1)
+    r = classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=extra)
+    assert r["processed"] == 0 and r["errors"] == 1, r
+    row = admin.conn().execute("select case_processed, triage_category from communication_messages where id=%s", (extra[0],)).fetchone()
+    assert row["case_processed"] is False and row["triage_category"] == "classifying"  # se recupera al vencer el lease
+    assert _invariants(admin)["cases"] == before["cases"]
     admin.conn().execute(RPC_SQL.read_text())  # reaplicable de forma controlada
     assert admin.conn().execute("select count(*) c from pg_proc where proname='conc01_commit_message'").fetchone()["c"] == 1
