@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.services.mail_direction import (
@@ -472,6 +472,38 @@ def _mark_without_case(
     )
 
 
+# CONC-01: reclamación atómica por mensaje. Un UPDATE condicionado (una sola
+# sentencia en Postgres, atómica a nivel fila) marca el mensaje como
+# "classifying"; solo el trabajador que recibe la fila de vuelta lo procesa.
+# La reclamación caduca para que un proceso muerto no deje mensajes atascados.
+CLAIM_CATEGORY = "classifying"
+RETRY_CATEGORY = "retry_pending"
+CLAIM_LEASE = timedelta(minutes=10)
+
+
+def _iso_z(value: datetime) -> str:
+    return value.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _claim_message(client: Any, message_id: str) -> bool:
+    now = datetime.now(timezone.utc)
+    stale = '"' + _iso_z(now - CLAIM_LEASE) + '"' 
+    response = (
+        client.table("communication_messages")
+        .update({"triage_category": CLAIM_CATEGORY, "triaged_at": _iso_z(now)})
+        .eq("id", message_id)
+        .eq("case_processed", False)
+        .or_(
+            "triage_category.is.null,"
+            f"triage_category.neq.{CLAIM_CATEGORY},"
+            f"triaged_at.lt.{stale}"
+        )
+        .execute()
+    )
+    data = getattr(response, "data", None)
+    return bool(data)
+
+
 def classify_pending_messages(
     *,
     account_id: str,
@@ -530,7 +562,7 @@ def classify_pending_messages(
                 "id,thread_id,account_id,external_message_id,sender,"
                 "recipients,cc,bcc,subject,body_text,snippet,"
                 "received_at,labels,is_unread,direction,case_processed,"
-                "in_reply_to,references_header"
+                "in_reply_to,references_header,triage_category"
             )
             .eq("account_id", account_id)
             .eq("case_processed", False)
@@ -561,7 +593,12 @@ def classify_pending_messages(
     categories: Counter[str] = Counter()
     error_details: list[dict[str, str]] = []
 
+    skipped_claimed = 0
     for message in messages:
+        if not _claim_message(client, str(message["id"])):
+            # Otro trabajador lo tiene (o ya quedó procesado): no se cuenta dos veces.
+            skipped_claimed += 1
+            continue
         try:
             normalized_subject = normalize_subject(
                 str(message.get("subject") or "")
@@ -594,6 +631,8 @@ def classify_pending_messages(
                     message=message,
                     triage_category=category,
                 )
+                if result == "rejected":
+                    raise RuntimeError("process_message rechazó el mensaje por alcance")
                 (
                     client.table("communication_messages")
                     .update(
@@ -609,6 +648,8 @@ def classify_pending_messages(
                 )
                 if result == "created":
                     created_cases += 1
+                elif result == "already_linked":
+                    linked_cases += 1
                 else:
                     linked_cases += 1
             else:
@@ -629,15 +670,18 @@ def classify_pending_messages(
             error_text = str(error)[:1200]
             now = _now_iso()
 
-            # Un error aislado no debe detener ni repetir infinitamente
-            # toda la reclasificación. El mensaje queda en revisión humana.
+            # Un error aislado no detiene la reclasificación. CONC-01: el primer
+            # fallo deja el mensaje pendiente y visible ("retry_pending") para
+            # un reintento; el segundo lo cierra en revisión humana. Así nunca
+            # se repite infinitamente ni se pierde en silencio.
+            final = message.get("triage_category") == RETRY_CATEGORY
             (
                 client.table("communication_messages")
                 .update(
                     {
-                        "case_processed": True,
+                        "case_processed": final,
                         "processed_at": now,
-                        "triage_category": "review",
+                        "triage_category": "review" if final else RETRY_CATEGORY,
                         "actionability_score": 0,
                         "triage_reason": (
                             "Revisión necesaria por incidencia técnica: "
@@ -649,9 +693,10 @@ def classify_pending_messages(
                 .eq("id", str(message.get("id") or ""))
                 .execute()
             )
-            categories["review"] += 1
-            without_case += 1
-            processed += 1
+            categories["review" if final else RETRY_CATEGORY] += 1
+            if final:
+                without_case += 1
+                processed += 1
 
             if len(error_details) < 20:
                 error_details.append(
@@ -672,6 +717,7 @@ def classify_pending_messages(
         "linked_cases": linked_cases,
         "without_case": without_case,
         "errors": errors,
+        "skipped_claimed": skipped_claimed,
         "categories": dict(categories),
         "error_details": error_details,
     }

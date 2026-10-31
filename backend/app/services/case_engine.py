@@ -749,6 +749,15 @@ def process_message(
         return "", "rejected"
     if linked_case_id:
         # Ya vinculado: no se crea un caso huérfano ni un segundo vínculo.
+        # CONC-01: si un proceso murió tras vincular y antes de marcar el
+        # mensaje, se completa la marca aquí para que no quede atascado.
+        (
+            client.table("communication_messages")
+            .update({"case_processed": True, "processed_at": _to_iso(None)})
+            .eq("id", message_id)
+            .eq("case_processed", False)
+            .execute()
+        )
         return linked_case_id, "already_linked"
     received_at = _to_iso(message.get("received_at"))
     subject = strip_css_noise(str(message.get("subject") or "")) or "(Sin asunto)"
@@ -793,9 +802,24 @@ def process_message(
         evidence_text=text,
     )
 
-    created = existing_case is None
+    # CONC-01: un caso creado por un intento anterior que falló antes de
+    # insertar su case_message se reutiliza en vez de crear otro.
+    if existing_case is None:
+        existing_case = _first_row(
+            client.table("intelligent_cases")
+            .select("*")
+            .eq("workspace_id", workspace_id)
+            .eq("metadata->>source_message_id", message_id)
+            .limit(1)
+            .execute()
+        )
+        orphan = existing_case is not None
+    else:
+        orphan = False
 
-    if created:
+    created = existing_case is None or orphan
+
+    if existing_case is None:
         risk, priority, level = _risk_and_priority(
             text=text,
             is_unread=bool(message.get("is_unread")),
@@ -853,6 +877,7 @@ def process_message(
                     "reminder_count": 1 if is_reminder else 0,
                     "metadata": {
                         "created_by": "case_engine_v1",
+                        "source_message_id": message_id,
                         "initial_message_direction": direction,
                         **({"event_key": event_key} if event_key else {}),
                     },
@@ -884,6 +909,8 @@ def process_message(
             },
         )
 
+    elif orphan:
+        case = existing_case
     else:
         case = existing_case
         if str(case.get("workspace_id") or "") != str(workspace_id):
