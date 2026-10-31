@@ -1,0 +1,25 @@
+id,parametro,valor,unidad,tipo,fuente
+P1,usuarios,3000,usuarios,supuesto de negocio,brief
+P2,mensajes_iniciales_por_usuario,1000|3000,mensajes,estimado,EVAL-01: 735 elegibles/180 dias (Yahoo)
+P3,mensajes_mensuales_por_usuario,500,mensajes/mes,estimado,sin medicion
+P4,pct_filtrado_determinista,0|50,%,estimado,a medir en fase 0
+P5,tokens_entrada_triage,1500,tokens/msg,estimado,sin medicion
+P6,tokens_prompt_cacheado,800,tokens/msg,estimado,
+P7,tokens_salida_triage,200,tokens/msg,estimado,
+P8,pct_a_extraccion_profunda,30,%,estimado,
+P9,tokens_entrada_profunda,4500,tokens/msg,estimado,incluye contexto RAG
+P10,tokens_salida_profunda,500,tokens/msg,estimado,
+P11,pct_batch_inicial,100,%,supuesto,
+P12,pct_batch_continuo,0,%,supuesto,
+R1,grok-4.3_entrada,1.25,US$/1M,calculado (precio oficial),https://docs.x.ai/developers/pricing (30-oct-2026)
+R2,grok-4.3_cache,0.20,US$/1M,calculado (precio oficial),idem
+R3,grok-4.3_salida,2.50,US$/1M,calculado (precio oficial),idem
+R4,grok-4.7_entrada,2.00,US$/1M,calculado (precio oficial),idem
+R5,grok-4.7_salida,6.00,US$/1M,calculado (precio oficial),idem
+R6,descuento_batch,20,%,calculado (precio oficial),idem
+R7,embeddings_text-embedding-3-small,0.02,US$/1M,calculado (precio oficial),https://developers.openai.com/api/docs/pricing
+R8,embeddings_xai,,US$/1M,pendiente (no publicado),https://api.x.ai/docs/
+TC,USD_MXN_FIX,18.7962,MXN/US$,oficial,https://www.banxico.org.mx/tipcamb/tipCamMIAction.do (FIX 30/10/2026)
+X1,supabase_pgvector_compute_storage,,US$/mes,pendiente de cotizacion,
+X2,railway_workers_cola_batch,,US$/mes,pendiente de cotizacion,
+X3,supervision_humana_etiquetado,,horas,pendiente,
