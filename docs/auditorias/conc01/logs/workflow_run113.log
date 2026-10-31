@@ -1,0 +1,579 @@
+test	Set up job	﻿2026-10-31T19:36:14.5660237Z Current runner version: '2.338.2'
+test	Set up job	2026-10-31T19:36:14.5679522Z ##[group]Runner Image Provisioner
+test	Set up job	2026-10-31T19:36:14.5680263Z Hosted Compute Agent
+test	Set up job	2026-10-31T19:36:14.5680683Z Version: 20261021.618
+test	Set up job	2026-10-31T19:36:14.5681164Z Commit: 21505ad2541d5be6135ed84fc33697146cf75b8e
+test	Set up job	2026-10-31T19:36:14.5681719Z Build Date: 2026-10-21T00:45:21Z
+test	Set up job	2026-10-31T19:36:14.5682203Z Worker ID: {8e12e16b-57db-4d9c-9263-05f2bc975b16}
+test	Set up job	2026-10-31T19:36:14.5682734Z Region: centralus
+test	Set up job	2026-10-31T19:36:14.5683238Z Cloud: Azure
+test	Set up job	2026-10-31T19:36:14.5683669Z ##[endgroup]
+test	Set up job	2026-10-31T19:36:14.5685058Z ##[group]Operating System
+test	Set up job	2026-10-31T19:36:14.5685500Z Ubuntu
+test	Set up job	2026-10-31T19:36:14.5685936Z 26.04.1
+test	Set up job	2026-10-31T19:36:14.5686305Z LTS
+test	Set up job	2026-10-31T19:36:14.5686681Z ##[endgroup]
+test	Set up job	2026-10-31T19:36:14.5687109Z ##[group]Runner Image
+test	Set up job	2026-10-31T19:36:14.5687524Z Image: ubuntu-26.04
+test	Set up job	2026-10-31T19:36:14.5687975Z Version: 20261025.179.1
+test	Set up job	2026-10-31T19:36:14.5688765Z Included Software: https://github.com/actions/runner-images/blob/ubuntu26/20261025.179/images/ubuntu/Ubuntu2604-Readme.md
+test	Set up job	2026-10-31T19:36:14.5690007Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu26%2F20261025.179
+test	Set up job	2026-10-31T19:36:14.5690658Z ##[endgroup]
+test	Set up job	2026-10-31T19:36:14.5691471Z ##[group]GITHUB_TOKEN Permissions
+test	Set up job	2026-10-31T19:36:14.5693053Z Contents: read
+test	Set up job	2026-10-31T19:36:14.5693499Z Metadata: read
+test	Set up job	2026-10-31T19:36:14.5693900Z ##[endgroup]
+test	Set up job	2026-10-31T19:36:14.5695703Z Secret source: Actions
+test	Set up job	2026-10-31T19:36:14.5696425Z Cache mode: write
+test	Set up job	2026-10-31T19:36:14.5696919Z Prepare workflow directory
+test	Set up job	2026-10-31T19:36:14.5997829Z Prepare all required actions
+test	Set up job	2026-10-31T19:36:14.6034656Z Getting action download info
+test	Set up job	2026-10-31T19:36:14.8147126Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+test	Set up job	2026-10-31T19:36:14.9432334Z Download action repository 'actions/setup-python@v6' (SHA:ece7cb06caefa5fff74198d8649806c4678c61a1)
+test	Set up job	2026-10-31T19:36:15.0817444Z Download action repository 'actions/upload-artifact@v4' (SHA:ea165f8d65b6e75b540449e92b4886f43607fa02)
+test	Set up job	2026-10-31T19:36:15.2670389Z Complete job name: test
+test	Run actions/checkout@v4	﻿2026-10-31T19:36:15.3283588Z ##[group]Run actions/checkout@v4
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3284246Z with:
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3284882Z   persist-credentials: false
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3285345Z   repository: com22fb-bot/hms-ai-assistant
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3288278Z   token: ***
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3288665Z   ssh-strict: true
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3289045Z   ssh-user: git
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3289491Z   clean: true
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3289901Z   sparse-checkout-cone-mode: true
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3290350Z   fetch-depth: 1
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3290747Z   fetch-tags: false
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3291129Z   show-progress: true
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3291513Z   lfs: false
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3291882Z   submodules: false
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3292279Z   set-safe-directory: true
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3292748Z   allow-unsafe-pr-checkout: false
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3293321Z env:
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3293718Z   FRONTEND_ORIGINS: https://app.donexto.com
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3294266Z   SUPABASE_URL: https://example.supabase.co
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3294917Z   SUPABASE_SECRET_KEY: test-secret-key-not-real
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3295589Z   OAUTH_ENCRYPTION_KEY: test-oauth-encryption-key-32chars!!
+test	Run actions/checkout@v4	2026-10-31T19:36:15.3296111Z ##[endgroup]
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5578662Z Syncing repository: com22fb-bot/hms-ai-assistant
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5581166Z ##[group]Getting Git version info
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5582382Z Working directory is '/home/runner/work/hms-ai-assistant/hms-ai-assistant'
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5583911Z [command]/usr/bin/git version
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5584898Z git version 2.56.0
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5597302Z ##[endgroup]
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5608811Z Temporarily overriding HOME='/home/runner/work/_temp/d24ad4ad-899c-4356-a528-aafe06b280dc' before making global git config changes
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5610941Z Adding repository directory to the temporary git global config as a safe directory
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5612764Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/hms-ai-assistant/hms-ai-assistant
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5669649Z Deleting the contents of '/home/runner/work/hms-ai-assistant/hms-ai-assistant'
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5672667Z ##[group]Initializing the repository
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5675783Z [command]/usr/bin/git init /home/runner/work/hms-ai-assistant/hms-ai-assistant
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5777301Z hint: Using 'master' as the name for the initial branch. This default branch name
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5779620Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5781690Z hint: to use in all of your new repositories, which will suppress this warning,
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5783623Z hint: call:
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5784850Z hint:
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5785816Z hint: 	git config --global init.defaultBranch <name>
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5786691Z hint:
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5787400Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5788801Z hint: 'development'. The just-created branch can be renamed via this command:
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5789764Z hint:
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5790300Z hint: 	git branch -m <name>
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5790949Z hint:
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5791717Z hint: Disable this message with "git config set advice.defaultBranchName false"
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5792970Z Initialized empty Git repository in /home/runner/work/hms-ai-assistant/hms-ai-assistant/.git/
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5796157Z [command]/usr/bin/git remote add origin https://github.com/com22fb-bot/hms-ai-assistant
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5837813Z ##[endgroup]
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5839128Z ##[group]Disabling automatic garbage collection
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5840265Z [command]/usr/bin/git config --local gc.auto 0
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5867253Z ##[endgroup]
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5868524Z ##[group]Setting up auth
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5871560Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+test	Run actions/checkout@v4	2026-10-31T19:36:15.5896249Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+test	Run actions/checkout@v4	2026-10-31T19:36:15.6294673Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+test	Run actions/checkout@v4	2026-10-31T19:36:15.6323124Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+test	Run actions/checkout@v4	2026-10-31T19:36:15.6539407Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+test	Run actions/checkout@v4	2026-10-31T19:36:15.6562027Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+test	Run actions/checkout@v4	2026-10-31T19:36:15.6753964Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+test	Run actions/checkout@v4	2026-10-31T19:36:15.7141271Z ##[endgroup]
+test	Run actions/checkout@v4	2026-10-31T19:36:15.7142499Z ##[group]Fetching the repository
+test	Run actions/checkout@v4	2026-10-31T19:36:15.7151391Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +3f6f60c9ea3e12da2e34901fffd1f0335d20d8aa:refs/remotes/pull/214/merge
+test	Run actions/checkout@v4	2026-10-31T19:36:16.5040200Z From https://github.com/com22fb-bot/hms-ai-assistant
+test	Run actions/checkout@v4	2026-10-31T19:36:16.5042183Z  * [new ref]         3f6f60c9ea3e12da2e34901fffd1f0335d20d8aa -> pull/214/merge
+test	Run actions/checkout@v4	2026-10-31T19:36:16.5046228Z ##[endgroup]
+test	Run actions/checkout@v4	2026-10-31T19:36:16.5047739Z ##[group]Determining the checkout info
+test	Run actions/checkout@v4	2026-10-31T19:36:16.5049345Z ##[endgroup]
+test	Run actions/checkout@v4	2026-10-31T19:36:16.5051536Z [command]/usr/bin/git sparse-checkout disable
+test	Run actions/checkout@v4	2026-10-31T19:36:16.5107368Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+test	Run actions/checkout@v4	2026-10-31T19:36:16.5134785Z ##[group]Checking out the ref
+test	Run actions/checkout@v4	2026-10-31T19:36:16.5136514Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/214/merge
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6008314Z Note: switching to 'refs/remotes/pull/214/merge'.
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6009264Z 
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6009870Z You are in 'detached HEAD' state. You can look around, make experimental
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6012489Z changes and commit them, and you can discard any commits you make in this
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6014592Z state without impacting any branches by switching back to a branch.
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6015681Z 
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6016642Z If you want to create a new branch to retain commits you create, you may
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6018421Z do so (now or later) by using -c with the switch command. Example:
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6019318Z 
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6019773Z   git switch -c <new-branch-name>
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6020629Z 
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6021190Z Or undo this operation with:
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6022068Z 
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6022537Z   git switch -
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6023235Z 
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6024143Z Turn off this advice by setting config variable advice.detachedHead to false
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6025711Z 
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6027277Z HEAD is now at 3f6f60c Merge 81e2c10f7f2366e10a1596ca43e83d7ada18b3e8 into 90c661b813979686bd060a4ed115e0690b521564
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6031857Z ##[endgroup]
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6056355Z [command]/usr/bin/git log -1 --format=%H
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6075783Z 3f6f60c9ea3e12da2e34901fffd1f0335d20d8aa
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6082191Z ##[group]Removing auth
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6084971Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6109529Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6298966Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6315091Z http.https://github.com/.extraheader
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6319681Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6345975Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6530400Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6555593Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+test	Run actions/checkout@v4	2026-10-31T19:36:16.6744781Z ##[endgroup]
+test	Run actions/setup-python@v6	﻿2026-10-31T19:36:16.7052314Z ##[group]Run actions/setup-python@v6
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.7053345Z with:
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.7054092Z   python-version: 3.13
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.7055063Z   cache: pip
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.7055947Z   cache-dependency-path: backend/requirements.txt
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.7057023Z   check-latest: false
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.7064322Z   token: ***
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.7065285Z   update-environment: true
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.7066158Z   allow-prereleases: false
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.7067045Z   freethreaded: false
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.7067800Z env:
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.7068557Z   FRONTEND_ORIGINS: https://app.donexto.com
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.7069702Z   SUPABASE_URL: https://example.supabase.co
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.7070827Z   SUPABASE_SECRET_KEY: test-secret-key-not-real
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.7072086Z   OAUTH_ENCRYPTION_KEY: test-oauth-encryption-key-32chars!!
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.7073199Z ##[endgroup]
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.8079057Z ##[group]Installed versions
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.9379703Z Successfully set up CPython (3.13.17)
+test	Run actions/setup-python@v6	2026-10-31T19:36:16.9380949Z ##[endgroup]
+test	Run actions/setup-python@v6	2026-10-31T19:36:17.0174976Z [command]/opt/hostedtoolcache/Python/3.13.17/x64/bin/pip cache dir
+test	Run actions/setup-python@v6	2026-10-31T19:36:18.8598357Z /home/runner/.cache/pip
+test	Run actions/setup-python@v6	2026-10-31T19:36:19.0248962Z Cache hit for: setup-python-Linux-x64-26.04-Ubuntu-python-3.13.17-pip-98830aa93e1b185e8b7b9f54fc43b8f0c01568288d317643655037fca2ae8962
+test	Run actions/setup-python@v6	2026-10-31T19:36:20.0608971Z Received 39093928 of 39093928 (100.0%), 44.4 MBs/sec
+test	Run actions/setup-python@v6	2026-10-31T19:36:20.0609591Z Cache Size: ~37 MB (39093928 B)
+test	Run actions/setup-python@v6	2026-10-31T19:36:20.0632068Z [command]/usr/bin/tar -xf /home/runner/work/_temp/895a4c9d-5ac6-4e82-95d3-373f68e407b0/cache.tzst -P -C /home/runner/work/hms-ai-assistant/hms-ai-assistant --use-compress-program unzstd
+test	Run actions/setup-python@v6	2026-10-31T19:36:20.1222213Z Cache restored successfully
+test	Run actions/setup-python@v6	2026-10-31T19:36:20.1238158Z Cache restored from key: setup-python-Linux-x64-26.04-Ubuntu-python-3.13.17-pip-98830aa93e1b185e8b7b9f54fc43b8f0c01568288d317643655037fca2ae8962
+test	Run pip install -r requirements.txt pytest	﻿2026-10-31T19:36:20.1390674Z ##[group]Run pip install -r requirements.txt pytest
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:20.1391245Z ^[[36;1mpip install -r requirements.txt pytest^[[0m
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:20.1415119Z shell: /usr/bin/bash -e {0}
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:20.1415432Z env:
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:20.1415725Z   FRONTEND_ORIGINS: https://app.donexto.com
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:20.1416122Z   SUPABASE_URL: https://example.supabase.co
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:20.1416468Z   SUPABASE_SECRET_KEY: test-secret-key-not-real
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:20.1416833Z   OAUTH_ENCRYPTION_KEY: test-oauth-encryption-key-32chars!!
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:20.1417213Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:20.1417626Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.17/x64/lib/pkgconfig
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:20.1418069Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:20.1418538Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:20.1418893Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:20.1419236Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.17/x64/lib
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:20.1419695Z ##[endgroup]
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.3512461Z Collecting pytest
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.3525440Z   Using cached pytest-9.2.0-py3-none-any.whl.metadata (7.9 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.3740590Z Collecting PyJWT==2.15.0 (from -r requirements.txt (line 1))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.3749320Z   Using cached pyjwt-2.15.0-py3-none-any.whl.metadata (3.5 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.3916837Z Collecting StrEnum==0.4.15 (from -r requirements.txt (line 2))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.3924837Z   Using cached StrEnum-0.4.15-py3-none-any.whl.metadata (5.3 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.4091022Z Collecting annotated-doc==0.0.4 (from -r requirements.txt (line 3))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.4101023Z   Using cached annotated_doc-0.0.4-py3-none-any.whl.metadata (6.6 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.4265514Z Collecting annotated-types==0.7.0 (from -r requirements.txt (line 4))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.4273264Z   Using cached annotated_types-0.7.0-py3-none-any.whl.metadata (15 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.4465030Z Collecting anyio==4.14.2 (from -r requirements.txt (line 5))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.4473117Z   Using cached anyio-4.14.2-py3-none-any.whl.metadata (4.6 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.4668970Z Collecting certifi==2026.6.17 (from -r requirements.txt (line 6))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.4677937Z   Using cached certifi-2026.6.17-py3-none-any.whl.metadata (2.5 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.5331167Z Collecting cffi==2.1.0 (from -r requirements.txt (line 7))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.5343853Z   Using cached cffi-2.1.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl.metadata (2.5 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.5531781Z Collecting click==8.4.2 (from -r requirements.txt (line 8))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.5540446Z   Using cached click-8.4.2-py3-none-any.whl.metadata (2.6 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.6546051Z Collecting cryptography==50.0.0 (from -r requirements.txt (line 9))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.6557239Z   Using cached cryptography-50.0.0-cp311-abi3-manylinux_2_34_x86_64.whl.metadata (4.3 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.6727726Z Collecting deprecation==2.1.0 (from -r requirements.txt (line 10))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.6736956Z   Using cached deprecation-2.1.0-py2.py3-none-any.whl.metadata (4.6 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.7044667Z Collecting fastapi==0.139.2 (from -r requirements.txt (line 11))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.7054943Z   Using cached fastapi-0.139.2-py3-none-any.whl.metadata (26 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.7318134Z Collecting google-api-core==2.42.0 (from -r requirements.txt (line 12))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.7327366Z   Using cached google_api_core-2.42.0-py3-none-any.whl.metadata (3.2 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.7674482Z Collecting google-api-python-client==2.201.0 (from -r requirements.txt (line 13))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.7684220Z   Using cached google_api_python_client-2.201.0-py3-none-any.whl.metadata (6.8 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.7941228Z Collecting google-auth==2.62.0 (from -r requirements.txt (line 14))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.7950682Z   Using cached google_auth-2.62.0-py3-none-any.whl.metadata (6.0 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.8153648Z Collecting google-auth-httplib2==0.4.4 (from -r requirements.txt (line 15))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.8162439Z   Using cached google_auth_httplib2-0.4.4-py3-none-any.whl.metadata (3.0 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.8339369Z Collecting google-auth-oauthlib==1.5.0 (from -r requirements.txt (line 16))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.8347774Z   Using cached google_auth_oauthlib-1.5.0-py3-none-any.whl.metadata (2.6 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.8514911Z Collecting h11==0.16.0 (from -r requirements.txt (line 17))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.8522713Z   Using cached h11-0.16.0-py3-none-any.whl.metadata (8.3 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.8707861Z Collecting h2==4.4.1 (from -r requirements.txt (line 18))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.8716402Z   Using cached h2-4.4.1-py3-none-any.whl.metadata (3.8 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.8884084Z Collecting hpack==4.2.0 (from -r requirements.txt (line 19))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.8892337Z   Using cached hpack-4.2.0-py3-none-any.whl.metadata (3.3 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.9077290Z Collecting httpcore==1.0.9 (from -r requirements.txt (line 20))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.9085556Z   Using cached httpcore-1.0.9-py3-none-any.whl.metadata (21 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.9287855Z Collecting httpx==0.28.1 (from -r requirements.txt (line 21))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.9296393Z   Using cached httpx-0.28.1-py3-none-any.whl.metadata (7.1 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.9472656Z Collecting hyperframe==6.1.0 (from -r requirements.txt (line 22))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.9481094Z   Using cached hyperframe-6.1.0-py3-none-any.whl.metadata (4.3 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.9658757Z Collecting idna==3.18 (from -r requirements.txt (line 23))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:21.9670349Z   Using cached idna-3.18-py3-none-any.whl.metadata (6.1 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.1240416Z Collecting multidict==6.9.1 (from -r requirements.txt (line 24))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.1252026Z   Using cached multidict-6.9.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (5.3 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.1446772Z Collecting packaging==26.2 (from -r requirements.txt (line 25))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.1455709Z   Using cached packaging-26.2-py3-none-any.whl.metadata (3.5 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.1654466Z Collecting postgrest==2.31.0 (from -r requirements.txt (line 26))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.1663305Z   Using cached postgrest-2.31.0-py3-none-any.whl.metadata (3.4 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.2112660Z Collecting propcache==0.5.2 (from -r requirements.txt (line 27))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.2123158Z   Using cached propcache-0.5.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (16 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.2298571Z Collecting pycparser==3.0 (from -r requirements.txt (line 28))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.2307347Z   Using cached pycparser-3.0-py3-none-any.whl.metadata (8.2 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.2939732Z Collecting pydantic==2.13.4 (from -r requirements.txt (line 29))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.2950781Z   Using cached pydantic-2.13.4-py3-none-any.whl.metadata (109 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.6934697Z Collecting pydantic_core==2.46.4 (from -r requirements.txt (line 30))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.6945758Z   Using cached pydantic_core-2.46.4-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.6 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.7134851Z Collecting python-dotenv==1.2.2 (from -r requirements.txt (line 31))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.7143715Z   Using cached python_dotenv-1.2.2-py3-none-any.whl.metadata (27 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.7348253Z Collecting realtime==2.31.0 (from -r requirements.txt (line 32))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.7356962Z   Using cached realtime-2.31.0-py3-none-any.whl.metadata (7.0 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.7593306Z Collecting starlette==1.3.1 (from -r requirements.txt (line 33))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.7601982Z   Using cached starlette-1.3.1-py3-none-any.whl.metadata (6.4 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.7800221Z Collecting storage3==2.31.0 (from -r requirements.txt (line 34))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.7808485Z   Using cached storage3-2.31.0-py3-none-any.whl.metadata (2.2 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.7998115Z Collecting supabase-auth==2.31.0 (from -r requirements.txt (line 35))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.8009889Z   Using cached supabase_auth-2.31.0-py3-none-any.whl.metadata (6.4 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.8197298Z Collecting supabase-functions==2.31.0 (from -r requirements.txt (line 36))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.8205495Z   Using cached supabase_functions-2.31.0-py3-none-any.whl.metadata (2.4 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.8416446Z Collecting supabase==2.31.0 (from -r requirements.txt (line 37))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.8425519Z   Using cached supabase-2.31.0-py3-none-any.whl.metadata (4.7 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.8592475Z Collecting typing-inspection==0.4.2 (from -r requirements.txt (line 38))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.8601052Z   Using cached typing_inspection-0.4.2-py3-none-any.whl.metadata (2.6 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.8789260Z Collecting typing_extensions==4.16.0 (from -r requirements.txt (line 39))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.8797577Z   Using cached typing_extensions-4.16.0-py3-none-any.whl.metadata (3.3 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.9012415Z Collecting uvicorn==0.51.0 (from -r requirements.txt (line 40))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:22.9020754Z   Using cached uvicorn-0.51.0-py3-none-any.whl.metadata (6.6 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.0139979Z Collecting websockets==15.0.1 (from -r requirements.txt (line 41))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.0150553Z   Using cached websockets-15.0.1-cp313-cp313-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (6.8 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.1580416Z Collecting yarl==1.24.2 (from -r requirements.txt (line 42))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.1592213Z   Using cached yarl-1.24.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (94 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.2061556Z Collecting openai==3.31.0 (from -r requirements.txt (line 43))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.2071674Z   Using cached openai-3.31.0-py3-none-any.whl.metadata (44 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.2374749Z Collecting googleapis-common-protos<2.0.0,>=1.69.2 (from google-api-core==2.42.0->-r requirements.txt (line 12))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.2383650Z   Using cached googleapis_common_protos-1.76.0-py3-none-any.whl.metadata (8.5 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.3297580Z Collecting protobuf<8.0.0,>=6.33.5 (from google-api-core==2.42.0->-r requirements.txt (line 12))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.3309740Z   Using cached protobuf-7.36.2-cp310-abi3-manylinux2014_x86_64.whl.metadata (595 bytes)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.3514851Z Collecting proto-plus<2.0.0,>=1.26.1 (from google-api-core==2.42.0->-r requirements.txt (line 12))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.3524461Z   Using cached proto_plus-1.29.0-py3-none-any.whl.metadata (2.2 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.3776709Z Collecting requests<3.0.0,>=2.33.0 (from google-api-core==2.42.0->-r requirements.txt (line 12))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.3786992Z   Using cached requests-2.34.2-py3-none-any.whl.metadata (4.8 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.4001079Z Collecting opentelemetry-api<2.0.0,>=1.44.0 (from google-api-core==2.42.0->-r requirements.txt (line 12))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.4010403Z   Using cached opentelemetry_api-1.45.2-py3-none-any.whl.metadata (1.4 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.4325012Z Collecting pyasn1-modules>=0.2.1 (from google-auth==2.62.0->-r requirements.txt (line 14))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.4334596Z   Using cached pyasn1_modules-0.4.2-py3-none-any.whl.metadata (3.5 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.4543676Z Collecting httplib2<1.0.0,>=0.19.0 (from google-api-python-client==2.201.0->-r requirements.txt (line 13))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.4552936Z   Using cached httplib2-0.32.1-py3-none-any.whl.metadata (2.2 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.4747497Z Collecting uritemplate<5,>=3.0.1 (from google-api-python-client==2.201.0->-r requirements.txt (line 13))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.4756433Z   Using cached uritemplate-4.2.0-py3-none-any.whl.metadata (2.6 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.4952675Z Collecting requests-oauthlib>=0.7.0 (from google-auth-oauthlib==1.5.0->-r requirements.txt (line 16))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.4962020Z   Using cached requests_oauthlib-2.0.0-py2.py3-none-any.whl.metadata (11 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.5386123Z Collecting httpx2<3,>=2.12.0 (from openai==3.31.0->-r requirements.txt (line 43))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.5396124Z   Using cached httpx2-2.16.0-py3-none-any.whl.metadata (10 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.6050262Z Collecting jiter<1,>=0.16.0 (from openai==3.31.0->-r requirements.txt (line 43))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.6061555Z   Using cached jiter-0.18.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (5.2 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.6239844Z Collecting sniffio (from openai==3.31.0->-r requirements.txt (line 43))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.6249311Z   Using cached sniffio-1.3.1-py3-none-any.whl.metadata (3.9 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.6510556Z Collecting pyparsing<4,>=3.1 (from httplib2<1.0.0,>=0.19.0->google-api-python-client==2.201.0->-r requirements.txt (line 13))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.6521248Z   Using cached pyparsing-3.3.3-py3-none-any.whl.metadata (5.9 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.6711542Z Collecting httpcore2==2.16.0 (from httpx2<3,>=2.12.0->openai==3.31.0->-r requirements.txt (line 43))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.6720750Z   Using cached httpcore2-2.16.0-py3-none-any.whl.metadata (27 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.6919689Z Collecting truststore>=0.10 (from httpx2<3,>=2.12.0->openai==3.31.0->-r requirements.txt (line 43))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.6929051Z   Using cached truststore-0.10.5-py3-none-any.whl.metadata (4.5 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.7813117Z Collecting charset_normalizer<4,>=2 (from requests<3.0.0,>=2.33.0->google-api-core==2.42.0->-r requirements.txt (line 12))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.7827725Z   Using cached charset_normalizer-3.5.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl.metadata (46 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.8077462Z Collecting urllib3<3,>=1.26 (from requests<3.0.0,>=2.33.0->google-api-core==2.42.0->-r requirements.txt (line 12))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.8089542Z   Using cached urllib3-2.8.0-py3-none-any.whl.metadata (7.4 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.8290870Z Collecting iniconfig>=2 (from pytest)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.8300090Z   Using cached iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.8480146Z Collecting pluggy<2,>=1.6 (from pytest)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.8490370Z   Using cached pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.8694593Z Collecting pygments>=2.15 (from pytest)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.8703475Z   Using cached pygments-2.21.0-py3-none-any.whl.metadata (2.5 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.9134301Z Collecting pyasn1<0.7.0,>=0.6.1 (from pyasn1-modules>=0.2.1->google-auth==2.62.0->-r requirements.txt (line 14))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.9144098Z   Using cached pyasn1-0.6.5-py3-none-any.whl.metadata (8.4 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:23.9371208Z Collecting oauthlib>=3.0.0 (from requests-oauthlib>=0.7.0->google-auth-oauthlib==1.5.0->-r requirements.txt (line 16))
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0008042Z   Downloading oauthlib-4.0.1-py3-none-any.whl.metadata (8.6 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0095443Z Using cached pyjwt-2.15.0-py3-none-any.whl (33 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0103546Z Using cached StrEnum-0.4.15-py3-none-any.whl (8.9 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0111043Z Using cached annotated_doc-0.0.4-py3-none-any.whl (5.3 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0118692Z Using cached annotated_types-0.7.0-py3-none-any.whl (13 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0126125Z Using cached anyio-4.14.2-py3-none-any.whl (125 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0134034Z Using cached certifi-2026.6.17-py3-none-any.whl (133 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0142219Z Using cached cffi-2.1.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (221 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0150914Z Using cached click-8.4.2-py3-none-any.whl (119 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0160879Z Using cached cryptography-50.0.0-cp311-abi3-manylinux_2_34_x86_64.whl (4.7 MB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0184593Z Using cached deprecation-2.1.0-py2.py3-none-any.whl (11 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0192197Z Using cached fastapi-0.139.2-py3-none-any.whl (130 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0201001Z Using cached google_api_core-2.42.0-py3-none-any.whl (221 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0210013Z Using cached google_auth-2.62.0-py3-none-any.whl (267 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0219702Z Using cached google_api_python_client-2.201.0-py3-none-any.whl (16.8 MB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0281098Z Using cached google_auth_httplib2-0.4.4-py3-none-any.whl (9.5 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0288942Z Using cached google_auth_oauthlib-1.5.0-py3-none-any.whl (20 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0296625Z Using cached h11-0.16.0-py3-none-any.whl (37 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0303709Z Using cached h2-4.4.1-py3-none-any.whl (62 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0311220Z Using cached hpack-4.2.0-py3-none-any.whl (34 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0318750Z Using cached hyperframe-6.1.0-py3-none-any.whl (13 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0326219Z Using cached httpcore-1.0.9-py3-none-any.whl (78 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0333372Z Using cached httpx-0.28.1-py3-none-any.whl (73 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0341184Z Using cached idna-3.18-py3-none-any.whl (65 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0349039Z Using cached multidict-6.9.1-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (336 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0358231Z Using cached packaging-26.2-py3-none-any.whl (100 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0366413Z Using cached postgrest-2.31.0-py3-none-any.whl (23 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0373416Z Using cached pydantic-2.13.4-py3-none-any.whl (472 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0383509Z Using cached propcache-0.5.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (61 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0390813Z Using cached pycparser-3.0-py3-none-any.whl (48 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0398611Z Using cached pydantic_core-2.46.4-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (2.1 MB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0414051Z Using cached python_dotenv-1.2.2-py3-none-any.whl (22 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0421270Z Using cached realtime-2.31.0-py3-none-any.whl (22 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0429156Z Using cached websockets-15.0.1-cp313-cp313-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl (182 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0437280Z Using cached starlette-1.3.1-py3-none-any.whl (73 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0444588Z Using cached storage3-2.31.0-py3-none-any.whl (28 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0451682Z Using cached supabase_auth-2.31.0-py3-none-any.whl (48 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0459274Z Using cached supabase_functions-2.31.0-py3-none-any.whl (8.8 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0466257Z Using cached supabase-2.31.0-py3-none-any.whl (16 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0473327Z Using cached typing_inspection-0.4.2-py3-none-any.whl (14 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0480765Z Using cached typing_extensions-4.16.0-py3-none-any.whl (45 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0488180Z Using cached uvicorn-0.51.0-py3-none-any.whl (73 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0495972Z Using cached yarl-1.24.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (107 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0503520Z Using cached openai-3.31.0-py3-none-any.whl (2.2 MB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0519697Z Using cached googleapis_common_protos-1.76.0-py3-none-any.whl (307 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0528585Z Using cached httplib2-0.32.1-py3-none-any.whl (92 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0536328Z Using cached httpx2-2.16.0-py3-none-any.whl (97 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0545038Z Using cached httpcore2-2.16.0-py3-none-any.whl (85 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0552768Z Using cached jiter-0.18.0-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (335 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0561991Z Using cached opentelemetry_api-1.45.2-py3-none-any.whl (60 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0570151Z Using cached proto_plus-1.29.0-py3-none-any.whl (50 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0578490Z Using cached protobuf-7.36.2-cp310-abi3-manylinux2014_x86_64.whl (343 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0587979Z Using cached pyparsing-3.3.3-py3-none-any.whl (126 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0595952Z Using cached requests-2.34.2-py3-none-any.whl (73 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0604827Z Using cached charset_normalizer-3.5.2-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (254 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0613461Z Using cached uritemplate-4.2.0-py3-none-any.whl (11 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0621502Z Using cached urllib3-2.8.0-py3-none-any.whl (135 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0632611Z Using cached pytest-9.2.0-py3-none-any.whl (411 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0643123Z Using cached pluggy-1.7.0-py3-none-any.whl (27 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0651698Z Using cached iniconfig-2.3.1-py3-none-any.whl (7.6 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0660819Z Using cached pyasn1_modules-0.4.2-py3-none-any.whl (181 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0670321Z Using cached pyasn1-0.6.5-py3-none-any.whl (84 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0679758Z Using cached pygments-2.21.0-py3-none-any.whl (1.3 MB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0692270Z Using cached requests_oauthlib-2.0.0-py2.py3-none-any.whl (24 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.0848661Z Downloading oauthlib-4.0.1-py3-none-any.whl (161 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.1195038Z Using cached truststore-0.10.5-py3-none-any.whl (19 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.1203033Z Using cached sniffio-1.3.1-py3-none-any.whl (10 kB)
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:24.4406137Z Installing collected packages: StrEnum, websockets, urllib3, uritemplate, typing_extensions, truststore, sniffio, python-dotenv, pyparsing, PyJWT, pygments, pycparser, pyasn1, protobuf, propcache, pluggy, packaging, oauthlib, multidict, jiter, iniconfig, idna, hyperframe, hpack, h11, click, charset_normalizer, certifi, annotated-types, annotated-doc, yarl, uvicorn, typing-inspection, requests, pytest, pydantic_core, pyasn1-modules, proto-plus, opentelemetry-api, httplib2, httpcore2, httpcore, h2, googleapis-common-protos, deprecation, cffi, anyio, starlette, requests-oauthlib, pydantic, httpx2, httpx, cryptography, realtime, openai, google-auth, fastapi, supabase-functions, supabase-auth, storage3, postgrest, google-auth-oauthlib, google-auth-httplib2, google-api-core, supabase, google-api-python-client
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:28.2509972Z 
+test	Run pip install -r requirements.txt pytest	2026-10-31T19:36:28.2550896Z Successfully installed PyJWT-2.15.0 StrEnum-0.4.15 annotated-doc-0.0.4 annotated-types-0.7.0 anyio-4.14.2 certifi-2026.6.17 cffi-2.1.0 charset_normalizer-3.5.2 click-8.4.2 cryptography-50.0.0 deprecation-2.1.0 fastapi-0.139.2 google-api-core-2.42.0 google-api-python-client-2.201.0 google-auth-2.62.0 google-auth-httplib2-0.4.4 google-auth-oauthlib-1.5.0 googleapis-common-protos-1.76.0 h11-0.16.0 h2-4.4.1 hpack-4.2.0 httpcore-1.0.9 httpcore2-2.16.0 httplib2-0.32.1 httpx-0.28.1 httpx2-2.16.0 hyperframe-6.1.0 idna-3.18 iniconfig-2.3.1 jiter-0.18.0 multidict-6.9.1 oauthlib-4.0.1 openai-3.31.0 opentelemetry-api-1.45.2 packaging-26.2 pluggy-1.7.0 postgrest-2.31.0 propcache-0.5.2 proto-plus-1.29.0 protobuf-7.36.2 pyasn1-0.6.5 pyasn1-modules-0.4.2 pycparser-3.0 pydantic-2.13.4 pydantic_core-2.46.4 pygments-2.21.0 pyparsing-3.3.3 pytest-9.2.0 python-dotenv-1.2.2 realtime-2.31.0 requests-2.34.2 requests-oauthlib-2.0.0 sniffio-1.3.1 starlette-1.3.1 storage3-2.31.0 supabase-2.31.0 supabase-auth-2.31.0 supabase-functions-2.31.0 truststore-0.10.5 typing-inspection-0.4.2 typing_extensions-4.16.0 uritemplate-4.2.0 urllib3-2.8.0 uvicorn-0.51.0 websockets-15.0.1 yarl-1.24.2
+test	Full backend suite	﻿2026-10-31T19:36:28.4053722Z ##[group]Run python -m pytest -q
+test	Full backend suite	2026-10-31T19:36:28.4054063Z ^[[36;1mpython -m pytest -q^[[0m
+test	Full backend suite	2026-10-31T19:36:28.4072988Z shell: /usr/bin/bash -e {0}
+test	Full backend suite	2026-10-31T19:36:28.4073287Z env:
+test	Full backend suite	2026-10-31T19:36:28.4073548Z   FRONTEND_ORIGINS: https://app.donexto.com
+test	Full backend suite	2026-10-31T19:36:28.4073924Z   SUPABASE_URL: https://example.supabase.co
+test	Full backend suite	2026-10-31T19:36:28.4074265Z   SUPABASE_SECRET_KEY: test-secret-key-not-real
+test	Full backend suite	2026-10-31T19:36:28.4074713Z   OAUTH_ENCRYPTION_KEY: test-oauth-encryption-key-32chars!!
+test	Full backend suite	2026-10-31T19:36:28.4075104Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Full backend suite	2026-10-31T19:36:28.4075498Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.17/x64/lib/pkgconfig
+test	Full backend suite	2026-10-31T19:36:28.4075908Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Full backend suite	2026-10-31T19:36:28.4076250Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Full backend suite	2026-10-31T19:36:28.4076604Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Full backend suite	2026-10-31T19:36:28.4076985Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.17/x64/lib
+test	Full backend suite	2026-10-31T19:36:28.4077398Z ##[endgroup]
+test	Full backend suite	2026-10-31T19:36:31.9264131Z sssssssssssssssssssssssssssssssssssssss................................. [  8%]
+test	Full backend suite	2026-10-31T19:36:32.0193712Z ........................................xx......x....................... [ 16%]
+test	Full backend suite	2026-10-31T19:36:32.7748248Z ........................................................................ [ 24%]
+test	Full backend suite	2026-10-31T19:36:32.9331607Z ........................................................................ [ 33%]
+test	Full backend suite	2026-10-31T19:36:33.3809242Z .................................................................... [ 40%]
+test	Full backend suite	2026-10-31T19:36:33.4965529Z ........................................................................ [ 49%]
+test	Full backend suite	2026-10-31T19:36:35.9387358Z ........................................................................ [ 57%]
+test	Full backend suite	2026-10-31T19:36:36.7428378Z .......................................................................................................................................... [ 73%]
+test	Full backend suite	2026-10-31T19:36:36.8076126Z ........................................................................ [ 81%]
+test	Full backend suite	2026-10-31T19:36:36.9818680Z ........................................................................ [ 89%]
+test	Full backend suite	2026-10-31T19:36:37.1085269Z ...............xxxx..................................................... [ 98%]
+test	Full backend suite	2026-10-31T19:36:37.2666723Z ................                                                         [100%]
+test	Full backend suite	2026-10-31T19:36:37.2668244Z =============================== warnings summary ===============================
+test	Full backend suite	2026-10-31T19:36:37.2669403Z ../../../../../../opt/hostedtoolcache/Python/3.13.17/x64/lib/python3.13/site-packages/anyio/pytest_plugin.py:14
+test	Full backend suite	2026-10-31T19:36:37.2671401Z   /opt/hostedtoolcache/Python/3.13.17/x64/lib/python3.13/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+test	Full backend suite	2026-10-31T19:36:37.2673213Z   The CallSpec2 alias will be removed in pytest 10.
+test	Full backend suite	2026-10-31T19:36:37.2673919Z   Update imports to use CallSpec instead.
+test	Full backend suite	2026-10-31T19:36:37.2675094Z   See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+test	Full backend suite	2026-10-31T19:36:37.2676045Z     from _pytest.python import CallSpec2
+test	Full backend suite	2026-10-31T19:36:37.2676427Z 
+test	Full backend suite	2026-10-31T19:36:37.2676696Z tests/test_audit_phase1_regression.py:26
+test	Full backend suite	2026-10-31T19:36:37.2679218Z   /home/runner/work/hms-ai-assistant/hms-ai-assistant/backend/tests/test_audit_phase1_regression.py:26: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+test	Full backend suite	2026-10-31T19:36:37.2681643Z     pytestmark = pytest.mark.unit
+test	Full backend suite	2026-10-31T19:36:37.2681974Z 
+test	Full backend suite	2026-10-31T19:36:37.2682304Z tests/test_p0_reply_ids_isolation.py:56
+test	Full backend suite	2026-10-31T19:36:37.2684786Z   /home/runner/work/hms-ai-assistant/hms-ai-assistant/backend/tests/test_p0_reply_ids_isolation.py:56: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+test	Full backend suite	2026-10-31T19:36:37.2688062Z     pytestmark = pytest.mark.unit
+test	Full backend suite	2026-10-31T19:36:37.2688453Z 
+test	Full backend suite	2026-10-31T19:36:37.2688721Z tests/test_p0_write_paths_isolation.py:20
+test	Full backend suite	2026-10-31T19:36:37.2691024Z   /home/runner/work/hms-ai-assistant/hms-ai-assistant/backend/tests/test_p0_write_paths_isolation.py:20: PytestUnknownMarkWarning: Unknown pytest.mark.unit - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html
+test	Full backend suite	2026-10-31T19:36:37.2693441Z     pytestmark = pytest.mark.unit
+test	Full backend suite	2026-10-31T19:36:37.2693784Z 
+test	Full backend suite	2026-10-31T19:36:37.2694260Z -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+test	Full backend suite	2026-10-31T19:36:37.2695767Z 824 passed, 40 skipped, 7 xfailed, 4 warnings, 154 subtests passed in 7.41s
+test	Brain corpus eval (baseline OFF + acceptance ON)	﻿2026-10-31T19:36:37.5841637Z ##[group]Run set -euo pipefail
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5842021Z ^[[36;1mset -euo pipefail^[[0m
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5842335Z ^[[36;1mrm -f brain-eval.json^[[0m
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5842803Z ^[[36;1mpython scripts/eval_brain.py --flag both --check --json brain-eval.json 2>&1 | tee brain-eval.txt^[[0m
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5843439Z ^[[36;1m{ echo '```'; cat brain-eval.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"^[[0m
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5865839Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5866248Z env:
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5866495Z   FRONTEND_ORIGINS: https://app.donexto.com
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5866855Z   SUPABASE_URL: https://example.supabase.co
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5867163Z   SUPABASE_SECRET_KEY: test-secret-key-not-real
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5867558Z   OAUTH_ENCRYPTION_KEY: test-oauth-encryption-key-32chars!!
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5867928Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5868296Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.17/x64/lib/pkgconfig
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5868829Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5869205Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5869553Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5869914Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.17/x64/lib
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:37.5870258Z ##[endgroup]
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7580057Z métrica | flag OFF | flag ON
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7580809Z emails | 167 | 167
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7581442Z expected_cases | 59 | 59
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7581939Z predicted_cases | 21 | 60
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7582455Z case_precision | 0.81 | 0.967
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7583006Z case_recall | 0.407 | 0.983
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7583480Z missing_case_rate | 0.593 | 0.017
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7583998Z missing_structured | 31 | 1
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7584630Z missing_human_requests | 4 | 0
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7585173Z review_rate | 0.605 | 0.048
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7585744Z false_pending | 1 | 2
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7586258Z false_pending_rate | 0.013 | 0.026
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7586767Z duplicates | 0 | 0
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7587244Z wrong_merges | 3 | 0
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7587695Z date_accuracy | 0.646 | 0.991
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7588266Z invented_dates | 0 | 0
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7588743Z protected_lost | 8 | 0
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7589280Z protected_lost_headers_only | 2 | 2
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7589822Z status_accuracy | 0.917 | 1.0
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7590292Z priority_accuracy | 0.583 | 0.966
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7590840Z triage_accuracy | 0.365 | 0.952
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7591324Z possible_payment_ok | 0/2 | 2/2
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7591882Z cross_sender_auto_closed | 0 | 0
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7592391Z errors | 0 | 0
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7592641Z 
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7592804Z Parte D (flag OFF): 2/12
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7593571Z   NO | D1 Factura con vencimiento | caso accionable, due 2026-10-30 | caso=no, due=None
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7594658Z   NO | D2 Recordatorio de la factura | mismo caso, sin duplicar | mismo caso=False
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7596245Z   NO | D3 Confirmación de pago | resuelve el caso con evento payment_confirmed | estado=None, evento=False
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7597388Z   NO | D4 Dos compras distintas, mismo importe | dos casos | casos distintos=False
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7600040Z   SÍ | D5 Promoción | sin pendiente | triage=promotional, caso=False
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7601064Z   SÍ | D6 Notificación social | sin pendiente | triage=social, caso=False
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7602537Z   NO | D7 Código/inicio de sesión en red social | no se pierde (ni con 'social' excluido) | triage=notice, saltado con social excluido=True
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7604286Z   NO | D8 15 verificaciones de Donexto (verificado) | agrupadas; sin pendiente | casos=0; tercero no verificado: 3 correos → 0 caso(s)
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7605998Z   NO | D9 Cita médica confirmada | compromiso programado 2026-10-20T10:00 | estado=None, event=None
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7607119Z   NO | D10 'Paga cuanto antes' sin fecha | pendiente sin fecha inventada | caso=no, due=None
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7608727Z   NO | D11 Correo ambiguo | requiere revisión, confianza < 0.5 | triage=review, confianza=None
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7609850Z   NO | D12 Documentos 'el próximo viernes' (lun 12-oct) | due 2026-10-16 CDMX | due=None
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7610648Z 
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7610825Z Parte D (flag ON): 12/12
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7611645Z   SÍ | D1 Factura con vencimiento | caso accionable, due 2026-10-30 | caso=sí, due=2026-10-30
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7612777Z   SÍ | D2 Recordatorio de la factura | mismo caso, sin duplicar | mismo caso=True
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7614106Z   SÍ | D3 Confirmación de pago | resuelve el caso con evento payment_confirmed | estado=resolved, evento=True
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7615436Z   SÍ | D4 Dos compras distintas, mismo importe | dos casos | casos distintos=True
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7616497Z   SÍ | D5 Promoción | sin pendiente | triage=promotional, caso=False
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7617405Z   SÍ | D6 Notificación social | sin pendiente | triage=social, caso=False
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7618773Z   SÍ | D7 Código/inicio de sesión en red social | no se pierde (ni con 'social' excluido) | triage=notice, saltado con social excluido=False
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7620452Z   SÍ | D8 15 verificaciones de Donexto (verificado) | agrupadas; sin pendiente | casos=0; tercero no verificado: 3 correos → 1 caso(s)
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7622236Z   SÍ | D9 Cita médica confirmada | compromiso programado 2026-10-20T10:00 | estado=scheduled, event=2026-10-20T10:00
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7623541Z   SÍ | D10 'Paga cuanto antes' sin fecha | pendiente sin fecha inventada | caso=sí, due=None
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7624837Z   SÍ | D11 Correo ambiguo | requiere revisión, confianza < 0.5 | triage=review, confianza=0.35
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7626074Z   SÍ | D12 Documentos 'el próximo viernes' (lun 12-oct) | due 2026-10-16 CDMX | due=2026-10-16
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7626658Z 
+test	Brain corpus eval (baseline OFF + acceptance ON)	2026-10-31T19:36:38.7626894Z Aceptación: OK
+test	Validate brain eval JSON	﻿2026-10-31T19:36:38.8692646Z ##[group]Run set -euo pipefail
+test	Validate brain eval JSON	2026-10-31T19:36:38.8693075Z ^[[36;1mset -euo pipefail^[[0m
+test	Validate brain eval JSON	2026-10-31T19:36:38.8693424Z ^[[36;1mtest -s brain-eval.json^[[0m
+test	Validate brain eval JSON	2026-10-31T19:36:38.8693725Z ^[[36;1mpython - <<'PY'^[[0m
+test	Validate brain eval JSON	2026-10-31T19:36:38.8694006Z ^[[36;1mimport json, sys^[[0m
+test	Validate brain eval JSON	2026-10-31T19:36:38.8694623Z ^[[36;1mdata = json.load(open("brain-eval.json", encoding="utf-8"))^[[0m
+test	Validate brain eval JSON	2026-10-31T19:36:38.8695211Z ^[[36;1massert isinstance(data, list) and {r.get("flag") for r in data} == {"OFF", "ON"}, "faltan corridas OFF/ON"^[[0m
+test	Validate brain eval JSON	2026-10-31T19:36:38.8695741Z ^[[36;1mfor run in data:^[[0m
+test	Validate brain eval JSON	2026-10-31T19:36:38.8696117Z ^[[36;1m    assert run.get("emails", 0) > 0, f"{run.get('flag')}: sin correos evaluados"^[[0m
+test	Validate brain eval JSON	2026-10-31T19:36:38.8696658Z ^[[36;1m    assert run.get("errors") == 0, f"{run.get('flag')}: errors={run.get('errors')}"^[[0m
+test	Validate brain eval JSON	2026-10-31T19:36:38.8697136Z ^[[36;1m    assert run.get("partd"), f"{run.get('flag')}: sin resultados parte D"^[[0m
+test	Validate brain eval JSON	2026-10-31T19:36:38.8697651Z ^[[36;1mprint("brain-eval.json válido:", [(r["flag"], r["emails"], r["errors"]) for r in data])^[[0m
+test	Validate brain eval JSON	2026-10-31T19:36:38.8698209Z ^[[36;1mPY^[[0m
+test	Validate brain eval JSON	2026-10-31T19:36:38.8718119Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+test	Validate brain eval JSON	2026-10-31T19:36:38.8718529Z env:
+test	Validate brain eval JSON	2026-10-31T19:36:38.8718896Z   FRONTEND_ORIGINS: https://app.donexto.com
+test	Validate brain eval JSON	2026-10-31T19:36:38.8719277Z   SUPABASE_URL: https://example.supabase.co
+test	Validate brain eval JSON	2026-10-31T19:36:38.8719662Z   SUPABASE_SECRET_KEY: test-secret-key-not-real
+test	Validate brain eval JSON	2026-10-31T19:36:38.8720056Z   OAUTH_ENCRYPTION_KEY: test-oauth-encryption-key-32chars!!
+test	Validate brain eval JSON	2026-10-31T19:36:38.8720472Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Validate brain eval JSON	2026-10-31T19:36:38.8720963Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.17/x64/lib/pkgconfig
+test	Validate brain eval JSON	2026-10-31T19:36:38.8721383Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Validate brain eval JSON	2026-10-31T19:36:38.8721785Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Validate brain eval JSON	2026-10-31T19:36:38.8722216Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Validate brain eval JSON	2026-10-31T19:36:38.8722607Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.17/x64/lib
+test	Validate brain eval JSON	2026-10-31T19:36:38.8722972Z ##[endgroup]
+test	Validate brain eval JSON	2026-10-31T19:36:38.8917696Z brain-eval.json válido: [('OFF', 167, 0), ('ON', 167, 0)]
+test	Run actions/upload-artifact@v4	﻿2026-10-31T19:36:38.9015287Z ##[group]Run actions/upload-artifact@v4
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9015698Z with:
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9015975Z   name: brain-eval
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9016495Z   path: backend/brain-eval.json
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9016850Z   if-no-files-found: warn
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9017125Z   compression-level: 6
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9017479Z   overwrite: false
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9017777Z   include-hidden-files: false
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9018109Z env:
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9018391Z   FRONTEND_ORIGINS: https://app.donexto.com
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9018732Z   SUPABASE_URL: https://example.supabase.co
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9019160Z   SUPABASE_SECRET_KEY: test-secret-key-not-real
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9019618Z   OAUTH_ENCRYPTION_KEY: test-oauth-encryption-key-32chars!!
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9020075Z   pythonLocation: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9020521Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.13.17/x64/lib/pkgconfig
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9020958Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9021519Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9021960Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.13.17/x64
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9022394Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.13.17/x64/lib
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:38.9022749Z ##[endgroup]
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:39.0416112Z (node:2483) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:39.0417199Z (Use `node --trace-deprecation ...` to show where the warning was created)
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:39.0454120Z With the provided path, there will be 1 file uploaded
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:39.0458271Z Artifact name is valid!
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:39.0471737Z Root directory input is valid!
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:39.3106382Z Beginning upload of artifact content to blob storage
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:39.3279335Z (node:2483) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:39.5360705Z Uploaded bytes 2168
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:39.5912559Z Finished uploading artifact content to blob storage!
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:39.5913355Z SHA256 digest of uploaded artifact zip is 80e45bdddf6ea15c56524d3125c0d0c0d278d2f0367036a4f9bb55ecacab8074
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:39.5914313Z Finalizing artifact upload
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:40.0466673Z Artifact brain-eval.zip successfully finalized. Artifact ID 13055242517
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:40.0486917Z Artifact brain-eval has been successfully uploaded! Final size is 2168 bytes. Artifact ID is 13055242517
+test	Run actions/upload-artifact@v4	2026-10-31T19:36:40.0488294Z Artifact download URL: https://github.com/com22fb-bot/hms-ai-assistant/actions/runs/41234999554/artifacts/13055242517
+test	Post Run actions/setup-python@v6	﻿2026-10-31T19:36:40.0646689Z Post job cleanup.
+test	Post Run actions/setup-python@v6	2026-10-31T19:36:40.1677548Z Cache hit occurred on the primary key setup-python-Linux-x64-26.04-Ubuntu-python-3.13.17-pip-98830aa93e1b185e8b7b9f54fc43b8f0c01568288d317643655037fca2ae8962, not saving cache.
+test	Post Run actions/checkout@v4	﻿2026-10-31T19:36:40.1803784Z Post job cleanup.
+test	Post Run actions/checkout@v4	2026-10-31T19:36:40.2561999Z [command]/usr/bin/git version
+test	Post Run actions/checkout@v4	2026-10-31T19:36:40.2594773Z git version 2.56.0
+test	Post Run actions/checkout@v4	2026-10-31T19:36:40.2647884Z Temporarily overriding HOME='/home/runner/work/_temp/c9e074d3-efba-4cd8-a835-7802cb866441' before making global git config changes
+test	Post Run actions/checkout@v4	2026-10-31T19:36:40.2656524Z Adding repository directory to the temporary git global config as a safe directory
+test	Post Run actions/checkout@v4	2026-10-31T19:36:40.2657677Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/hms-ai-assistant/hms-ai-assistant
+test	Post Run actions/checkout@v4	2026-10-31T19:36:40.2700634Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+test	Post Run actions/checkout@v4	2026-10-31T19:36:40.2742074Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+test	Post Run actions/checkout@v4	2026-10-31T19:36:40.3053667Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+test	Post Run actions/checkout@v4	2026-10-31T19:36:40.3081544Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+test	Post Run actions/checkout@v4	2026-10-31T19:36:40.3415645Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+test	Post Run actions/checkout@v4	2026-10-31T19:36:40.3445875Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+test	Complete job	﻿2026-10-31T19:36:40.3763219Z Cleaning up orphan processes
+test	Complete job	2026-10-31T19:36:40.4046877Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/upload-artifact@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
