@@ -184,3 +184,20 @@ class PgClient:
 
     def table(self, name):
         return Q(self, name)
+
+    def rpc(self, fn, params):
+        client = self
+
+        class _Rpc:
+            def execute(self_inner):
+                client.before(fn, "rpc", params)
+                names = list(params)
+                sql = f'select public."{fn}"(' + ", ".join(f"{n} => %s" for n in names) + ") as r"
+                try:
+                    with client.conn().cursor() as cur:
+                        cur.execute(sql, [_val(params[n]) for n in names])
+                        row = cur.fetchone()
+                except psycopg.Error as e:
+                    raise APIError(f"{getattr(e, 'sqlstate', '')} {e}") from None
+                return Resp(row["r"])
+        return _Rpc()

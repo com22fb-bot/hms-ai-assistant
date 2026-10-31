@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from collections import Counter
 from datetime import datetime, timedelta, timezone
@@ -20,6 +21,8 @@ from app.services.classification_catalog import (
     SECURITY_NOTICE_TERMS,
 )
 from app.services.classification_catalog.matching import sender_email as _sender_email
+
+logger = logging.getLogger(__name__)
 
 
 CLASSIFIER_VERSION = "logistica1-triage-v5"
@@ -449,7 +452,6 @@ def _mark_without_case(
     category: str,
     score: int,
     reason: str,
-    claim_token: str | None = None,
 ) -> None:
     from app.services.case_engine import normalize_subject
 
@@ -457,7 +459,7 @@ def _mark_without_case(
     direction = _message_direction(message)
     now = _now_iso()
 
-    query = (
+    (
         client.table("communication_messages")
         .update(
             {
@@ -472,37 +474,8 @@ def _mark_without_case(
             }
         )
         .eq("id", str(message["id"]))
+        .execute()
     )
-    if claim_token:
-        _fenced(query, claim_token).execute()
-        _confirm_written(client, str(message["id"]), reason, now)
-    else:
-        query.execute()
-
-
-def _fenced(query: Any, claim_token: str) -> Any:
-    """CONC-01 R2: condiciona una escritura al testigo vigente (atómico en Postgres)."""
-    return query.eq("triage_reason", claim_token).eq("case_processed", False)
-
-
-def _confirm_written(client: Any, message_id: str, reason: str, written_at: str) -> None:
-    """Confirma que la marca es la de ESTE trabajador (mismo motivo y mismo instante)."""
-    from app.services.case_engine import ClaimLost
-
-    rows = getattr(
-        client.table("communication_messages")
-        .select("id")
-        .eq("id", message_id)
-        .eq("triage_reason", reason)
-        .eq("triaged_at", written_at)
-        .eq("case_processed", True)
-        .limit(1)
-        .execute(),
-        "data",
-        None,
-    ) or []
-    if not rows:
-        raise ClaimLost(f"reclamación perdida al marcar {message_id}")
 
 
 # CONC-01: reclamación atómica por mensaje. Un UPDATE condicionado (una sola
@@ -580,7 +553,6 @@ def classify_pending_messages(
     received_after: str | None = None,
 ) -> dict[str, Any]:
     from app.services.case_engine import (
-        ClaimLost,
         _find_case_for_message,
         _rows,
         _sender_parts,
@@ -588,6 +560,7 @@ def classify_pending_messages(
         normalize_subject,
         process_message,
     )
+    from app.services.conc01_fenced_writes import BufferedClient, ClaimLost, commit_fenced
     from app.services.oauth_storage import OAuthStorage
 
     storage = OAuthStorage()
@@ -669,6 +642,9 @@ def classify_pending_messages(
             # Otro trabajador lo tiene (o ya quedó procesado): no se cuenta dos veces.
             skipped_claimed += 1
             continue
+        # CONC-01 R2: todas las escrituras de este mensaje se acumulan y se aplican
+        # en UNA transacción (RPC) que bloquea la fila y valida el testigo.
+        wclient = BufferedClient(client)
         try:
             normalized_subject = normalize_subject(
                 str(message.get("subject") or "")
@@ -695,19 +671,16 @@ def classify_pending_messages(
 
             if actionable:
                 _, result = process_message(
-                    client=client,
+                    client=wclient,
                     workspace_id=workspace_id,
                     account_id=account_id,
                     message=message,
                     triage_category=category,
-                    claim_token=claim_token,
                 )
                 if result == "rejected":
                     raise RuntimeError("process_message rechazó el mensaje por alcance")
-                # El mensaje ya quedó case_processed=True con nuestro testigo
-                # (confirmado en process_message); solo el dueño lo reemplaza.
                 (
-                    client.table("communication_messages")
+                    wclient.table("communication_messages")
                     .update(
                         {
                             "triage_category": category,
@@ -717,7 +690,6 @@ def classify_pending_messages(
                         }
                     )
                     .eq("id", str(message["id"]))
-                    .eq("triage_reason", claim_token)
                     .execute()
                 )
                 if result == "created":
@@ -728,21 +700,22 @@ def classify_pending_messages(
                     linked_cases += 1
             else:
                 _mark_without_case(
-                    client=client,
+                    client=wclient,
                     message=message,
                     category=category,
                     score=score,
                     reason=reason,
-                    claim_token=claim_token,
                 )
                 without_case += 1
+
+            commit_fenced(client, str(message["id"]), claim_token, wclient.ops,
+                          workspace_id=workspace_id, account_id=account_id)
 
             categories[category] += 1
             processed += 1
 
         except ClaimLost:
-            # CONC-01 R2: otro trabajador tiene la reclamación vigente; este
-            # trabajador se retira sin escribir nada más (ni retry ni review).
+            # Otro trabajador tiene la reclamación: este no escribió nada.
             lost_claims += 1
             continue
         except Exception as error:
@@ -755,8 +728,9 @@ def classify_pending_messages(
             # un reintento; el segundo lo cierra en revisión humana. Así nunca
             # se repite infinitamente ni se pierde en silencio.
             final = message.get("triage_category") == RETRY_CATEGORY
+            ebuf = BufferedClient(client)
             (
-                client.table("communication_messages")
+                ebuf.table("communication_messages")
                 .update(
                     {
                         "case_processed": final,
@@ -771,10 +745,21 @@ def classify_pending_messages(
                     }
                 )
                 .eq("id", str(message.get("id") or ""))
-                .eq("triage_reason", claim_token)
-                .eq("case_processed", False)
                 .execute()
             )
+            try:
+                # La marca de error también exige la propiedad vigente.
+                commit_fenced(client, str(message["id"]), claim_token, ebuf.ops,
+                              workspace_id=workspace_id, account_id=account_id)
+            except ClaimLost:
+                lost_claims += 1
+                errors -= 1
+                continue
+            except Exception:
+                # RPC no disponible o error de red: nada se escribió; el mensaje
+                # queda reclamado y se recupera al vencer el lease (falla cerrado).
+                logger.warning("conc01: no se pudo registrar el error de %s", message.get("id"))
+                continue
             categories["review" if final else RETRY_CATEGORY] += 1
             if final:
                 without_case += 1

@@ -24,6 +24,9 @@ TRUNCATE = ("truncate case_notifications, case_events, case_participants, case_m
             " organizational_patterns, communication_messages, communication_accounts, push_delivery_log cascade")
 needs_hooks = pytest.mark.skipif(bool(PGRST), reason="inyección de fallos solo con el adaptador")
 
+ROOT = Path(__file__).resolve().parents[3]
+RPC_SQL = ROOT / "supabase/migrations/20261031_001_conc01_commit_message.sql"
+RPC_ROLLBACK = ROOT / "supabase/rollbacks/20261031_001_conc01_commit_message_rollback.sql"
 WS = "15c1e9b8-0000-4000-8000-000000000001"
 ACC = "d493c747-0000-4000-8000-000000000001"
 
@@ -38,6 +41,15 @@ def env(monkeypatch):
     except Exception:
         admin.conn().execute((Path(__file__).parent / "schema.sql").read_text())
         admin.conn().execute("grant usage on schema public to conc01_anon; grant all on all tables in schema public to conc01_anon; notify pgrst, 'reload schema'")
+    # Función RPC propuesta (R2), aplicada SOLO a esta BD local desechable.
+    admin.conn().execute("drop function if exists conc01_commit_message(uuid,text,jsonb)")
+    admin.conn().execute(RPC_SQL.read_text())
+    # conc01_anon = rol de PostgREST local (hace de service_role).
+    admin.conn().execute("grant execute on function conc01_commit_message(uuid,uuid,uuid,text,jsonb) to conc01_anon;"
+                         " drop table if exists conc01_fail cascade; create table conc01_fail (tbl text primary key);"
+                         " drop function if exists conc01_test_gate() cascade;"
+                         " grant all on conc01_fail to conc01_anon; notify pgrst, 'reload schema'")
+    import time; time.sleep(0.3) if PGRST else None
     admin.conn().execute("insert into communication_accounts values (%s,%s,'me@yahoo.com')", (ACC, WS))
 
     clients: list[PgClient] = []
@@ -125,6 +137,11 @@ def _invariants(admin):
         "dup_case_created": q("select count(*) c from (select message_id from case_events where event_type='case_created' group by 1 having count(*)>1) x")["c"],
         "review_but_linked": q("select count(*) c from communication_messages m join case_messages cm on cm.message_id=m.id where m.triage_category='review'")["c"],
         "push_log": q("select count(*) c from push_delivery_log")["c"],
+        "events": q("select count(*) c from case_events")["c"],
+        "notifications": q("select count(*) c from case_notifications")["c"],
+        "participants": q("select count(*) c from case_participants")["c"],
+        "patterns": q("select count(*) c from organizational_patterns")["c"],
+        "events_without_case": q("select count(*) c from case_events e where not exists (select 1 from intelligent_cases c where c.id=e.case_id)")["c"],
     }
 
 
@@ -155,7 +172,7 @@ def test_two_workers_same_message(env):
     results, errors = _run_parallel(2, ids=ids)
     assert not errors
     inv = _invariants(env["admin"])
-    assert inv["pending"] == 0
+    assert inv["pending"] == 0, [r["error_details"] for r in results]
     assert inv["cases"] == 1 and inv["case_messages"] == 1, inv
     _assert_clean(env, inv)
     assert sum(r["processed"] for r in results) == 1, results  # un único resultado por mensaje
@@ -251,7 +268,7 @@ def test_second_failure_is_final_and_visible(env):
     row = env["admin"].conn().execute("select case_processed, triage_category from communication_messages").fetchone()
     assert row["case_processed"] is True and row["triage_category"] == "review"  # sin bucle infinito
     inv = _invariants(env["admin"])
-    assert inv["cases"] == 1  # el huérfano del 1er intento se reutilizó, no se duplicó
+    assert inv["cases"] == 0  # R2: la transacción atómica no deja caso huérfano
     assert env["push"] == []
 
 
@@ -394,7 +411,9 @@ def _expiry_scenario(env, monkeypatch, module, attr, actionable=True):
     assert out["w2"]["processed"] == 1 and out["w2"]["errors"] == 0, out["w2"]
     assert out["w1"]["processed"] == 0 and out["w1"]["lost_claims"] == 1 and out["w1"]["errors"] == 0, out["w1"]
     assert final == after_w2, "w1 escribió sin propiedad"
-    assert {k: inv[k] for k in ("cases", "case_messages")} == {k: snap[k] for k in ("cases", "case_messages")}
+    side = ("cases", "case_messages", "events", "notifications", "participants", "patterns")
+    assert {k: inv[k] for k in side} == {k: snap[k] for k in side}, (snap, inv)  # 0 efectos de w1
+    assert inv["events_without_case"] == 0
     assert final["case_processed"] is True and not str(final["triage_reason"]).startswith("classifying:")
     exp = 1 if actionable else 0
     assert inv["cases"] == exp and inv["case_messages"] == exp, inv
@@ -414,3 +433,276 @@ def test_r2_lease_expires_after_link_before_final_mark(env, monkeypatch):
 def test_r2_lease_expires_before_mark_without_case(env, monkeypatch):
     import app.services.safe_case_classifier as scc
     _expiry_scenario(env, monkeypatch, scc, "classify_message", actionable=False)
+
+
+def test_r2_lease_lost_after_case_insert_before_event(env, monkeypatch):
+    """TOCTOU de d09ff23: w1 ya validó y 'creó' el caso; pierde el lease antes del evento."""
+    import app.services.case_engine as ce
+    _expiry_scenario(env, monkeypatch, ce, "create_case_event")
+
+
+def test_r2_lease_lost_right_before_atomic_commit(env, monkeypatch):
+    """w1 terminó todo su trabajo y pierde el lease justo antes de la RPC: 0 escrituras."""
+    import app.services.conc01_fenced_writes as fw
+    _expiry_scenario(env, monkeypatch, fw, "commit_fenced")
+
+
+BUSINESS_TABLES = ("intelligent_cases", "case_events", "case_notifications", "case_messages",
+                   "case_participants", "organizational_patterns", "communication_messages")
+GATE_SQL = """
+create sequence if not exists conc01_fail_seq; grant usage, select, update on sequence conc01_fail_seq to conc01_anon;
+create or replace function public.conc01_test_gate() returns trigger language plpgsql as $$
+begin
+  -- Fallo sintético UNA sola vez (la secuencia no se revierte con el rollback).
+  if exists (select 1 from public.conc01_fail where tbl = tg_table_name) then
+    if tg_table_name = 'communication_messages' then
+      if not (to_jsonb(new)->>'case_processed')::boolean then
+        return new;  -- solo la marca final; la reclamación/retry no fallan
+      end if;
+    end if;
+    if nextval('public.conc01_fail_seq') = 1 then
+      raise exception 'conc01 fallo sintético en %', tg_table_name;
+    end if;
+  end if;
+  if tg_table_name = 'case_events' then
+    perform pg_advisory_xact_lock_shared(4242);  -- punto de pausa determinista
+  end if;
+  return new;
+end $$;
+""" + "".join(
+    f"drop trigger if exists conc01_gate on {t};"
+    f" create trigger conc01_gate before insert or update on {t} for each row execute function conc01_test_gate();"
+    for t in BUSINESS_TABLES)
+
+
+@pytest.fixture()
+def gate(env):
+    env["admin"].conn().execute(GATE_SQL)
+    yield env
+    env["admin"].conn().execute("".join(f"drop trigger if exists conc01_gate on {t};" for t in BUSINESS_TABLES)
+                                + " select pg_advisory_unlock_all()")
+
+
+def _wait_for(admin, sql, timeout=20):
+    import time
+    end = time.time() + timeout
+    while time.time() < end:
+        if admin.conn().execute(sql).fetchone()["c"]:
+            return True
+        time.sleep(0.05)
+    return False
+
+
+def test_r2_lease_expires_inside_transaction_reclaim_blocked(gate, monkeypatch):
+    """Determinista: w1 está DENTRO de la RPC (validó el testigo y ya insertó el caso) y queda
+    detenido por un advisory lock; el lease vence y w2 intenta reclamar. El FOR UPDATE de w1
+    bloquea a w2 hasta el COMMIT; luego w2 ve case_processed=true y no toma el mensaje."""
+    from datetime import timedelta
+    from app.services.safe_case_classifier import classify_pending_messages
+
+    env = gate
+    admin = env["admin"]
+    ids = _seed(admin, 1)
+    admin.conn().execute("select pg_advisory_lock(4242)")
+    out = {}
+
+    def run(name):
+        out[name] = classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=ids)
+
+    t1 = threading.Thread(target=run, args=("w1",))
+    t1.start()
+    assert _wait_for(admin, "select count(*) c from pg_stat_activity where wait_event_type='Lock' and wait_event='advisory'")
+    env["lease"](timedelta(seconds=-5))  # el lease de w1 ya venció
+    t2 = threading.Thread(target=run, args=("w2",))
+    t2.start()
+    assert _wait_for(admin, "select count(*) c from pg_stat_activity where wait_event_type='Lock'"
+                            " and wait_event in ('transactionid','tuple')"), "w2 no quedó bloqueado por la fila"
+    mid = _invariants(admin)
+    assert mid["cases"] == 0 and mid["events"] == 0  # nada visible a medio camino
+    admin.conn().execute("select pg_advisory_unlock(4242)")
+    t1.join(30); t2.join(30)
+    assert out["w1"]["processed"] == 1 and out["w1"]["lost_claims"] == 0, out["w1"]
+    assert out["w2"]["processed"] == 0 and out["w2"]["skipped_claimed"] == 1, out["w2"]
+    inv = _invariants(admin)
+    assert inv["cases"] == 1 and inv["case_messages"] == 1 and inv["events"] == 1 and inv["pending"] == 0, inv
+    assert inv["events_without_case"] == 0
+    _assert_clean(env, inv)
+
+
+def test_r2_failure_inside_transaction_rolls_back_everything(gate):
+    """Un fallo a mitad de las escrituras (después del caso y del evento) revierte TODO."""
+    from app.services.safe_case_classifier import classify_pending_messages
+
+    env = gate
+    admin = env["admin"]
+    ids = _seed(admin, 1)
+    admin.conn().execute("insert into conc01_fail values ('case_messages'); select setval('conc01_fail_seq', 1, false)")
+    r1 = classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=ids)
+    assert r1["errors"] == 1
+    inv = _invariants(admin)
+    assert (inv["cases"], inv["events"], inv["notifications"], inv["participants"], inv["patterns"], inv["case_messages"]) == (0,) * 6, inv
+    row = admin.conn().execute("select case_processed, triage_category from communication_messages").fetchone()
+    assert row["case_processed"] is False and row["triage_category"] == "retry_pending"
+    admin.conn().execute("delete from conc01_fail")
+    classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=ids)
+    inv = _invariants(admin)
+    assert inv["cases"] == 1 == inv["case_messages"] and inv["events"] == 1 and inv["pending"] == 0, inv
+    _assert_clean(env, inv)
+
+
+def test_rpc_rejects_wrong_token_without_writes(env):
+    """La RPC no escribe nada si el testigo no coincide (validación dentro de la transacción)."""
+    ids = _seed(env["admin"], 1)
+    client = _api_client(env)
+    ops = [{"table": "intelligent_cases", "kind": "insert", "row": {"id": str(uuid.uuid4()), "workspace_id": WS}}]
+    from app.services.safe_case_classifier import _claim_message_token
+    good = _claim_message_token(client, ids[0])
+    assert good
+    other = "classifying:" + str(uuid.uuid4())
+    base = {"p_message_id": ids[0], "p_workspace_id": WS, "p_account_id": ACC, "p_ops": ops}
+    for params in ({**base, "p_token": other},                                   # testigo ajeno
+                   {**base, "p_token": good, "p_workspace_id": str(uuid.uuid4())},  # otro workspace
+                   {**base, "p_token": good, "p_account_id": str(uuid.uuid4())}):   # otra cuenta
+        r = client.rpc("conc01_commit_message", params).execute()
+        assert r.data["status"] == "claim_lost", params
+    assert _invariants(env["admin"])["cases"] == 0
+
+
+@pytest.mark.parametrize("table", BUSINESS_TABLES)
+def test_r2_error_at_each_write_rolls_back_then_retry(gate, table):
+    """Tabla C: error en caso / vínculo / evento / notificación / participante / aprendizaje /
+    marca final → rollback completo (0 efectos) → el reintento procesa 1 caso y 1 vínculo."""
+    from app.services.safe_case_classifier import classify_pending_messages
+
+    admin = gate["admin"]
+    ids = _seed(admin, 1)
+    admin.conn().execute(f"insert into conc01_fail values ('{table}'); select setval('conc01_fail_seq', 1, false)")
+    r1 = classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=ids)
+    assert r1["errors"] == 1 and r1["processed"] == 0, r1["error_details"]
+    assert admin.conn().execute("select nextval('conc01_fail_seq') n").fetchone()["n"] >= 2, r1["error_details"]
+    inv = _invariants(admin)
+    assert (inv["cases"], inv["case_messages"], inv["events"], inv["notifications"],
+            inv["participants"], inv["patterns"]) == (0,) * 6, inv
+    row = admin.conn().execute("select case_processed, triage_category from communication_messages").fetchone()
+    assert row["case_processed"] is False and row["triage_category"] == "retry_pending"
+    r2 = classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=ids)
+    inv = _invariants(admin)
+    assert r2["processed"] == 1 and inv["pending"] == 0, r2
+    assert inv["cases"] == 1 == inv["case_messages"] and inv["events"] == 1, inv
+    assert inv["participants"] >= 1 and inv["patterns"] >= 1 and inv["notifications"] >= 1, inv
+    _assert_clean(gate, inv)
+
+
+def test_non_actionable_zero_cases_and_actionable_one(env):
+    from app.services.safe_case_classifier import classify_pending_messages
+    ids = _seed(env["admin"], 2)  # [0] accionable, [1] no accionable
+    classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=[ids[1]])
+    inv = _invariants(env["admin"])
+    assert inv["cases"] == 0 and inv["case_messages"] == 0 and inv["events"] == 0, inv
+    classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=[ids[0]])
+    inv = _invariants(env["admin"])
+    assert inv["cases"] == 1 and inv["case_messages"] == 1 and inv["pending"] == 0, inv
+    _assert_clean(env, inv)
+
+
+def test_r2_scenario_b_w1_rolls_back_w2_takes_over(gate, monkeypatch):
+    """Escenario B (concurrencia real, 2 sesiones): W1 dentro de la RPC con T1 y bloqueo de fila;
+    W2 espera el bloqueo para reclamar. W1 falla → ROLLBACK; W2 obtiene T2 y procesa.
+    El intento posterior de W1 de escribir con T1 (marca de error) no escribe nada."""
+    from datetime import timedelta
+    import app.services.conc01_fenced_writes as fw
+    from app.services.safe_case_classifier import classify_pending_messages
+
+    env = gate
+    admin = env["admin"]
+    ids = _seed(admin, 1)
+    admin.conn().execute("insert into conc01_fail values ('case_messages'); select setval('conc01_fail_seq', 1, false)")
+    admin.conn().execute("select pg_advisory_lock(4242)")
+    w2_done = threading.Event()
+    calls = {"w1": 0}
+    original = fw.commit_fenced
+
+    def gated(*a, **k):
+        if threading.current_thread().name == "w1":
+            calls["w1"] += 1
+            if calls["w1"] == 2:          # marca de error de W1 con T1: después de que W2 terminó
+                assert w2_done.wait(30)
+        return original(*a, **k)
+
+    monkeypatch.setattr(fw, "commit_fenced", gated)
+    out = {}
+
+    def run(name):
+        out[name] = classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=ids)
+        if name == "w2":
+            w2_done.set()
+
+    t1 = threading.Thread(target=run, args=("w1",), name="w1")
+    t1.start()
+    assert _wait_for(admin, "select count(*) c from pg_stat_activity where wait_event_type='Lock' and wait_event='advisory'")
+    tok1 = admin.conn().execute("select triage_reason from communication_messages").fetchone()["triage_reason"]
+    env["lease"](timedelta(seconds=-5))
+    t2 = threading.Thread(target=run, args=("w2",), name="w2")
+    t2.start()
+    assert _wait_for(admin, "select count(*) c from pg_stat_activity where wait_event_type='Lock'"
+                            " and wait_event in ('transactionid','tuple')"), "w2 no quedó bloqueado por la fila"
+    admin.conn().execute("select pg_advisory_unlock(4242)")  # W1 sigue y falla en case_messages → rollback
+    t2.join(30); t1.join(30)
+    assert not t1.is_alive() and not t2.is_alive()
+    assert out["w2"]["processed"] == 1 and out["w2"]["lost_claims"] == 0, out["w2"]
+    assert out["w1"]["processed"] == 0 and out["w1"]["lost_claims"] == 1, out["w1"]
+    row = admin.conn().execute("select case_processed, triage_category, triage_reason from communication_messages").fetchone()
+    assert row["case_processed"] is True and row["triage_category"] != "retry_pending" and row["triage_reason"] != tok1
+    inv = _invariants(admin)
+    assert inv["cases"] == 1 == inv["case_messages"] and inv["events"] == 1 and inv["events_without_case"] == 0, inv
+    _assert_clean(env, inv)
+
+
+@needs_hooks
+def test_rpc_is_security_invoker_and_not_public(env):
+    """Un rol sin privilegios sobre las tablas no puede usar la RPC para escribir (INVOKER),
+    y PUBLIC no tiene EXECUTE."""
+    admin = env["admin"]
+    row = admin.conn().execute(
+        "select p.prosecdef, p.proconfig, has_function_privilege('public', p.oid, 'execute') pub"
+        " from pg_proc p where p.proname='conc01_commit_message'").fetchone()
+    assert row["prosecdef"] is False and row["pub"] is False
+    assert "search_path=pg_catalog, pg_temp" in row["proconfig"]
+    admin.conn().execute("do $$ begin if not exists (select 1 from pg_roles where rolname='conc01_norights') then"
+                         " create role conc01_norights; end if; end $$;"
+                         " grant execute on function conc01_commit_message(uuid,uuid,uuid,text,jsonb) to conc01_norights")
+    ids = _seed(admin, 1)
+    import psycopg
+    with psycopg.connect(DSN, autocommit=True) as c:
+        c.execute("set role conc01_norights")
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            c.execute("select conc01_commit_message(%s,%s,%s,%s,'[]'::jsonb)",
+                      (ids[0], WS, ACC, "classifying:" + str(uuid.uuid4())))
+    admin.conn().execute("revoke execute on function conc01_commit_message(uuid,uuid,uuid,text,jsonb) from conc01_norights")
+
+
+@needs_hooks
+def test_rpc_rejects_bad_params_without_leaking(env):
+    import psycopg
+    admin = env["admin"]
+    ids = _seed(admin, 1)
+    for token in (None, "x", "classifying:no-uuid"):
+        with pytest.raises(psycopg.errors.InvalidParameterValue) as e:
+            admin.conn().execute("select conc01_commit_message(%s,%s,%s,%s,'[]'::jsonb)", (ids[0], WS, ACC, token))
+        assert "classifying" not in str(e.value).split("\n")[0].replace("conc01: testigo inválido", "")
+
+
+@needs_hooks
+def test_rollback_script_removes_function_keeps_data(env):
+    """Rollback probado: retira función y permisos sin tocar datos; se puede volver a aplicar."""
+    from app.services.safe_case_classifier import classify_pending_messages
+    admin = env["admin"]
+    ids = _seed(admin, 2)
+    classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=ids)
+    before = _invariants(admin)
+    admin.conn().execute(RPC_ROLLBACK.read_text())
+    admin.conn().execute(RPC_ROLLBACK.read_text())  # idempotente
+    assert admin.conn().execute("select count(*) c from pg_proc where proname='conc01_commit_message'").fetchone()["c"] == 0
+    assert _invariants(admin) == before  # 0 datos de negocio afectados
+    admin.conn().execute(RPC_SQL.read_text())  # reaplicable de forma controlada
+    assert admin.conn().execute("select count(*) c from pg_proc where proname='conc01_commit_message'").fetchone()["c"] == 1

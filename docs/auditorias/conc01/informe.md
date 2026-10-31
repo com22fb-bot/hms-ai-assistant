@@ -23,3 +23,9 @@ case_messages nunca se duplicó (índice único `message_id`); push: 0 en todos.
 - R1: `process_pending_messages` (case_engine.py) solo se alcanza por `POST /cases/process`, `POST /gmail/sync`, `/gmail/sync-all` y el job durable de Gmail; todas exigen `HMS_DATA_MUTATIONS_ENABLED` y la función exige `HMS_CASE_ENGINE_ENABLED` (ambas por defecto false; ninguna definida en Railway producción, solo se leyeron nombres). No se modificó.
 - R2: fencing con el testigo `triage_reason`: `assert_claim` antes de crear/actualizar caso y de insertar case_message; marcas finales (`case_processed`, triage, retry/review) condicionadas atómicamente a `triage_reason = testigo` y confirmadas por SELECT; `ClaimLost` → el trabajador se retira sin escribir (`lost_claims`).
 - Pruebas `test_r2_*` (3 puntos de pausa): fallan 3/3 con 6756abd y pasan con el fix, en adaptador y PostgREST 12.2.3.
+
+## R2 atómico (31-oct-2026)
+- `supabase/migrations/20261031_001_conc01_commit_message.sql`: RPC `public.conc01_commit_message` (SECURITY INVOKER, `search_path=pg_catalog,pg_temp`, `FOR UPDATE` + id/cuenta/workspace/testigo/case_processed). Todas las escrituras de negocio del mensaje van en esa única transacción. Rollback: `supabase/rollbacks/20261031_001_conc01_commit_message_rollback.sql` (primero desplegar código sin RPC, luego el script).
+- `backend/app/services/conc01_fenced_writes.py`: `BufferedClient` (lecturas directas, escrituras acumuladas) + `commit_fenced` (orden fijo de bloqueo, log de duración/errores).
+- Se retiró el fencing por SELECT de d09ff23 (`case_engine.py` vuelve a 6756abd).
+- Pruebas: `backend/tests/conc01` (32 adaptador / 25+7 omitidas PostgREST 12.2.3), 3 corridas.
