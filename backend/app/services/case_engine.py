@@ -730,6 +730,30 @@ def _scope_guard_checks(
     return True, None
 
 
+class ClaimLost(RuntimeError):
+    """CONC-01 R2: el trabajador perdió la reclamación (fencing token) del mensaje."""
+
+
+def assert_claim(client: Any, message_id: str, claim_token: str | None) -> None:
+    """Fencing: falla si el testigo de reclamación ya no es el del mensaje.
+
+    Sin testigo (ruta antigua) no hace nada.
+    """
+    if not claim_token:
+        return
+    row = _first_row(
+        client.table("communication_messages")
+        .select("id")
+        .eq("id", message_id)
+        .eq("triage_reason", claim_token)
+        .eq("case_processed", False)
+        .limit(1)
+        .execute()
+    )
+    if not row:
+        raise ClaimLost(f"reclamación perdida para {message_id}")
+
+
 def process_message(
     *,
     client: Any,
@@ -737,6 +761,7 @@ def process_message(
     account_id: str,
     message: dict[str, Any],
     triage_category: str | None = None,
+    claim_token: str | None = None,
 ) -> tuple[str, str]:
     message_id = str(message["id"])
     allowed, linked_case_id = _scope_guard(
@@ -749,6 +774,19 @@ def process_message(
         return "", "rejected"
     if linked_case_id:
         # Ya vinculado: no se crea un caso huérfano ni un segundo vínculo.
+        # CONC-01: si un proceso murió tras vincular y antes de marcar el
+        # mensaje, se completa la marca aquí para que no quede atascado.
+        q = (
+            client.table("communication_messages")
+            .update({"case_processed": True, "processed_at": _to_iso(None)})
+            .eq("id", message_id)
+            .eq("case_processed", False)
+        )
+        if claim_token:
+            assert_claim(client, message_id, claim_token)
+            q = q.eq("triage_reason", claim_token)
+        q.execute()
+        _confirm_final_mark(client, message_id, claim_token)
         return linked_case_id, "already_linked"
     received_at = _to_iso(message.get("received_at"))
     subject = strip_css_noise(str(message.get("subject") or "")) or "(Sin asunto)"
@@ -793,9 +831,24 @@ def process_message(
         evidence_text=text,
     )
 
-    created = existing_case is None
+    # CONC-01: un caso creado por un intento anterior que falló antes de
+    # insertar su case_message se reutiliza en vez de crear otro.
+    if existing_case is None:
+        existing_case = _first_row(
+            client.table("intelligent_cases")
+            .select("*")
+            .eq("workspace_id", workspace_id)
+            .eq("metadata->>source_message_id", message_id)
+            .limit(1)
+            .execute()
+        )
+        orphan = existing_case is not None
+    else:
+        orphan = False
 
-    if created:
+    created = existing_case is None or orphan
+
+    if existing_case is None:
         risk, priority, level = _risk_and_priority(
             text=text,
             is_unread=bool(message.get("is_unread")),
@@ -811,6 +864,7 @@ def process_message(
             else None
         )
 
+        assert_claim(client, message_id, claim_token)
         response = (
             client.table("intelligent_cases")
             .insert(
@@ -853,6 +907,7 @@ def process_message(
                     "reminder_count": 1 if is_reminder else 0,
                     "metadata": {
                         "created_by": "case_engine_v1",
+                        "source_message_id": message_id,
                         "initial_message_direction": direction,
                         **({"event_key": event_key} if event_key else {}),
                     },
@@ -884,6 +939,8 @@ def process_message(
             },
         )
 
+    elif orphan:
+        case = existing_case
     else:
         case = existing_case
         if str(case.get("workspace_id") or "") != str(workspace_id):
@@ -931,6 +988,7 @@ def process_message(
         elif direction == "inbound":
             updates["waiting_on"] = "internal"
 
+        assert_claim(client, message_id, claim_token)
         (
             client.table("intelligent_cases")
             .update(updates)
@@ -980,6 +1038,7 @@ def process_message(
 
     case_id = str(case["id"])
 
+    assert_claim(client, message_id, claim_token)
     (
         client.table("case_messages")
         .insert(
@@ -1026,7 +1085,7 @@ def process_message(
         recipient_emails=recipient_emails,
     )
 
-    (
+    final = (
         client.table("communication_messages")
         .update(
             {
@@ -1042,10 +1101,32 @@ def process_message(
             }
         )
         .eq("id", message_id)
-        .execute()
     )
+    if claim_token:
+        # Escritura final atómica condicionada al testigo: si otro trabajador
+        # reclamó el mensaje, este UPDATE no toca ninguna fila.
+        final = final.eq("triage_reason", claim_token).eq("case_processed", False)
+    final.execute()
+    _confirm_final_mark(client, message_id, claim_token)
 
     return case_id, "created" if created else "linked"
+
+
+def _confirm_final_mark(client: Any, message_id: str, claim_token: str | None) -> None:
+    """Confirma con SELECT que la marca final la escribió el dueño del testigo."""
+    if not claim_token:
+        return
+    row = _first_row(
+        client.table("communication_messages")
+        .select("id")
+        .eq("id", message_id)
+        .eq("triage_reason", claim_token)
+        .eq("case_processed", True)
+        .limit(1)
+        .execute()
+    )
+    if not row:
+        raise ClaimLost(f"reclamación perdida al finalizar {message_id}")
 
 
 def process_pending_messages(
