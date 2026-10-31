@@ -343,3 +343,74 @@ def test_fresh_claim_is_respected(env):
         "update communication_messages set triage_category='classifying', triaged_at = now() - interval '2 minutes'")
     results, _ = _run_parallel(1, ids=None)
     assert results[0]["skipped_claimed"] == 2 and results[0]["processed"] == 0
+
+
+# ---------------------------------------------------------------------------
+# R2: vencimiento del lease mientras el trabajador 1 sigue activo (fencing).
+# Funciona igual con el adaptador y con PostgREST 12.2.3 real (sin hooks).
+# ---------------------------------------------------------------------------
+def _expiry_scenario(env, monkeypatch, module, attr, actionable=True):
+    from app.services.safe_case_classifier import classify_pending_messages
+
+    ids = _seed(env["admin"], 2)
+    target = [ids[0] if actionable else ids[1]]
+    reached, release = threading.Event(), threading.Event()
+    original = getattr(module, attr)
+
+    def paused(*a, **k):
+        if threading.current_thread().name == "w1" and not reached.is_set():
+            reached.set()
+            assert release.wait(30)
+        return original(*a, **k)
+
+    monkeypatch.setattr(module, attr, paused)
+    out = {}
+
+    def w1():
+        out["w1"] = classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=target)
+
+    t = threading.Thread(target=w1, name="w1")
+    t.start()
+    assert reached.wait(30), "w1 no llegó al punto de pausa"
+    tok1 = env["admin"].conn().execute(
+        "select triage_reason from communication_messages where id=%s", (target[0],)).fetchone()["triage_reason"]
+    assert tok1.startswith("classifying:")
+    # el lease de w1 vence (simulado: 11 min atrás) y w2 recupera el mensaje
+    env["admin"].conn().execute(
+        "update communication_messages set triaged_at = now() - interval '11 minutes' where id=%s", (target[0],))
+    out["w2"] = classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=target)
+    after_w2 = env["admin"].conn().execute(
+        "select triage_category, triage_reason, triaged_at, processed_at, case_processed from communication_messages where id=%s",
+        (target[0],)).fetchone()
+    snap = _invariants(env["admin"])
+    release.set()
+    t.join(30)
+    assert not t.is_alive()
+    final = env["admin"].conn().execute(
+        "select triage_category, triage_reason, triaged_at, processed_at, case_processed from communication_messages where id=%s",
+        (target[0],)).fetchone()
+    inv = _invariants(env["admin"])
+    # w2 completó; w1 se retiró sin escribir
+    assert out["w2"]["processed"] == 1 and out["w2"]["errors"] == 0, out["w2"]
+    assert out["w1"]["processed"] == 0 and out["w1"]["lost_claims"] == 1 and out["w1"]["errors"] == 0, out["w1"]
+    assert final == after_w2, "w1 escribió sin propiedad"
+    assert {k: inv[k] for k in ("cases", "case_messages")} == {k: snap[k] for k in ("cases", "case_messages")}
+    assert final["case_processed"] is True and not str(final["triage_reason"]).startswith("classifying:")
+    exp = 1 if actionable else 0
+    assert inv["cases"] == exp and inv["case_messages"] == exp, inv
+    _assert_clean(env, inv)
+
+
+def test_r2_lease_expires_before_case_insert(env, monkeypatch):
+    import app.services.safe_case_classifier as scc
+    _expiry_scenario(env, monkeypatch, scc, "classify_message")
+
+
+def test_r2_lease_expires_after_link_before_final_mark(env, monkeypatch):
+    import app.services.case_engine as ce
+    _expiry_scenario(env, monkeypatch, ce, "_update_learning")
+
+
+def test_r2_lease_expires_before_mark_without_case(env, monkeypatch):
+    import app.services.safe_case_classifier as scc
+    _expiry_scenario(env, monkeypatch, scc, "classify_message", actionable=False)

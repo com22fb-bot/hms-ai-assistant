@@ -449,6 +449,7 @@ def _mark_without_case(
     category: str,
     score: int,
     reason: str,
+    claim_token: str | None = None,
 ) -> None:
     from app.services.case_engine import normalize_subject
 
@@ -456,7 +457,7 @@ def _mark_without_case(
     direction = _message_direction(message)
     now = _now_iso()
 
-    (
+    query = (
         client.table("communication_messages")
         .update(
             {
@@ -471,8 +472,37 @@ def _mark_without_case(
             }
         )
         .eq("id", str(message["id"]))
-        .execute()
     )
+    if claim_token:
+        _fenced(query, claim_token).execute()
+        _confirm_written(client, str(message["id"]), reason, now)
+    else:
+        query.execute()
+
+
+def _fenced(query: Any, claim_token: str) -> Any:
+    """CONC-01 R2: condiciona una escritura al testigo vigente (atómico en Postgres)."""
+    return query.eq("triage_reason", claim_token).eq("case_processed", False)
+
+
+def _confirm_written(client: Any, message_id: str, reason: str, written_at: str) -> None:
+    """Confirma que la marca es la de ESTE trabajador (mismo motivo y mismo instante)."""
+    from app.services.case_engine import ClaimLost
+
+    rows = getattr(
+        client.table("communication_messages")
+        .select("id")
+        .eq("id", message_id)
+        .eq("triage_reason", reason)
+        .eq("triaged_at", written_at)
+        .eq("case_processed", True)
+        .limit(1)
+        .execute(),
+        "data",
+        None,
+    ) or []
+    if not rows:
+        raise ClaimLost(f"reclamación perdida al marcar {message_id}")
 
 
 # CONC-01: reclamación atómica por mensaje. Un UPDATE condicionado (una sola
@@ -489,6 +519,10 @@ def _iso_z(value: datetime) -> str:
 
 
 def _claim_message(client: Any, message_id: str) -> bool:
+    return _claim_message_token(client, message_id) is not None
+
+
+def _claim_message_token(client: Any, message_id: str) -> str | None:
     """Reclama el mensaje con un UPDATE condicionado y lo CONFIRMA con un SELECT.
 
     Comprobado contra PostgREST 12.2.3 real: PostgREST vuelve a aplicar los
@@ -532,7 +566,9 @@ def _claim_message(client: Any, message_id: str) -> bool:
         .execute()
     )
     rows = getattr(confirm, "data", None) or []
-    return len(rows) == 1 and str(rows[0].get("id")) == str(message_id)
+    if len(rows) == 1 and str(rows[0].get("id")) == str(message_id):
+        return token
+    return None
 
 
 def classify_pending_messages(
@@ -544,6 +580,7 @@ def classify_pending_messages(
     received_after: str | None = None,
 ) -> dict[str, Any]:
     from app.services.case_engine import (
+        ClaimLost,
         _find_case_for_message,
         _rows,
         _sender_parts,
@@ -625,8 +662,10 @@ def classify_pending_messages(
     error_details: list[dict[str, str]] = []
 
     skipped_claimed = 0
+    lost_claims = 0
     for message in messages:
-        if not _claim_message(client, str(message["id"])):
+        claim_token = _claim_message_token(client, str(message["id"]))
+        if claim_token is None:
             # Otro trabajador lo tiene (o ya quedó procesado): no se cuenta dos veces.
             skipped_claimed += 1
             continue
@@ -661,9 +700,12 @@ def classify_pending_messages(
                     account_id=account_id,
                     message=message,
                     triage_category=category,
+                    claim_token=claim_token,
                 )
                 if result == "rejected":
                     raise RuntimeError("process_message rechazó el mensaje por alcance")
+                # El mensaje ya quedó case_processed=True con nuestro testigo
+                # (confirmado en process_message); solo el dueño lo reemplaza.
                 (
                     client.table("communication_messages")
                     .update(
@@ -675,6 +717,7 @@ def classify_pending_messages(
                         }
                     )
                     .eq("id", str(message["id"]))
+                    .eq("triage_reason", claim_token)
                     .execute()
                 )
                 if result == "created":
@@ -690,12 +733,18 @@ def classify_pending_messages(
                     category=category,
                     score=score,
                     reason=reason,
+                    claim_token=claim_token,
                 )
                 without_case += 1
 
             categories[category] += 1
             processed += 1
 
+        except ClaimLost:
+            # CONC-01 R2: otro trabajador tiene la reclamación vigente; este
+            # trabajador se retira sin escribir nada más (ni retry ni review).
+            lost_claims += 1
+            continue
         except Exception as error:
             errors += 1
             error_text = str(error)[:1200]
@@ -722,6 +771,8 @@ def classify_pending_messages(
                     }
                 )
                 .eq("id", str(message.get("id") or ""))
+                .eq("triage_reason", claim_token)
+                .eq("case_processed", False)
                 .execute()
             )
             categories["review" if final else RETRY_CATEGORY] += 1
@@ -749,6 +800,7 @@ def classify_pending_messages(
         "without_case": without_case,
         "errors": errors,
         "skipped_claimed": skipped_claimed,
+        "lost_claims": lost_claims,
         "categories": dict(categories),
         "error_details": error_details,
     }

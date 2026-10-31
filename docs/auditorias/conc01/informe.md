@@ -18,3 +18,8 @@ case_messages nunca se duplicó (índice único `message_id`); push: 0 en todos.
 - PostgREST 12.2.3 local (comprobado con curl y log SQL): los filtros lógicos `or=` se reaplican a las filas devueltas por el UPDATE. El filtro de reclamación usa las columnas que cambia, así que `data=[]`/`count=0` aunque la fila se actualizó. Con d2d0848 + PostgREST real: 0 de 50 clasificados, 50 en `classifying`.
 - Corrección (ddd3ae3): testigo único en `triage_reason` + `returning=minimal` + SELECT de confirmación por id y testigo.
 - Pruebas: adaptador 12/12; PostgREST real 8 passed/4 skipped (inyección de fallos solo en el adaptador), 10/10 corridas.
+
+## R1/R2 (30-oct-2026)
+- R1: `process_pending_messages` (case_engine.py) solo se alcanza por `POST /cases/process`, `POST /gmail/sync`, `/gmail/sync-all` y el job durable de Gmail; todas exigen `HMS_DATA_MUTATIONS_ENABLED` y la función exige `HMS_CASE_ENGINE_ENABLED` (ambas por defecto false; ninguna definida en Railway producción, solo se leyeron nombres). No se modificó.
+- R2: fencing con el testigo `triage_reason`: `assert_claim` antes de crear/actualizar caso y de insertar case_message; marcas finales (`case_processed`, triage, retry/review) condicionadas atómicamente a `triage_reason = testigo` y confirmadas por SELECT; `ClaimLost` → el trabajador se retira sin escribir (`lost_claims`).
+- Pruebas `test_r2_*` (3 puntos de pausa): fallan 3/3 con 6756abd y pasan con el fix, en adaptador y PostgREST 12.2.3.
