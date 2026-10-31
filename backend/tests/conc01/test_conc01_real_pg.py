@@ -17,6 +17,13 @@ pytestmark = pytest.mark.skipif(not DSN, reason="CONC01_PG_DSN no definido")
 if DSN and any(h in DSN for h in ("supabase.co", "supabase.com", "pooler")):
     raise RuntimeError("CONC-01: prohibido usar una BD remota")
 
+PGRST = os.environ.get("CONC01_PGRST_URL")  # PostgREST local opcional
+if PGRST and not PGRST.startswith(("http://127.0.0.1", "http://localhost")):
+    raise RuntimeError("CONC-01: PostgREST debe ser local")
+TRUNCATE = ("truncate case_notifications, case_events, case_participants, case_messages, intelligent_cases,"
+            " organizational_patterns, communication_messages, communication_accounts, push_delivery_log cascade")
+needs_hooks = pytest.mark.skipif(bool(PGRST), reason="inyección de fallos solo con el adaptador")
+
 WS = "15c1e9b8-0000-4000-8000-000000000001"
 ACC = "d493c747-0000-4000-8000-000000000001"
 
@@ -26,22 +33,31 @@ def env(monkeypatch):
     from tests.conc01.pgclient import PgClient
 
     admin = PgClient(DSN)
-    admin.conn().execute((Path(__file__).parent / "schema.sql").read_text())
+    try:
+        admin.conn().execute(TRUNCATE)
+    except Exception:
+        admin.conn().execute((Path(__file__).parent / "schema.sql").read_text())
+        admin.conn().execute("grant usage on schema public to conc01_anon; grant all on all tables in schema public to conc01_anon; notify pgrst, 'reload schema'")
     admin.conn().execute("insert into communication_accounts values (%s,%s,'me@yahoo.com')", (ACC, WS))
 
     clients: list[PgClient] = []
 
     class Storage:
         def __init__(self):
-            self.client = PgClient(DSN)
-            self.client.hooks = list(env_state["hooks"])
+            if PGRST:
+                from postgrest import SyncPostgrestClient
+                self.client = SyncPostgrestClient(PGRST)
+            else:
+                self.client = PgClient(DSN)
+                self.client.hooks = list(env_state["hooks"])
+                self.client.default_returning = env_state["default_returning"]
             clients.append(self.client)
 
         def get_account(self, account_id):
             r = self.client.table("communication_accounts").select("*").eq("id", account_id).execute().data
             return r[0] if r else None
 
-    env_state = {"hooks": [], "push": []}
+    env_state = {"hooks": [], "push": [], "default_returning": "representation"}
     import app.services.oauth_storage as oauth_storage
     import app.services.push_service as push_service
 
@@ -54,6 +70,11 @@ def env(monkeypatch):
     import app.services.safe_case_classifier as scc
     env_state["lease"] = lambda d: monkeypatch.setattr(scc, "CLAIM_LEASE", d)
     return env_state
+
+
+def _api_client(env):
+    import app.services.oauth_storage as oauth_storage
+    return oauth_storage.OAuthStorage().client
 
 
 def _seed(admin, n=50):
@@ -165,6 +186,7 @@ class Crash(BaseException):
     """Simula un proceso que muere (no lo captura `except Exception`)."""
 
 
+@needs_hooks
 def test_retry_after_interrupted_run(env):
     ids = _seed(env["admin"], 50)
     state = {"n": 0}
@@ -193,6 +215,7 @@ def test_retry_after_interrupted_run(env):
     _assert_clean(env, inv)
 
 
+@needs_hooks
 def test_failure_between_case_insert_and_link(env):
     ids = _seed(env["admin"], 1)
     state = {"failed": False}
@@ -215,6 +238,7 @@ def test_failure_between_case_insert_and_link(env):
     _assert_clean(env, inv)
 
 
+@needs_hooks
 def test_second_failure_is_final_and_visible(env):
     ids = _seed(env["admin"], 1)
 
@@ -229,3 +253,93 @@ def test_second_failure_is_final_and_visible(env):
     inv = _invariants(env["admin"])
     assert inv["cases"] == 1  # el huérfano del 1er intento se reutilizó, no se duplicó
     assert env["push"] == []
+
+
+# --- Hallazgo ASTRA sobre PR #214: confirmación de la reclamación -----------------
+
+@pytest.mark.skipif(bool(PGRST), reason="modo minimal simulado solo en el adaptador")
+def test_update_without_representation_returns_empty_data(env):
+    """Reproduce data=[] de un UPDATE EXITOSO con return=minimal: el patrón anterior
+    bool(response.data) lo leería como 'no reclamado' aunque la fila sí cambió."""
+    from tests.conc01.pgclient import PgClient
+
+    ids = _seed(env["admin"], 1)
+    c = PgClient(DSN)
+    c.default_returning = "minimal"
+    r = c.table("communication_messages").update({"triage_category": "classifying"}).eq("id", ids[0]).execute()
+    assert r.data == []  # éxito sin cuerpo
+    row = env["admin"].conn().execute("select triage_category from communication_messages").fetchone()
+    assert row["triage_category"] == "classifying"  # pero la fila SÍ se actualizó
+    assert bool(r.data) is False  # => la lógica anterior habría fallado
+
+
+def test_representation_is_refiltered_by_postgrest(env):
+    """Hallazgo real (PostgREST 12.2.3): con return=representation y count=exact,
+    un UPDATE EXITOSO con un filtro lógico or= sobre la columna que cambia devuelve
+    data=[] y count=0 (PostgREST reaplica or= a las filas devueltas). El patrón bool(response.data) del commit d2d0848 nunca confirmaba."""
+    ids = _seed(env["admin"], 1)
+    client = _api_client(env)
+    r = (client.table("communication_messages")
+         .update({"triage_category": "classifying"}, returning="representation", count="exact")
+         .eq("id", ids[0]).or_("triage_category.is.null,triage_category.neq.classifying").execute())
+    assert r.data == [] and r.count == 0
+    row = env["admin"].conn().execute("select triage_category from communication_messages").fetchone()
+    assert row["triage_category"] == "classifying"  # la fila SÍ cambió
+
+
+def test_claim_does_not_depend_on_update_body(env):
+    """Aunque el cliente devuelva siempre data=[] (return=minimal), la reclamación se
+    confirma por el testigo leído con SELECT."""
+    from app.services.safe_case_classifier import _claim_message
+    from tests.conc01.pgclient import PgClient
+
+    ids = _seed(env["admin"], 1)
+    c = PgClient(DSN)
+    c.default_returning = "minimal"
+    assert _claim_message(c, ids[0]) is True
+
+
+def test_claim_confirmed_and_exclusive(env):
+    """Con representación pedida: 1ª reclamación True y fila devuelta; 2ª False (count=0, data=[])."""
+    from app.services.safe_case_classifier import _claim_message
+    import app.services.oauth_storage as oauth_storage
+
+    ids = _seed(env["admin"], 1)
+    client = oauth_storage.OAuthStorage().client
+    assert _claim_message(client, ids[0]) is True
+    # dos reclamaciones simultáneas sobre el mismo mensaje: exactamente una gana
+    env["admin"].conn().execute("update communication_messages set triage_category='unreviewed'")
+    wins = []
+    gate = threading.Barrier(8)
+    def claim():
+        c = oauth_storage.OAuthStorage().client
+        gate.wait()
+        wins.append(_claim_message(c, ids[0]))
+    ts = [threading.Thread(target=claim) for _ in range(8)]
+    [t.start() for t in ts]; [t.join() for t in ts]
+    assert wins.count(True) == 1, wins
+    assert _claim_message(client, ids[0]) is False  # ya reclamado y vigente
+    row = env["admin"].conn().execute("select triage_category, case_processed from communication_messages").fetchone()
+    assert row["triage_category"] == "classifying" and row["case_processed"] is False
+
+
+def test_claim_expires_and_never_stays_classifying(env):
+    """Un 'classifying' abandonado se recupera al vencer la reclamación (filtro or_ con timestamp citado)."""
+    ids = _seed(env["admin"], 4)
+    env["admin"].conn().execute(
+        "update communication_messages set triage_category='classifying', triaged_at = now() - interval '11 minutes'")
+    results, errors = _run_parallel(1, ids=None)
+    assert not errors and results[0]["skipped_claimed"] == 0
+    left = env["admin"].conn().execute(
+        "select count(*) c from communication_messages where triage_category='classifying' or not case_processed").fetchone()["c"]
+    assert left == 0
+    _assert_clean(env, _invariants(env["admin"]))
+
+
+def test_fresh_claim_is_respected(env):
+    """Una reclamación vigente (2 min) de otro trabajador no se toma."""
+    _seed(env["admin"], 2)
+    env["admin"].conn().execute(
+        "update communication_messages set triage_category='classifying', triaged_at = now() - interval '2 minutes'")
+    results, _ = _run_parallel(1, ids=None)
+    assert results[0]["skipped_claimed"] == 2 and results[0]["processed"] == 0

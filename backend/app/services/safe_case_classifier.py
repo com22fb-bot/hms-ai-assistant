@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import uuid
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Any
+
+from postgrest.types import ReturnMethod
 
 from app.services.mail_direction import (
     direction_from_labels,
@@ -486,11 +489,30 @@ def _iso_z(value: datetime) -> str:
 
 
 def _claim_message(client: Any, message_id: str) -> bool:
+    """Reclama el mensaje con un UPDATE condicionado y lo CONFIRMA con un SELECT.
+
+    Comprobado contra PostgREST 12.2.3 real: PostgREST vuelve a aplicar los
+    filtros de la URL sobre las filas devueltas por el UPDATE (pgrst_source).
+    Como el filtro de reclamación usa las mismas columnas que se cambian
+    (triage_category, triaged_at), la representación llega vacía (data=[],
+    count=0) aunque la fila SÍ se haya actualizado. Por eso no se usa
+    response.data ni count como prueba: cada reclamación escribe un testigo
+    único en triage_reason y se confirma leyendo la fila por ese testigo.
+    Falla cerrado: si no se confirma, el mensaje no se procesa en esta pasada.
+    """
     now = datetime.now(timezone.utc)
-    stale = '"' + _iso_z(now - CLAIM_LEASE) + '"' 
-    response = (
+    token = f"{CLAIM_CATEGORY}:{uuid.uuid4()}"
+    stale = '"' + _iso_z(now - CLAIM_LEASE) + '"'
+    (
         client.table("communication_messages")
-        .update({"triage_category": CLAIM_CATEGORY, "triaged_at": _iso_z(now)})
+        .update(
+            {
+                "triage_category": CLAIM_CATEGORY,
+                "triaged_at": _iso_z(now),
+                "triage_reason": token,
+            },
+            returning=ReturnMethod.minimal,
+        )
         .eq("id", message_id)
         .eq("case_processed", False)
         .or_(
@@ -500,8 +522,17 @@ def _claim_message(client: Any, message_id: str) -> bool:
         )
         .execute()
     )
-    data = getattr(response, "data", None)
-    return bool(data)
+    confirm = (
+        client.table("communication_messages")
+        .select("id")
+        .eq("id", message_id)
+        .eq("triage_reason", token)
+        .eq("case_processed", False)
+        .limit(1)
+        .execute()
+    )
+    rows = getattr(confirm, "data", None) or []
+    return len(rows) == 1 and str(rows[0].get("id")) == str(message_id)
 
 
 def classify_pending_messages(

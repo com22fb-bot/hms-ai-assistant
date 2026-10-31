@@ -16,8 +16,9 @@ from psycopg.types.json import Jsonb
 
 
 class Resp:
-    def __init__(self, data):
+    def __init__(self, data, count=None):
         self.data = data
+        self.count = count
 
 
 class APIError(Exception):
@@ -40,17 +41,24 @@ class Q:
         self.c, self.t = client, table
         self.op, self.payload, self.cols = "select", None, "*"
         self.where, self.args, self._order, self._limit = [], [], None, None
+        self.returning, self.count_mode = None, None
+        self.post: list = []  # filtros lógicos (or=) que PostgREST reaplica a la salida
 
     def select(self, cols="*", **_):
         self.op, self.cols = ("select" if self.op == "select" else self.op), cols
         return self
 
-    def insert(self, payload, **_):
+    # Igual que postgrest-py 2.31 (request_builder.py:373/418): returning por
+    # defecto = representation, salvo que el cliente se configure en "minimal"
+    # para imitar Prefer: return=minimal (PostgREST responde 204 sin cuerpo).
+    def insert(self, payload, *, count=None, returning=None, **_):
         self.op, self.payload = "insert", payload
+        self.returning, self.count_mode = returning, count
         return self
 
-    def update(self, payload, **_):
+    def update(self, payload, *, count=None, returning=None, **_):
         self.op, self.payload = "update", payload
+        self.returning, self.count_mode = returning, count
         return self
 
     def delete(self):
@@ -99,6 +107,7 @@ class Q:
                 parts.append(f"{_col(col)} = %s"); args.append(val)
             else:
                 raise NotImplementedError(op)
+        self.post.append(("(" + " or ".join(parts) + ")", args))
         return self._w("(" + " or ".join(parts) + ")", *args)
 
     def order(self, c, desc=False, **_):
@@ -128,8 +137,14 @@ class Q:
             args = [_val(r.get(k)) for r in rows for k in keys]
         elif self.op == "update":
             keys = list(self.payload)
-            sql = (f'update "{self.t}" set ' + ",".join(f"{_col(k)} = %s" for k in keys) + w + " returning *")
-            args = [_val(self.payload[k]) for k in keys] + self.args
+            # Igual que PostgREST 12.2.3 (comprobado con curl): los filtros
+            # LÓGICOS (or=/and=) se aplican otra vez sobre las filas devueltas
+            # (WITH pgrst_source AS (UPDATE ... RETURNING *) SELECT ... WHERE (or)).
+            # Si usan columnas modificadas, data=[] aunque el UPDATE ocurrió.
+            post = (" where " + " and ".join(p for p, _ in self.post)) if self.post else ""
+            sql = (f'with pgrst_source as (update "{self.t}" set ' + ",".join(f"{_col(k)} = %s" for k in keys)
+                   + w + f' returning *) select * from pgrst_source as "{self.t}"' + post)
+            args = [_val(self.payload[k]) for k in keys] + self.args + [a for _, ps in self.post for a in ps]
         else:
             sql, args = f'delete from "{self.t}"{w} returning *', self.args
         try:
@@ -138,9 +153,14 @@ class Q:
                 data = cur.fetchall() if cur.description else []
         except psycopg.Error as e:
             raise APIError(f"{getattr(e, 'sqlstate', '')} {e}") from None
+        affected = len(data)
+        mode = str(self.returning or self.c.default_returning)
+        if self.op in ("insert", "update", "delete") and mode.endswith("minimal"):
+            data = []  # PostgREST con return=minimal: éxito sin filas en el cuerpo
+        count = affected if self.count_mode else None
         data = [{k: (str(v) if k.endswith("id") and v is not None and not isinstance(v, str) else v)
                  for k, v in r.items()} for r in data]
-        return Resp(data)
+        return Resp(data, count)
 
 
 class PgClient:
@@ -150,6 +170,7 @@ class PgClient:
         self.dsn = dsn
         self._local = threading.local()
         self.hooks: list = []
+        self.default_returning = "representation"
 
     def conn(self):
         c = getattr(self._local, "c", None)
