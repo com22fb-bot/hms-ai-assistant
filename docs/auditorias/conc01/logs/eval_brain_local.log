@@ -1,0 +1,54 @@
+métrica | flag OFF | flag ON
+emails | 167 | 167
+expected_cases | 59 | 59
+predicted_cases | 21 | 60
+case_precision | 0.81 | 0.967
+case_recall | 0.407 | 0.983
+missing_case_rate | 0.593 | 0.017
+missing_structured | 31 | 1
+missing_human_requests | 4 | 0
+review_rate | 0.605 | 0.048
+false_pending | 1 | 2
+false_pending_rate | 0.013 | 0.026
+duplicates | 0 | 0
+wrong_merges | 3 | 0
+date_accuracy | 0.646 | 0.991
+invented_dates | 0 | 0
+protected_lost | 8 | 0
+protected_lost_headers_only | 2 | 2
+status_accuracy | 0.917 | 1.0
+priority_accuracy | 0.583 | 0.966
+triage_accuracy | 0.365 | 0.952
+possible_payment_ok | 0/2 | 2/2
+cross_sender_auto_closed | 0 | 0
+errors | 0 | 0
+
+Parte D (flag OFF): 2/12
+  NO | D1 Factura con vencimiento | caso accionable, due 2026-10-30 | caso=no, due=None
+  NO | D2 Recordatorio de la factura | mismo caso, sin duplicar | mismo caso=False
+  NO | D3 Confirmación de pago | resuelve el caso con evento payment_confirmed | estado=None, evento=False
+  NO | D4 Dos compras distintas, mismo importe | dos casos | casos distintos=False
+  SÍ | D5 Promoción | sin pendiente | triage=promotional, caso=False
+  SÍ | D6 Notificación social | sin pendiente | triage=social, caso=False
+  NO | D7 Código/inicio de sesión en red social | no se pierde (ni con 'social' excluido) | triage=notice, saltado con social excluido=True
+  NO | D8 15 verificaciones de Donexto (verificado) | agrupadas; sin pendiente | casos=0; tercero no verificado: 3 correos → 0 caso(s)
+  NO | D9 Cita médica confirmada | compromiso programado 2026-10-20T10:00 | estado=None, event=None
+  NO | D10 'Paga cuanto antes' sin fecha | pendiente sin fecha inventada | caso=no, due=None
+  NO | D11 Correo ambiguo | requiere revisión, confianza < 0.5 | triage=review, confianza=None
+  NO | D12 Documentos 'el próximo viernes' (lun 12-oct) | due 2026-10-16 CDMX | due=None
+
+Parte D (flag ON): 12/12
+  SÍ | D1 Factura con vencimiento | caso accionable, due 2026-10-30 | caso=sí, due=2026-10-30
+  SÍ | D2 Recordatorio de la factura | mismo caso, sin duplicar | mismo caso=True
+  SÍ | D3 Confirmación de pago | resuelve el caso con evento payment_confirmed | estado=resolved, evento=True
+  SÍ | D4 Dos compras distintas, mismo importe | dos casos | casos distintos=True
+  SÍ | D5 Promoción | sin pendiente | triage=promotional, caso=False
+  SÍ | D6 Notificación social | sin pendiente | triage=social, caso=False
+  SÍ | D7 Código/inicio de sesión en red social | no se pierde (ni con 'social' excluido) | triage=notice, saltado con social excluido=False
+  SÍ | D8 15 verificaciones de Donexto (verificado) | agrupadas; sin pendiente | casos=0; tercero no verificado: 3 correos → 1 caso(s)
+  SÍ | D9 Cita médica confirmada | compromiso programado 2026-10-20T10:00 | estado=scheduled, event=2026-10-20T10:00
+  SÍ | D10 'Paga cuanto antes' sin fecha | pendiente sin fecha inventada | caso=sí, due=None
+  SÍ | D11 Correo ambiguo | requiere revisión, confianza < 0.5 | triage=review, confianza=0.35
+  SÍ | D12 Documentos 'el próximo viernes' (lun 12-oct) | due 2026-10-16 CDMX | due=2026-10-16
+
+Aceptación: OK

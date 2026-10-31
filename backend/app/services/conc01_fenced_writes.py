@@ -62,8 +62,6 @@ class _BufferedWrite:
             op: dict[str, Any] = {"table": self.table, "kind": "insert", "row": _jsonable(row)}
             if self.table == "case_events":
                 op["on_conflict"] = "nothing"  # dedupe_key: equivalente a ignorar 23505
-            if self.table == "case_notifications" and row.get("event_id"):
-                op["requires_event"] = str(row["event_id"])
             self.buf.ops.append(op)
             return _Resp([row])
         if not self.where:

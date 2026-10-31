@@ -42,11 +42,8 @@ def load_corpus() -> list[dict]:
 
 def run_pipeline(corpus: list[dict], flag: bool) -> dict:
     os.environ["BRAIN_V1_ENABLED"] = "true" if flag else "false"
-    from tests.fake_supabase import FakeSupabase, _Query
+    from tests.fake_supabase import FakeSupabase
 
-    if not hasattr(_Query, "gte"):
-        _Query.gte = lambda self, *_a: self  # type: ignore[attr-defined]
-        _Query.lte = lambda self, *_a: self  # type: ignore[attr-defined]
     db = FakeSupabase({
         "communication_accounts": [{"id": A, "workspace_id": W, "provider": "gmail", "address": "usuario@correo.example"}],
         "workspace_members": [{"workspace_id": W, "user_id": "u-eval", "role": "owner"}],

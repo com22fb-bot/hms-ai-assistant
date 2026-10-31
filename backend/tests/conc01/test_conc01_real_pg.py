@@ -36,21 +36,20 @@ def env(monkeypatch):
     from tests.conc01.pgclient import PgClient
 
     admin = PgClient(DSN)
-    try:
-        admin.conn().execute(TRUNCATE)
-    except Exception:
-        admin.conn().execute((Path(__file__).parent / "schema.sql").read_text())
-        admin.conn().execute("grant usage on schema public to conc01_anon; grant all on all tables in schema public to conc01_anon; notify pgrst, 'reload schema'")
-    # Función RPC propuesta (R2), aplicada SOLO a esta BD local desechable.
+    # Esquema réplica de producción (estructura) + migración propuesta, SOLO en esta BD local.
+    admin.conn().execute((Path(__file__).parent / "schema.sql").read_text())
     admin.conn().execute("drop function if exists conc01_commit_message(uuid,text,jsonb)")
     admin.conn().execute(RPC_SQL.read_text())
-    # conc01_anon = rol de PostgREST local (hace de service_role).
-    admin.conn().execute("grant execute on function conc01_commit_message(uuid,uuid,uuid,text,jsonb) to conc01_anon;"
+    # conc01_anon = rol de PostgREST local; como service_role en producción: BYPASSRLS.
+    admin.conn().execute("alter role conc01_anon bypassrls; grant usage on schema public to conc01_anon;"
+                         " grant all on all tables in schema public to conc01_anon;"
+                         " grant execute on function conc01_commit_message(uuid,uuid,uuid,text,jsonb) to conc01_anon;"
                          " drop table if exists conc01_fail cascade; create table conc01_fail (tbl text primary key);"
                          " drop function if exists conc01_test_gate() cascade;"
                          " grant all on conc01_fail to conc01_anon; notify pgrst, 'reload schema'")
-    import time; time.sleep(0.3) if PGRST else None
-    admin.conn().execute("insert into communication_accounts values (%s,%s,'me@yahoo.com')", (ACC, WS))
+    import time; time.sleep(0.4) if PGRST else None
+    admin.conn().execute("insert into workspaces values (%s)", (WS,))
+    admin.conn().execute("insert into communication_accounts (id, workspace_id, email) values (%s,%s,'me@yahoo.com')", (ACC, WS))
 
     clients: list[PgClient] = []
 
@@ -89,6 +88,12 @@ def _api_client(env):
     return oauth_storage.OAuthStorage().client
 
 
+def _thread(admin, i):
+    tid = str(uuid.uuid5(uuid.NAMESPACE_URL, f"conc01-thread-{i}"))
+    admin.conn().execute("insert into communication_threads values (%s) on conflict do nothing", (tid,))
+    return tid
+
+
 def _seed(admin, n=50):
     ids = []
     for i in range(n):
@@ -97,7 +102,7 @@ def _seed(admin, n=50):
         admin.conn().execute(
             "insert into communication_messages (id,account_id,thread_id,external_message_id,sender,recipients,subject,body_text,snippet,received_at,direction)"
             " values (%s,%s,%s,%s,%s,'[\"me@yahoo.com\"]',%s,%s,%s, now() - (%s || ' minutes')::interval,'inbound')",
-            (mid, ACC, f"t{i}", f"yahoo:Inbox:{1000+i}",
+            (mid, ACC, _thread(admin, i), f"yahoo:Inbox:{1000+i}",
              f"Cliente {i} <cliente{i}@empresa{i}.mx>" if actionable else f"Promo <news@tienda{i}.com>",
              f"Solicitud de cotización urgente pedido {i}" if actionable else f"Oferta especial {i} 50% descuento",
              "Favor de enviar la cotización hoy, tenemos pago pendiente." if actionable
@@ -694,26 +699,159 @@ def test_rpc_rejects_bad_params_without_leaking(env):
 
 @needs_hooks
 def test_rollback_script_removes_function_keeps_data(env):
-    """Rollback probado: retira función y permisos sin tocar datos; se puede volver a aplicar."""
+    """Rollback probado: retira función y permisos y restaura el CHECK original (NOT VALID)
+    sin tocar datos; es idempotente y la migración se puede volver a aplicar."""
     from app.services.safe_case_classifier import classify_pending_messages
     admin = env["admin"]
     ids = _seed(admin, 2)
     classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=ids)
+    # una fila reclamada en curso al momento del rollback
+    admin.conn().execute(
+        "insert into communication_messages (id,account_id,external_message_id,subject,triage_category,triage_reason,triaged_at)"
+        " values (%s,%s,'yahoo:Inbox:9998','x','classifying','classifying:'||gen_random_uuid(), now())", (str(uuid.uuid4()), ACC))
+    extra = [str(uuid.uuid4())]
+    admin.conn().execute(
+        "insert into communication_messages (id,account_id,thread_id,external_message_id,sender,recipients,subject,body_text,snippet,received_at,direction)"
+        " select %s, account_id, thread_id, 'yahoo:Inbox:9999', sender, recipients, subject, body_text, snippet, now(), direction"
+        " from communication_messages where id=%s", (extra[0], ids[0]))
     before = _invariants(admin)
+    rows_before = admin.conn().execute("select id, triage_category, case_processed, triage_reason from communication_messages order by id").fetchall()
     admin.conn().execute(RPC_ROLLBACK.read_text())
     admin.conn().execute(RPC_ROLLBACK.read_text())  # idempotente
     assert admin.conn().execute("select count(*) c from pg_proc where proname='conc01_commit_message'").fetchone()["c"] == 0
     assert _invariants(admin) == before  # 0 datos de negocio afectados
-    # Código nuevo sin RPC (orden de despliegue incorrecto): falla cerrado, no escribe ni se cae.
-    extra = [str(uuid.uuid4())]
-    admin.conn().execute(
-        "insert into communication_messages (id,account_id,thread_id,external_message_id,sender,recipients,subject,body_text,snippet,received_at,direction)"
-        " select %s, account_id, 'tx', 'yahoo:Inbox:9999', sender, recipients, subject, body_text, snippet, now(), direction"
-        " from communication_messages where id=%s", (extra[0], ids[0]))
-    r = classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=extra)
-    assert r["processed"] == 0 and r["errors"] == 1, r
+    assert admin.conn().execute("select id, triage_category, case_processed, triage_reason from communication_messages order by id").fetchall() == rows_before
+    chk = admin.conn().execute("select convalidated, pg_get_constraintdef(oid) d from pg_constraint"
+                               " where conname='communication_messages_triage_category_check'").fetchone()
+    assert chk["convalidated"] is False and "classifying" not in chk["d"]
+    # Código nuevo SIN migración (orden de despliegue incorrecto): falla cerrado antes de escribir.
+    with pytest.raises(Exception) as e:
+        classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=extra)
+    assert "23514" in str(e.value) or "check constraint" in str(e.value)
     row = admin.conn().execute("select case_processed, triage_category from communication_messages where id=%s", (extra[0],)).fetchone()
-    assert row["case_processed"] is False and row["triage_category"] == "classifying"  # se recupera al vencer el lease
+    assert row["case_processed"] is False and row["triage_category"] == "unreviewed"
     assert _invariants(admin)["cases"] == before["cases"]
-    admin.conn().execute(RPC_SQL.read_text())  # reaplicable de forma controlada
+    # Reaplicar la migración: con una fila 'classifying' existente, VALIDATE la acepta.
+    admin.conn().execute(RPC_SQL.read_text())
     assert admin.conn().execute("select count(*) c from pg_proc where proname='conc01_commit_message'").fetchone()["c"] == 1
+    assert admin.conn().execute("select convalidated c from pg_constraint where conname='communication_messages_triage_category_check'").fetchone()["c"] is True
+
+
+def test_prod_check_without_migration_rejects_claim(env):
+    """Evidencia del hallazgo de producción: con el CHECK ORIGINAL, la reclamación de CONC-01
+    ('classifying') es rechazada por la BD; la migración es requisito previo del deploy."""
+    admin = env["admin"]
+    ids = _seed(admin, 1)
+    admin.conn().execute(RPC_ROLLBACK.read_text())
+    from app.services.safe_case_classifier import _claim_message_token
+    with pytest.raises(Exception) as e:
+        _claim_message_token(_api_client(env), ids[0])
+    assert "23514" in str(e.value) or "check constraint" in str(e.value)
+
+
+def _claimed(env):
+    from app.services.safe_case_classifier import _claim_message_token
+    ids = _seed(env["admin"], 2)
+    client = _api_client(env)
+    token = _claim_message_token(client, ids[0])
+    assert token
+    return client, ids, token
+
+
+def _case_op(case_id):
+    return {"table": "intelligent_cases", "kind": "insert",
+            "row": {"id": case_id, "workspace_id": WS, "account_id": ACC, "title": "x"}}
+
+
+def _event_op(event_id, case_id, message_id):
+    row = {"id": event_id, "workspace_id": WS, "case_id": case_id, "event_type": "case_created",
+           "level": 2, "title": "t", "dedupe_key": f"case_created:{event_id}"}
+    if message_id is not None:
+        row["message_id"] = message_id
+    return {"table": "case_events", "kind": "insert", "on_conflict": "nothing", "row": row}
+
+
+def _notif_op(event_id, case_id):
+    return {"table": "case_notifications", "kind": "insert",
+            "row": {"id": str(uuid.uuid4()), "workspace_id": WS, "case_id": case_id, "event_id": event_id,
+                    "level": 2, "channel": "dashboard", "title": "t"}}
+
+
+def _call(client, ids, token, ops):
+    return client.rpc("conc01_commit_message", {"p_message_id": ids[0], "p_workspace_id": WS,
+                                                "p_account_id": ACC, "p_token": token, "p_ops": ops}).execute()
+
+
+def _zero_writes(env, token, ids):
+    inv = _invariants(env["admin"])
+    assert (inv["cases"], inv["events"], inv["notifications"], inv["case_messages"]) == (0, 0, 0, 0), inv
+    row = env["admin"].conn().execute("select case_processed, triage_reason from communication_messages where id=%s",
+                                      (ids[0],)).fetchone()
+    assert row["case_processed"] is False and row["triage_reason"] == token
+
+
+def _expect_reject(env, client, ids, token, ops):
+    with pytest.raises(Exception) as e:
+        r = _call(client, ids, token, ops)
+        if isinstance(r.data, dict) and r.data.get("status") == "ok":
+            pass  # caerá en el assert de abajo
+        raise AssertionError(f"no rechazó: {r.data}")
+    assert "no rechazó" not in str(e.value), e.value
+    assert "42501" in str(e.value) or "conc01" in str(e.value)
+    _zero_writes(env, token, ids)
+
+
+def test_neg_event_without_message_id_rejected(env):
+    client, ids, token = _claimed(env)
+    c = str(uuid.uuid4())
+    _expect_reject(env, client, ids, token, [_case_op(c), _event_op(str(uuid.uuid4()), c, None)])
+
+
+def test_neg_event_of_other_message_rejected(env):
+    client, ids, token = _claimed(env)
+    c = str(uuid.uuid4())
+    _expect_reject(env, client, ids, token, [_case_op(c), _event_op(str(uuid.uuid4()), c, ids[1])])
+
+
+def test_neg_notification_with_event_of_other_message_rejected(env):
+    """El evento existe (creado por otro mensaje) pero no pertenece a p_message_id."""
+    client, ids, token = _claimed(env)
+    c, ev = str(uuid.uuid4()), str(uuid.uuid4())
+    env["admin"].conn().execute("insert into intelligent_cases (id, workspace_id, account_id, title) values (%s,%s,%s,'x')", (c, WS, ACC))
+    env["admin"].conn().execute("insert into case_events (id, workspace_id, case_id, message_id, event_type, title) values (%s,%s,%s,%s,'x','t')",
+                                (ev, WS, c, ids[1]))
+    before = _invariants(env["admin"])
+    with pytest.raises(Exception) as e:
+        _call(client, ids, token, [_notif_op(ev, c)])
+    assert "42501" in str(e.value) or "conc01" in str(e.value)
+    assert _invariants(env["admin"]) == before
+
+
+def test_neg_notification_with_case_different_from_event_rejected(env):
+    client, ids, token = _claimed(env)
+    c1, c2, ev = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    _expect_reject(env, client, ids, token,
+                   [_case_op(c1), _case_op(c2), _event_op(ev, c1, ids[0]), _notif_op(ev, c2)])
+
+
+def test_neg_notification_without_event_rejected(env):
+    client, ids, token = _claimed(env)
+    c = str(uuid.uuid4())
+    n = _notif_op(None, c)
+    n["row"].pop("event_id")
+    _expect_reject(env, client, ids, token, [_case_op(c), n])
+
+
+def test_valid_event_dedupe_still_skips_notification(env):
+    """Dedupe válido: evento repetido (mismo case_id+dedupe_key) → ON CONFLICT, sin notificación doble."""
+    client, ids, token = _claimed(env)
+    c, ev_old, ev_new = str(uuid.uuid4()), str(uuid.uuid4()), str(uuid.uuid4())
+    admin = env["admin"]
+    admin.conn().execute("insert into intelligent_cases (id, workspace_id, account_id, title) values (%s,%s,%s,'x')", (c, WS, ACC))
+    admin.conn().execute("insert into case_events (id, workspace_id, case_id, message_id, event_type, dedupe_key, title)"
+                         " values (%s,%s,%s,%s,'case_created','k1','t')", (ev_old, WS, c, ids[0]))
+    dup = _event_op(ev_new, c, ids[0]); dup["row"]["dedupe_key"] = "k1"
+    r = _call(client, ids, token, [dup, _notif_op(ev_new, c)])
+    assert r.data["status"] == "ok" and r.data["skipped"] == 1, r.data
+    inv = _invariants(admin)
+    assert inv["events"] == 1 and inv["notifications"] == 0, inv

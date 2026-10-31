@@ -1,0 +1,38 @@
+============================= test session starts ==============================
+platform linux -- Python 3.13.5, pytest-9.2.0, pluggy-1.7.0 -- /workspace/hms-ai-assistant/backend/.venv/bin/python
+rootdir: /workspace/hms-ai-assistant/backend
+plugins: anyio-4.14.2
+collecting ... collected 39 items / 18 deselected / 21 selected
+
+tests/conc01/test_conc01_real_pg.py::test_r2_lease_expires_before_case_insert PASSED [  4%]
+tests/conc01/test_conc01_real_pg.py::test_r2_lease_expires_after_link_before_final_mark PASSED [  9%]
+tests/conc01/test_conc01_real_pg.py::test_r2_lease_expires_before_mark_without_case PASSED [ 14%]
+tests/conc01/test_conc01_real_pg.py::test_r2_lease_lost_after_case_insert_before_event PASSED [ 19%]
+tests/conc01/test_conc01_real_pg.py::test_r2_lease_lost_right_before_atomic_commit PASSED [ 23%]
+tests/conc01/test_conc01_real_pg.py::test_r2_lease_expires_inside_transaction_reclaim_blocked PASSED [ 28%]
+tests/conc01/test_conc01_real_pg.py::test_r2_failure_inside_transaction_rolls_back_everything PASSED [ 33%]
+tests/conc01/test_conc01_real_pg.py::test_r2_error_at_each_write_rolls_back_then_retry[intelligent_cases] PASSED [ 38%]
+tests/conc01/test_conc01_real_pg.py::test_r2_error_at_each_write_rolls_back_then_retry[case_events] PASSED [ 42%]
+tests/conc01/test_conc01_real_pg.py::test_r2_error_at_each_write_rolls_back_then_retry[case_notifications] PASSED [ 47%]
+tests/conc01/test_conc01_real_pg.py::test_r2_error_at_each_write_rolls_back_then_retry[case_messages] PASSED [ 52%]
+tests/conc01/test_conc01_real_pg.py::test_r2_error_at_each_write_rolls_back_then_retry[case_participants] PASSED [ 57%]
+tests/conc01/test_conc01_real_pg.py::test_r2_error_at_each_write_rolls_back_then_retry[organizational_patterns] PASSED [ 61%]
+tests/conc01/test_conc01_real_pg.py::test_r2_error_at_each_write_rolls_back_then_retry[communication_messages] PASSED [ 66%]
+tests/conc01/test_conc01_real_pg.py::test_r2_scenario_b_w1_rolls_back_w2_takes_over PASSED [ 71%]
+tests/conc01/test_conc01_real_pg.py::test_neg_event_without_message_id_rejected PASSED [ 76%]
+tests/conc01/test_conc01_real_pg.py::test_neg_event_of_other_message_rejected PASSED [ 80%]
+tests/conc01/test_conc01_real_pg.py::test_neg_notification_with_event_of_other_message_rejected PASSED [ 85%]
+tests/conc01/test_conc01_real_pg.py::test_neg_notification_with_case_different_from_event_rejected PASSED [ 90%]
+tests/conc01/test_conc01_real_pg.py::test_neg_notification_without_event_rejected PASSED [ 95%]
+tests/conc01/test_conc01_real_pg.py::test_valid_event_dedupe_still_skips_notification PASSED [100%]
+
+=============================== warnings summary ===============================
+.venv/lib/python3.13/site-packages/anyio/pytest_plugin.py:14
+  /workspace/hms-ai-assistant/backend/.venv/lib/python3.13/site-packages/anyio/pytest_plugin.py:14: PytestRemovedIn10Warning: _pytest.python.CallSpec2 has been renamed to CallSpec.
+  The CallSpec2 alias will be removed in pytest 10.
+  Update imports to use CallSpec instead.
+  See https://docs.pytest.org/en/stable/deprecations.html#callspec2-renamed
+    from _pytest.python import CallSpec2
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================ 21 passed, 18 deselected, 1 warning in 11.41s =================

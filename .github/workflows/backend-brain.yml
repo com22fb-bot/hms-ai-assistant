@@ -5,6 +5,7 @@ on:
       - "backend/**"
       - "supabase/migrations/**"
       - ".github/workflows/backend-brain.yml"
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
@@ -37,9 +38,27 @@ jobs:
       - name: Full backend suite
         run: python -m pytest -q
       - name: Brain corpus eval (baseline OFF + acceptance ON)
+        shell: bash
         run: |
-          python scripts/eval_brain.py --flag both --check --json brain-eval.json | tee brain-eval.txt
+          set -euo pipefail
+          rm -f brain-eval.json
+          python scripts/eval_brain.py --flag both --check --json brain-eval.json 2>&1 | tee brain-eval.txt
           { echo '```'; cat brain-eval.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+      - name: Validate brain eval JSON
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s brain-eval.json
+          python - <<'PY'
+          import json, sys
+          data = json.load(open("brain-eval.json", encoding="utf-8"))
+          assert isinstance(data, list) and {r.get("flag") for r in data} == {"OFF", "ON"}, "faltan corridas OFF/ON"
+          for run in data:
+              assert run.get("emails", 0) > 0, f"{run.get('flag')}: sin correos evaluados"
+              assert run.get("errors") == 0, f"{run.get('flag')}: errors={run.get('errors')}"
+              assert run.get("partd"), f"{run.get('flag')}: sin resultados parte D"
+          print("brain-eval.json válido:", [(r["flag"], r["emails"], r["errors"]) for r in data])
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:

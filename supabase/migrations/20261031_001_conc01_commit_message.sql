@@ -1,6 +1,9 @@
 -- 20261031_001_conc01_commit_message — CONC-01 R2 (PR #214)
 -- NO APLICAR en producción sin dictamen favorable de ASTRA y conformidad de Héctor.
--- No destructiva: solo crea UNA función y sus permisos. No toca tablas, índices ni datos.
+-- No destructiva: (1) AMPLÍA el CHECK de communication_messages.triage_category con los dos
+-- estados de CONC-01 ('classifying', 'retry_pending'), que el CHECK de producción hoy rechaza
+-- (verificado por catálogo el 31-oct-2026); conserva todos los valores existentes; (2) crea UNA
+-- función y sus permisos. No borra columnas, índices, restricciones de integridad ni datos.
 -- Rollback: supabase/rollbacks/20261031_001_conc01_commit_message_rollback.sql
 --
 -- public.conc01_commit_message(p_message_id, p_workspace_id, p_account_id, p_token, p_ops)
@@ -15,6 +18,19 @@
 -- Cualquier error en una escritura -> excepción -> rollback completo de la transacción.
 -- SECURITY INVOKER: corre con los permisos y la RLS del rol que llama (service_role en el
 -- backend). No concede privilegios adicionales.
+-- (1) CHECK ampliado. NOT VALID + VALIDATE: el ALTER bloquea la tabla solo un instante y la
+-- validación (lectura) no bloquea escrituras. Aplicar en ventana sin trabajos activos.
+alter table public.communication_messages
+  drop constraint if exists communication_messages_triage_category_check;
+alter table public.communication_messages
+  add constraint communication_messages_triage_category_check check ((triage_category = any (array[
+    'unreviewed'::text, 'action_required'::text, 'waiting_external'::text, 'review'::text, 'notice'::text,
+    'informational'::text, 'automated'::text, 'promotional'::text, 'social'::text,
+    'classifying'::text, 'retry_pending'::text]))) not valid;
+alter table public.communication_messages
+  validate constraint communication_messages_triage_category_check;
+
+-- (2) RPC
 create or replace function public.conc01_commit_message(
   p_message_id uuid,
   p_workspace_id uuid,
@@ -43,6 +59,7 @@ declare
   v_applied int := 0;
   v_skipped int := 0;
   v_n int;
+  v_deduped uuid[] := '{}';
 begin
   -- Parámetros: tipos los valida la firma; valores aquí.
   if p_message_id is null or p_workspace_id is null or p_account_id is null then
@@ -96,9 +113,14 @@ begin
       if v_table = 'intelligent_cases' and (v_row->>'account_id')::uuid is distinct from p_account_id then
         raise exception 'conc01: cuenta no coincide' using errcode = '42501';
       end if;
-      if v_table in ('case_messages', 'case_events') and v_row ? 'message_id'
-         and (v_row->>'message_id')::uuid is distinct from p_message_id then
+      -- Vínculos y eventos: message_id obligatorio y exactamente p_message_id.
+      if v_table in ('case_messages', 'case_events')
+         and ((v_row->>'message_id') is null
+              or (v_row->>'message_id')::uuid is distinct from p_message_id) then
         raise exception 'conc01: mensaje no coincide' using errcode = '42501';
+      end if;
+      if v_table = 'case_events' and (v_row->>'id') is null then
+        raise exception 'conc01: evento sin id' using errcode = '22023';
       end if;
       if v_table in ('case_messages', 'case_participants', 'case_events', 'case_notifications')
          and not exists (select 1 from public.intelligent_cases c
@@ -108,11 +130,22 @@ begin
       if v_table = 'communication_messages' then
         raise exception 'conc01: insert de mensaje no permitido' using errcode = '42501';
       end if;
-      -- Notificación de un evento omitido por dedupe: tampoco se escribe.
-      if op ? 'requires_event'
-         and not exists (select 1 from public.case_events e where e.id = (op->>'requires_event')::uuid) then
-        v_skipped := v_skipped + 1;
-        continue;
+      if v_table = 'case_notifications' then
+        if (v_row->>'event_id') is null then
+          raise exception 'conc01: notificación sin evento' using errcode = '42501';
+        end if;
+        if (v_row->>'event_id')::uuid = any (v_deduped) then
+          -- Dedupe válido: el evento de este mismo lote ya existía (ON CONFLICT); no se notifica dos veces.
+          v_skipped := v_skipped + 1;
+          continue;
+        end if;
+        if not exists (select 1 from public.case_events e
+                        where e.id = (v_row->>'event_id')::uuid
+                          and e.message_id = p_message_id
+                          and e.case_id = (v_row->>'case_id')::uuid
+                          and e.workspace_id = p_workspace_id) then
+          raise exception 'conc01: evento de la notificación no corresponde' using errcode = '42501';
+        end if;
       end if;
       select string_agg(format('%I', k), ', ') into v_cols from jsonb_object_keys(v_row) as k;
       execute format(
@@ -120,6 +153,12 @@ begin
         v_table, v_cols, v_cols, v_table,
         case when op->>'on_conflict' = 'nothing' and v_table = 'case_events' then 'on conflict do nothing' else '' end
       ) using v_row;
+      get diagnostics v_n = row_count;
+      if v_table = 'case_events' and v_n = 0 then
+        v_deduped := v_deduped || (v_row->>'id')::uuid;
+      end if;
+      v_applied := v_applied + v_n;
+      continue;
 
     elsif v_kind = 'update' then
       if jsonb_typeof(v_where) <> 'object' or not (v_where ? 'id') or jsonb_typeof(op->'set') <> 'object' then
