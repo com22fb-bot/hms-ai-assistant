@@ -705,7 +705,11 @@ def test_rollback_script_removes_function_keeps_data(env):
     assert admin.conn().execute("select count(*) c from pg_proc where proname='conc01_commit_message'").fetchone()["c"] == 0
     assert _invariants(admin) == before  # 0 datos de negocio afectados
     # Código nuevo sin RPC (orden de despliegue incorrecto): falla cerrado, no escribe ni se cae.
-    extra = _seed(admin, 1)
+    extra = [str(uuid.uuid4())]
+    admin.conn().execute(
+        "insert into communication_messages (id,account_id,thread_id,external_message_id,sender,recipients,subject,body_text,snippet,received_at,direction)"
+        " select %s, account_id, 'tx', 'yahoo:Inbox:9999', sender, recipients, subject, body_text, snippet, now(), direction"
+        " from communication_messages where id=%s", (extra[0], ids[0]))
     r = classify_pending_messages(account_id=ACC, workspace_id=WS, message_ids=extra)
     assert r["processed"] == 0 and r["errors"] == 1, r
     row = admin.conn().execute("select case_processed, triage_category from communication_messages where id=%s", (extra[0],)).fetchone()
