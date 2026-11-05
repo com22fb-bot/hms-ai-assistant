@@ -41,6 +41,10 @@ const TXT = {
     stop: "Detener descarga",
     stopping: "Deteniendo…",
     stopped: "Descarga detenida. Lo ya descargado se conserva.",
+    close: "Cerrar",
+    resume: "Continuar descarga",
+    resuming: "Continuando…",
+    pending: "{n} descargados aún sin identificar; se identificarán al continuar.",
     done: "Descarga terminada.",
     offline: "Sin conexión con el servidor. Reintentando; la descarga sigue en el servidor.",
     restart: "El servicio se reinició; la descarga se reanudará donde quedó.",
@@ -61,6 +65,10 @@ const TXT = {
     stop: "Stop download",
     stopping: "Stopping…",
     stopped: "Download stopped. What was already downloaded is kept.",
+    close: "Close",
+    resume: "Continue download",
+    resuming: "Continuing…",
+    pending: "{n} downloaded but not yet identified; they will be identified when you continue.",
     done: "Download finished.",
     offline: "No connection to the server. Retrying; the download keeps running on the server.",
     restart: "The service restarted; the download will resume where it left off.",
@@ -88,6 +96,7 @@ export function ImportStatusPanel({ onFinished }: { onFinished?: () => void }) {
   const [offline, setOffline] = useState(false);
   const [stopping, setStopping] = useState(false);
   const [visible, setVisible] = useState(false);
+  const [resuming, setResuming] = useState(false);
   const wasActive = useRef(false);
 
   const load = useCallback(async () => {
@@ -140,6 +149,22 @@ export function ImportStatusPanel({ onFinished }: { onFinished?: () => void }) {
     }
   }
 
+  async function resumeDownload() {
+    setResuming(true);
+    try {
+      // Nuevo job inicial: lo ya guardado se omite (no se descarga de nuevo) y el
+      // barrido final identifica lo pendiente.
+      await hmsJson("/api/hms/gmail/import/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "initial", exclude: [] }),
+      });
+      await load();
+    } finally {
+      setResuming(false);
+    }
+  }
+
   if (!visible || !status) return null;
   const p = status.progress;
   const active = Boolean(status.active);
@@ -153,7 +178,7 @@ export function ImportStatusPanel({ onFinished }: { onFinished?: () => void }) {
 
   return (
     <section className="hms-import-status-panel" aria-live="polite" style={{
-      position: "fixed", right: 16, bottom: 16, zIndex: 40, width: "min(380px, calc(100vw - 32px))",
+      position: "fixed", left: 16, bottom: 16, zIndex: 40, width: "min(380px, calc(100vw - 32px))",
       padding: 16, borderRadius: 16, border: "1px solid rgba(127,127,127,.35)",
       background: "var(--nx-surface, #10141c)", color: "var(--nx-text, #f3f5f8)", boxShadow: "0 12px 32px rgba(0,0,0,.35)",
     }}>
@@ -199,7 +224,21 @@ export function ImportStatusPanel({ onFinished }: { onFinished?: () => void }) {
       {active && !offline && hbAge > 90 ? <p role="alert"><AlertTriangle size={16} /> {fmt(t.stale, { t: duration(hbAge) })}</p> : null}
       {js === "failed" ? <p role="alert"><AlertTriangle size={16} /> {status.failure?.message || t.failed}</p> : null}
       {status.last_error && (js === "failed" || js === "interrupted") ? <small>{fmt(t.lastError, { e: status.last_error.slice(0, 200) })}</small> : null}
-      {js === "cancelled" ? <p>{t.stopped}</p> : null}
+      {js === "cancelled" && !active ? (
+        <div data-testid="import-stopped">
+          <p>{t.stopped}</p>
+          {p && p.downloaded > p.classified ? <small>{fmt(t.pending, { n: p.downloaded - p.classified })}</small> : null}
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button type="button" onClick={() => setVisible(false)}>{t.close}</button>
+            <button type="button" onClick={() => void resumeDownload()} disabled={resuming}>
+              {resuming ? t.resuming : t.resume}
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {(js === "completed" || js === "failed") && !active ? (
+        <button type="button" onClick={() => setVisible(false)}>{t.close}</button>
+      ) : null}
       {js === "completed" ? <p>{t.done}</p> : null}
     </section>
   );

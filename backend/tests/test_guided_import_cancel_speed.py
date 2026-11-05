@@ -151,3 +151,50 @@ def test_uid_fetch_batch_is_one_command_and_peek_only():
     assert cmd == "FETCH" and ids == "11,12,13"
     assert "BODY.PEEK[]" in spec and "STORE" not in spec.upper()
     assert "\\Seen" in got["12"][1]
+
+
+def test_continue_does_not_redownload_existing_messages(monkeypatch):
+    """OBS-CANC-01: un job nuevo sobre lo ya guardado no vuelve a pedir cuerpos a IMAP."""
+    from unittest import mock
+
+    refs = [f"Inbox\x1f{100 + i}" for i in range(5)]
+    imap = FakeImap()
+
+    class Q:
+        def __getattr__(self, _):
+            return lambda *a, **k: self
+
+        def execute(self):
+            return type("R", (), {"data": []})()
+
+    class St:
+        client = type("C", (), {"table": lambda self, n: Q()})()
+
+    existing = {f"yahoo:Inbox:{100 + i}" for i in range(5)}
+    with mock.patch.object(y, "OAuthStorage", St), \
+         mock.patch.object(y, "_open_mailbox_client", lambda *a, **k: imap), \
+         mock.patch.object(y, "_existing_message_ids", lambda **k: existing), \
+         mock.patch.object(y, "_select_folder", lambda *a, **k: None), \
+         mock.patch.object(y, "_prepare_imap_secret", lambda e, p, **k: (e, p)):
+        out = y.sync_yahoo_page(account={"id": "a", "email": "x@yahoo.com"}, app_password="p", refs=refs, offset=0)
+    assert out["inserted"] == 0 and out["duplicates"] == 5
+    assert imap.commands == []  # sin FETCH: no se descarga de nuevo
+
+
+def test_final_sweep_identifies_pending_once(monkeypatch):
+    """Al completar, un solo barrido sin message_ids toma lo que quedó con case_processed=false."""
+    store = Store(_job(10))
+    _wire(monkeypatch, store, pages=1)
+    sweeps = []
+
+    def classify(**k):
+        if "message_ids" not in k:
+            sweeps.append(k)
+            return {"processed": 50, "created_cases": 0}
+        return {"processed": len(k["message_ids"]), "created_cases": 0}
+
+    monkeypatch.setattr(g, "classify_pending_messages", classify)
+    g._run_job("job-1")
+    assert store.job["status"] == "completed"
+    assert len(sweeps) == 1 and sweeps[0]["limit"] == 1000
+    assert store.job["cases_processed"] == 10 + 50
