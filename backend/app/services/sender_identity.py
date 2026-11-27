@@ -87,18 +87,21 @@ class SenderIdentity:
         return email.rsplit("@", 1)[1].strip().rstrip(".")
 
 
-def _parse_mailboxes(value: str) -> tuple[list[Address], bool]:
-    """(direcciones, hubo_defectos_graves) según email.headerregistry; nunca lanza."""
+def _parse_mailboxes(value: str) -> tuple[list[Address], bool, bool]:
+    """(direcciones, hubo_defectos_graves, error_de_análisis) según email.headerregistry.
+
+    Nunca lanza. Si el analizador estándar falla (p. ej. sintaxis de grupo seguida
+    de otro buzón), ``error_de_análisis`` es True y el campo se trata como
+    inválido sin aplicar ninguna regla de compatibilidad (revisión de seguridad #218).
+    """
     try:
         header = _REGISTRY("From", value)
-    except Exception:  # pragma: no cover - el analizador estándar no debería lanzar
-        return [], True
-    try:
         addresses = list(header.addresses)
-    except Exception:  # pragma: no cover
-        return [], True
-    fatal = [d for d in header.defects if not isinstance(d, _BENIGN_DEFECTS)]
-    return addresses, bool(fatal)
+        defects = list(header.defects)
+    except Exception:
+        return [], True, True
+    fatal = [d for d in defects if not isinstance(d, _BENIGN_DEFECTS)]
+    return addresses, bool(fatal), False
 
 
 def _valid_address(address: Address) -> bool:
@@ -113,8 +116,8 @@ def _valid_address(address: Address) -> bool:
 
 def _single_mailbox(value: str) -> Address | None:
     """El ``Address`` si ``value`` es exactamente una addr-spec válida sin nombre."""
-    addresses, defects = _parse_mailboxes(value)
-    if defects or len(addresses) != 1:
+    addresses, defects, failed = _parse_mailboxes(value)
+    if failed or defects or len(addresses) != 1:
         return None
     address = addresses[0]
     if address.display_name or not _valid_address(address):
@@ -146,7 +149,9 @@ def _parse_sender_text(raw: str) -> SenderIdentity:
     if not raw:
         return SenderIdentity("", "", STATUS_EMPTY)
 
-    addresses, defects = _parse_mailboxes(raw)
+    addresses, defects, failed = _parse_mailboxes(raw)
+    if failed:
+        return SenderIdentity(_display_only(raw), "", STATUS_INVALID)
     valid = [a for a in addresses if _valid_address(a)]
     if not defects and len(addresses) == 1 and len(valid) == 1:
         address = valid[0]
@@ -164,7 +169,10 @@ def _parse_sender_text(raw: str) -> SenderIdentity:
         email = _single_address(legacy.group("addr").strip())
         # El único buzón válido que ve el analizador debe ser el del <...> final;
         # el resto son fragmentos del nombre sin dominio ("Perez", "Banamex").
-        if email and (not valid or str(valid[0].addr_spec) == email):
+        # Exige exactamente un buzón válido y que sea ese; sin sintaxis de grupo.
+        name_part = legacy.group("name")
+        if (email and len(valid) == 1 and str(valid[0].addr_spec) == email
+                and ":" not in name_part and ";" not in name_part):
             return SenderIdentity(_display_only(legacy.group("name")), email, STATUS_LEGACY)
 
     display = _display_only(raw)

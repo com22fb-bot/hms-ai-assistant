@@ -282,11 +282,14 @@ def test_b_legacy_rows_from_previous_serializer_are_not_attributed():
         f"x@atacante.test, Soporte <aviso@{BANK}>",  # revisión de seguridad PR #218
         f"Soporte <x@atacante.test>, Banamex <aviso@{BANK}>",
         f"aviso@{BANK}, x@atacante.test",
+        f"evil: x@atacante.test; <aviso@{BANK}>",  # grupo + buzón (revisión de seguridad #218)
+        f"evil: x@atacante.test; Banamex <aviso@{BANK}>",
+        f"Grupo: ; <aviso@{BANK}>",
     ],
 )
 def test_b_mixed_multiple_mailboxes_fail_closed(raw):
     identity = parse_sender(raw)
-    assert identity.email == "" and identity.status == "multiple", identity
+    assert identity.email == "" and identity.status in ("multiple", "invalid"), identity
     assert identify_sender(raw) is None
     stored = canonical_sender(raw)
     assert parse_sender(stored).email == "" and identify_sender(stored) is None, stored
