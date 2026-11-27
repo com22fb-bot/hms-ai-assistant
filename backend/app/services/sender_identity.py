@@ -167,9 +167,13 @@ def _parse_sender_text(raw: str) -> SenderIdentity:
         if email and (not valid or str(valid[0].addr_spec) == email):
             return SenderIdentity(_display_only(legacy.group("name")), email, STATUS_LEGACY)
 
-    if not valid and addresses and not any("@" in str(a.addr_spec or "") and a.domain for a in addresses):
-        return SenderIdentity(_display_only(raw), "", STATUS_NO_ADDRESS)
-    return SenderIdentity(_display_only(raw), "", STATUS_INVALID)
+    display = _display_only(raw)
+    # Sin "@" es solo un nombre; con "@" pero sin dirección utilizable es un
+    # campo inválido (incluye lo que se guardó como texto tras rechazar varias
+    # identidades), y los consumidores pueden tratarlo con desconfianza.
+    if "@" not in display:
+        return SenderIdentity(display, "", STATUS_NO_ADDRESS)
+    return SenderIdentity(display, "", STATUS_INVALID)
 
 
 def _decoded_display(raw: str) -> str:

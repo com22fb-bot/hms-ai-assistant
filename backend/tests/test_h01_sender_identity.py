@@ -481,3 +481,21 @@ def test_h_idempotent_canonical_form():
     for raw in ['"Perez, Juan" <j@example.test>', f'"{INJECTED_NAME}" <{REAL}>', "José <j@example.test>"]:
         once = canonical_sender(raw)
         assert canonical_sender(once) == once
+
+
+def test_h_brain_v1_brand_mismatch_fails_closed_on_ambiguous_sender():
+    # Revisión de seguridad PR #218 (A3/A15): una identidad ambigua no puede
+    # saltarse la discrepancia de marca. Función pura; no activa BRAIN_V1.
+    from app.services.brain_v1.protected import brand_mismatch, phishing_suspect
+
+    subject = "Citibanamex: tu cuenta será bloqueada"
+    body = "Confirma tus datos hoy mismo en el enlace o tu cuenta será suspendida."
+    for raw in (f"x@atacante.test, Soporte <aviso@{BANK}>", f'"x" <aviso@{BANK}'):
+        for value in (raw, canonical_sender(raw)):
+            assert brand_mismatch(value, subject, body), value
+    assert brand_mismatch(f"Soporte <{REAL}>", subject, body)  # una sola identidad ajena
+    assert brand_mismatch("Citibanamex <alertas@citibanamex.com>", subject, body) is None  # banco real
+    assert brand_mismatch("", subject, body) is None  # sin remitente: sin cambio
+    assert brand_mismatch("Solo Nombre", subject, body) is None  # solo nombre: sin cambio
+    ambiguous = canonical_sender(f"x@atacante.test, Soporte <aviso@{BANK}>")
+    assert phishing_suspect(ambiguous, subject, body) == phishing_suspect(f"Soporte <{REAL}>", subject, body)
