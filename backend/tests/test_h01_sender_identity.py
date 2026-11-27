@@ -317,6 +317,7 @@ def test_c_legitimate_names_round_trip_all_providers(name, address):
         ("Amazon.com <ship@amazon.example>", "ship@amazon.example", "Amazon.com"),  # punto en el nombre
         ("Dr. Juan Pérez <j@example.test>", "j@example.test", "Dr. Juan Pérez"),
         ("j@bañco.example", "j@bañco.example", ""),
+        ('"a b"@example.test', '"a b"@example.test', ""),  # local-part entre comillas
     ],
 )
 def test_c_benign_defects_keep_single_address(raw, address, name):

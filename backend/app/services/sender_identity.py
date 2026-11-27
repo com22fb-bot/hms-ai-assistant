@@ -109,15 +109,21 @@ def _valid_address(address: Address) -> bool:
     return True
 
 
-def _single_address(value: str) -> str:
-    """La dirección si ``value`` es exactamente una addr-spec válida; si no, ''."""
+def _single_mailbox(value: str) -> Address | None:
+    """El ``Address`` si ``value`` es exactamente una addr-spec válida sin nombre."""
     addresses, defects = _parse_mailboxes(value)
     if defects or len(addresses) != 1:
-        return ""
+        return None
     address = addresses[0]
     if address.display_name or not _valid_address(address):
-        return ""
-    return str(address.addr_spec)
+        return None
+    return address
+
+
+def _single_address(value: str) -> str:
+    """La dirección si ``value`` es exactamente una addr-spec válida; si no, ''."""
+    mailbox = _single_mailbox(value)
+    return str(mailbox.addr_spec) if mailbox is not None else ""
 
 
 def _display_only(value: str) -> str:
@@ -177,11 +183,12 @@ def format_sender(display_name: str | None, email: str | None) -> str:
       nunca produzca una dirección.
     """
     name = re.sub(r"[\r\n\t]+", " ", str(display_name or "")).strip()
-    address = _single_address(str(email or "").strip())
-    if address:
+    mailbox = _single_mailbox(str(email or "").strip())
+    if mailbox is not None:
+        address = str(mailbox.addr_spec)
         # username/domain en lugar de addr_spec: Address(addr_spec=...) rechaza
         # local-parts no ASCII (RFC 6531) que el análisis sí acepta.
-        username, _, domain = address.rpartition("@")
+        username, domain = str(mailbox.username), str(mailbox.domain)
         bare = str(Address(username=username, domain=domain))
         try:
             rendered = str(Address(display_name=name, username=username, domain=domain))
