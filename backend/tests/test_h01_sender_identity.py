@@ -308,6 +308,27 @@ def test_c_legitimate_names_round_trip_all_providers(name, address):
         _assert_identity(stored, address)
 
 
+@pytest.mark.parametrize(
+    "raw, address, name",
+    [
+        ("josé@banco.example", "josé@banco.example", ""),  # RFC 6531 (Bugbot #218)
+        ("Nombre <josé@banco.example>", "josé@banco.example", "Nombre"),
+        ('"José, Ana" <josé@banco.example>', "josé@banco.example", "José, Ana"),
+        ("Amazon.com <ship@amazon.example>", "ship@amazon.example", "Amazon.com"),  # punto en el nombre
+        ("Dr. Juan Pérez <j@example.test>", "j@example.test", "Dr. Juan Pérez"),
+        ("j@bañco.example", "j@bañco.example", ""),
+    ],
+)
+def test_c_benign_defects_keep_single_address(raw, address, name):
+    identity = parse_sender(raw)
+    assert identity.status == "ok", identity
+    assert (identity.email, identity.display_name) == (address, name)
+    stored = canonical_sender(raw)
+    assert parse_sender(stored).email == address, stored
+    assert parse_sender(stored).display_name == name, stored
+    _assert_identity(stored, address.lower())
+
+
 def test_c_rfc2047_names_decoded_after_parsing():
     raw = "=?utf-8?q?P=C3=A9rez=2C_Juan?= <j@example.test>"
     stored = canonical_sender(raw)

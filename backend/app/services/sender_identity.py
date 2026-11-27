@@ -35,6 +35,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from functools import lru_cache
+from email import errors as email_errors
 from email.headerregistry import Address, HeaderRegistry
 
 STATUS_OK = "ok"
@@ -47,6 +48,11 @@ STATUS_INVALID = "invalid"
 TRUSTED_STATUSES = frozenset({STATUS_OK, STATUS_LEGACY})
 
 _REGISTRY = HeaderRegistry()
+# Defectos que no vuelven ambigua una dirección única: sintaxis obsoleta pero
+# interpretable (p. ej. punto en el nombre "Amazon.com", ruta obsoleta) y
+# local-part no ASCII (RFC 6531, "josé@dominio"). Cualquier otro defecto
+# (InvalidHeaderDefect, etc.) invalida el campo.
+_BENIGN_DEFECTS = (email_errors.ObsoleteHeaderDefect, email_errors.NonASCIILocalPartDefect)
 # Forma escrita por los serializadores anteriores: "<texto sin ángulos> <dirección>".
 _LEGACY_TRAILING_ANGLE = re.compile(r"^(?P<name>[^<>]*?)\s*<(?P<addr>[^<>]*)>\s*$", re.DOTALL)
 
@@ -80,7 +86,7 @@ class SenderIdentity:
 
 
 def _parse_mailboxes(value: str) -> tuple[list[Address], bool]:
-    """(direcciones, hubo_defectos) según email.headerregistry; nunca lanza."""
+    """(direcciones, hubo_defectos_graves) según email.headerregistry; nunca lanza."""
     try:
         header = _REGISTRY("From", value)
     except Exception:  # pragma: no cover - el analizador estándar no debería lanzar
@@ -89,7 +95,8 @@ def _parse_mailboxes(value: str) -> tuple[list[Address], bool]:
         addresses = list(header.addresses)
     except Exception:  # pragma: no cover
         return [], True
-    return addresses, bool(header.defects)
+    fatal = [d for d in header.defects if not isinstance(d, _BENIGN_DEFECTS)]
+    return addresses, bool(fatal)
 
 
 def _valid_address(address: Address) -> bool:
@@ -172,13 +179,17 @@ def format_sender(display_name: str | None, email: str | None) -> str:
     name = re.sub(r"[\r\n\t]+", " ", str(display_name or "")).strip()
     address = _single_address(str(email or "").strip())
     if address:
+        # username/domain en lugar de addr_spec: Address(addr_spec=...) rechaza
+        # local-parts no ASCII (RFC 6531) que el análisis sí acepta.
+        username, _, domain = address.rpartition("@")
+        bare = str(Address(username=username, domain=domain))
         try:
-            rendered = str(Address(display_name=name, addr_spec=address))
+            rendered = str(Address(display_name=name, username=username, domain=domain))
         except Exception:
-            rendered = str(Address(addr_spec=address))
+            rendered = bare
         if parse_sender(rendered).email == address:
             return rendered
-        return str(Address(addr_spec=address))
+        return bare
     if not name:
         return ""
     if parse_sender(name).email or re.search(r'[@<>,;:"\\()\[\]]', name):
