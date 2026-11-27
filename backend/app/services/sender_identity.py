@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from functools import lru_cache
 from email.headerregistry import Address, HeaderRegistry
 
 STATUS_OK = "ok"
@@ -121,7 +122,12 @@ def _display_only(value: str) -> str:
 
 def parse_sender(value: object) -> SenderIdentity:
     """Interpreta un remitente (cabecera From cruda o valor guardado en ``sender``)."""
-    raw = str(value or "").strip()
+    return _parse_sender_text(str(value or "").strip())
+
+
+@lru_cache(maxsize=4096)
+def _parse_sender_text(raw: str) -> SenderIdentity:
+    # Resultado inmutable (dataclass frozen): seguro de reutilizar entre llamadas.
     if not raw:
         return SenderIdentity("", "", STATUS_EMPTY)
 
