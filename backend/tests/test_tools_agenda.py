@@ -33,8 +33,9 @@ def test_build_agenda_today_green_and_usage_from_perf():
     assert rows["railway"]["usage"][0]["pct"] == 50.0
     assert rows["supabase"]["severity"] == "critical"
     assert rows["cloudflare"]["dates"][0]["on"] == "2027-08-07"
-    assert rows["railway"]["dates"][0]["on"] == "2026-11-15"
-    assert rows["railway"]["dates"][0]["severity"] == "critical"
+    assert rows["railway"]["dates"][0]["on"] == "2026-12-15"
+    assert rows["railway"]["dates"][0]["severity"] == "low"
+    assert "VENCIDO" not in rows["railway"]["dates"][0]["label"]
     assert rows["cursor"]["dates"][0]["on"] == "2026-12-07"
     assert rows["chatgpt"]["dates"][0]["on"] == "2026-12-09"
     gh_dates = {d["on"]: d for d in rows["github"]["dates"]}
@@ -47,7 +48,10 @@ def test_build_agenda_today_green_and_usage_from_perf():
     assert a["fx"]["date"] == "2026-11-26"
 
 
-def test_build_agenda_without_perf_and_yellow_alert():
-    a = ta.build_agenda(date(2026, 11, 10))
+def test_build_agenda_without_perf_railway_green():
+    a = ta.build_agenda(date(2026, 11, 27))
+    rows = {r["id"]: r for r in a["rows"]}
+    assert rows["railway"]["dates"][0]["on"] == "2026-12-15"
+    assert rows["railway"]["dates"][0]["severity"] == "low"
     assert a["status"] == "medium"
-    assert {x["tool"] for x in a["alerts"]} == {"Railway"}
+    assert {x["tool"] for x in a["alerts"]} == {"GitHub"}

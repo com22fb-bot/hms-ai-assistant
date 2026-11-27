@@ -26,7 +26,7 @@ USE_CRIT_PCT = 90.0
 TOOLS: list[dict[str, Any]] = [
     {"id": "railway", "name": "Railway", "plan": "Hobby", "cost_usd": 5.00, "period": "mensual",
      "limits": "48 vCPU · 48 GB RAM por servicio · 7 días de logs · US$5 de uso incluido",
-     "dates": [{"label": "Cobro Hobby (VENCIDO / por reactivar)", "on": "2026-11-15", "kind": "pago", "estimated": False}]},
+     "dates": [{"label": "Cobro Hobby", "on": "2026-12-15", "kind": "pago", "estimated": False}]},
     {"id": "cursor", "name": "Cursor", "plan": "Pro (incluye Grok Bot)", "cost_usd": 20.00, "period": "mensual",
      "limits": "Uso incluido del plan Pro",
      "dates": [{"label": "Renovación Pro", "on": "2026-12-07", "kind": "pago", "estimated": True}]},

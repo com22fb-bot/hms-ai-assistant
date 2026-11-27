@@ -12,17 +12,18 @@ def test_semaforo():
 
 
 def test_items_and_invalid():
-    now = datetime(2026, 11, 10, tzinfo=timezone.utc)
+    now = datetime(2026, 11, 27, tzinfo=timezone.utc)
     items = vendor_payment_items(now)
-    assert items[0]["severity"] == "medium" and "vence en 5" in items[0]["title"]
+    assert items[0]["id"] == "pago:Railway:2026-12-15"
+    assert items[0]["severity"] == "low" and "vence en 18" in items[0]["title"]
     bad = vendor_payment_items(now, [{"vendor": "X", "due_on": "nope", "amount_usd": 1}, {"vendor": "Y"}])
     assert [i["id"] for i in bad] == ["pago:invalido:X", "pago:invalido:Y"]
-    over = vendor_payment_items(datetime(2026, 11, 16, tzinfo=timezone.utc))
+    over = vendor_payment_items(datetime(2026, 12, 16, tzinfo=timezone.utc))
     assert over[0]["severity"] == "critical" and "VENCIDO" in over[0]["title"]
 
 
 def test_railway_paid_registered():
-    assert any(p["vendor"] == "Railway" and p["amount_usd"] == 5.0 for p in PAID)
+    assert any(p["vendor"] == "Railway" and p["amount_usd"] == 5.0 and p.get("paid_on") == "2026-11-27" for p in PAID)
 
 
 def test_plan_limits_hobby_and_unknown():
@@ -45,6 +46,7 @@ def test_chatgpt_upcoming_estimated():
     items = vendor_payment_items(datetime(2026, 11, 27, tzinfo=timezone.utc))
     gpt = [i for i in items if i["id"] == "pago:ChatGPT:2026-12-09"]
     assert len(gpt) == 1 and gpt[0]["severity"] == "low" and "~US$5.08" in gpt[0]["title"]
-    railway = [i for i in items if i["id"] == "pago:Railway:2026-11-15"]
-    assert len(railway) == 1 and railway[0]["severity"] == "critical" and "VENCIDO" in railway[0]["title"]
-    assert "US$5.00" in railway[0]["title"] and "~" not in railway[0]["title"].split("US$")[0]
+    railway = [i for i in items if i["id"] == "pago:Railway:2026-12-15"]
+    assert len(railway) == 1 and railway[0]["severity"] == "low" and "vence en 18" in railway[0]["title"]
+    assert "US$5.00" in railway[0]["title"] and "VENCIDO" not in railway[0]["title"]
+    assert "~" not in railway[0]["title"].split("US$")[0]

@@ -26,6 +26,14 @@ PAID: list[dict[str, Any]] = [
         "note": "Uso real del mes anterior US$1.85, cubierto por el crédito incluido.",
     },
     {
+        "vendor": "Railway",
+        "concept": "Plan Hobby (backend api.donexto.com) · periodo 15-nov a 15-dic-2026",
+        "invoice": "4CQV4X3R-0003",
+        "amount_usd": 5.00,
+        "paid_on": "2026-11-27",
+        "note": "Pago confirmado por Héctor el 27-nov-2026.",
+    },
+    {
         "vendor": "Cursor",
         "concept": "Plan Pro (incluye Grok Bot) · periodo 7-oct a 7-nov-2026",
         "invoice": "",
@@ -38,9 +46,9 @@ PAID: list[dict[str, Any]] = [
 UPCOMING: list[dict[str, Any]] = [
     {
         "vendor": "Railway",
-        "concept": "Plan Hobby · periodo 15-nov a 15-dic-2026 · factura VENCIDA / por reactivar (último dato de impago: 23-nov-2026)",
+        "concept": "Plan Hobby · periodo 15-dic-2026 a 15-ene-2027",
         "amount_usd": 5.00,
-        "due_on": "2026-11-15",
+        "due_on": "2026-12-15",
         "estimated": False,
     },
     {
