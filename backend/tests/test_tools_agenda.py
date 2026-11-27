@@ -39,9 +39,11 @@ def test_build_agenda_today_green_and_usage_from_perf():
     assert rows["cursor"]["dates"][0]["on"] == "2026-12-07"
     assert rows["chatgpt"]["dates"][0]["on"] == "2026-12-09"
     gh_dates = {d["on"]: d for d in rows["github"]["dates"]}
-    assert "2026-12-01" in gh_dates and "GITHUB_TOKEN_DONEXTO" in gh_dates["2026-12-01"]["label"]
+    assert "2026-12-01" not in gh_dates
+    assert all("GITHUB_TOKEN_DONEXTO" not in d["label"] for d in rows["github"]["dates"])
     assert "2027-01-20" in gh_dates and "2027-10-21" in gh_dates
-    assert a["next_due"]["on"] == "2026-12-01"
+    assert "GH_BOT_TOKEN" in gh_dates["2027-10-21"]["label"]
+    assert a["next_due"]["on"] == "2026-12-07"
     assert a["status"] == "critical"
     assert a["fx"]["usd_mxn"] == 19.696271
     assert a["fx"]["source"] == "open.er-api"
@@ -53,5 +55,6 @@ def test_build_agenda_without_perf_railway_green():
     rows = {r["id"]: r for r in a["rows"]}
     assert rows["railway"]["dates"][0]["on"] == "2026-12-15"
     assert rows["railway"]["dates"][0]["severity"] == "low"
-    assert a["status"] == "medium"
-    assert {x["tool"] for x in a["alerts"]} == {"GitHub"}
+    assert a["status"] == "low"
+    assert a["alerts"] == []
+    assert a["next_due"]["on"] == "2026-12-07"

@@ -39,11 +39,10 @@ TOOLS: list[dict[str, Any]] = [
      "dates": [{"label": "Renovación donexto.com", "on": "2027-08-07", "kind": "renovacion", "estimated": False},
                {"label": "Token API Cloudflare", "on": "2027-10-10", "kind": "token", "estimated": False}]},
     {"id": "github", "name": "GitHub", "plan": "Free · Actions", "cost_usd": 0.0, "period": "mensual",
-     "limits": "Actions según plan Free (repo público)",
+     "limits": "Actions según plan Free (repo público). El bot usa GH_BOT_TOKEN de Doppler; GITHUB_TOKEN_DONEXTO dejó de usarse el 27-nov-2026.",
      "dates": [
-         {"label": "Token GITHUB_TOKEN_DONEXTO (11:43, hora Ciudad de México)", "on": "2026-12-01", "kind": "token", "estimated": False},
          {"label": "Token GH_DISPATCH_TOKEN (21:07, hora Ciudad de México)", "on": "2027-01-20", "kind": "token", "estimated": False},
-         {"label": "Token GH_BOT_TOKEN (00:00, hora Ciudad de México)", "on": "2027-10-21", "kind": "token", "estimated": False},
+         {"label": "Token GH_BOT_TOKEN (00:00, hora Ciudad de México / 06:00 UTC)", "on": "2027-10-21", "kind": "token", "estimated": False},
      ]},
     {"id": "chatgpt", "name": "ChatGPT", "plan": "Go", "cost_mxn": 100.00, "period": "mensual",
      "cost_estimated": True, "limits": "Plan Go",
