@@ -158,7 +158,12 @@ def build_payments_agenda(expenses: list[dict[str, Any]], fx_setting: float | No
             if on is None or _excluded(name, label):
                 continue
             tipo = _TIPO.get(str(d.get("kind") or "pago"), "pago")
-            if tipo == "renovación" and any(x["tipo"] == "renovación" and x["on"] == on.isoformat() for x in items):
+            if tipo == "renovación" and any(
+                x["tipo"] == "renovación" and x["on"] == on.isoformat() and (
+                    _norm(x["servicio"]).split()[-1] == _norm(name).split()[-1]
+                    or ("donexto.com" in label.lower() and "donexto.com" in _norm(x["servicio"]))
+                ) for x in items
+            ):
                 continue
             if tipo == "pago" and any(
                 _norm(x["servicio"]).split()[-1] == _norm(name).split()[-1] and x["on"] == on.isoformat()

@@ -350,11 +350,9 @@ def _usd_mxn_setting() -> float | None:
 
 
 def _usd_mxn() -> float:
-    rows = _rows(get_supabase_client().table("admin_settings").select("value").eq("key", "usd_mxn").limit(1).execute())
-    try:
-        return float(rows[0]["value"]) if rows else 18.5
-    except (TypeError, ValueError):
-        return 18.5
+    """TC de Mis gastos; si falta, el mismo respaldo que la agenda (tools_agenda.FX_USD_MXN)."""
+    from app.services.tools_agenda import FX_USD_MXN
+    return _usd_mxn_setting() or FX_USD_MXN
 
 
 def monthly_usd(expense: dict[str, Any], usd_mxn: float) -> float:

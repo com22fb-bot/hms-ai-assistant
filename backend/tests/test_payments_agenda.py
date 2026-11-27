@@ -113,3 +113,19 @@ def test_endpoint_reads_only_and_builds_agenda():
     assert any(i["servicio"] == "Cursor" for i in out["items"])
     for verb in ("insert", "update", "delete", "upsert"):
         getattr(table, verb).assert_not_called()
+
+
+def test_renewal_dedup_only_same_service():
+    rows = EXPENSES + [{"id": "z", "servicio": "Licencia anual X", "plan": "", "monto": 120, "moneda": "USD",
+                        "periodicidad": "anual", "proximo_cobro": "2027-08-07", "notas": "", "activo": True}]
+    a = _agenda(rows=rows)
+    on_day = [i["servicio"] for i in a["items"] if i["on"] == "2027-08-07"]
+    assert "Licencia anual X" in on_day and "Dominio donexto.com" in on_day
+    assert on_day.count("Dominio donexto.com") == 1
+
+
+def test_mis_gastos_and_agenda_share_fx_fallback():
+    client = MagicMock()
+    client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(data=[])
+    with patch.object(admin_perf, "get_supabase_client", return_value=client):
+        assert admin_perf._usd_mxn() == pa.FX_USD_MXN

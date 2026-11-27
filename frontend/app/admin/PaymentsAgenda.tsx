@@ -32,18 +32,29 @@ function useLiveAgenda() {
   const [fetchedAt, setFetchedAt] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const inflight = useRef(false);
+  const again = useRef(false);
 
   const load = useCallback(async () => {
-    if (inflight.current) return;
+    // Si ya hay una consulta en curso, se agenda otra al terminar (p. ej. un gasto recién guardado)
+    // para no mostrar datos anteriores al cambio.
+    if (inflight.current) {
+      again.current = true;
+      return;
+    }
     inflight.current = true;
     setBusy(true);
     try {
-      const result = await hmsJson<Agenda>(PAYMENTS_AGENDA_PATH, { cache: "no-store" });
-      setData(result);
-      setError(null);
-      setFetchedAt(Date.now());
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "No se pudo actualizar la agenda.");
+      do {
+        again.current = false;
+        try {
+          const result = await hmsJson<Agenda>(PAYMENTS_AGENDA_PATH, { cache: "no-store" });
+          setData(result);
+          setError(null);
+          setFetchedAt(Date.now());
+        } catch (reason) {
+          setError(reason instanceof Error ? reason.message : "No se pudo actualizar la agenda.");
+        }
+      } while (again.current);
     } finally {
       inflight.current = false;
       setBusy(false);
