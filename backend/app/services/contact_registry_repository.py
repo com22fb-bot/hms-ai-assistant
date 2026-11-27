@@ -19,6 +19,8 @@ import re
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
+from app.services.contact_identity import identity_from_structured
+
 MP_TABLE = "message_participants"
 CA_TABLE = "contact_addresses"
 ALIAS_TABLE = "own_address_aliases"
@@ -42,8 +44,19 @@ class ContactRegistryError(ValueError):
 
 
 def is_valid_norm(value: object) -> bool:
+    """Forma canónica exacta de F0: punto fijo de la normalización (incluida la
+    equivalencia de Gmail y el dominio IDNA). Una variante sin canonizar
+    (``juan.perez@gmail.com``) se rechaza para que nunca quede una fila inerte."""
     text = str(value or "")
-    return bool(text) and text == text.lower() and len(text) <= 254 and bool(_NORM_RE.match(text))
+    if not text or text != text.lower() or len(text) > 254 or not _NORM_RE.match(text):
+        return False
+    return canonical_address(text) == text
+
+
+def canonical_address(value: object) -> str:
+    """Dirección suelta (p. ej. escrita por el usuario) → address_norm de F0, o ''."""
+    identity = identity_from_structured(value, None, source="fixture")
+    return identity.address_norm if identity.trusted else ""
 
 
 def _is_unique_violation(error: Exception) -> bool:

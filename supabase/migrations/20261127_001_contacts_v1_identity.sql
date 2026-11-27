@@ -19,7 +19,8 @@
 -- 20260801214500_hms_case_surface_enable_rls.sql); el backend usa service_role.
 
 -- Formato de address_norm (lo produce app/services/contact_identity.py):
--- minúsculas, sin espacios ni separadores, dominio ASCII (IDNA) con al menos un punto.
+-- minúsculas, sin espacios ni separadores, dominio ASCII (IDNA) con al menos un punto y,
+-- en gmail.com, sin puntos ni +etiqueta (googlemail.com se canoniza a gmail.com).
 
 create table if not exists public.message_participants (
   id               bigint generated always as identity primary key,
@@ -34,6 +35,9 @@ create table if not exists public.message_participants (
       address_norm = lower(address_norm)
       and char_length(address_norm) <= 254
       and address_norm ~ '^[^@[:space:]<>,;"\\]+@[a-z0-9-]+(\.[a-z0-9-]+)+$'
+      -- forma canónica de Gmail (equivalencia de mail_direction): sin puntos ni +etiqueta
+      and address_norm !~ '^[^@]*[.+][^@]*@gmail\.com$'
+      and address_norm !~ '@googlemail\.com$'
     )
   ),
   display_name     text check (display_name is null or char_length(display_name) <= 300),
@@ -111,6 +115,8 @@ create table if not exists public.contact_addresses (
     address_norm = lower(address_norm)
     and char_length(address_norm) <= 254
     and address_norm ~ '^[^@[:space:]<>,;"\\]+@[a-z0-9-]+(\.[a-z0-9-]+)+$'
+    and address_norm !~ '^[^@]*[.+][^@]*@gmail\.com$'
+    and address_norm !~ '@googlemail\.com$'
   ),
   domain             text generated always as (split_part(address_norm, '@', 2)) stored,
   -- Descriptivo, NO autoritativo: variantes originales y nombres visibles observados.
@@ -154,6 +160,8 @@ create table if not exists public.own_address_aliases (
     address_norm = lower(address_norm)
     and char_length(address_norm) <= 254
     and address_norm ~ '^[^@[:space:]<>,;"\\]+@[a-z0-9-]+(\.[a-z0-9-]+)+$'
+    and address_norm !~ '^[^@]*[.+][^@]*@gmail\.com$'
+    and address_norm !~ '@googlemail\.com$'
   ),
   status        text not null check (status in ('detected', 'confirmed', 'rejected')),
   evidence      jsonb not null default '{}'::jsonb check (jsonb_typeof(evidence) = 'object'),

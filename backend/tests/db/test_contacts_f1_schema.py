@@ -95,6 +95,9 @@ def test_service_role_escribe(db, world):
     {"norm": "Ana@X.test"},                            # sin normalizar
     {"norm": "ana x@x.test"},
     {"norm": "a@localhost"},
+    {"norm": "juan.perez@gmail.com"},                  # Gmail sin canonizar (Bugbot #219)
+    {"norm": "juan+x@gmail.com"},
+    {"norm": "juan@googlemail.com"},
     {"role": "nombre"},
     {"status": "raro", "norm": None},
 ])
@@ -199,3 +202,14 @@ def test_salida_de_contact_identity_cumple_el_check_de_bd(db, world):
         assert norm and is_valid_norm(norm)
         db.execute("insert into contact_addresses (workspace_id, address_norm) values (%s,%s)", (world["ws"], norm))
     assert one(db, "select count(*) from contact_addresses") == len(raws)
+
+
+@pytest.mark.parametrize("table,extra", [("contact_addresses", ""), ("own_address_aliases", "detected")])
+@pytest.mark.parametrize("norm", ["juan.perez@gmail.com", "juan+x@gmail.com", "juan@googlemail.com"])
+def test_gmail_no_canonico_rechazado_en_todas_las_tablas(db, world, table, extra, norm):
+    with pytest.raises(pg.CheckViolation):
+        if extra:
+            db.execute(f"insert into {table} (workspace_id, address_norm, status) values (%s,%s,%s)",
+                       (world["ws"], norm, extra))
+        else:
+            db.execute(f"insert into {table} (workspace_id, address_norm) values (%s,%s)", (world["ws"], norm))

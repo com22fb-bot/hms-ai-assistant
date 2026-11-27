@@ -119,6 +119,7 @@ def test_consolida_por_workspace_varias_cuentas_y_equivalencia_gmail(db, on):
     s.record_message(WS, msg("m1", ACC_G, sender="Juan.Perez+banco@GMail.com"), ACC_G)
     s.record_message(WS, msg("m2", ACC_Y, sender="juanperez@gmail.com"), ACC_Y)
     assert contacts(db) == ["juanperez@gmail.com"]                 # un solo contacto
+    assert s.get_contact(WS, "Juan.Perez@gmail.com")["address_norm"] == "juanperez@gmail.com"
     origin = {r["account_id"]: r["address_original"] for r in db.tables["message_participants"]}
     assert origin == {"acc-g": "Juan.Perez+banco@GMail.com", "acc-y": "juanperez@gmail.com"}  # origen intacto
 
@@ -220,6 +221,36 @@ def test_un_buzon_conectado_no_puede_ser_alias(db, on):
     with pytest.raises(ContactRegistryError):
         s.decide_alias(WS, "usuariosintetico@gmail.com", "confirmed", None)
     assert s.classify_address(WS, "usuariosintetico@gmail.com") == svc.CLASS_CONNECTED
+
+
+@pytest.mark.parametrize("variant", ["Usuario.Sintetico+alias@GMail.com", "usuario.sintetico@googlemail.com",
+                                     " USUARIOSINTETICO@gmail.com "])
+def test_variante_gmail_de_un_buzon_conectado_no_puede_ser_alias(db, on, variant):
+    """Bugbot #219: la guarda compara la forma canónica, no la cadena escrita."""
+    s = svc.ContactRegistryService(db)
+    assert s.classify_address(WS, variant) == svc.CLASS_CONNECTED
+    with pytest.raises(ContactRegistryError):
+        s.decide_alias(WS, variant, "confirmed", None)
+    assert db.writes() == []
+
+
+def test_repositorio_rechaza_formas_no_canonicas(db):
+    repo = ContactRegistryRepository(db)
+    for value in ("usuario.sintetico@gmail.com", "a+b@gmail.com", "a@googlemail.com", "x@münchen.de"):
+        with pytest.raises(ContactRegistryError):
+            repo.decide_alias(WS, value, "confirmed", None)
+        with pytest.raises(ContactRegistryError):
+            repo.record_detected_alias(WS, value, {})
+        with pytest.raises(ContactRegistryError):
+            repo.ensure_contact_address(WS, value, value)
+    assert db.writes() == []
+
+
+def test_alias_escrito_por_el_usuario_se_guarda_canonizado(db, on):
+    s = svc.ContactRegistryService(db)
+    row = s.decide_alias(WS, "Yo.Mismo+trabajo@GMail.com", "confirmed", None)
+    assert row["address_norm"] == "yomismo@gmail.com"
+    assert s.own_address_book(WS).is_own("yomismo@gmail.com")
 
 
 def test_enviado_desde_la_cuenta_conectada_no_genera_alias(db, on):

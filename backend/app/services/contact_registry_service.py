@@ -27,6 +27,7 @@ from app.services.contact_registry_repository import (
     ALIAS_REJECTED,
     ContactRegistryError,
     ContactRegistryRepository,
+    canonical_address,
 )
 
 _TRUE = {"1", "true", "yes", "on"}
@@ -211,18 +212,22 @@ class ContactRegistryService:
             "aliases_detected": sum(aliases),
         }
 
-    def classify_address(self, workspace_id: str, address_norm: str) -> str:
-        return self.own_address_book(workspace_id).classify(address_norm)
+    def classify_address(self, workspace_id: str, address: str) -> str:
+        return self.own_address_book(workspace_id).classify(canonical_address(address))
 
-    def decide_alias(self, workspace_id: str, address_norm: str, status: str, decided_by: str | None):
+    def decide_alias(self, workspace_id: str, address: str, status: str, decided_by: str | None):
+        """``address`` puede venir sin canonizar (p. ej. del usuario); se normaliza con F0."""
         _require_enabled()
+        address_norm = canonical_address(address)
+        if not address_norm:
+            raise ContactRegistryError("dirección no confiable")
         if address_norm in self.own_address_book(workspace_id).connected:
             raise ContactRegistryError("es un buzón conectado, no un alias")
         return self.repo.decide_alias(workspace_id, address_norm, status, decided_by)
 
-    def get_contact(self, workspace_id: str, address_norm: str):
+    def get_contact(self, workspace_id: str, address: str):
         _require_enabled()
-        return self.repo.get_contact_address(workspace_id, address_norm)
+        return self.repo.get_contact_address(workspace_id, canonical_address(address))
 
     def list_contacts(self, workspace_id: str, limit: int = 200):
         _require_enabled()
