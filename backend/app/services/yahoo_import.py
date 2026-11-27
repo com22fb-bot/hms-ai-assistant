@@ -457,7 +457,26 @@ def _fetch_uid_headers(client: Any, uid: str) -> tuple[str, str]:
     if status != "OK" or not raw:
         return "", ""
     parsed = email.message_from_bytes(raw)
-    return _decode_header_value(parsed.get("From")), _decode_header_value(parsed.get("Subject"))
+    return _raw_from_header(parsed), _decode_header_value(parsed.get("Subject"))
+
+
+def _raw_from_header(parsed: email.message.Message) -> str:
+    """Cabecera From SIN decodificar las encoded-words (H01).
+
+    Decodificar antes de analizar convertía ``=?utf-8?q?aviso@banco=2C_Soporte?= <x@a>``
+    en ``aviso@banco, Soporte <x@a>``: dos direcciones, y se guardaba la del
+    nombre visible. ``_format_sender`` analiza la cabecera cruda (nombre y
+    dirección por separado) y decodifica solo el nombre. Si la cabecera trae
+    bytes de 8 bits sin codificar, compat32 devuelve un ``Header``; entonces se
+    usa el texto decodificado, que ``_format_sender`` también interpreta sin
+    tomar la dirección del nombre.
+    """
+    value = parsed.get("From")
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    return _decode_header_value(value)
 
 
 def _external_thread_id(parsed: email.message.Message, fallback: str) -> str:
@@ -608,7 +627,6 @@ def sync_yahoo_page(
                     parsed
                 )
                 subject = _decode_header_value(parsed.get("Subject")) or "(Sin asunto)"
-                from_raw = _decode_header_value(parsed.get("From"))
                 to_raw = _decode_header_value(parsed.get("To"))
                 cc_raw = _decode_header_value(parsed.get("Cc"))
                 bcc_raw = _decode_header_value(parsed.get("Bcc"))
@@ -623,7 +641,7 @@ def sync_yahoo_page(
                     except Exception:
                         received_at = None
                 received_at_iso = _to_iso(received_at or _utc_now())
-                sender = _format_sender(from_raw)
+                sender = _format_sender(_raw_from_header(parsed))
                 if skip_message(exclude, sender, subject):
                     skipped_excluded += 1
                     continue

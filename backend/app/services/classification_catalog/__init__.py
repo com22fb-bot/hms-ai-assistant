@@ -21,6 +21,7 @@ from app.services.classification_catalog.taxonomy import (
     VERTICALS,
 )
 from app.services.classification_catalog.travel import TRAVEL
+from app.services.sender_identity import parse_sender
 
 __all__ = [
     "BANKS",
@@ -42,8 +43,17 @@ __all__ = [
 
 
 def identify_sender(sender: str | None) -> dict[str, Any] | None:
-    """Devuelve el vertical conocido del remitente, o None."""
-    domain = sender_domain(sender)
+    """Devuelve el vertical conocido del remitente, o None.
+
+    H01/H02: el dominio sale solo de una dirección analizada sin ambigüedad
+    (``parse_sender``). Un nombre visible o un campo inválido o con varias
+    identidades no puede fabricar la marca. Reconocer el dominio NO prueba que
+    el remitente sea auténtico.
+    """
+    identity = parse_sender(sender)
+    if not identity.trusted:
+        return None
+    domain = identity.domain
     if not domain:
         return None
     for directory in (BANKS, COMMERCE, TRAVEL, SOCIAL):
@@ -54,7 +64,7 @@ def identify_sender(sender: str | None) -> dict[str, Any] | None:
         return {
             "domain": listed,
             "host": domain,
-            "email": sender_email(sender),
+            "email": identity.email_lower,
             **meta,
         }
     return None

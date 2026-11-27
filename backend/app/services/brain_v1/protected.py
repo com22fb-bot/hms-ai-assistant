@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from email.utils import parseaddr
 from typing import Iterable, Mapping
+
+from app.services.sender_identity import parse_sender
 
 PROTECTED_TYPES = ("security", "code", "bank", "government", "invoice", "health")
 
@@ -101,8 +102,8 @@ _HEALTH_RE = re.compile(r"(\bcita\b|appointment|clinica|clinic|hospital|laborato
 
 
 def _domain(sender: str | None) -> str:
-    address = parseaddr(str(sender or ""))[1] or str(sender or "")
-    return address.rsplit("@", 1)[-1].strip().lower().strip(">") if "@" in address else ""
+    # H01: dominio solo de la dirección real (nunca del nombre visible).
+    return parse_sender(sender).domain
 
 
 def is_security_or_code(sender: str | None, subject: str | None, body: str | None = None) -> str | None:

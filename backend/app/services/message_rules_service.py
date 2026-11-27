@@ -4,7 +4,6 @@ import logging
 
 import unicodedata
 from datetime import datetime, timezone
-from email.utils import getaddresses
 from typing import Any
 
 from fastapi import HTTPException
@@ -13,6 +12,7 @@ from app.security.identity import require_google_account
 from app.services.case_engine import normalize_subject, process_message
 from app.services.oauth_storage import OAuthStorage
 from app.services.push_service import create_notification
+from app.services.sender_identity import parse_sender
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +59,7 @@ def _norm(value: Any) -> str:
 
 
 def _sender_email(value: Any) -> str:
-    addresses = getaddresses([str(value or "")])
-    return addresses[0][1].strip().lower() if addresses else ""
+    return parse_sender(value).email_lower
 
 
 def _sender_domain(value: Any) -> str:

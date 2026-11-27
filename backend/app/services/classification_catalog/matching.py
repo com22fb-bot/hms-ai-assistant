@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from email.utils import getaddresses
 from typing import Any
+
+from app.services.sender_identity import parse_sender
 
 
 MARKETING_LOCAL_PARTS = (
@@ -27,10 +28,12 @@ MARKETING_LOCAL_PARTS = (
 
 
 def sender_email(sender: str | None) -> str:
-    values = getaddresses([sender or ""])
-    if not values:
-        return ""
-    return values[0][1].strip().lower()
+    """Dirección real del remitente, o '' si el campo es ambiguo o inválido (H01).
+
+    Nunca devuelve una dirección tomada del nombre visible
+    (ver ``app.services.sender_identity``).
+    """
+    return parse_sender(sender).email_lower
 
 
 def sender_local_part(sender: str | None) -> str:
@@ -41,10 +44,7 @@ def sender_local_part(sender: str | None) -> str:
 
 
 def sender_domain(sender: str | None) -> str:
-    email = sender_email(sender)
-    if "@" not in email:
-        return ""
-    return email.rsplit("@", 1)[1].strip().rstrip(".").lower()
+    return parse_sender(sender).domain
 
 
 def domain_suffix_in(domain: str, listed: str) -> bool:

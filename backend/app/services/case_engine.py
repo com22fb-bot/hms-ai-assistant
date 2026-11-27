@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import re
 from datetime import datetime, timezone
-from email.utils import getaddresses
 import logging
 from typing import Any
 
@@ -14,6 +13,7 @@ from app.services.event_engine import create_case_event
 from app.services.learning_engine import register_pattern
 from app.security.identity import require_google_account
 from app.services.oauth_storage import OAuthStorage
+from app.services.sender_identity import parse_sender
 from app.utils.html_text import strip_css_noise
 
 
@@ -217,16 +217,12 @@ def _message_direction(message: dict[str, Any]) -> str:
 
 
 def _sender_parts(sender: str | None) -> tuple[str | None, str | None]:
-    values = getaddresses([sender or ""])
-
-    if not values:
-        return None, None
-
-    name, email = values[0]
+    """(nombre, dirección) del remitente; la dirección nunca sale del nombre (H01)."""
+    identity = parse_sender(sender)
 
     return (
-        name.strip() or None,
-        email.strip().lower() or None,
+        identity.display_name or None,
+        identity.email_lower or None,
     )
 
 
