@@ -4,6 +4,9 @@ import { Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 
 import { hmsJson } from "@/lib/hmsApi";
+import {
+  EXPENSES_CHANGED_EVENT, SEVERITY_COLOR, daysPhrase, daysUntil, fmtDate, mxn as mxnText, severityForDays, todayCdmx, usd as usdText,
+} from "@/lib/paymentsAgenda";
 
 type Expense = {
   id: string;
@@ -40,13 +43,16 @@ const EMPTY: Draft = {
 
 const PERIOD_LABEL = { mensual: "Mensual", anual: "Anual", unico: "Pago único" } as const;
 
-function money(value: number, currency: string): string {
-  return new Intl.NumberFormat("es-MX", { style: "currency", currency }).format(value || 0);
+/** Avisa a la agenda de pagos de arriba para que se actualice al instante. */
+function notifyAgenda() {
+  window.dispatchEvent(new Event(EXPENSES_CHANGED_EVENT));
 }
 
-function day(value: string | null): string {
-  if (!value) return "—";
-  return new Date(`${value}T12:00:00`).toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+/** US$ y MXN siempre juntos, con el TC de Mis gastos. */
+function pair(value: number, currency: string, fx: number): string {
+  const amount = Number(value) || 0;
+  if (currency === "MXN") return `${usdText(fx ? amount / fx : 0)} · ${mxnText(amount)}`;
+  return `${usdText(amount)} · ${mxnText(amount * fx)}`;
 }
 
 export function ExpensesPanel() {
@@ -97,6 +103,7 @@ export function ExpensesPanel() {
       }
       setEditing(null);
       await load();
+      notifyAgenda();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "No se pudo guardar.");
     } finally {
@@ -110,6 +117,7 @@ export function ExpensesPanel() {
     try {
       await hmsJson(`/api/hms/admin/expenses/${expense.id}`, { method: "DELETE" });
       await load();
+      notifyAgenda();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "No se pudo borrar.");
     } finally {
@@ -125,6 +133,7 @@ export function ExpensesPanel() {
     try {
       await hmsJson("/api/hms/admin/expenses-settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ usd_mxn: value }) });
       await load();
+      notifyAgenda();
     } finally {
       setSaving(false);
     }
@@ -138,24 +147,31 @@ export function ExpensesPanel() {
     );
   }
 
+  const today = todayCdmx();
+  const sorted = [...data.expenses].sort((x, y) => {
+    if (x.activo !== y.activo) return x.activo ? -1 : 1;
+    return (x.proximo_cobro || "9999").localeCompare(y.proximo_cobro || "9999") || x.servicio.localeCompare(y.servicio);
+  });
+
   return (
-    <section className="dx-admin__section dx-perf">
-      <header className="dx-perf__head">
+    <section className="dx-pay dx-pay-ui dx-perf">
+      <header className="dx-pay__head">
         <div>
+          <p className="dx-pay__eyebrow">Donexto</p>
           <h2>Mis gastos</h2>
-          <p>Lo que pagas para que Donexto funcione.</p>
+          <p>Lo que pagas para que Donexto funcione. Al guardar, la agenda de arriba se actualiza sola.</p>
         </div>
         <button type="button" className="dx-admin__btn" onClick={() => startEdit()} disabled={saving}>
           <Plus size={16} /> Agregar gasto
         </button>
       </header>
-      {error && <p className="dx-admin__alert">{error}</p>}
+      {error && <p className="dx-pay__error" role="alert">{error}</p>}
 
-      <div className="dx-perf__kpis dx-perf__kpis--big">
-        <div><span>Total al mes</span><strong>{money(data.monthly_usd, "USD")}</strong></div>
-        <div><span>En pesos</span><strong>{money(data.monthly_mxn, "MXN")}</strong></div>
+      <div className="dx-pay-kpis">
+        <div><span>Total al mes</span><strong>{usdText(data.monthly_usd)}</strong><small>TC {data.usd_mxn}</small></div>
+        <div><span>En pesos</span><strong>{mxnText(data.monthly_mxn)}</strong><small>al mes</small></div>
         <div>
-          <span>Tipo de cambio</span>
+          <span>Tipo de cambio (MXN por US$)</span>
           <form onSubmit={saveFx} className="dx-perf__fx">
             <input value={fx} onChange={(e) => setFx(e.target.value)} inputMode="decimal" aria-label="Pesos por dólar" />
             <button type="submit" className="dx-admin__btn dx-admin__btn--ghost" disabled={saving}>Guardar</button>
@@ -164,15 +180,9 @@ export function ExpensesPanel() {
         <div>
           <span>Próximos 30 días</span>
           <strong>{data.upcoming_30d.length === 0 ? "Sin cobros" : `${data.upcoming_30d.length} cobro(s)`}</strong>
+          <small>{data.upcoming_30d.map((u) => u.servicio).join(" · ")}</small>
         </div>
       </div>
-      {data.upcoming_30d.length > 0 && (
-        <ul className="dx-perf__upcoming">
-          {data.upcoming_30d.map((item) => (
-            <li key={item.id}><strong>{day(item.proximo_cobro)}</strong> {item.servicio} · {money(Number(item.monto), item.moneda)}</li>
-          ))}
-        </ul>
-      )}
 
       {editing && (
         <form className="dx-admin__form dx-perf__editor" onSubmit={save}>
@@ -199,28 +209,35 @@ export function ExpensesPanel() {
         </form>
       )}
 
-      <div className="dx-admin__table-wrap">
-        <table className="dx-admin__table dx-perf__table">
-          <thead>
-            <tr><th>Servicio</th><th>Plan</th><th>Monto</th><th>Periodo</th><th>Próximo cobro</th><th>Notas</th><th /></tr>
-          </thead>
-          <tbody>
-            {data.expenses.map((e) => (
-              <tr key={e.id} className={e.activo ? "" : "is-inactive"}>
-                <td><strong>{e.servicio}</strong>{!e.activo && <span className="dx-admin__pill">inactivo</span>}</td>
-                <td>{e.plan || "—"}</td>
-                <td>{money(Number(e.monto), e.moneda)}</td>
-                <td>{PERIOD_LABEL[e.periodicidad]}</td>
-                <td>{day(e.proximo_cobro)}</td>
-                <td className="dx-perf__notes" title={e.notas}>{e.notas || "—"}</td>
-                <td className="dx-perf__actions">
-                  <button type="button" aria-label={`Editar ${e.servicio}`} onClick={() => startEdit(e)}><Pencil size={15} /></button>
-                  <button type="button" aria-label={`Borrar ${e.servicio}`} onClick={() => void remove(e)}><Trash2 size={15} /></button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="dx-pay-cards" data-testid="expenses-cards">
+        {sorted.map((e) => {
+          const days = e.proximo_cobro ? daysUntil(e.proximo_cobro, today) : null;
+          const sev = !e.activo || days === null ? "luego" : severityForDays(days);
+          return (
+            <article key={e.id} className={e.activo ? "dx-pay__item" : "dx-pay__item is-inactive"} style={{ ["--sev" as string]: SEVERITY_COLOR[sev] }} data-severity={sev}>
+              <header>
+                <h4><i aria-hidden />{e.servicio}</h4>
+                <span className="dx-pay__tools">
+                  <button type="button" aria-label={`Editar ${e.servicio}`} onClick={() => startEdit(e)}><Pencil size={14} /></button>
+                  <button type="button" aria-label={`Borrar ${e.servicio}`} onClick={() => void remove(e)}><Trash2 size={14} /></button>
+                </span>
+              </header>
+              <p className="dx-pay__meta">
+                {[e.plan || null, PERIOD_LABEL[e.periodicidad], e.activo ? null : "inactivo"].filter(Boolean).join(" · ")}
+              </p>
+              <p className="dx-pay__amount">
+                <strong>{e.moneda === "MXN" ? usdText(data.usd_mxn ? Number(e.monto) / data.usd_mxn : 0) : usdText(Number(e.monto))}</strong>
+                <span>{e.moneda === "MXN" ? mxnText(Number(e.monto)) : mxnText(Number(e.monto) * data.usd_mxn)}</span>
+              </p>
+              <p className="dx-pay__action" title={pair(Number(e.monto), e.moneda, data.usd_mxn)}>
+                {e.proximo_cobro ? (
+                  <>Próximo cobro: <b>{fmtDate(e.proximo_cobro)}</b>{e.activo && days !== null ? <span style={{ color: SEVERITY_COLOR[sev] }}> · {daysPhrase(days)}</span> : null}</>
+                ) : "Sin próximo cobro"}
+              </p>
+              {e.notas && <p className="dx-pay__limits" title={e.notas}>{e.notas}</p>}
+            </article>
+          );
+        })}
       </div>
     </section>
   );

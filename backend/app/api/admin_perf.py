@@ -339,6 +339,16 @@ def _rows(response: Any) -> list[dict[str, Any]]:
     return [row for row in data if isinstance(row, dict)] if isinstance(data, list) else []
 
 
+def _usd_mxn_setting() -> float | None:
+    """TC guardado en Mis gastos; None si no existe o no es numérico (sin valor inventado)."""
+    rows = _rows(get_supabase_client().table("admin_settings").select("value").eq("key", "usd_mxn").limit(1).execute())
+    try:
+        value = float(str(rows[0]["value"]).strip().strip('"')) if rows else None
+    except (TypeError, ValueError):
+        return None
+    return value if value and value > 0 else None
+
+
 def _usd_mxn() -> float:
     rows = _rows(get_supabase_client().table("admin_settings").select("value").eq("key", "usd_mxn").limit(1).execute())
     try:
@@ -448,3 +458,20 @@ def admin_tools_agenda() -> dict[str, Any]:
     except Exception:  # noqa: BLE001
         perf = None
     return build_agenda(datetime.now(timezone.utc).date(), perf)
+
+
+# --- Agenda de pagos y vencimientos (vista principal) ---------------------------
+
+@router.get("/payments-agenda")
+def admin_payments_agenda() -> dict[str, Any]:
+    """Pendientes de pago y vencimientos (Mis gastos + agenda de herramientas + TC), en hora CDMX.
+
+    Solo lectura. El panel lo consulta cada 60 s y al volver a la pestaña.
+    """
+    _require_admin()
+    from app.services.payments_agenda import build_payments_agenda, today_cdmx
+    rows = _rows(
+        get_supabase_client().table("admin_expenses")
+        .select("id,servicio,plan,monto,moneda,periodicidad,proximo_cobro,notas,activo").execute()
+    )
+    return build_payments_agenda(rows, _usd_mxn_setting(), today_cdmx())
