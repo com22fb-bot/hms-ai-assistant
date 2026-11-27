@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs: {run: "${{ steps.c.outputs.run }}"}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with: {sparse-checkout: scripts}
       - id: c
         env:
@@ -58,7 +58,7 @@ jobs:
           rm -f "$RUNNER_TEMP/$F"
       - name: Checkout (checklist agenda)
         if: success()
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with: {sparse-checkout: "scripts\nbackend/app"}
       - name: Checklist · agenda de herramientas y pagos por vencer
         id: agenda
