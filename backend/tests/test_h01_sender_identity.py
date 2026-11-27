@@ -264,9 +264,37 @@ def test_b_g_imap_injection_vector_end_to_end(provider, header):
 
 
 def test_b_legacy_rows_from_previous_serializer_are_not_attributed():
-    # Fila guardada por el serializador anterior (Gmail con nombre entre comillas).
+    # Fila guardada por el serializador anterior (Gmail con nombre entre comillas):
+    # el texto previo contiene otra dirección válida => varias identidades, sin
+    # dirección y sin marca (fail-closed).
     legacy = f"{INJECTED_NAME} <{REAL}>"
-    _assert_vector_neutralized(legacy)
+    identity = parse_sender(legacy)
+    assert identity.email == "" and identity.status == "multiple", identity
+    _assert_identity(legacy, "")
+    assert identify_sender(legacy) is None
+    verdict = classify_message(_msg(legacy), existing_case=None)
+    assert "banamex" not in verdict[2].lower(), verdict
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        f"x@atacante.test, Soporte <aviso@{BANK}>",  # revisión de seguridad PR #218
+        f"Soporte <x@atacante.test>, Banamex <aviso@{BANK}>",
+        f"aviso@{BANK}, x@atacante.test",
+    ],
+)
+def test_b_mixed_multiple_mailboxes_fail_closed(raw):
+    identity = parse_sender(raw)
+    assert identity.email == "" and identity.status == "multiple", identity
+    assert identify_sender(raw) is None
+    stored = canonical_sender(raw)
+    assert parse_sender(stored).email == "" and identify_sender(stored) is None, stored
+    _assert_identity(stored, "")
+    gmail = run_gmail([raw])
+    imap = run_imap([raw.encode()])
+    for value in gmail + imap:
+        assert parse_sender(value).email == "" and identify_sender(value) is None, value
 
 
 def test_b_brand_still_detected_for_real_bank_address():
@@ -434,10 +462,12 @@ def test_h_classifier_own_address_rule_uses_real_address():
     real_own = classify_message(_msg("Yo <yo@example.test>", "Hola"), existing_case=None, own_addresses=own)
     control = classify_message(_msg(f"Soporte <{REAL}>", "Hola"), existing_case=None, own_addresses=own)
     assert "propia" in real_own[2].lower()
-    for stored in (spoof, f"yo@example.test, Soporte <{REAL}>"):
-        verdict = classify_message(_msg(stored, "Hola"), existing_case=None, own_addresses=own)
-        assert verdict == control, (stored, verdict)
-        assert "propia" not in verdict[2].lower()
+    verdict = classify_message(_msg(spoof, "Hola"), existing_case=None, own_addresses=own)
+    assert verdict == control, (spoof, verdict)
+    legacy = classify_message(_msg(f"yo@example.test, Soporte <{REAL}>", "Hola"), existing_case=None,
+                              own_addresses=own)
+    for got in (verdict, legacy):
+        assert "propia" not in got[2].lower(), got
 
 
 def test_h_case_engine_sender_parts_keeps_name_and_address():

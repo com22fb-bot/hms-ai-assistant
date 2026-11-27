@@ -22,10 +22,12 @@ Reglas:
    (no se inventa ni se elige una identidad).
 4. Compatibilidad con filas ya guardadas con el formato anterior
    (``Nombre, con coma <dir@dominio>``): si la cadena termina en un único
-   ``<dirección>`` y el texto previo no contiene ``<`` ni ``>``, la dirección es la
-   del ``<...>`` final. Es exactamente la forma que escribían los tres
-   serializadores anteriores, y la dirección entre ángulos es la dirección real
-   (RFC 5322 name-addr); el nombre visible nunca aporta la dirección.
+   ``<dirección>``, el texto previo no contiene ``<`` ni ``>`` y el analizador no
+   ve ningún OTRO buzón válido (solo fragmentos sin dominio, p. ej. ``Perez``), la
+   dirección es la del ``<...>`` final. Es la forma que escribían los
+   serializadores anteriores y la dirección entre ángulos es la real (RFC 5322
+   name-addr). Si el texto previo contiene otra dirección válida
+   (``aviso@banco, Soporte <x@a>``) hay dos identidades y no se elige ninguna.
 
 Analizar bien una dirección NO prueba que el remitente sea auténtico (SPF/DKIM/DMARC
 quedan fuera de este módulo).
@@ -150,14 +152,21 @@ def _parse_sender_text(raw: str) -> SenderIdentity:
         address = valid[0]
         return SenderIdentity(str(address.display_name or "").strip(), str(address.addr_spec), STATUS_OK)
 
+    # Fail-closed: dos o más buzones válidos son varias identidades; no se
+    # elige ninguna (ni la primera ni la del <...> final). Va ANTES de la regla
+    # de compatibilidad para que "atacante@x, Soporte <aviso@banco>" no
+    # produzca una identidad (revisión de seguridad del PR #218).
+    if len(valid) > 1:
+        return SenderIdentity(_display_only(raw), "", STATUS_MULTIPLE)
+
     legacy = _LEGACY_TRAILING_ANGLE.match(raw)
     if legacy:
         email = _single_address(legacy.group("addr").strip())
-        if email:
+        # El único buzón válido que ve el analizador debe ser el del <...> final;
+        # el resto son fragmentos del nombre sin dominio ("Perez", "Banamex").
+        if email and (not valid or str(valid[0].addr_spec) == email):
             return SenderIdentity(_display_only(legacy.group("name")), email, STATUS_LEGACY)
 
-    if len(valid) > 1:
-        return SenderIdentity(_display_only(raw), "", STATUS_MULTIPLE)
     if not valid and addresses and not any("@" in str(a.addr_spec or "") and a.domain for a in addresses):
         return SenderIdentity(_display_only(raw), "", STATUS_NO_ADDRESS)
     return SenderIdentity(_display_only(raw), "", STATUS_INVALID)
