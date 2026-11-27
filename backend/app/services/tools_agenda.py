@@ -16,9 +16,9 @@ from typing import Any
 
 from app.services.vendor_payments import WARN_DAYS, plan_limits
 
-FX_USD_MXN = 18.81
-FX_DATE = "2026-10-29"
-FX_SOURCE = "FIX Banxico"
+FX_USD_MXN = 19.696271
+FX_DATE = "2026-11-26"
+FX_SOURCE = "open.er-api"
 USE_WARN_PCT = 70.0
 USE_CRIT_PCT = 90.0
 
@@ -26,10 +26,10 @@ USE_CRIT_PCT = 90.0
 TOOLS: list[dict[str, Any]] = [
     {"id": "railway", "name": "Railway", "plan": "Hobby", "cost_usd": 5.00, "period": "mensual",
      "limits": "48 vCPU · 48 GB RAM por servicio · 7 días de logs · US$5 de uso incluido",
-     "dates": [{"label": "Cobro Hobby", "on": "2026-11-15", "kind": "pago", "estimated": True}]},
+     "dates": [{"label": "Cobro Hobby (VENCIDO / por reactivar)", "on": "2026-11-15", "kind": "pago", "estimated": False}]},
     {"id": "cursor", "name": "Cursor", "plan": "Pro (incluye Grok Bot)", "cost_usd": 20.00, "period": "mensual",
      "limits": "Uso incluido del plan Pro",
-     "dates": [{"label": "Renovación Pro", "on": "2026-11-07", "kind": "pago", "estimated": True}]},
+     "dates": [{"label": "Renovación Pro", "on": "2026-12-07", "kind": "pago", "estimated": True}]},
     {"id": "supabase", "name": "Supabase", "plan": "Free", "cost_usd": 0.0, "period": "mensual",
      "limits": "BD 500 MB · Storage 1 GB · 50,000 MAU · pausa tras 7 días sin actividad", "dates": []},
     {"id": "cloudflare", "name": "Cloudflare", "plan": "Registrar + R2/Workers Free",
@@ -39,9 +39,15 @@ TOOLS: list[dict[str, Any]] = [
      "dates": [{"label": "Renovación donexto.com", "on": "2027-08-07", "kind": "renovacion", "estimated": False},
                {"label": "Token API Cloudflare", "on": "2027-10-10", "kind": "token", "estimated": False}]},
     {"id": "github", "name": "GitHub", "plan": "Free · Actions", "cost_usd": 0.0, "period": "mensual",
-     "limits": "Actions según plan Free", "dates": []},
+     "limits": "Actions según plan Free (repo público)",
+     "dates": [
+         {"label": "Token GITHUB_TOKEN_DONEXTO (11:43, hora Ciudad de México)", "on": "2026-12-01", "kind": "token", "estimated": False},
+         {"label": "Token GH_DISPATCH_TOKEN (21:07, hora Ciudad de México)", "on": "2027-01-20", "kind": "token", "estimated": False},
+         {"label": "Token GH_BOT_TOKEN (00:00, hora Ciudad de México)", "on": "2027-10-21", "kind": "token", "estimated": False},
+     ]},
     {"id": "chatgpt", "name": "ChatGPT", "plan": "Go", "cost_mxn": 100.00, "period": "mensual",
-     "cost_estimated": True, "limits": "Plan Go", "dates": []},
+     "cost_estimated": True, "limits": "Plan Go",
+     "dates": [{"label": "Renovación Go", "on": "2026-12-09", "kind": "pago", "estimated": True}]},
     {"id": "supergrok", "name": "SuperGrok", "plan": "SuperGrok", "cost_usd": 10.00, "period": "unico",
      "limits": "Sin reembolso (confirmado por Héctor)", "dates": []},
     {"id": "resend", "name": "Resend", "plan": "Free", "cost_usd": 0.0, "period": "mensual",

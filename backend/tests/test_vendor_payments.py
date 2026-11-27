@@ -35,7 +35,16 @@ def test_plan_limits_hobby_and_unknown():
 
 def test_cursor_registered_with_semaforo():
     assert any(p["vendor"] == "Cursor" and p["amount_usd"] == 20.0 for p in PAID)
-    items = vendor_payment_items(datetime(2026, 10, 31, tzinfo=timezone.utc))
-    cur = [i for i in items if i["id"] == "pago:Cursor:2026-11-07"]
+    items = vendor_payment_items(datetime(2026, 11, 30, tzinfo=timezone.utc))
+    cur = [i for i in items if i["id"] == "pago:Cursor:2026-12-07"]
     assert len(cur) == 1 and cur[0]["severity"] == "medium" and "~US$20.00 vence en 7" in cur[0]["title"]
-    assert [i for i in vendor_payment_items(datetime(2026, 10, 29, tzinfo=timezone.utc)) if i["id"] == "pago:Cursor:2026-11-07"][0]["severity"] == "low"
+    assert [i for i in vendor_payment_items(datetime(2026, 11, 28, tzinfo=timezone.utc)) if i["id"] == "pago:Cursor:2026-12-07"][0]["severity"] == "low"
+
+
+def test_chatgpt_upcoming_estimated():
+    items = vendor_payment_items(datetime(2026, 11, 27, tzinfo=timezone.utc))
+    gpt = [i for i in items if i["id"] == "pago:ChatGPT:2026-12-09"]
+    assert len(gpt) == 1 and gpt[0]["severity"] == "low" and "~US$5.08" in gpt[0]["title"]
+    railway = [i for i in items if i["id"] == "pago:Railway:2026-11-15"]
+    assert len(railway) == 1 and railway[0]["severity"] == "critical" and "VENCIDO" in railway[0]["title"]
+    assert "US$5.00" in railway[0]["title"] and "~" not in railway[0]["title"].split("US$")[0]
