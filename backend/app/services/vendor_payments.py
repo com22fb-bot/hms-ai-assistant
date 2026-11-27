@@ -38,16 +38,23 @@ PAID: list[dict[str, Any]] = [
 UPCOMING: list[dict[str, Any]] = [
     {
         "vendor": "Railway",
-        "concept": "Plan Hobby · periodo 15-nov a 15-dic-2026",
+        "concept": "Plan Hobby · periodo 15-nov a 15-dic-2026 · factura VENCIDA / por reactivar (último dato de impago: 23-nov-2026)",
         "amount_usd": 5.00,
         "due_on": "2026-11-15",
-        "estimated": True,
+        "estimated": False,
     },
     {
         "vendor": "Cursor",
-        "concept": "Plan Pro (incluye Grok Bot) · renovación mensual; fecha estimada por el pago del 7-oct, por confirmar",
+        "concept": "Plan Pro (incluye Grok Bot) · renovación mensual; fecha estimada por el pago del 7-oct, por confirmar en cursor.com/dashboard",
         "amount_usd": 20.00,
-        "due_on": "2026-11-07",
+        "due_on": "2026-12-07",
+        "estimated": True,
+    },
+    {
+        "vendor": "ChatGPT",
+        "concept": "Plan Go · MXN 100/mes; renovación estimada el 9 de cada mes, por confirmar",
+        "amount_usd": 5.08,
+        "due_on": "2026-12-09",
         "estimated": True,
     },
 ]
