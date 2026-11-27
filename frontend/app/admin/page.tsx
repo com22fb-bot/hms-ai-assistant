@@ -37,6 +37,7 @@ import { HealthBar } from "@/app/admin/HealthBar";
 import { InfoPanel } from "@/app/admin/InfoPanel";
 import { EventsPanel } from "@/app/admin/EventsPanel";
 import { OverviewDashboard } from "@/app/admin/OverviewDashboard";
+import { PaymentsAgenda } from "@/app/admin/PaymentsAgenda";
 import { MailboxesPanel } from "@/app/admin/MailboxesPanel";
 
 type AdminTab =
@@ -587,6 +588,9 @@ function AdminPage() {
           </button>
         </div>
       </header>
+
+      {/* Primera vista: agenda de pagos y vencimientos en vivo (diseño aprobado 27-nov-2026). */}
+      {!forbidden && <PaymentsAgenda />}
 
       {!forbidden && <HealthBar />}
 

@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { hmsJson } from "@/lib/hmsApi";
+import { SEVERITY_COLOR, daysPhrase, daysUntil, fmtDate, severityForDays, todayCdmx, type PaySeverity } from "@/lib/paymentsAgenda";
 
 type Metric = {
   value: number | null;
@@ -38,12 +39,20 @@ const SEVERITY_LABEL: Record<AttentionItem["severity"], string> = {
   info: "Decisión",
 };
 
-/** Semáforo de pagos a proveedores: rojo vencido, amarillo <= 7 días, verde con margen. */
-export const PAYMENT_LIGHT: Record<string, string> = {
-  critical: "🔴",
-  medium: "🟡",
-  low: "🟢",
+/** Semáforo de pagos a proveedores (mismo de la agenda): 🔴 vencido o ≤3 días, 🟠 4–14, 🟢 15–60. */
+export const PAYMENT_LIGHT: Record<PaySeverity, string> = {
+  rojo: "🔴",
+  naranja: "🟠",
+  verde: "🟢",
+  luego: "⚪",
 };
+
+function paymentSeverity(item: AttentionItem, today: string): { sev: PaySeverity; days: number | null } {
+  const due = item.due_at?.slice(0, 10);
+  if (!due) return { sev: item.severity === "critical" ? "rojo" : "naranja", days: null };
+  const days = daysUntil(due, today);
+  return { sev: severityForDays(days), days };
+}
 
 const COMMERCIAL_LABELS: Array<[string, string, boolean?]> = [
   ["users", "Usuarios"],
@@ -104,6 +113,9 @@ export default function AttentionPanel() {
     );
   }
 
+  const today = todayCdmx();
+  const payments = data.items.filter((item) => item.category === "pagos");
+  const others = data.items.filter((item) => item.category !== "pagos");
   const updated = new Date(data.generated_at).toLocaleString("es-MX", {
     timeZone: "America/Mexico_City",
   });
@@ -115,12 +127,31 @@ export default function AttentionPanel() {
           <h2 id="dx-attention-title">Requiere mi atención</h2>
           <p>Ordenado por severidad. Actualizado {updated} (hora CDMX).</p>
         </header>
+        {payments.length > 0 && (
+          <div className="dx-pay-ui" data-testid="payments-light">
+            <h3 className="dx-pay__section">Semáforo de pagos</h3>
+            <ul className="dx-pay-attention dx-pay-cards">
+              {payments.map((item) => {
+                const { sev, days } = paymentSeverity(item, today);
+                return (
+                  <li key={item.id} className="dx-pay__item" style={{ ["--sev" as string]: SEVERITY_COLOR[sev] }} data-severity={sev}>
+                    <header>
+                      <h4><i aria-hidden />{PAYMENT_LIGHT[sev]} {item.title.split(":")[0]}</h4>
+                      {days !== null && <span className="dx-pay__when">{daysPhrase(days)}</span>}
+                    </header>
+                    <p className="dx-pay__amount"><span>{item.title.includes(":") ? item.title.slice(item.title.indexOf(":") + 1).trim() : item.title}</span></p>
+                    <p className="dx-pay__meta">{item.due_at ? fmtDate(item.due_at) : "sin fecha"} · {item.detail}</p>
+                    <p className="dx-pay__action">{item.action}</p>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        )}
         <ul className="dx-admin__list" data-testid="attention-list">
-          {data.items.map((item) => (
+          {others.map((item) => (
             <li key={item.id} data-severity={item.severity}>
-              <strong>
-                {item.category === "pagos" ? `${PAYMENT_LIGHT[item.severity] ?? "⚪"} ` : ""}
-                [{SEVERITY_LABEL[item.severity] ?? item.severity}] {item.title}</strong>
+              <strong>[{SEVERITY_LABEL[item.severity] ?? item.severity}] {item.title}</strong>
               <br />
               <span>{item.detail}</span>
               <br />
