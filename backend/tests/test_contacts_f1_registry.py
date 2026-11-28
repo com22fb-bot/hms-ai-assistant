@@ -308,6 +308,25 @@ def test_carrera_en_alta_de_contacto_devuelve_la_existente(db):
     assert not created and row["id"] == "otro-proceso" and len(db.tables["contact_addresses"]) == 1
 
 
+def test_carrera_en_decision_de_alias_actualiza_la_existente(db):
+    repo = ContactRegistryRepository(db)
+    real_get = repo.get_alias
+    calls = {"n": 0}
+
+    def get_once_missing(ws, norm):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            db.tables.setdefault("own_address_aliases", []).append(
+                {"id": "otro-proceso", "workspace_id": ws, "address_norm": norm, "status": "detected", "evidence": {}})
+            return None
+        return real_get(ws, norm)
+
+    repo.get_alias = get_once_missing
+    row = repo.decide_alias(WS, "yo@alias-propio.test", "confirmed", "usuario-1")
+    assert row["status"] == "confirmed" and len(db.tables["own_address_aliases"]) == 1
+    assert db.tables["own_address_aliases"][0]["status"] == "confirmed"
+
+
 def test_fake_aplica_unicidad_de_la_migracion(db):
     db.table("contact_addresses").insert({"workspace_id": WS, "address_norm": "a@x.test"}).execute()
     with pytest.raises(UniqueViolation):

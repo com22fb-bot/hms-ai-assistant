@@ -244,8 +244,15 @@ class ContactRegistryRepository:
         if existing is None:
             payload = {"workspace_id": workspace_id, "address_norm": address_norm,
                        "evidence": {"reason": "user_declared"}, **decision}
-            data = self.client.table(ALIAS_TABLE).insert(payload).execute().data or []
-            return data[0] if data else payload
+            try:
+                data = self.client.table(ALIAS_TABLE).insert(payload).execute().data or []
+                return data[0] if data else payload
+            except Exception as error:  # carrera: otro proceso la creó primero (Bugbot #219)
+                if not _is_unique_violation(error):
+                    raise
+                existing = self.get_alias(workspace_id, address_norm)
+                if existing is None:
+                    raise
         data = (self.client.table(ALIAS_TABLE).update(decision).eq("workspace_id", workspace_id)
                 .eq("address_norm", address_norm).execute().data or [])
         return data[0] if data else {**existing, **decision}
