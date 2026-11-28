@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from email.utils import parseaddr
 from typing import Iterable, Mapping
+
+from app.services.sender_identity import STATUS_INVALID, STATUS_MULTIPLE, parse_sender
 
 PROTECTED_TYPES = ("security", "code", "bank", "government", "invoice", "health")
 
@@ -61,9 +62,16 @@ PHISH_URGENT_RE = re.compile(
 
 
 def brand_mismatch(sender: str | None, subject: str | None, body: str | None = None) -> str | None:
-    """Marca mencionada en asunto/cuerpo que no corresponde al dominio del remitente (o None)."""
-    domain = re.sub(r"[^a-z0-9]", "", _domain(sender))
-    if not domain:
+    """Marca mencionada en asunto/cuerpo que no corresponde al dominio del remitente (o None).
+
+    H01: si el remitente trae varias identidades o una dirección inválida
+    (``parse_sender`` fail-closed), no hay dominio que respalde ninguna marca;
+    se trata como discrepancia en lugar de omitir la protección. Un remitente
+    vacío o solo con nombre conserva el comportamiento anterior (None).
+    """
+    identity = parse_sender(sender)
+    domain = re.sub(r"[^a-z0-9]", "", identity.domain)
+    if not domain and identity.status not in (STATUS_MULTIPLE, STATUS_INVALID):
         return None
     text = fold(f"{subject or ''}\n{(body or '')[:1600]}")
     for brand in PHISH_BRANDS:
@@ -101,8 +109,8 @@ _HEALTH_RE = re.compile(r"(\bcita\b|appointment|clinica|clinic|hospital|laborato
 
 
 def _domain(sender: str | None) -> str:
-    address = parseaddr(str(sender or ""))[1] or str(sender or "")
-    return address.rsplit("@", 1)[-1].strip().lower().strip(">") if "@" in address else ""
+    # H01: dominio solo de la dirección real (nunca del nombre visible).
+    return parse_sender(sender).domain
 
 
 def is_security_or_code(sender: str | None, subject: str | None, body: str | None = None) -> str | None:

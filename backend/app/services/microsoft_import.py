@@ -29,6 +29,7 @@ from app.services.microsoft_oauth import (
     refresh_microsoft_tokens,
 )
 from app.services.oauth_storage import OAuthStorage
+from app.services.sender_identity import format_sender
 from app.utils.html_text import html_to_text, strip_css_noise
 
 
@@ -63,12 +64,16 @@ def decode_microsoft_ref(ref: str) -> tuple[str, str]:
 
 
 def graph_address(entry: dict[str, Any] | None) -> str:
+    """Dirección de Graph (``{"emailAddress": {"name", "address"}}``) en RFC 5322.
+
+    H01: Graph ya entrega nombre y dirección por separado; se serializan con
+    comillas cuando hace falta para que una coma o una dirección dentro del
+    nombre visible no se reanalice como la dirección real.
+    """
     payload = (entry or {}).get("emailAddress") or {}
     name = str(payload.get("name") or "").strip()
     address = str(payload.get("address") or "").strip()
-    if name and address:
-        return f"{name} <{address}>"
-    return address or name
+    return format_sender(name, address)
 
 
 def graph_address_list(entries: Any) -> str:

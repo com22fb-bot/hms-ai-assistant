@@ -41,7 +41,7 @@ def is_self_delivered(labels: Iterable[object] | None) -> bool:
 # solo se aplica a gmail.com/googlemail.com (documentada por Google); en otros
 # proveedores la dirección se compara literal (minúsculas, sin espacios).
 # ---------------------------------------------------------------------------
-from email.utils import getaddresses as _getaddresses
+from app.services.sender_identity import parse_sender
 
 _GMAIL_DOMAINS = {"gmail.com", "googlemail.com"}
 
@@ -50,8 +50,9 @@ def normalize_address(value: object) -> str:
     raw = str(value or "").strip()
     if not raw:
         return ""
-    parsed = _getaddresses([raw])
-    address = (parsed[0][1] if parsed and parsed[0][1] else raw).strip().strip("<>").lower()
+    # H01: dirección real del campo; nunca la del nombre visible ni el texto
+    # crudo cuando el análisis es ambiguo o inválido.
+    address = parse_sender(raw).email_lower
     if "@" not in address:
         return ""
     local, domain = address.rsplit("@", 1)

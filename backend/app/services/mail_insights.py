@@ -21,9 +21,9 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from email.utils import parseaddr
 from typing import Any, Callable
 
+from app.services.sender_identity import parse_sender
 from app.utils.mail_clean import CleanEmail, clean_email, clean_subject, preview_text, strip_subject_prefix
 
 INSIGHT_VERSION = "insights-v1"
@@ -114,10 +114,9 @@ _NOREPLY = re.compile(r"(?:no-?reply|noreply|no_reply|notificacion|notification|
 
 
 def _sender_parts(sender: str | None) -> tuple[str, str, str]:
-    name, address = parseaddr(str(sender or ""))
-    address = address.lower()
-    domain = address.split("@", 1)[1] if "@" in address else ""
-    return name.strip().strip('"'), address, domain
+    """(nombre, dirección, dominio); la dirección nunca sale del nombre visible (H01)."""
+    identity = parse_sender(sender)
+    return identity.display_name.strip().strip('"'), identity.email_lower, identity.domain
 
 
 def _registered_domain(domain: str) -> str:

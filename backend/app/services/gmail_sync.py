@@ -29,6 +29,7 @@ from googleapiclient.errors import HttpError
 
 from app.security.identity import require_google_account
 from app.services.oauth_storage import OAuthStorage
+from app.services.sender_identity import canonical_sender
 from app.utils.mail_clean import import_body
 
 
@@ -197,19 +198,14 @@ def _parse_addresses(raw_value: str) -> list[dict[str, str]]:
 
 
 def _format_sender(raw_value: str) -> str:
-    addresses = _parse_addresses(raw_value)
+    """Remitente canónico para ``communication_messages.sender`` (H01).
 
-    if not addresses:
-        return raw_value.strip()
-
-    sender = addresses[0]
-    name = sender.get("name", "")
-    email = sender.get("email", "")
-
-    if name and email:
-        return f"{name} <{email}>"
-
-    return email or name or raw_value.strip()
+    Antes se escribía ``f"{nombre} <{email}>"`` sin comillas y una coma en el
+    nombre visible se reanalizaba como otra dirección. Ahora la cadena es
+    RFC 5322 (nombre entre comillas cuando hace falta) y nunca toma la
+    dirección del nombre visible. Ver ``app.services.sender_identity``.
+    """
+    return canonical_sender(raw_value)
 
 
 def _parse_received_at(

@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from email.utils import parseaddr
 from typing import Iterable
+
+from app.services.sender_identity import parse_sender
 
 # Redes sociales globales detectadas por dominio del remitente.
 SOCIAL_PLATFORMS: dict[str, str] = {
@@ -103,8 +104,8 @@ def _fold(text: str) -> str:
 
 
 def sender_domain(sender: str | None) -> str:
-    address = parseaddr(str(sender or ""))[1] or str(sender or "")
-    return address.rsplit("@", 1)[-1].strip().lower().strip(">") if "@" in address else ""
+    """Dominio de la dirección real; '' si el campo es ambiguo o inválido (H01)."""
+    return parse_sender(sender).domain
 
 
 def social_platform(sender: str | None) -> str | None:
@@ -223,9 +224,9 @@ def gmail_query_exclusions(exclude: Iterable[str] | None) -> str:
 
 
 def _sender_name(sender: str) -> str:
-    name, address = parseaddr(str(sender or ""))
-    name = (name or "").strip().strip('"')
-    return name or address or str(sender or "")
+    identity = parse_sender(sender)
+    name = (identity.display_name or "").strip().strip('"')
+    return name or identity.email or str(sender or "")
 
 
 # Un remitente solo aparece como ejemplo si envió al menos este número de
