@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from email.utils import getaddresses
 from typing import Any
 
 from fastapi import HTTPException
@@ -9,6 +8,7 @@ from app.security.identity import require_google_account
 from app.services.case_engine import normalize_subject
 from app.services.oauth_storage import OAuthStorage
 from app.services.push_service import create_notification
+from app.services.sender_identity import parse_sender
 
 
 WATCH_MODES = {"sender", "subject", "sender_subject"}
@@ -29,10 +29,7 @@ def _first(response: Any) -> dict[str, Any] | None:
 
 
 def _sender_email(value: str | None) -> str:
-    addresses = getaddresses([value or ""])
-    if not addresses:
-        return ""
-    return addresses[0][1].strip().lower()
+    return parse_sender(value).email_lower
 
 
 def _message_or_404(
