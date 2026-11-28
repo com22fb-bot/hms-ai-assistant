@@ -48,6 +48,7 @@ from email import errors as email_errors
 from email.headerregistry import Address, HeaderRegistry
 from typing import Any, Iterable
 
+from app.services import sender_identity
 from app.services.mail_direction import normalize_address as _gmail_equivalence
 
 PARSE_OK = "ok"
@@ -279,9 +280,37 @@ def identities_from_structured_list(entries: Iterable[Any] | None, *, source: st
 
 
 def identity_from_stored_sender(value: object) -> AddressIdentity:
-    """``communication_messages.sender`` (texto). Parte dependiente de H01 / PR #218.
+    """``communication_messages.sender`` (texto) con la regla real de H01 (PR #218).
 
-    Igual que :func:`identity_from_header`; la forma heredada sin comillas queda
-    ``ambiguous`` (``legacy_unquoted``) hasta que H01 esté fusionado y verificado.
+    ``sender_identity.parse_sender`` es la autoridad sobre la cadena guardada; F0 solo
+    añade su normalización relacional y nunca es más permisivo que H01:
+
+    - H01 confía y F0 confía → misma dirección, identidad ``ok``.
+    - H01 acepta la forma heredada ``legacy_unquoted`` (``Perez, Juan <j@x>``: un único
+      buzón válido, el de los ``<...>`` finales) → ``ok`` con la bandera ``legacy_unquoted``
+      y la dirección normalizada por F0; nunca la primera dirección del texto.
+    - H01 no confía (varios buzones, inválido, sin dirección) → F0 tampoco: nunca ``ok``.
+    - H01 confía pero la dirección no pasa la normalización estricta de F0 → no ``ok``.
     """
-    return identity_from_header(value, source="stored_sender", role=ROLE_FROM)
+    base = identity_from_header(value, source="stored_sender", role=ROLE_FROM)
+    raw, _bad = _unfold(value)
+    if not raw or base.reason in ("control_chars_or_too_long", "empty"):
+        return base
+    h01 = sender_identity.parse_sender(raw)
+    if not h01.trusted:
+        if base.trusted:  # F0 nunca más permisivo que H01
+            return AddressIdentity(base.address_original, "", base.display_name, PARSE_AMBIGUOUS,
+                                   "stored_sender", "h01_untrusted")
+        return base
+    local, _, host = h01.email.rpartition("@")
+    norm, _reason = normalize_addr_spec(local, host)
+    if base.trusted:
+        if base.address_norm != norm:  # pragma: no cover - defensivo: ambos analizadores deben coincidir
+            return AddressIdentity(base.address_original, "", base.display_name, PARSE_AMBIGUOUS,
+                                   "stored_sender", "h01_mismatch")
+        return base
+    if h01.status == sender_identity.STATUS_LEGACY and norm:
+        display = _clean_display(h01.display_name)
+        flags = ("legacy_unquoted",) + _flags_for(display, norm)
+        return AddressIdentity(h01.email, norm, display, PARSE_OK, "stored_sender", "ok", flags)
+    return base

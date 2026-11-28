@@ -1,10 +1,7 @@
 """CONTACTS_V1 · F0 · Interfaz de identidad (contrato) — datos 100 % sintéticos, sin red."""
 from __future__ import annotations
 
-import importlib
-import importlib.util
 import os
-import sys
 
 import pytest
 
@@ -47,9 +44,25 @@ def test_h01_sin_comillas_o_multiple_es_ambiguo_y_sin_identidad(value):
     assert i.address_original == value                           # no se destruye el original
 
 
-def test_forma_heredada_con_coma_queda_en_revision_hasta_h01():
+def test_forma_heredada_con_coma_se_acepta_via_sender_identity_con_bandera():
+    """H01 (#218) acepta legacy_unquoted: un único buzón válido, el de los <...> finales."""
     i = sender("Perez, Juan <juan@ejemplo.test>")
-    assert i.parse_status == ci.PARSE_AMBIGUOUS and i.reason == "legacy_unquoted" and not i.trusted
+    assert i.trusted and i.parse_status == ci.PARSE_OK and i.address_norm == "juan@ejemplo.test"
+    assert "legacy_unquoted" in i.flags and i.display_name == "Perez, Juan"
+    assert ci.sender_identity.parse_sender("Perez, Juan <juan@ejemplo.test>").status == "legacy_unquoted"
+
+
+@pytest.mark.parametrize("value", [
+    "Perez <a@b.test>, Juan <juan@ejemplo.test>",          # dos buzones: nunca el primero ni el último
+    "Soporte: a@x.test <juan@x.test>",                     # sintaxis de grupo en el nombre
+    "aviso@banamex.com.mx <x@atacante.test>",              # dirección sin comillas como nombre
+    "atacante@x.test, Soporte <aviso@banamex.com.mx>",
+    '"Grupo: a@x.test;" <b@y.test>, c@z.test',
+])
+def test_legacy_nunca_confia_en_la_primera_direccion(value):
+    i = sender(value)
+    assert not i.trusted and i.address_norm == ""
+    assert i.parse_status in (ci.PARSE_AMBIGUOUS, ci.PARSE_INVALID)
 
 
 # ------------------------------------------------------- nombre visible ≠ identidad
@@ -140,35 +153,21 @@ def test_contrato_serializable():
     assert c["parse_status"] in ci.PARSE_STATUSES and c["source"] == "stored_sender"
 
 
-# ------------------------------------------------- contrato con H01 (PR #218)
-def _load_h01():
-    path = os.getenv("CONTACTS_H01_SENDER_IDENTITY_PATH")
-    if path:
-        spec = importlib.util.spec_from_file_location("h01_sender_identity_externo", path)
-        module = importlib.util.module_from_spec(spec)
-        sys.modules[spec.name] = module  # dataclasses necesita el módulo registrado
-        spec.loader.exec_module(module)
-        return module
-    try:
-        return importlib.import_module("app.services.sender_identity")
-    except ImportError:
-        return None
-
-
+# ------------------------------------------------- contrato con H01 (PR #218, ya en la rama)
 CONTRACT_VECTORS = [
     H01_QUOTED, H01_UNQUOTED, H01_ENCODED, H01_REVERSED, "Perez, Juan <juan@ejemplo.test>",
     "Juan <juan@x.test>", "juan@x.test", "a@x.test, b@y.test", "Soporte", "", "<>", "a@b@c.test",
     '"José" <JOSÉ@Ejemplo.MX>', "Amazon.com <a@amazon.com>", "Juan <juan@x.test",
+    "Perez <a@b.test>, Juan <juan@ejemplo.test>", "Soporte: a@x.test <juan@x.test>",
+    '"Grupo: a@x.test;" <b@y.test>, c@z.test',
 ]
 
 
 @pytest.mark.parametrize("value", CONTRACT_VECTORS)
 def test_contrato_h01_f0_nunca_es_mas_permisivo_que_h01(value):
     """Si F0 confía en una dirección, H01 también y es la misma. F0 puede ser más estricto."""
-    h01 = _load_h01()
-    if h01 is None:
-        pytest.skip("sender_identity (PR #218) no está en esta rama; contrato pendiente de la fusión")
-    mine, theirs = sender(value), h01.parse_sender(value)
+    theirs = ci.sender_identity.parse_sender(value)
+    mine = sender(value)
     if mine.trusted:
         assert theirs.trusted
         local, domain = theirs.email.rsplit("@", 1)
@@ -176,9 +175,14 @@ def test_contrato_h01_f0_nunca_es_mas_permisivo_que_h01(value):
 
 
 def test_contrato_h01_vector_principal_coincide():
-    h01 = _load_h01()
-    if h01 is None:
-        pytest.skip("sender_identity (PR #218) no está en esta rama")
-    stored = h01.canonical_sender(H01_QUOTED)          # lo que guardará el importador tras #218
+    stored = ci.sender_identity.canonical_sender(H01_QUOTED)   # lo que guarda el importador tras #218
     assert sender(stored).address_norm == "x@atacante.test"
-    assert h01.parse_sender(stored).email == "x@atacante.test"
+    assert ci.sender_identity.parse_sender(stored).email == "x@atacante.test"
+
+
+def test_h01_rechaza_lo_que_f0_aceptaria_por_su_cuenta(monkeypatch):
+    """La autoridad sobre la cadena guardada es H01: si H01 no confía, F0 no confía."""
+    monkeypatch.setattr(ci.sender_identity, "parse_sender",
+                        lambda v: ci.sender_identity.SenderIdentity("", "", "multiple"))
+    i = sender("Juan <juan@x.test>")
+    assert not i.trusted and i.reason == "h01_untrusted"
